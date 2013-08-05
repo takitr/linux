@@ -33,6 +33,7 @@ extern "C" {
 
 #define LOCALEDIR "/usr/share/locale"
 
+
 #define _(text) gettext(text)
 #define N_(text) (text)
 
@@ -122,6 +123,7 @@ void menu_set_type(int type);
 
 /* util.c */
 struct file *file_lookup(const char *name);
+int file_exist(const char *name);
 int file_write_dep(const char *name);
 void *xmalloc(size_t size);
 void *xcalloc(size_t nmemb, size_t size);
