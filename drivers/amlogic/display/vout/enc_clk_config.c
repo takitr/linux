@@ -32,6 +32,8 @@ static void set_hpll_clk_out(unsigned clk)
     aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xca563823);
     aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x00238100);
     aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012286);
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08930e9b);
 #endif
     switch(clk){
 #ifdef CONFIG_ARCH_MESON8
@@ -48,7 +50,7 @@ static void set_hpll_clk_out(unsigned clk)
                 ;
             }
             aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);
-            aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08c34d0b);
+            aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08930d5b);
             break;
 #endif
         case 1488:
@@ -61,7 +63,7 @@ static void set_hpll_clk_out(unsigned clk)
     }
     aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69c8ce00);
     aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08c38d0b);
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08930e9b);
 #endif
 #ifdef CONFIG_ARCH_MESON6
             WRITE_CBUS_REG(HHI_VID_PLL_CNTL, 0x43e);
