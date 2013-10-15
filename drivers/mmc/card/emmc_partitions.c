@@ -469,10 +469,10 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     struct disk_part_iter piter;
     struct hd_struct *part;
 
-    printk("Enter %s\n", __FUNCTION__);
+    // printk("Enter %s\n", __FUNCTION__);
 
     if (!is_card_emmc(card)) { // not emmc, nothing to do
-        printk("[%s] %s is not eMMC!\n", __FUNCTION__, disk->disk_name);
+        // printk("[%s] %s is not eMMC!\n", __FUNCTION__, disk->disk_name);
         return 0;
     }
     
