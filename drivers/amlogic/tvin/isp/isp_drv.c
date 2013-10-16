@@ -1,0 +1,909 @@
+/*
+ * ISP driver
+ *
+ * Author: Kele Bai <kele.bai@amlogic.com>
+ *
+ * Copyright (C) 2010 Amlogic Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/* Standard Linux Headers */
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/errno.h>
+#include <linux/interrupt.h>
+#include <linux/timer.h>
+#include <linux/platform_device.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/err.h>
+#include <linux/string.h>
+#include <linux/fs.h>
+#include <linux/sched.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
+/* Amlogic Headers */
+#include <linux/tvin/tvin_v4l2.h>
+#include <mach/am_regs.h>
+
+/* Local Headers */
+#include "../tvin_global.h"
+#include "../tvin_frontend.h"
+#include "../tvin_format_table.h"
+
+#include "isp_drv.h" 
+#include "isp_tool.h" 
+#include "isp_sm.h"
+#include "isp_regs.h"
+
+#define DEVICE_NAME "isp"
+#define MODULE_NAME "isp"
+
+static struct isp_dev_s *isp_devp[ISP_NUM];
+static unsigned int addr_offset[ISP_NUM];
+static dev_t isp_devno;
+static struct class *isp_clsp;
+static unsigned int isp_debug = 0;
+static unsigned int ae_enable = 1;
+static unsigned int awb_enable = 1;
+static unsigned int af_enable = 1;
+static unsigned int af_pr = 0;
+
+static volatile unsigned int ae_flag = 0;
+static volatile unsigned int ae_new_step = 60;
+extern struct isp_ae_to_sensor_s ae_sens;
+
+static void parse_param(char *buf_orig,char **parm)
+{
+	char *ps, *token;
+	unsigned int n=0;
+	ps = buf_orig;
+	
+        if(isp_debug)
+		pr_info("%s parm:%s",__func__,buf_orig);
+        
+        while(1) {
+                token = strsep(&ps, " \n");
+                if (token == NULL)
+                        break;
+                if (*token == '\0')
+                        continue;
+                parm[n++] = token;
+        }
+}
+
+static ssize_t debug_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+	isp_dev_t *devp;
+	unsigned int addr,data;
+	char *parm[3]={NULL},*ps,*token,*buf_orig;
+	int n=0;
+	if(!buf)
+		return len;
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	devp = dev_get_drvdata(dev);
+	parse_param(buf,&parm);
+	if(!strcmp(parm[0],"r")){
+		addr = simple_strtol(parm[1],NULL,16);
+	}else if(!strcmp(parm[0],"w")){
+		addr = simple_strtol(parm[1],NULL,16);
+		data = simple_strtol(parm[2],NULL,16);
+		isp_wr(addr,data);
+		pr_info("w:0x%x = 0x%x.\n",addr,data);
+	}else if(!strcmp(parm[0],"reset")){
+		isp_hw_reset();
+	}else if(!strcmp(parm[0],"flag")){
+		data = simple_strtol(parm[1],NULL,16);
+		devp->flag = data;
+	}else if(!strcmp(parm[0],"comb4.mode")){
+		devp->debug.comb4_mode = simple_strtol(parm[1],NULL,10);
+		devp->flag |= ISP_FLAG_SET_COMB4;
+	}
+	return len;
+}
+
+static ssize_t debug_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	isp_dev_t *devp;
+
+	devp = dev_get_drvdata(dev);
+	len += sprintf(buf+len,"flag=0x%x.\n",devp->flag);
+	return len;
+}
+static DEVICE_ATTR(debug, 0664, debug_show, debug_store);
+static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+	isp_dev_t *devp;
+	unsigned int data=0,data1=0,data2=0,data3=0;
+	char *parm[5]={NULL};
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	af_debug_t *af = NULL;
+	if(IS_ERR_OR_NULL(buf)){
+		pr_info("%s: cmd null error.\n",__func__);
+		return len;
+	}
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!strcmp(parm[0],"jump")){
+		data = simple_strtol(parm[1],NULL,16);
+		pr_info("%s to 0x%x.\n",parm[0],data);
+		devp->cam_param->cam_function.set_af_new_step(data);
+	}else if(!strcmp(parm[0],"start")){
+		af = kmalloc(sizeof(af_debug_t),GFP_KERNEL);
+		if(IS_ERR_OR_NULL(af)){
+			pr_info("%s kmalloc error.\n",__func__);
+			return len;
+		}
+		memset(af,0,sizeof(af_debug_t));
+		if(parm[1]&&parm[2]&&parm[3]&&parm[4]){
+			data = simple_strtol(parm[1],NULL,16);
+			data1 = simple_strtol(parm[2],NULL,10);
+			data2 = simple_strtol(parm[3],NULL,10);
+			data3 = simple_strtol(parm[4],NULL,10);
+		}
+		af->flag = true;
+		af->control = data;
+		af->state = 0;
+		af->step = data1;
+		af->max_step = data2;
+		af->delay = data3;
+		if(devp->af_dbg)
+			kfree(devp->af_dbg);
+		devp->af_dbg = af;
+		devp->flag |= ISP_FLAG_AF_DBG;
+		pr_info("%s:full scan from %u to %u.\n",__func__,data1,data2);
+	}else if(!strcmp(parm[0],"print")){	
+		unsigned int i = 0;
+		af = devp->af_dbg;
+		if(IS_ERR_OR_NULL(af))
+			return len;		
+		devp->flag &=(~ISP_FLAG_AF_DBG);
+		pr_info("ac[0]   ac[1]    ac[2]   ac[3]   dc[0]   dc[1]   dc[2]   dc[3]\n");
+		for (i = 0; i < af->max_step; i++){
+			pr_info("step[%4u]: %u %u %u %u %u %u %u %u\n",
+					i,af->data[i].ac[0],af->data[i].ac[1],
+					af->data[i].ac[2],af->data[i].ac[3],
+					af->data[i].dc[0],af->data[i].dc[1],
+					af->data[i].dc[2],af->data[i].dc[3]);	
+			msleep(10);
+		}
+		pr_info("%s:full scan end.\n",__func__);
+		kfree(af);
+		devp->af_dbg = NULL;
+	}else if(!strcmp(parm[0],"blnr_en")){
+		if(parm[1])
+			devp->vs_cnt = simple_strtol(parm[1],NULL,10);
+		else
+			devp->vs_cnt = 4;
+		devp->flag |= ISP_FLAG_BLNR;
+	}
+	
+	kfree(buf_orig);
+	
+	return len;
+}
+
+static ssize_t af_debug_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	
+	isp_dev_t *devp = dev_get_drvdata(dev);
+	unsigned int pix_sum = ((devp->info.h_active)*(devp->info.v_active))>>2;
+	len += sprintf(buf+len,"dc/4:0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.dc[0]/pix_sum,
+				devp->blnr_stat.dc[1]/pix_sum,devp->blnr_stat.dc[2]/pix_sum,devp->blnr_stat.dc[3]/pix_sum);
+	return len;
+}
+
+static void af_stat(struct af_debug_s *af,cam_function_t *ops)
+{
+	if (af->state == 0) {
+		af->control = (af->control&0x0000c00f)|((af->step&0x3ff)<<4);
+		if(ops&&ops->set_af_new_step)
+			ops->set_af_new_step(af->control);
+		af->state = 1;
+		if(af_pr)
+			pr_info("set step %u.\n",af->step);
+	}else if(af->state == af->delay) {
+		af->state = 0;
+		if (af->step++ >= af->max_step){
+			af->step = 0;
+			/*stop*/
+			af->state = 0xffffffff;
+			pr_info("%s get statics ok.\n",__func__);
+		}
+	}
+        return;
+	
+}
+static DEVICE_ATTR(af_debug, 0664, af_debug_show, af_debug_store);
+
+
+static ssize_t ae_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+	
+        char *parm[18]={NULL};
+	isp_dev_t *devp;
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_ae_parm||!buf){		
+		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	set_ae_parm(devp->isp_ae_parm,(char **)&parm);
+	kfree(buf_orig);
+	return len;
+}
+
+static ssize_t ae_param_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	isp_dev_t *devp;
+	char *buff="show";
+
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_ae_parm){		
+		pr_err("[%s..]%s %s error,isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	set_ae_parm(devp->isp_ae_parm,&buff);
+	return len;
+}
+static DEVICE_ATTR(ae_param, 0664, ae_param_show, ae_param_store);
+
+static ssize_t awb_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+        char *parm[21]={NULL};
+	isp_dev_t *devp;
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_awb_parm||!buf){		
+		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	set_awb_parm(devp->isp_awb_parm,(char **)&parm);
+	kfree(buf_orig);
+	return len;
+}
+
+static ssize_t awb_param_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	char *buff ="show";
+	isp_dev_t *devp;
+
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_awb_parm){		
+		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
+		return len;
+	}
+	set_awb_parm(devp->isp_awb_parm,&buff);
+	return len;
+}
+
+static DEVICE_ATTR(awb_param, 0664, awb_param_show, awb_param_store);
+
+static ssize_t af_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+        char *parm[3]={NULL};
+	isp_dev_t *devp;
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_af_parm||!buf){		
+		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	set_af_parm(devp->isp_af_parm,(char **)&parm);
+	kfree(buf_orig);
+	return len;
+}
+
+static ssize_t af_param_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	char *buff="show";
+	isp_dev_t *devp;
+
+	devp = dev_get_drvdata(dev);
+	if(!devp->isp_af_parm){		
+		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
+		return len;
+	}
+	set_af_parm(devp->isp_af_parm,&buff);
+	return len;
+}
+
+static DEVICE_ATTR(af_param, 0664, af_param_show, af_param_store);
+
+static ssize_t capture_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+        char *parm[3];
+	isp_dev_t *devp;
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!devp->capture_parm||!buf){		
+		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	set_cap_parm(devp->capture_parm,(char **)&parm);
+	kfree(buf_orig);
+	return len;
+}
+
+static ssize_t capture_param_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	char *buff="show";
+		isp_dev_t *devp;
+
+	devp = dev_get_drvdata(dev);
+	if(!devp->capture_parm){		
+		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
+		return len;
+	}
+	set_cap_parm(devp->capture_parm,&buff);
+	return len;
+}
+
+static DEVICE_ATTR(cap_param, 0664, capture_param_show, capture_param_store);
+
+static ssize_t wave_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+        char *parm[3];
+	isp_dev_t *devp;
+	char *buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	devp = dev_get_drvdata(dev);
+	if(!devp->wave||!buf){		
+		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
+		return len;
+	}
+	if(!strcmp(parm[0],"torch")){
+		unsigned int level = simple_strtol(parm[1],NULL,10);
+		pr_info("%s:set torch level to %u.\n",__func__,level);
+		torch_level(devp->flash.mode_pol_inv,devp->flash.led1_pol_inv,devp->flash.pin_mux_inv,devp->flash.torch_pol_inv,devp->wave,level);
+	}else{
+		set_wave_parm(devp->wave,(char **)&parm);
+	}
+	kfree(buf_orig);
+	return len;
+}
+
+static ssize_t wave_param_show(struct device *dev,struct device_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	char *buff="show";
+		isp_dev_t *devp;
+
+	devp = dev_get_drvdata(dev);
+	if(!devp->wave){		
+		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
+		return len;
+	}
+	set_wave_parm(devp->wave,&buff);
+	return len;
+}
+
+static int isp_thread(isp_dev_t *devp) {
+	struct cam_function_s *func = &devp->cam_param->cam_function;
+	printk("isp_thread is run! \n");
+	while (1) {
+		//printk("ae_flag = %d\n",ae_flag);
+	if(ae_flag)
+	{
+		ae_flag = 0;
+		printk("set new step %d \n",ae_new_step);
+		if(func&&func->set_aet_new_step)
+		func->set_aet_new_step(ae_new_step,true,true);
+	}
+	if(ae_sens.send)
+	{
+		ae_sens.send = 0;
+		if(isp_debug)
+		printk("set new step %d \n",ae_sens.new_step);
+		if(func&&func->set_aet_new_step)
+		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);		
+	}
+	if(devp->flag&ISP_FLAG_AF_DBG){
+		af_stat(devp->af_dbg,func);
+	}
+    if(kthread_should_stop())
+        break;
+	}
+}
+
+static DEVICE_ATTR(wave_param, 0664, wave_param_show, wave_param_store);
+
+static int start_isp_thread(isp_dev_t *devp) {	
+	if(!devp->kthread) {
+		devp->kthread = kthread_run(isp_thread, devp, "isp");
+		if(IS_ERR(devp->kthread)) {
+			pr_err("[%s..]%s thread creating error.\n",DEVICE_NAME,__func__);
+			return -1;
+		}
+		wake_up_process(devp->kthread);    
+	}
+	return 0;
+}
+
+static void stop_isp_thread(isp_dev_t *devp) {
+    if(devp->kthread){
+        send_sig(SIGTERM, devp->kthread, 1);
+        kthread_stop(devp->kthread);
+        devp->kthread = NULL;
+    }
+}
+
+static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
+{
+        if(port == TVIN_PORT_ISP)
+                return 0;
+        else
+                return -1;
+}
+
+static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
+{        
+	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	vdin_parm_t *parm = (vdin_parm_t*)fe->private_data;
+	isp_info_t *info = &devp->info;
+	
+	info->fe_port = parm->isp_fe_port;
+	info->h_active = parm->h_active;
+	info->v_active = parm->v_active;
+	
+	devp->isp_fe = tvin_get_frontend(info->fe_port, 0);		
+	if(devp->isp_fe && devp->isp_fe->dec_ops) {			
+		devp->isp_fe->private_data = fe->private_data;			
+		devp->isp_fe->dec_ops->open(devp->isp_fe, info->fe_port);
+		pr_info("[%s..]%s: open %s ok.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));
+	} else {			
+		pr_info("[%s..]%s:get %s frontend error.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));		
+	}       
+	/*open the isp to vdin path,power on the isp hw module*/
+        devp->cam_param = (cam_parameter_t*)parm->reserved;
+	if(IS_ERR_OR_NULL(devp->cam_param)){
+		pr_err("[%s..]%s camera parameter error use default 720x480 test pattern config.\n",DEVICE_NAME,__func__);
+		isp_set_init(720,480,746,496);
+	} else {
+		devp->isp_ae_parm = &devp->cam_param->xml_scenes->ae;
+		devp->isp_awb_parm = &devp->cam_param->xml_scenes->awb;
+		devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
+		devp->capture_parm = devp->cam_param->xml_capture;
+		devp->wave = devp->cam_param->xml_wave;
+		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
+	}
+        return 0;
+}
+
+static void isp_fe_close(struct tvin_frontend_s *fe)
+{        
+        isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	if(devp->isp_fe)
+		devp->isp_fe->dec_ops->close(devp->isp_fe);
+        memset(&devp->info,0,sizeof(isp_info_t));
+        /*close the isp to vdin path*/
+
+}
+
+static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
+{
+        isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	
+	pr_info("[%s..]%s:isp start.\n",DEVICE_NAME,__func__);
+		
+	if(devp->isp_fe)
+	        devp->isp_fe->dec_ops->start(devp->isp_fe,fmt);
+	
+	/*configuration the hw,load reg table*/
+
+	if(!IS_ERR_OR_NULL(devp->cam_param)) {
+	        if(devp->cam_param->cam_mode == CAMERA_CAPTURE)
+		        devp->flag = ISP_FLAG_CAPTURE;
+	        else if(devp->cam_param->cam_mode == CAMERA_RECORD)
+		        devp->flag = ISP_FLAG_RECORD;
+	        else
+		        devp->flag &= (~ISP_WORK_MODE_MASK);
+        }
+	tasklet_enable(&devp->isp_task);
+	start_isp_thread(devp);
+	
+        devp->flag |= ISP_FLAG_START;
+	
+	return;
+}
+static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
+{
+         
+        isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	if(devp->isp_fe)
+	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
+	tasklet_disable_nosync(&devp->isp_task);
+	stop_isp_thread(devp);
+	/*disable hw*/
+        devp->flag &= (~ISP_FLAG_START);    
+}
+static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
+{
+	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	cam_parameter_t *param = (cam_parameter_t *)arg;
+	enum cam_command_e cmd;
+	if(IS_ERR_OR_NULL(param)) {
+                pr_err("[%s..]camera parameter can't be null.\n",DEVICE_NAME);
+                return -1;
+        }
+	cmd = param->cam_command;
+	devp->cam_param = param;
+	if(isp_debug)	 	
+	 	pr_info("[%s..]%s:cmd: %s .\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd));	 
+	switch(cmd) {
+                case CAM_COMMAND_INIT:
+		        break;
+                case CAM_COMMAND_SCENES:
+		        devp->isp_ae_parm = &param->xml_scenes->ae;
+		        devp->isp_awb_parm = &param->xml_scenes->awb;
+		        devp->isp_af_parm = &param->xml_scenes->af;
+		        devp->capture_parm = param->xml_capture;
+		        devp->flag |= ISP_FLAG_SET_SCENES;
+		        break;
+                case CAM_COMMAND_EFFECT:
+	                devp->flag |= ISP_FLAG_SET_EFFECT;
+		        break;
+                case CAM_COMMAND_AWB:
+	                devp->flag |= ISP_FLAG_AWB;
+			devp->capture_parm->awb_en = 1;
+		        break;
+		case CAM_COMMAND_MWB:
+			devp->flag &= (~ISP_FLAG_AWB);
+	                devp->flag |= ISP_FLAG_MWB;
+			devp->capture_parm->awb_en = 0;
+		        break;
+		case CAM_COMMAND_SET_WORK_MODE:
+			if(devp->cam_param->cam_mode == CAMERA_CAPTURE)
+		                devp->flag = ISP_FLAG_CAPTURE;
+	                else if(devp->cam_param->cam_mode == CAMERA_RECORD)
+		                devp->flag = ISP_FLAG_RECORD;
+	                else
+		                devp->flag &= (~ISP_WORK_MODE_MASK);
+			break;
+                // ae related
+                case CAM_COMMAND_AE_ON:
+		        isp_sm_init(devp);
+		        devp->flag |= ISP_FLAG_AE;
+		        devp->capture_parm->ae_en = 1;
+		        break;
+                case CAM_COMMAND_AE_OFF:
+		        devp->flag &= (~ISP_FLAG_AE);
+		        devp->capture_parm->ae_en = 0;
+		        break;
+                // af related
+                case CAM_COMMAND_AF:
+			devp->flag |= ISP_FLAG_AF;
+		        break;
+                case CAM_COMMAND_FULLSCAN:
+			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
+		        break;
+                case CAM_COMMAND_TOUCH_WINDOW:
+		        break;
+                case CAM_COMMAND_TOUCH_FOCUS_ON:
+		        break;
+                case CAM_COMMAND_TOUCH_FOCUS_OFF:
+		        break;
+                case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
+		        break;
+                case CAM_COMMAND_CONTINUOUS_FOCUS_OFF:
+		        break;
+                case CAM_COMMAND_BACKGROUND_FOCUS_ON:
+		        break;
+                case CAM_COMMAND_BACKGROUND_FOCUS_OFF:
+		        break;
+                // flash related
+                case CAM_COMMAND_SET_FLASH_MODE:
+			isp_set_flash_mode(devp);
+		        break;
+                // torch related
+                case CAM_COMMAND_TORCH:
+		        devp->wave = param->xml_wave;
+		        torch_level(devp->flash.mode_pol_inv,devp->flash.led1_pol_inv,devp->flash.pin_mux_inv,devp->flash.torch_pol_inv,devp->wave,param->level);
+		        break;
+	        default:
+		        break;
+	}
+	return 0;
+}
+static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
+{	
+	xml_csc_t *csc;
+	xml_wb_manual_t *wb;
+	af_debug_t *af;
+        isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	int ret = 0;
+	if(IS_ERR_OR_NULL(devp->cam_param)){
+		pr_info("%s:null pointer error.\n",__func__);
+	}
+	if(awb_enable){
+                isp_get_awb_stat(&devp->isp_awb);
+	}
+	if(ae_enable){
+        if(devp->flag & ISP_FLAG_AE)
+	        isp_get_ae_stat(&devp->isp_ae);
+	}
+	if(af_enable){
+	if(devp->flag & ISP_FLAG_AF)
+	        isp_get_af_stat(&devp->isp_af);
+	}
+	if(devp->flag & ISP_FLAG_SET_EFFECT){
+		csc = &(devp->cam_param->xml_effect_manual->csc);
+		isp_set_matrix(csc,devp->info.v_active);
+		devp->flag &= (~ISP_FLAG_SET_EFFECT);
+	}
+	if(devp->flag&ISP_FLAG_CAPTURE){
+		isp_get_blnr_stat(&devp->blnr_stat);
+	}
+	if(devp->flag&ISP_FLAG_BLNR){
+		isp_get_blnr_stat(&devp->blnr_stat);
+		if(devp->vs_cnt-- == 0)
+			devp->flag &= (~ISP_FLAG_BLNR);
+	}
+	if(devp->flag & ISP_FLAG_AF_DBG){
+		af = devp->af_dbg;
+		if((af->state >= 1)&&(af->state <= af->delay)){
+			isp_get_blnr_stat(&af->data[af->step]);
+			af->state++;
+		}
+	}
+	if(devp->flag&ISP_FLAG_MWB){
+		wb = devp->cam_param->xml_wb_manual;
+		isp_set_manual_wb(wb);
+		devp->flag &=(~ISP_FLAG_MWB);
+	}
+	if(devp->flag&ISP_FLAG_SET_COMB4){
+		isp_set_lnsd_mode(devp->debug.comb4_mode);
+		devp->flag &= (~ISP_FLAG_SET_COMB4);
+	}
+	if(devp->flag & ISP_FLAG_CAPTURE)
+		ret = isp_capture_sm(devp);
+
+	tasklet_schedule(&devp->isp_task);
+	
+	if(devp->isp_fe)
+		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
+        return ret;        
+}
+
+static void isp_tasklet(unsigned long arg)
+{
+	isp_dev_t *devp = (isp_dev_t *)arg;
+    if(ae_enable){
+	if(devp->flag & ISP_FLAG_AE)
+	        isp_ae_sm(devp);
+    }
+	if(awb_enable){
+	if(devp->flag & ISP_FLAG_AWB)
+                isp_awb_sm(devp);
+	}
+	if(af_enable){
+	if(devp->flag & ISP_FLAG_AF)
+		isp_af_sm(devp);
+	}
+}
+static struct tvin_decoder_ops_s isp_dec_ops ={
+        .support            = isp_support,
+	.open               = isp_fe_open,
+	.start              = isp_fe_start,
+	.stop               = isp_fe_stop,
+	.close              = isp_fe_close,
+	.ioctl              = isp_fe_ioctl,
+	.decode_isr         = isp_fe_isr,
+};
+static void isp_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_property_s *prop)
+{
+	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+        prop->color_format = TVIN_YUV422;
+	//prop->dest_cfmt = devp->parm.cfmt;
+        prop->pixel_repeat = 0;
+}
+static bool isp_frame_skip(struct tvin_frontend_s *fe)
+{
+	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	if(devp->isp_fe && devp->isp_fe->sm_ops){
+		if(devp->isp_fe->sm_ops->check_frame_skip)
+			return devp->isp_fe->sm_ops->check_frame_skip(devp->isp_fe);
+	}
+	return 0;
+}
+
+static struct tvin_state_machine_ops_s isp_sm_ops ={
+       .get_sig_propery  = isp_sig_propery,
+       .check_frame_skip = isp_frame_skip,
+};
+
+static int isp_open(struct inode *inode, struct file *file)
+{
+	isp_dev_t *devp;
+	/* Get the per-device structure that contains this cdev */
+	devp = container_of(inode->i_cdev, isp_dev_t, cdev);
+	file->private_data = devp;
+	return 0;
+}
+
+static int isp_release(struct inode *inode, struct file *file)
+{
+	file->private_data = NULL;
+	return 0;
+}
+static struct file_operations isp_fops = {
+	.owner	         = THIS_MODULE,
+	.open	         = isp_open,
+	.release         = isp_release,
+};
+static int isp_add_cdev(struct cdev *cdevp, struct file_operations *fops,
+		int minor)
+{
+	int ret;
+	dev_t devno = MKDEV(MAJOR(isp_devno), minor);
+	cdev_init(cdevp, fops);
+	cdevp->owner = THIS_MODULE;
+	ret = cdev_add(cdevp, devno, 1);
+	return ret;
+}
+
+static struct device * isp_create_device(struct device *parent, int minor)
+{
+	dev_t devno = MKDEV(MAJOR(isp_devno), minor);
+	return device_create(isp_clsp, parent, devno, NULL, "%s%d",
+			DEVICE_NAME, minor);
+}
+
+static void isp_delete_device(int minor)
+{
+	dev_t devno = MKDEV(MAJOR(isp_devno), minor);
+	device_destroy(isp_clsp, devno);
+}
+
+static int isp_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct isp_dev_s *devp = NULL;
+	devp = kmalloc(sizeof(isp_dev_t),GFP_KERNEL);
+	memset(devp,0,sizeof(isp_dev_t));
+	if(!devp){
+		pr_err("[%s..]%s kmalloc error.\n",DEVICE_NAME,__func__);
+		return -ENOMEM;
+	}
+	devp->index = pdev->id;
+	devp->offset = addr_offset[devp->index];
+	isp_devp[devp->index] = devp;
+	/* create cdev and reigser with sysfs */
+	ret = isp_add_cdev(&devp->cdev,&isp_fops,devp->index);
+	
+	devp->dev = isp_create_device(&pdev->dev,devp->index);
+	
+	ret = device_create_file(devp->dev,&dev_attr_debug);
+	ret = device_create_file(devp->dev,&dev_attr_ae_param);
+	ret = device_create_file(devp->dev,&dev_attr_awb_param);
+	ret = device_create_file(devp->dev,&dev_attr_af_param);
+	ret = device_create_file(devp->dev,&dev_attr_af_debug);
+	ret = device_create_file(devp->dev,&dev_attr_cap_param);
+	ret = device_create_file(devp->dev,&dev_attr_wave_param);
+	if(ret < 0)
+		goto err;
+	
+	sprintf(devp->frontend.name, "%s%d", DEVICE_NAME, devp->index);
+	
+	if(!tvin_frontend_init(&devp->frontend,&isp_dec_ops,&isp_sm_ops,devp->index)) {
+		if(tvin_reg_frontend(&devp->frontend))
+			pr_err("[%s..]%s register isp frontend error.\n",DEVICE_NAME,__func__);
+	}
+	
+	tasklet_init(&devp->isp_task,isp_tasklet,(unsigned long)devp);
+	tasklet_disable(&devp->isp_task);
+	platform_set_drvdata(pdev,(void *)devp);
+	dev_set_drvdata(devp->dev,(void *)devp);
+	pr_info("[%s..]%s isp probe ok.\n",DEVICE_NAME,__func__);
+	return 0;
+err:
+	isp_delete_device(devp->index); 
+	return 0;
+
+}
+static int isp_remove(struct platform_device *pdev)
+{
+	struct isp_dev_s *devp;
+	devp = platform_get_drvdata(pdev);
+	device_remove_file(devp->dev,&dev_attr_debug);
+	device_remove_file(devp->dev,&dev_attr_ae_param);
+	device_remove_file(devp->dev,&dev_attr_awb_param);
+	device_remove_file(devp->dev,&dev_attr_af_param);
+	device_remove_file(devp->dev,&dev_attr_cap_param);
+	device_remove_file(devp->dev,&dev_attr_wave_param);
+	
+	isp_delete_device(devp->index);
+        tvin_unreg_frontend(&devp->frontend);
+	tasklet_kill(&devp->isp_task);
+	kfree(devp);
+	return 0;
+}
+
+static int isp_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	wave_power_manage(false);
+	return 0;
+}
+
+static int isp_resume(struct platform_device *pdev)
+{
+	wave_power_manage(true);
+	return 0;
+}
+static struct platform_driver isp_driver = {
+	.probe 	 = isp_probe,
+	.remove  = isp_remove,
+	.suspend = isp_suspend,
+	.resume  = isp_resume,	
+	.driver = {
+		.name = DEVICE_NAME,
+	}
+};
+
+static struct platform_device *isp_dev[ISP_NUM];
+static int __init isp_init_module(void)
+{
+	int i = 0;
+	isp_clsp = class_create(THIS_MODULE, MODULE_NAME);
+	if(IS_ERR(isp_clsp)) {
+		pr_err();
+	}
+	for(i=0;i<ISP_NUM;i++) {
+		isp_dev[i] = platform_device_alloc(DEVICE_NAME,i);
+		platform_device_add(isp_dev[i]);
+	}
+	platform_driver_register(&isp_driver);
+
+	return 0;
+}
+
+
+static void __exit isp_exit_module(void)
+{
+	int i = 0;
+	for(i=0;i<ISP_NUM;i++){
+		platform_device_del(isp_dev[i]);
+	}
+	platform_driver_unregister(&isp_driver);
+	class_destroy(isp_clsp);
+	return;
+}
+module_param(isp_debug,uint,0664);
+MODULE_PARM_DESC(isp_debug,"\n debug flag for isp.\n");
+
+module_param(ae_enable,uint,0664);
+MODULE_PARM_DESC(ae_enable,"\n ae_enable.\n");
+
+module_param(awb_enable,uint,0664);
+MODULE_PARM_DESC(awb_enable,"\n awb_enable.\n");
+
+module_param(af_enable,uint,0664);
+MODULE_PARM_DESC(af_enable,"\n af_enable.\n");
+
+module_param(ae_flag,uint,0664);
+MODULE_PARM_DESC(ae_flag,"\n debug flag for ae_flag.\n");
+
+module_param(af_pr,uint,0664);
+MODULE_PARM_DESC(af_pr,"\n debug flag for af print.\n");
+
+module_param(ae_new_step,uint,0664);
+MODULE_PARM_DESC(ae_new_step,"\n debug flag for ae_new_step.\n");
+
+MODULE_VERSION(ISP_VER);
+module_init(isp_init_module);
+module_exit(isp_exit_module);
+MODULE_DESCRIPTION("AMLOGIC isp input driver");
+MODULE_LICENSE("GPL");

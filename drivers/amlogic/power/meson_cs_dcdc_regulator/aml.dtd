@@ -1,0 +1,57 @@
+#ifdef CONFIG_MESON_CS_DCDC_REGULATOR
+//$$ DEVICE="meson-cs-regulator"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "default_uV"
+//$$ L2 PROP_STR = "consumer_supplies-supply"
+//$$ L2 PROP_CHOICE "vcck_init_data_match" = "init-data"
+//$$ L2 PROP_CHOICE "vcck_opp_table_match" = "vcck-table"
+//$$ L2 PROP_U32 4*4 = "voltage_step_table"
+	meson-cs-regulator{
+		compatible = "amlogic,meson-cs-regulator";
+		dev_name = "meson-cs-regulator";
+		status = "ok";
+		default_uV = <1307000>;
+		consumer_supplies-supply = "vcck-armcore";
+		init-data = <&vcck_init_data>;
+		vcck-table = <&vcck_opp_table>;
+			
+		voltage_step_table = <
+			1307000 1298000 1277000 1255000
+			1234000 1212000 1190000 1169000
+			1147000 1126000 1104000 1082000
+			1061000 1039000 1018000  996000
+		>;
+
+//$$ MATCH "vcck_init_data_match" = <&vcck_init_data>
+//$$ L2 PROP_STR = "cons_name"
+//$$ L2 PROP_U32 = "min_uV"	
+//$$ L2 PROP_U32 = "max_uV"
+//$$ L2 PROP_U32 = "valid_ops_mask"
+//$$ L2 PROP_U32 = "num"
+//$$ L2 PROP_STR = "vcck_data-supply"
+		vcck_init_data: vcck_init_data{
+			cons_name = "vcck";
+			min_uV = <996000>;
+			max_uV = <1307000>;
+			valid_ops_mask = <0x9>; /**REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS */
+			num = <1>;	/**the number of vcck_data-supply*/
+			vcck_data-supply = "vcck-armcore";	
+		};
+					
+//$$ MATCH "vcck_opp_table_match" = <&vcck_opp_table>
+//$$ L2 PROP_U32 = "num"
+//$$ L2 PROP_U32 7*3 = "table"
+		vcck_opp_table: vcck_opp_table{
+			num = <7>;
+			table = <
+			1500000 1307000 1307000
+			1320000 1298000 1298000
+			1200000 1212000 1212000
+			1080000 1147000 1147000
+			840000  1104000 1104000
+			600000  1039000 1039000
+			200000  996000  996000
+			>;
+		};
+	};
+#endif

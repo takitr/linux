@@ -1,0 +1,310 @@
+#ifdef CONFIG_AM_LCD_OUTPUT
+#ifdef CONFIG_ARCH_MESON8
+//$$ DEVICE="lcd"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_STR = "pinctrl-names"
+//$$ L2 PROP_CHOICE "Lcd_pin_0_match" = "pinctrl-0"
+//$$ L2 PROP_CHOICE "Lcd_pin_1_match" = "pinctrl-1"
+//$$ L2 PROP_CHOICE "Lcd_pin_2_match" = "pinctrl-2"
+//$$ L2 PROP_CHOICE "Lcd_pin_3_match" = "pinctrl-3"
+//$$ L2 PROP_CHOICE "Lcd_pin_4_match" = "pinctrl-4"
+//$$ L2 PROP_CHOICE "Lcd_pin_5_match" = "pinctrl-5"
+//$$ L2 PROP_CHOICE "Lcd_pin_6_match" = "pinctrl-6"
+//$$ L2 PROP_CHOICE "Lcd_pin_7_match" = "pinctrl-7"
+//$$ L2 PROP_STR = "lcd_model_name"
+//$$ L2 PROP_CHOICE "lcd_model_config_match" = "lcd_model_config"
+//$$ L2 PROP_U32 = "lcd_bits_user"
+
+//$$ L2 PROP_U32 2 = "ttl_rb_bit_swap"
+//$$ L2 PROP_U32 = "lvds_channel_pn_swap"
+
+//$$ L2 PROP_U32 2 = "valid_hvsync_de"
+//$$ L2 PROP_U32 4 = "hsign_hoffset_vsign_voffset"
+
+//$$ L2 PROP_U32 2 = "dither_user_ctrl"
+//$$ L2 PROP_U32 3 = "vadj_brightness_contrast_saturation"
+
+//$$ L2 PROP_U32 2 = "gamma_en_revert"
+//$$ L2 PROP_U32 4 = "gamma_multi_rgb_coeff"
+//$$ L2 PROP_U32 256 = "gamma_table"
+
+//$$ L2 PROP_U32 = "clock_spread_spectrum"
+//$$ L2 PROP_U32 = "clock_auto_generation"
+//$$ L2 PROP_U32 3 = "clk_pll_div_clk_ctrl"
+//$$ L2 PROP_U32 = "phy_ctrl"
+//$$ L2 PROP_U32 2 = "lvds_user_repack"
+//$$ L2 PROP_U32 3 = "edp_user_link_rate_lane_count"
+//$$ L2 PROP_U32 2 = "edp_link_adaptive_vswing"
+//$$ L2 PROP_U32 2 = "rgb_base_coeff"
+//$$ L2 PROP_U32 2 = "video_on_pixel_line"
+
+//$$ L2 PROP_STR = "power_on_uboot"
+//$$ L2 PROP_STR 3 = "power_on_step_1"
+//$$ L2 PROP_STR 3 = "power_on_step_2"
+//$$ L2 PROP_STR = "power_on_step_3"
+//$$ L2 PROP_STR = "power_on_step_4"
+//$$ L2 PROP_STR = "power_on_step_5"	
+//$$ L2 PROP_STR = "power_on_step_6"
+//$$ L2 PROP_STR = "power_on_step_7"
+//$$ L2 PROP_STR = "power_on_step_8"
+//$$ L2 PROP_STR = "power_on_step_9"
+//$$ L2 PROP_STR = "power_on_step_10"
+//$$ L2 PROP_STR = "power_on_step_11"
+//$$ L2 PROP_STR = "power_on_step_12"
+//$$ L2 PROP_STR = "power_on_step_13"
+//$$ L2 PROP_STR = "power_on_step_14"
+//$$ L2 PROP_STR = "power_on_step_15"
+//$$ L2 PROP_U32 3 = "power_on_delay"	
+//$$ L2 PROP_STR = "power_off_step_1"	
+//$$ L2 PROP_STR 3 = "power_off_step_2"
+//$$ L2 PROP_STR 3 = "power_off_step_3"
+//$$ L2 PROP_STR = "power_off_step_4"
+//$$ L2 PROP_STR = "power_off_step_5"
+//$$ L2 PROP_STR = "power_off_step_6"
+//$$ L2 PROP_STR = "power_off_step_7"
+//$$ L2 PROP_STR = "power_off_step_8"
+//$$ L2 PROP_STR = "power_off_step_9"
+//$$ L2 PROP_STR = "power_off_step_10"
+//$$ L2 PROP_STR = "power_off_step_11"
+//$$ L2 PROP_STR = "power_off_step_12"
+//$$ L2 PROP_STR = "power_off_step_13"
+//$$ L2 PROP_STR = "power_off_step_14"
+//$$ L2 PROP_STR = "power_off_step_15"
+//$$ L2 PROP_U32 3 = "power_off_delay"	
+//$$ L2 PROP_STR = "power_off_uboot"
+	lcd{
+		compatible = "amlogic,lcd";
+		dev_name = "lcd";
+		status = "okay";
+		pinctrl-names = "ttl_6bit_hvsync_de_on","ttl_6bit_hvsync_on","ttl_6bit_de_on","ttl_8bit_hvsync_de_on","ttl_8bit_hvsync_on","ttl_8bit_de_on",
+						"ttl_6bit_hvsync_de_off","ttl_8bit_hvsync_de_off";
+		pinctrl-0 = <&lcd_ttl_rgb_6bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_on &lcd_ttl_de_pins_on>;
+		pinctrl-1 = <&lcd_ttl_rgb_6bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_on &lcd_ttl_de_pins_off>;
+		pinctrl-2 = <&lcd_ttl_rgb_6bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_on>;
+		pinctrl-3 = <&lcd_ttl_rgb_8bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_on &lcd_ttl_de_pins_on>;
+		pinctrl-4 = <&lcd_ttl_rgb_8bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_on &lcd_ttl_de_pins_off>;
+		pinctrl-5 = <&lcd_ttl_rgb_8bit_pins_on &lcd_ttl_clk_pins_on &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_on>;
+		pinctrl-6 = <&lcd_ttl_rgb_6bit_pins_off &lcd_ttl_clk_pins_off &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_off>;
+		pinctrl-7 = <&lcd_ttl_rgb_8bit_pins_off &lcd_ttl_clk_pins_off &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_off>;
+		
+		lcd_model_name ="lcd_LP097QX1";	/** lcd model name for uboot driver */
+		lcd_model_config = <&lcd_LP097QX1>;	/** choose panel model config */
+		lcd_bits_user=<8>;	/** user defined lcd bits(6 or 8, desided by hardware design; only valid when lcd_bits_option=1) */
+		
+		/* below configs are decided by hardware design, you can modify them if needed. */
+		//ttl config
+		ttl_rb_bit_swap=<0 0>;	/** ttl rb_swap, bit_swap : (0 for normal, 1 for swap) */
+		//lvds config
+		lvds_channel_pn_swap=<0>;	/** lvds channel pn swap(0 for normal, 1 for swap) */
+		
+		/* recommend settings, you can modify them if needed. */
+		valid_hvsync_de=<1 1>;	/** hvsync_signal_valid, DE_signal_valid : (0 for disable signal, 1 for enable signal) */
+		hsign_hoffset_vsign_voffset=<1 0 1 0>;	/** hsign, hoffset, vsign, voffset :("sign-offset" is a pair. sign: 0 for negative, 1 for positive) */
+		
+		dither_user_ctrl=<0 0x600>;	/**  dither_user(0 for auto setting, 1 for user define), dither_ctrl(user defined dither control, only valid when user_define=1) */
+		vadj_brightness_contrast_saturation=<0x0 0x80 0x100>;	/** video adjust brightness, contrast, saturation */
+		
+		gamma_en_revert=<1 0>;	/** gamma_en(0 for disable gamma table, 1 for enable gamma table), gamma_table_revert(0 for normal, 1 for revert) */
+		gamma_multi_rgb_coeff=<0 100 100 100>;	/** gamma_multi(0 for single gamma, RGB are same, 1 for multi gamma, RGB are different), gamma_r_coeff(%), gamma_g_coeff(%), gamma_b_coeff(%) */
+		/** if gamma_multi=1, there must be 3 gamma tables, named as gamma_table_r, gamma_table_g, gamma_table_b */
+		gamma_table=<0 1 3 4 6 7 8 10 11 12 14 15 17 18 19 22 23 23 24 25 26 27 28 29 30 31 31 32 33 34 35 36 
+					37 37 38 39 40 41 42 43 44 45 46 47 48 49 51 52 53 54 55 56 57 58 60 61 61 62 63 64 66 67 68 69 
+					70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 
+					102 103 104 105 106 107 108 109 110 111 112 113 114 115 115 117 118 119 120 121 121 122 123 125 126 126 127 128 129 130 132 132 
+					133 135 136 137 138 139 140 141 142 143 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 161 162 163 164 165 166 
+					167 168 169 170 171 172 173 174 175 176 177 178 179 180 181 182 183 184 185 186 187 188 189 190 191 192 194 195 196 196 197 198 
+					199 200 201 202 203 204 205 206 207 208 209 210 211 211 212 213 214 215 216 217 218 218 219 220 221 222 223 224 225 226 226 227 
+					228 229 230 231 232 233 234 235 235 236 237 238 239 240 241 242 242 243 244 245 246 247 247 248 249 250 251 252 252 253 254 255>;
+		
+		/* default settings, don't modify them unless there is display problem */
+		clock_spread_spectrum=<0>;	/** ss_level(0=disable, 1=0.5%, 2=1%, 3=2%, 4=3%, 5=4%, 6=5%) */
+		clock_auto_generation=<1>;	/** clk_auto_generation(0 for using customer clock parameters, as clk_pll_div_clk_ctrl defined, 1 for auto generate clock parameters by lcd_clock) */
+		clk_pll_div_clk_ctrl=<0x1000038 0x918803 0x44003101>;	/** pll_ctrl, div_ctrl, clk_ctrl : (only valid when clk_auto_generation=0) */
+		phy_ctrl=<0xaf40>; /** phy ctrl */
+		lvds_user_repack=<0 0>;	/** lvds_repack_user(0 for auto setting, 1 for user define), lvds_repack(0 for JEIDA data mapping, 1 for VESA data mapping. only valid when lvds_repack_user=1) */
+		edp_user_link_rate_lane_count=<1 1 4>;	/** edp_user(0 for auto setting, 1 for user define), link_rate(0 for 1.62G, 1 for 2.7G, only valid when edp_user=1), lane_count(support 1,2,4, only valid when edp_user=1) */
+		edp_link_adaptive_vswing=<0 0>;	/** adaptive(0 for fixed user defined vswing, 1 for auto setting vswing by training), vswing(support level 0,1,2,3, user defined vswing, only valid when adaptive=0) */
+		rgb_base_coeff=<0xf0 0x74a>;	/** rgb_base, rgb_coeff */
+		video_on_pixel_line=<120 22>;	/** video_on_pixel, video_on_line */
+		
+		//lcd power ctrl	//support up to 15 steps for each sequence
+		power_on_uboot="null";	/** only for uboot, ahead of lcd_power_on, no need config delay */
+		power_on_step_1="cpu","GPIODV_29","output_low";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_2="pmu","GPIO0","output_low";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_3="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_4="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_5="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_6="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_7="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_8="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_9="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_10="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_11="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_12="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_13="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_14="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_15="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_delay=<20 20 20>;	/** power on delay after each step */
+		power_off_step_1="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_2="pmu","GPIO0","input";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_3="cpu","GPIODV_29","output_high";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_4="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_5="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_6="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_7="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_8="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_9="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_10="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_11="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_12="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_13="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_14="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_15="null";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_delay=<20 20 100>;	/** power off delay after each step */
+		power_off_uboot="null";	/** only for uboot, at the end of lcd_power_off, no need config delay */
+	};
+
+//$$ MATCH "lcd_model_config_match" = <&lcd_LP097QX1>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"		
+	lcd_LP097QX1:lcd_LP097QX1{	//k100
+		model_name="LP097QX1";	/** lcd model name */
+		interface="edp";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<197 147>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<8 0>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		
+		resolution=<2048 1536>;	/** horizontal resolution, vertical resolution */
+		period=<2219 1560>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<207700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<5 120>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<1 22>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+	};
+	
+//$$ MATCH "lcd_model_config_match" = <&lcd_B080XAN01>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"
+//$$ L2 PROP_U32 3 = "dsi_clk"
+//$$ L2 PROP_U32 = "lane_num"
+//$$ L2 PROP_U32 3 = "pol_vs_hs_de"
+//$$ L2 PROP_U32 2 = "dpi_color_type"
+//$$ L2 PROP_U32 2 = "refresh_rate"
+	lcd_B080XAN01:lcd_B080XAN01{	//k101
+		model_name="B080XAN01";	/** lcd model name */
+		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<119 159>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<6 1>;		/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+
+		resolution=<768 1024>;	/** horizontal resolution, vertical resolution */
+		period=<948 1140>;		/** horizontal period(htotal), vertical period(vtotal) */
+
+		clock_hz_pol=<64843200 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+                dsi_clk = <250 280 1>;  /** min_clk, max_clk, scaler**/
+
+                lane_num=<4>;//lane num
+                pol_vs_hs_de=<1 1 0>;
+                dpi_color_type=<4 0>;
+                refresh_rate =<60 0>;// refresh rate available only for 2560x1600
+	};
+
+//$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"
+	lcd_CLAP070NJ02:lcd_CLAP070NJ02{	//g33
+		model_name="CLAP070NJ02";	/** lcd model name */
+		interface="ttl";			/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<154 86>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<8 1>;		/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		
+		resolution=<1024 600>;	/** horizontal resolution, vertical resolution */
+		period=<1344 635>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<42700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<10 160>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+	};
+
+//$$ MATCH "lcd_model_config_match" = <&lcd_TN070TN92>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"
+	lcd_TN070TN92:lcd_TN070TN92{	//800*480
+		model_name="TN070TN92";	/** lcd model name */
+		interface="ttl";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<154 86>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<8 1>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		
+		resolution=<800 480>;	/** horizontal resolution, vertical resolution */
+		period=<1056 525>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<33300000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<10 46>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+	};
+
+//$$ MATCH "lcd_model_config_match" = <&lcd_LP097X02>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"	
+	lcd_LP097X02:lcd_LP097X02{	//g24
+		model_name="LP097X02";	/** lcd model name */
+		interface="lvds";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<197 147>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<6 0>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		
+		resolution=<1024 768>;	/** horizontal resolution, vertical resolution */
+		period=<2084 810>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<85700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<10 70>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<3 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+	};
+
+
+#endif
+#endif

@@ -1,0 +1,30 @@
+#ifdef CONFIG_AMLOGIC_BACKLIGHT
+//$$ DEVICE="backlight"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_STR = "pinctrl-names"
+//$$ L2 PROP_CHOICE "Bl_pin_0_match" = "pinctrl-0"
+//$$ L2 PROP_U32 = "bl_level_default"
+//$$ L2 PROP_U32 = "bl_ctrl_method"
+//$$ L2 PROP_STR = "bl_gpio_port"
+//$$ L2 PROP_U32 2 = "bl_gpio_dim_max_min"
+//$$ L2 PROP_STR 2 = "bl_pwm_port_gpio_used"
+//$$ L2 PROP_U32 = "bl_pwm_freq"
+//$$ L2 PROP_U32 2 = "bl_pwm_duty_max_min"
+     backlight{
+		compatible = "amlogic,backlight";
+		dev_name = "backlight";
+		status = "okay";
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd_backlight_pins>;	/** pwm pinmux */
+		
+		bl_level_default=<102>;	/** default brightness level */
+		
+		/* backlight power ctrl */
+		bl_ctrl_method=<1>;	/** backlight control method(0 for gpio, 1 for pwm_negative, 2 for pwm_positive. decided by hardware design) */
+		bl_gpio_port="GPIODV_28";	/** backlight control gpio port */
+		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
+		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0 for use pwm_port only, 1 for use bl_gpio_port to control on/off) */
+		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
+		bl_pwm_duty_max_min=<100 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
+	};
+#endif

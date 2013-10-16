@@ -1,0 +1,17 @@
+#ifdef CONFIG_AM_FB_EXT
+//$$ DEVICE = "mesonfb-ext"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+//$$ L2 PROP_U32 5 = "display_size_default"
+#ifdef CONFIG_ARCH_MESON8
+	mesonfb-ext{
+		compatible = "amlogic,mesonfb-ext";
+		dev_name = "mesonfb-ext";
+		status = "ok";
+		reg = <0x06a00000 0x01800000
+	       	 0x08200000 0x00100000>;
+		display_size_default = <2048 1536 2048 3072 32>;
+	 
+	};
+#endif
+#endif

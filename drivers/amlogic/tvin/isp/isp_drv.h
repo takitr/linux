@@ -1,0 +1,134 @@
+/*
+ * ISP driver
+ *
+ * Author: Kele Bai <kele.bai@amlogic.com>
+ *
+ * Copyright (C) 2010 Amlogic Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+
+#ifndef __TVIN_ISP_DRV_H
+#define __TVIN_ISP_DRV_H
+
+/* Standard Linux Headers */
+#include <linux/cdev.h>
+#include <linux/spinlock.h>
+#include <linux/irqreturn.h>
+#include <linux/timer.h>
+#include <linux/mutex.h>
+#include <linux/interrupt.h>
+#include <linux/time.h>
+#include <linux/device.h>
+
+#include <linux/tvin/tvin_v4l2.h>
+#include "isp_hw.h"
+#include "../tvin_frontend.h"
+
+#define ISP_VER					"2013.9.11"
+#define ISP_NUM					1
+#define DEVICE_NAME 			        "isp"
+
+#define ISP_FLAG_START				0x00000001
+#define ISP_FLAG_AE				0x00000002
+#define ISP_FLAG_AWB				0x00000004
+#define ISP_FLAG_AF				0x00000008
+#define ISP_FLAG_CAPTURE			0x00000010
+#define ISP_FLAG_RECORD				0x00000020
+#define ISP_WORK_MODE_MASK			0x00000030
+#define ISP_FLAG_SET_EFFECT			0x00000040
+#define ISP_FLAG_SET_SCENES			0x00000080
+#define ISP_FLAG_AF_DBG				0x00000100
+#define ISP_FLAG_MWB			        0x00000200
+#define ISP_FLAG_BLNR				0x00000400
+#define ISP_FLAG_SET_COMB4			0x00000800
+
+typedef struct isp_info_s {
+	tvin_port_t fe_port;
+	unsigned int h_active;
+	unsigned int v_active;
+} isp_info_t;
+/*config in bsp*/
+typedef struct flash_property_s {
+	bool 	 valid;		 //true:have flash,false:havn't flash
+	bool     torch_pol_inv;  // false: negative correlation
+                                 // true: positive correlation                                     
+        bool 	 pin_mux_inv;	 // false: led1=>pin1 & led2=>pin2, true: led1=>pin2 & led2=>pin1
+    
+        bool 	 led1_pol_inv;	 // false: active high, true: active low
+        bool     mode_pol_inv;   //        TORCH  FLASH
+                                 //false: low      high
+                                 //true:  high     low
+} flash_property_t;
+
+/*for af debug*/
+typedef struct af_debug_s {
+	bool            flag;
+	unsigned int    control;
+	unsigned int    state;
+	unsigned int    step;
+	unsigned int 	max_step;
+	unsigned int    delay;
+	isp_blnr_stat_t data[1024];	
+} af_debug_t;
+
+/*for debug cmd*/
+typedef struct debug_s {
+	unsigned int comb4_mode;
+} debug_t;
+
+typedef struct isp_dev_s{
+	int             index;
+	dev_t		devt;
+	unsigned int    offset;
+	struct cdev	cdev;
+	struct device	*dev;
+	unsigned int    flag;
+	unsigned int 	vs_cnt;
+        /*add for tvin frontend*/
+        tvin_frontend_t frontend;
+	tvin_frontend_t *isp_fe;
+	
+	struct isp_info_s info;
+	struct tasklet_struct isp_task;
+	struct task_struct     *kthread;
+
+	struct isp_ae_stat_s isp_ae;
+	struct isp_awb_stat_s isp_awb;
+	struct isp_af_stat_s isp_af;
+	struct isp_blnr_stat_s blnr_stat;
+	cam_parameter_t *cam_param;
+	xml_algorithm_ae_t *isp_ae_parm;
+	xml_algorithm_awb_t *isp_awb_parm;
+	xml_algorithm_af_t *isp_af_parm;
+	xml_capture_t *capture_parm;
+	wave_t        *wave;
+	flash_property_t flash;
+	af_debug_t      *af_dbg;
+	debug_t         debug;
+}isp_dev_t;
+
+typedef enum data_type_e{
+	ISP_U8=0,
+	ISP_U16,
+	ISP_U32,
+	ISP_FLOAT,	
+}data_type_t;
+
+typedef struct isp_param_s{
+    const char *name;
+    unsigned int *param;
+    unsigned char length;
+    data_type_t type;
+}isp_param_t;
+
+extern void set_ae_parm(xml_algorithm_ae_t * ae_sw,char * * parm);
+extern void set_awb_parm(xml_algorithm_awb_t * awb_sw,char * * parm);
+extern void set_af_parm(xml_algorithm_af_t * af_sw,char * * parm);
+extern void set_cap_parm(struct xml_capture_s * cap_sw,char * * parm);
+extern void set_wave_parm(struct wave_s * wave,char * * parm);
+#endif
+

@@ -612,6 +612,10 @@ u64 __init dt_mem_next_cell(int s, __be32 **cellp)
 	return of_read_number(p, s);
 }
 
+#if defined(CONFIG_PLAT_MESON)
+extern unsigned long long aml_reserved_start;
+extern unsigned long long aml_reserved_end;
+#endif
 /**
  * early_init_dt_scan_memory - Look for an parse memory nodes
  */
@@ -633,6 +637,21 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	} else if (strcmp(type, "memory") != 0)
 		return 0;
 
+#if defined(CONFIG_PLAT_MESON)
+	reg = of_get_flat_dt_prop(node, "aml_reserved_start", &l);
+	if (reg == NULL)
+		printk("error: can not get reserved mem start for AML\n");
+	else
+		aml_reserved_start = of_read_number(reg,1);
+	pr_debug("reserved_start is %llx \n ",aml_reserved_start);
+	reg = of_get_flat_dt_prop(node, "aml_reserved_end", &l);
+	if (reg == NULL)
+		printk("error: can not get reserved mem end for AML\n");
+	else
+		aml_reserved_end =  of_read_number(reg,1);
+	pr_debug("reserved_end is %llx \n ",aml_reserved_end);
+#endif
+	
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
 		reg = of_get_flat_dt_prop(node, "reg", &l);

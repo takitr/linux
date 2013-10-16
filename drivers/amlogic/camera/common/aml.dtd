@@ -1,0 +1,11 @@
+#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER
+//$$ DEVICE="vm"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 = "reg"
+    vm{
+		compatible = "amlogic,vm";
+		dev_name = "vm.0";
+		status = "okay";
+		reg = <0x1b300000 0x01000000>;
+	};
+#endif
