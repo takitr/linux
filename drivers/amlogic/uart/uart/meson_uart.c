@@ -453,10 +453,11 @@ static void meson_receive_chars(struct meson_uart_port *mup, struct pt_regs *reg
 	int status;
 	int mode;
 	unsigned long flag = TTY_NORMAL;
-	struct tty_struct *tty = mup->port.state->port.tty;
+	//struct tty_struct *tty = mup->port.state->port.tty;
+	struct tty_port *tport = &mup->port.state->port;
 	am_uart_t *uart = mup->uart;
 
-	if (!tty) {
+	if (!tport) {
 		//printk("Uart : missing tty on line %d\n", info->line);
 		goto clear_and_exit;
 	}
@@ -477,7 +478,7 @@ static void meson_receive_chars(struct meson_uart_port *mup, struct pt_regs *reg
 	
 	do {
 		ch = (rx & 0x00ff);
-                tty_insert_flip_char(tty,ch,flag);
+                tty_insert_flip_char(tport,ch,flag);
 
 		mup->rx_cnt++;
         status = (readl(&uart->status) & UART_RXEMPTY);
@@ -491,12 +492,13 @@ clear_and_exit:
 
 static void meson_BH_receive_chars(struct meson_uart_port *mup)
 {
-	struct tty_struct *tty = mup->port.state->port.tty;
+	//struct tty_struct *tty = mup->port.state->port.tty;
+	struct tty_port *tport = &mup->port.state->port;
 	unsigned long flag;
 	int status;
 	int cnt = mup->rx_cnt;
 
-	if (!tty) {
+	if (!tport) {
 		printk(KERN_ERR"Uart : missing tty on line %d\n", mup->line);
 		goto clear_and_exit;
 	}
@@ -518,7 +520,7 @@ static void meson_BH_receive_chars(struct meson_uart_port *mup)
 	mup->rx_error = 0;
 	if(cnt){
 		mup->rx_cnt =0;
-		tty_flip_buffer_push(tty);
+		tty_flip_buffer_push(tport);
 	}
 
 clear_and_exit:
