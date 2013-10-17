@@ -116,6 +116,10 @@ static struct vivi_fmt formats[] = {
                 .fourcc = V4L2_PIX_FMT_NV12,
                 .depth = 12,
     },
+    {           .name = "21  Y/CbCr 4:2:0",
+                .fourcc = V4L2_PIX_FMT_NV21,
+                .depth = 12,
+    },
     {
                 .name = "RGB565 (BE)",
                 .fourcc = V4L2_PIX_FMT_RGB565X, /* rrrrrggg gggbbbbb */
@@ -407,7 +411,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
         eventparam[2] = (GE2D_FORMAT_S16_RGB_565 | GE2D_LITTLE_ENDIAN);
     else if (fh->fmt->fourcc == V4L2_PIX_FMT_NV12)
         eventparam[2] = (GE2D_FORMAT_M24_NV12 | GE2D_LITTLE_ENDIAN);
-    else
+    else if (fh->fmt->fourcc == V4L2_PIX_FMT_NV21)
         eventparam[2] = (GE2D_FORMAT_M24_NV21 | GE2D_LITTLE_ENDIAN);
     vf_notify_provider(RECEIVER_NAME, VFRAME_EVENT_RECEIVER_PARAM_SET, (void*) eventparam);
     return ret;
