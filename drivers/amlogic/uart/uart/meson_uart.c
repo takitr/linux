@@ -650,12 +650,16 @@ static void meson_uart_start_port(struct meson_uart_port *mup)
 
 	//tasklet_init(&mup->tlet, meson_uart_tasklet_action,
 	// (unsigned long)mup);
-	mup->p=devm_pinctrl_get_select_default(&mup->pdev->dev);
-	if (IS_ERR(mup->p)){
-		printk(KERN_ERR"meson_uart request pinmux error!\n");
+	printk("P_AO_RTI_PIN_MUX_REG:%x\n",readl(P_AO_RTI_PIN_MUX_REG));
+	if(of_get_property(mup->pdev->dev.of_node, "pinctrl-names", NULL)){
+		mup->p=devm_pinctrl_get_select_default(&mup->pdev->dev);
+		if (IS_ERR(mup->p)){
+			printk(KERN_ERR"meson_uart request pinmux error!\n");
+		}
+		/* set pinmux here */
+		printk("set %s pinmux use pinctrl subsystem\n",mup->aup->port_name[index]);
 	}
-	/* set pinmux here */
-	printk("set %s pinmux use pinctrl subsystem\n",mup->aup->port_name[index]);
+	printk("P_AO_RTI_PIN_MUX_REG:%x\n",readl(P_AO_RTI_PIN_MUX_REG));
 	// need put pinctrl      
 	aml_set_reg32_mask((uint32_t)&uart->mode, UART_RXRST);
 	aml_clr_reg32_mask((uint32_t)&uart->mode, UART_RXRST);
