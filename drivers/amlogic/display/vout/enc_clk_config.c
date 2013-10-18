@@ -1,6 +1,6 @@
 #include <linux/kernel.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/enc_clk_config.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/enc_clk_config.h>
 #include <mach/register.h>
 #include <mach/am_regs.h>
 #include <mach/clock.h>

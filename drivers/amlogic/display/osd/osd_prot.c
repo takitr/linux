@@ -31,11 +31,11 @@
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
-#include <linux/osd/osd.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/osd/osd.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/amports/canvas.h>
 #include "osd_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #include "osd_prot.h"
 int osd_set_prot(unsigned char   x_rev,
                 unsigned char   y_rev,

@@ -28,12 +28,12 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/aml_bl.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/aml_bl.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
-#include <linux/logo/logo.h>
+#include <linux/amlogic/logo/logo.h>
 #include <mach/am_regs.h>
 #include <linux/amlogic/vout/lcd_reg.h>
 #include <linux/amlogic/vout/lcdoutc.h>

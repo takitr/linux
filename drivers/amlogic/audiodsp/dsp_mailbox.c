@@ -16,8 +16,8 @@
 //#include <asm/arch/am_regs.h>
 #include <mach/am_regs.h>
 
-#include <linux/amports/tsync.h>
-#include <linux/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/amports/timestamp.h>
 #include "dsp_mailbox.h"
 #include "dsp_codec.h"
 extern void set_pcminfo_data(void * pcm_encoded_info);

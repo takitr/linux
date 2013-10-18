@@ -28,7 +28,7 @@
 #include <asm/delay.h>
 #include <mach/am_regs.h>
 #include <mach/power_gate.h>
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 #include <mach/gpio.h>
 

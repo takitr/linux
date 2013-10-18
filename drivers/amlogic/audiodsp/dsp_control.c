@@ -16,7 +16,7 @@
 
 
 //#include <asm/dsp/dsp_register.h>
-#include <linux/amports/dsp_register.h>
+#include <linux/amlogic/amports/dsp_register.h>
 
 
 #include "dsp_mailbox.h"

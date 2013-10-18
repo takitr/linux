@@ -29,9 +29,9 @@
 #include <linux/fb.h>
 #include <mach/am_regs.h>
 
-#include <linux/osd/osd.h>
-#include <linux/osd/osd_dev.h>
-#include <linux/osd/osd_hw.h>
+#include <linux/amlogic/osd/osd.h>
+#include <linux/amlogic/osd/osd_dev.h>
+#include <linux/amlogic/osd/osd_hw.h>
 /* to-do: TV output mode should be configured by
  * sysfs attribute
  */

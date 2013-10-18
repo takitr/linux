@@ -14,7 +14,7 @@
 #include <plat/io.h>
 #include <mach/am_regs.h>
 #include <mach/vpu.h>
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/vout/vinfo.h>
 
 #define VPU_VERION	"v01"
 

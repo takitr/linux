@@ -4,7 +4,7 @@
 #ifdef CONFIG_AM_TV_OUTPUT
 #include  "tvoutc.h"	
 #endif
-#include  <linux/vout/vout_notify.h>
+#include  <linux/amlogic/vout/vout_notify.h>
 
 /*****************************************************************
 **

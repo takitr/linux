@@ -36,14 +36,14 @@
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/ctype.h>
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/vout/vinfo.h>
 #include <mach/am_regs.h>
 #include <asm/uaccess.h>
 #include <linux/major.h>
 #include "vout_serve.h"
 #include "tvmode.h"
 #include "vout_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;

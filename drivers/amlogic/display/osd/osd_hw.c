@@ -31,12 +31,12 @@
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
-#include <linux/osd/osd.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/osd/osd.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/amports/canvas.h>
 #include "osd_log.h"
-#include <linux/amlog.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 #include "osd_hw_def.h"
 #include "osd_prot.h"
 //#include <mach/utils.h>

@@ -7,8 +7,8 @@
 #include <mach/am_regs.h>
 //#include <asm/bsp.h>
 
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/timestamp.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
 //#include <asm/dsp/dsp_register.h>
 
 #include "dsp_microcode.h"

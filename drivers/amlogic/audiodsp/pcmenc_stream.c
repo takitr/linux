@@ -10,7 +10,7 @@
  *******************************************************************/
 
 #include "pcmenc_stream.h"
-#include <linux/amports/dsp_register.h>
+#include <linux/amlogic/amports/dsp_register.h>
 #include <linux/dma-mapping.h>
 
 typedef struct

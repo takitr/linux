@@ -13,7 +13,7 @@
 #include <linux/delay.h>
 #include <asm/cacheflush.h>
 #include <mach/am_regs.h>
-#include <linux/major.h>
+#include <linux/amlogic/major.h>
 #include <linux/slab.h>
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
@@ -24,7 +24,7 @@
 #include "audiodsp_control.h"	// temp here
 
 #include <asm/uaccess.h>
-#include <linux/amports/amstream.h>
+#include <linux/amlogic/amports/amstream.h>
 
 #include "audiodsp_module.h"
 #include "dsp_control.h"
@@ -34,9 +34,9 @@
 
 #include "dsp_codec.h"
 #include <linux/dma-mapping.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/tsync.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
 
 extern void tsync_pcr_recover(void);extern void tsync_pcr_recover(void);
 

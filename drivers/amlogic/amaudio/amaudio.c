@@ -17,7 +17,7 @@
 #include <linux/sched.h>
 
 #include <mach/am_regs.h>
-#include <linux/amports/amaudio.h>
+#include <linux/amlogic/amports/amaudio.h>
 
 #include "amaudio.h"
 

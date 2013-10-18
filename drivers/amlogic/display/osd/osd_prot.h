@@ -1,6 +1,6 @@
 #ifndef  _OSD_PROT_H
 #define _OSD_PROT_H
-#include <linux/osd/osd_hw.h>
+#include <linux/amlogic/osd/osd_hw.h>
 
 #define  CUGT		0
 #define  CID_VALUE  	161

@@ -55,7 +55,7 @@ obj-$(CONFIG_I2C) += i2c/
 
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
-obj-$(CONFIG_CARDREADER) += cardreader/
+#obj-$(CONFIG_CARDREADER) += cardreader/
 obj-$(CONFIG_MMC_AML) +=mmc/
 
 #obj-y += vfm/
@@ -82,7 +82,7 @@ obj-$(CONFIG_EFUSE)+=efuse/
 #####Sound system is later init in kernel default..######################
 obj-$(CONFIG_AMAUDIO) += amaudio/
 
-#obj-y += hdmi/
+obj-y += hdmi/
 
 ifeq ($(CONFIG_AM_NEW_TV_ARCH),y)
 #obj-$(CONFIG_AM_DVB) += dvb_tv/

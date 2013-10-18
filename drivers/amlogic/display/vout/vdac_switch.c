@@ -31,15 +31,15 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/ctype.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vdac_switch.h>
-#include  <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vdac_switch.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include "tvmode.h"
 #include <linux/of.h>
 #include <linux/slab.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;

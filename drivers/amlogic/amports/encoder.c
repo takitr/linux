@@ -1333,7 +1333,7 @@ static int avc_mmap(struct file *filp, struct vm_area_struct *vma)
     }
     off += gAmvencbuff.buf_start;
     debug_level(0,"vma_size is %d , off is %ld \n" , vma_size ,off);
-    vma->vm_flags |= VM_RESERVED | VM_IO;
+    vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
     //vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
     if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
                         vma->vm_end - vma->vm_start, vma->vm_page_prot)) {

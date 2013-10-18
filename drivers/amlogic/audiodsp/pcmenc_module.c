@@ -17,7 +17,7 @@
 #include <linux/mm.h>
 #include <mach/am_regs.h>
 #include "pcmenc_stream.h"	
-#include <linux/amports/dsp_register.h>
+#include <linux/amlogic/amports/dsp_register.h>
 
 
 
@@ -228,7 +228,7 @@ static int audiodsp_pcmenc_mmap(struct file *filp, struct vm_area_struct *vma)
     }
     off += virt_to_phys((void*)priv_data.stream_buffer_start);
 
-    vma->vm_flags |= VM_RESERVED | VM_IO;
+    vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_IO;
 
     if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
                         vma->vm_end - vma->vm_start, vma->vm_page_prot)) {

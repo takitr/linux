@@ -34,7 +34,7 @@
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
 
-#include <linux/osd/osd_dev.h>
+#include <linux/amlogic/osd/osd_dev.h>
 #include <linux/switch.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 

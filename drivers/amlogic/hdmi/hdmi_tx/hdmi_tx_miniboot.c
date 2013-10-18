@@ -16,7 +16,7 @@
 #include <linux/mutex.h>
 #include <linux/cdev.h>
 #include <linux/proc_fs.h> 
-#include <linux/logo/logo.h>
+#include <linux/amlogic/logo/logo.h>
 
 #include <mach/am_regs.h>
 #include <mach/io.h>

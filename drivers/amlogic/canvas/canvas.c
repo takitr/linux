@@ -28,7 +28,7 @@
 #include <linux/major.h>
 #include <mach/am_regs.h>
 #include <mach/canvas.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/canvas.h>
 
 #define DRIVER_NAME "amcanvas"
 #define MODULE_NAME "amcanvas"

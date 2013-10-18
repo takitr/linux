@@ -2,7 +2,7 @@
 #define   _TV_CONF_H
 
 #include "tvoutc.h"
-#include  <linux/vout/vout_notify.h>
+#include  <linux/amlogic/vout/vout_notify.h>
 
 
 /*****************************************************************

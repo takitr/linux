@@ -1,7 +1,7 @@
 #ifndef   _OSD_HW_DEF_H
 #define	_OSD_HW_DEF_H
-#include <linux/osd/osd_hw.h>
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/osd/osd_hw.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 #include <plat/fiq_bridge.h>
 
 /************************************************************************

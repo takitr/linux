@@ -28,13 +28,13 @@
 
 #include <mach/am_regs.h>
 
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/vout/vinfo.h>
 #include "tvoutc.h"
 #include <linux/clk.h>
 #include <plat/io.h>
 #include <mach/tvregs.h>
 #include <mach/mod_gate.h>
-#include <linux/vout/enc_clk_config.h>
+#include <linux/amlogic/vout/enc_clk_config.h>
 
 static u32 curr_vdac_setting=DEFAULT_VDAC_SEQUENCE;
 

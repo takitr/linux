@@ -37,8 +37,8 @@
 #include <mach/power_gate.h>
 #include <linux/clk.h>
 #include <mach/clock.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/enc_clk_config.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/enc_clk_config.h>
 
 #include "hdmi_info_global.h"
 #include "hdmi_tx_module.h"

@@ -13,7 +13,7 @@
 #include "audiodsp_control.h"
 
 #include <linux/firmware.h>
-#include <linux/major.h>
+#include <linux/amlogic/major.h>
 #include <linux/device.h>
 
 

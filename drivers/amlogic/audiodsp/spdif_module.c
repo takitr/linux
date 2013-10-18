@@ -18,7 +18,7 @@
 #include <linux/mm.h>
 #include <linux/dma-mapping.h>
 #include <mach/am_regs.h>
-#include <linux/amports/dsp_register.h>
+#include <linux/amlogic/amports/dsp_register.h>
 
 #include "spdif_module.h"
 
@@ -154,7 +154,7 @@ static int audio_spdif_mmap(struct file *file, struct vm_area_struct *vma)
     }
     off = READ_MPEG_REG(AIU_MEM_IEC958_START_PTR);//mapping the 958 dma buffer to user space to write
 
-    vma->vm_flags |= VM_RESERVED | VM_IO/*|VM_MAYWRITE|VM_MAYSHARE*/;
+    vma->vm_flags |= VM_DONTEXPAND | VM_DONTDUMP | VM_IO/*|VM_MAYWRITE|VM_MAYSHARE*/;
     if (remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
                         vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
         printk("	audio spdif : failed remap_pfn_range\n");

@@ -14,7 +14,7 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
-#include <linux/logo/logo.h>
+#include <linux/amlogic/logo/logo.h>
 #include <mach/am_regs.h>
 #include <mach/clock.h>
 #include <asm/fiq.h>

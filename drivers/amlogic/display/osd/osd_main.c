@@ -41,13 +41,13 @@
 #include <linux/file.h>
 #include <linux/fdtable.h>
 #include <linux/console.h>
-#include <linux/osd/osd_main.h>
-#include <linux/osd/osd_dev.h>
+#include <linux/amlogic/osd/osd_main.h>
+#include <linux/amlogic/osd/osd_dev.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 #include <linux/of.h>
 #include "osd_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
