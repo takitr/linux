@@ -1161,7 +1161,8 @@ works_in_polling_mode:
 	register_early_suspend(&ts->early_suspend);
 #endif
 #ifdef CONFIG_TOUCHSCREEN_GOODIX_IAP
-	goodix_proc_entry = create_proc_entry("goodix-update", 0666, NULL);
+	//goodix_proc_entry = create_proc_entry("goodix-update", 0666, NULL);
+	goodix_proc_entry = proc_create("goodix-update", 0666, NULL, NULL);
 	if(goodix_proc_entry == NULL)
 	{
 		dev_info(&client->dev, "Couldn't create proc entry!\n");
