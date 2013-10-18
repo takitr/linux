@@ -4,7 +4,7 @@
 #include <linux/device.h>
 #include <linux/vmalloc.h>
 
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #define MAX_SUBTITLE_PACKET 10

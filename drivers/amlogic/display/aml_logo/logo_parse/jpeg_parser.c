@@ -13,12 +13,12 @@
 #include <mach/am_regs.h>
 #include <asm/cacheflush.h>
 #include	"amlogo_log.h"
-#include <linux/amlog.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/amports/canvas.h>
 #include "amvdec.h"
 #include "vmjpeg_mc.h"
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 #include "jpeg_parser.h"
 #include <linux/delay.h>
 #include <linux/syscalls.h>

@@ -26,16 +26,16 @@
 #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
-#include <linux/amports/canvas.h>
-#include <linux/ge2d/ge2d_main.h>
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
 #include <linux/sched.h>
-#include <linux/amlog.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/vout/vinfo.h>
 
 #include <mach/am_regs.h>
 #include <mach/mod_gate.h>

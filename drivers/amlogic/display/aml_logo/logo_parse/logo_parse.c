@@ -11,7 +11,7 @@
  *******************************************************************/
 #include  "logo.h"
  #include	"amlogo_log.h"
-#include  <linux/amlog.h>
+#include  <linux/amlogic/amlog.h>
 //#define SETUP_SELF_RAISE
 
 static  LIST_HEAD(parser_line);

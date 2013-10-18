@@ -27,12 +27,12 @@
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
 #include <plat/io.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/amstream.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 
 #include "vdec_reg.h"
 
@@ -44,7 +44,7 @@
 #define LOG_LEVEL_INFO      1
 #define LOG_LEVEL_DESC  "0:ERROR, 1:INFO"
 #endif
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 #include "amvdec.h"

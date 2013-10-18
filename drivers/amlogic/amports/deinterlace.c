@@ -4,9 +4,9 @@
 #include <linux/platform_device.h>
 
 #include <mach/am_regs.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 
 #include "deinterlace.h"
 

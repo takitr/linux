@@ -46,7 +46,7 @@
 #include "osd_log.h"
 #include "osd_main.h"
 #include "osd_dev.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;

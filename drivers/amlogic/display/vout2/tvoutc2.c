@@ -28,7 +28,7 @@
 
 #include <mach/am_regs.h>
 
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/vout/vinfo.h>
 #include "tvoutc.h"
 #include <linux/clk.h>
 

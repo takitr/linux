@@ -28,7 +28,7 @@
 #include <linux/platform_device.h>
 #include <linux/fb.h>
 #include <mach/am_regs.h>
-#include <linux/osd/osd.h>
+#include <linux/amlogic/osd/osd.h>
 
 #include "osd_hw.h"
 #include "osd_dev.h"

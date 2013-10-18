@@ -26,8 +26,8 @@
 #include <linux/slab.h>
 #include <linux/uio_driver.h>
 
-#include <linux/amports/aformat.h>
-#include <linux/amports/ptsserv.h>
+#include <linux/amlogic/amports/aformat.h>
+#include <linux/amlogic/amports/ptsserv.h>
 
 #include <mach/am_regs.h>
 

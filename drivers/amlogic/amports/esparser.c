@@ -29,7 +29,7 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
-#include <linux/amports/ptsserv.h>
+#include <linux/amlogic/amports/ptsserv.h>
 
 #include <asm/uaccess.h>
 #include <asm/atomic.h>

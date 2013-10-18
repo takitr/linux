@@ -14,8 +14,8 @@
 #ifndef __AM_VE_H
 #define __AM_VE_H
 
-#include "linux/amports/vframe.h"
-#include "linux/amports/ve.h"
+#include "linux/amlogic/amports/vframe.h"
+#include "linux/amlogic/amports/ve.h"
 
 typedef struct ve_regs_s {
     unsigned int val  : 32;

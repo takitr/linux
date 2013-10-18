@@ -25,14 +25,14 @@
 #include <linux/timer.h>
 #include <linux/kfifo.h>
 #include <linux/platform_device.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/amstream.h>
-#include <linux/amports/vformat.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/vformat.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 #include <linux/dma-mapping.h>
 
 #include <mach/am_regs.h>

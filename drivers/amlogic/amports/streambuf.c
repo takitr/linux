@@ -24,8 +24,8 @@
 #include <linux/timer.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/vformat.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/vformat.h>
 
 #include <asm/cacheflush.h>
 #include <asm/uaccess.h>

@@ -31,10 +31,10 @@
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/interrupt.h>
-#include <linux/amports/canvas.h>
-#include <linux/amlog.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/osd/osd.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/osd/osd.h>
 
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define FIQ_VSYNC

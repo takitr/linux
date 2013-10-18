@@ -26,7 +26,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
-#include <linux/amports/vformat.h>
+#include <linux/amlogic/amports/vformat.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 

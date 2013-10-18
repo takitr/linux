@@ -2,7 +2,7 @@
 #include <linux/wait.h>
 #include "logo_dev_vid.h"
  #include	"amlogo_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 static  logo_output_dev_t   output_vid={
 	.idx=LOGO_DEV_VID,
 	.hw_initialized=0,	

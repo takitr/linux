@@ -29,8 +29,8 @@
 
 #include <mach/am_regs.h>
 
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
 
 
 #define DisableVideoLayer() \

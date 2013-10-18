@@ -19,12 +19,12 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/vout/vinfo.h>
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
 
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 #undef CONFIG_AM_DEINTERLACE
 #ifdef CONFIG_AM_DEINTERLACE
 #include "deinterlace.h"
@@ -35,7 +35,7 @@
 #ifdef CONFIG_VIDEO_LOG
 #define AMLOG
 #endif
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 
 /* vpp filter coefficients */
 #define COEF_BICUBIC         0

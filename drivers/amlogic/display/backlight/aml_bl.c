@@ -28,7 +28,7 @@
 #include <linux/gpio.h>
 #include <linux/backlight.h>
 #include <linux/slab.h>
-#include <linux/aml_bl.h>
+#include <linux/amlogic/aml_bl.h>
 #include <mach/power_gate.h>
 #ifdef CONFIG_ARCH_MESON6    
 #include <mach/mod_gate.h>

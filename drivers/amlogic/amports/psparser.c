@@ -27,8 +27,8 @@
 #include <linux/sched.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/amstream.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/amstream.h>
 
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>

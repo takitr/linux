@@ -1,4 +1,4 @@
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 
 
 

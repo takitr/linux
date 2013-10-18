@@ -27,17 +27,17 @@
 #include <linux/device.h>
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
-#include <linux/major.h>
+#include <linux/amlogic/major.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/kthread.h>
-#include <linux/amports/amstream.h>
-#include <linux/amports/vformat.h>
-#include <linux/amports/aformat.h>
-#include <linux/amports/tsync.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/timestamp.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/vformat.h>
+#include <linux/amlogic/amports/aformat.h>
+#include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
 
 #include <asm/types.h>
 #include <asm/uaccess.h>

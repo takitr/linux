@@ -5,7 +5,7 @@
 #include "dev_ge2d.h"
 #include <linux/wait.h>
 #include	"amlogo_log.h" 
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 
 #define DisableVideoLayer() \
     do { aml_clr_reg32_mask(P_VPP_MISC, \

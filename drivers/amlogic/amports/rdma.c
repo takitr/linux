@@ -35,11 +35,11 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/ctype.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/clk.h>
-#include <linux/logo/logo.h>
+#include <linux/amlogic/logo/logo.h>
 
 #ifndef MESON_CPU_TYPE_MESON8
 #define MESON_CPU_TYPE_MESON8 (MESON_CPU_TYPE_MESON6TV+1)

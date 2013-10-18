@@ -30,26 +30,26 @@
 #include <linux/string.h>
 #include <linux/io.h>
 #include <linux/mm.h>
-#include <linux/major.h>
+#include <linux/amlogic/major.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/ctype.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/tsync.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/amports/amstream.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/sched.h>
 #include <linux/poll.h>
 #include <linux/clk.h>
-#include <linux/logo/logo.h>
+#include <linux/amlogic/logo/logo.h>
 #if defined(CONFIG_AM_VECM)
-#include <linux/aml_common.h>
+#include <linux/amlogic/aml_common.h>
 #endif
 
 #ifdef CONFIG_PM
@@ -66,14 +66,14 @@
 #ifdef CONFIG_AM_VIDEO_LOG
 #define AMLOG
 #endif
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #include "video.h"
 #include "vpp.h"
 
-#include "linux/amports/ve.h"
-#include "linux/amports/cm.h"
+#include "linux/amlogic/amports/ve.h"
+#include "linux/amlogic/amports/cm.h"
 
 #include "ve_regs.h"
 #include "amve.h"

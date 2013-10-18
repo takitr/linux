@@ -25,9 +25,9 @@
 #ifndef OSD_DEV_H
 #define OSD_DEV_H
 
-#include <linux/osd/osd.h>
-#include <linux/vout/vinfo.h>
-#include <linux/logo/logo.h>
+#include <linux/amlogic/osd/osd.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/logo/logo.h>
 
 #define OSD_COUNT 	2 /* we have two osd layer on hardware*/
 

@@ -29,12 +29,12 @@
 #include <mach/am_regs.h>
 #include <plat/io.h>
 #include <linux/dma-mapping.h>
-#include <linux/amports/amstream.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 #include <linux/module.h>
 
 #include <asm/uaccess.h>

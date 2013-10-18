@@ -42,7 +42,7 @@ obj-y += ethernet/
 
 obj-$(CONFIG_AM_CANVAS) += canvas/
 
-#obj-y += amports/
+obj-y += amports/
 
 # ve&cm
 #obj-y += amvecm/
@@ -51,14 +51,14 @@ obj-$(CONFIG_I2C) += i2c/
 
 #obj-y += extern_io/
 
-#obj-y += input/
+obj-y += input/
 
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
 #obj-$(CONFIG_CARDREADER) += cardreader/
 obj-$(CONFIG_MMC_AML) +=mmc/
 
-#obj-y += vfm/
+obj-y += vfm/
 
 obj-$(CONFIG_AML_AUDIO_DSP) += audiodsp/
 

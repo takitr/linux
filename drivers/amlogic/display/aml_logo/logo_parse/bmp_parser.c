@@ -13,7 +13,7 @@
 #include "bmp_parser.h"
 #include <asm/cacheflush.h>
  #include	"amlogo_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 
 static  logo_parser_t    logo_bmp_parser={
  	.name="bmp",

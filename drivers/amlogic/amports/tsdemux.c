@@ -26,9 +26,9 @@
 #include <linux/wait.h>
 #include <linux/sched.h>
 #include <linux/fs.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/amstream.h>
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/device.h>
 #include <linux/delay.h>
 

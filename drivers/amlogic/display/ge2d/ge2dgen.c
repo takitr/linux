@@ -1,4 +1,4 @@
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 
 static inline void _set_src1_format(ge2d_src1_data_t *src1_data_cfg,
                                      ge2d_src1_gen_t *src1_gen_cfg,

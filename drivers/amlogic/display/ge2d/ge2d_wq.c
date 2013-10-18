@@ -10,10 +10,10 @@
  *******************************************************************/
 
 
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/canvas.h>
 #include <linux/fb.h>
 #include <linux/list.h>
 #include  <linux/spinlock.h>
@@ -21,7 +21,7 @@
 #include <mach/power_gate.h>
 #include <mach/irqs.h>
 #include "ge2d_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 static  ge2d_manager_t  ge2d_manager;
 
 

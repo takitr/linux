@@ -25,7 +25,7 @@
 #ifndef OSD_MAIN_H
 #define OSD_MAIN_H
 #include <linux/list.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/fb.h>
 
 static __u32 var_screeninfo[5];

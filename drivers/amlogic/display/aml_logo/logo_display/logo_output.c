@@ -11,7 +11,7 @@
  *******************************************************************/
 #include  "logo.h"
 #include	"amlogo_log.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 static  LIST_HEAD(output_dev_line);
 static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 

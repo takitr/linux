@@ -2,9 +2,9 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/slab.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/tsync.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
 
 #include <mach/am_regs.h>
 

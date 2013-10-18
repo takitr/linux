@@ -15,8 +15,8 @@
 #define __AM_CM_H
 
 
-#include "linux/amports/vframe.h"
-#include "linux/amports/cm.h"
+#include "linux/amlogic/amports/vframe.h"
+#include "linux/amlogic/amports/cm.h"
 
 typedef struct cm_regs_s {
     unsigned int val  : 32;

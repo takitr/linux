@@ -14,8 +14,8 @@
 
 #include <mach/am_regs.h>
 
-#include "linux/amports/vframe.h"
-#include "linux/amports/ve.h"
+#include "linux/amlogic/amports/vframe.h"
+#include "linux/amlogic/amports/ve.h"
 
 #include "ve_regs.h"
 #include "amve.h"

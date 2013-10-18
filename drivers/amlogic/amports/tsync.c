@@ -2,9 +2,9 @@
 #include <linux/spinlock.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/tsync.h>
-#include <linux/amports/ptsserv.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/amports/ptsserv.h>
 #ifdef ARC_700
 #include <asm/arch/am_regs.h>
 #else
@@ -31,7 +31,7 @@
 #define LOG_LEVEL_VAR       amlog_level_tsync
 #define LOG_MASK_VAR        amlog_mask_tsync
 #endif
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 
 //#define DEBUG

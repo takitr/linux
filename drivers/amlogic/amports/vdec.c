@@ -25,7 +25,7 @@
 #include <linux/errno.h>
 #include <linux/delay.h>
 #include <linux/platform_device.h>
-#include <linux/amports/vformat.h>
+#include <linux/amlogic/amports/vformat.h>
 #include <mach/am_regs.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>

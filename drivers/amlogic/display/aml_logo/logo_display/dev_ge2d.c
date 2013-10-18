@@ -16,7 +16,7 @@
  #include "logo.h"
  #include "dev_ge2d.h"
  #include	"amlogo_log.h"
- #include <linux/amlog.h>
+ #include <linux/amlogic/amlog.h>
 ge2d_context_t*	dev_ge2d_setup(void* para)
 {
 	config_para_t  *config=(config_para_t*)para;

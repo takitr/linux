@@ -18,8 +18,8 @@
 #include <linux/list.h>
 
 /* Amlogic headers */
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 
 /* Local headers */
 #include "vfm.h"

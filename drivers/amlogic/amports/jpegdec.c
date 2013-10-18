@@ -34,8 +34,8 @@
 #include <mach/am_regs.h>
 #include <plat/io.h>
 
-#include <linux/amports/jpegdec.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/jpegdec.h>
+#include <linux/amlogic/amports/canvas.h>
 
 #include <asm/uaccess.h>
 

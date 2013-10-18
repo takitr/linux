@@ -8,10 +8,10 @@
  *  Created: 2010/4/1   19:46
  *
  *******************************************************************/
-#include <linux/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
 #include "ge2d_log.h"
 #include "ge2d_dev.h"
-#include <linux/amlog.h>
+#include <linux/amlogic/amlog.h>
 #include <mach/mod_gate.h>
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0x00, LOG_LEVEL_DESC, LOG_MASK_DESC);

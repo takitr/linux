@@ -10,7 +10,7 @@
  *		 jianfeng_wang@amlogic
  */
 #include <linux/module.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vout_notify.h>
 
 
 static BLOCKING_NOTIFIER_HEAD(vout_notifier_list);
