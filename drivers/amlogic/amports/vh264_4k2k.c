@@ -753,6 +753,22 @@ printk("M->S,[%d] %s = 0x%x\n",ret, reg_name[ret], READ_VREG(MAILBOX_DATA_1));
                 printk("REC_CANVAS_ADDR = 0x%x\n", READ_VREG(MAILBOX_DATA_1));
                 WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
                 break;
+            case 4:
+                printk("after DPB_MMCO\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 5:
+                printk("MBY = 0x%x, S_MBXY = 0x%x\n", READ_VREG(MAILBOX_DATA_1), READ_VREG(0x2c07));
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 6:
+                printk("after FIFO_OUT_FRAME\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 7:
+                printk("after RELEASE_EXCEED_REF_BUFF\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
             case 0x5a:
                 printk("\n");
                 break;
@@ -788,6 +804,22 @@ static irqreturn_t vh264_4k2k_vdec2_isr(int irq, void *dev_id)
                 break;
             case 3:
                 printk("REC_CANVAS_ADDR = 0x%x\n", READ_VREG(VDEC2_MAILBOX_DATA_1));
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 4:
+                printk("after DPB_MMCO\n");
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 5:
+                printk("MBY = 0x%x, M/S_MBXY = 0x%x-0x%x\n", READ_VREG(VDEC2_MAILBOX_DATA_1), READ_VREG(0xc07), READ_VREG(0x2c07));
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 6:
+                printk("after FIFO_OUT_FRAME\n");
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 7:
+                printk("after RELEASE_EXCEED_REF_BUFF\n");
                 WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
                 break;
             case 0x5a:
@@ -1069,6 +1101,9 @@ static void vh264_4k2k_prot_init(void)
     SET_VREG_MASK(MDEC_PIC_DC_CTRL, 1<<17);
     SET_VREG_MASK(VDEC2_MDEC_PIC_DC_CTRL, 1<<17);
 #endif
+
+    WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
+    WRITE_VREG(VDEC2_MDEC_PIC_DC_THRESH, 0x404038aa);
 }
 
 static void vh264_4k2k_local_init(void)
