@@ -104,6 +104,7 @@ static int aml_i2c_put_byte(struct i2c_adapter *adapter,
 	return  0;
 }
 
+
 /*static int aml_i2c_put_word(struct i2c_adapter *adapter, 
 		unsigned short dev_addr, unsigned short addr, unsigned short data)
 {
