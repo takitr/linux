@@ -1348,9 +1348,8 @@ static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
 	    output.height = fh->height;
 	    output.canvas_id = -1;
 	    p->reserved  = convert_canvas_index(&output, VM_RES0_CANVAS_INDEX+p->index*3);
-	    printk("Brian test: vidioc_querybuf: canvas:0x%x, id: %d\n",p->reserved,p->index);
 	}else{
-           p->reserved = 0;
+	    p->reserved = 0;
 	}
 #endif
 	return ret;
