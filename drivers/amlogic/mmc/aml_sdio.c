@@ -31,6 +31,7 @@
 #include "amlsd.h"
 
 #include <linux/amlogic/aml_gpio_consumer.h>
+#include <linux/amlogic/wifi_dt.h>
 
 static struct mmc_claim aml_sdio_claim;
 
@@ -830,6 +831,9 @@ static int aml_sdio_resume(struct platform_device *pdev)
 
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 	list_for_each_entry(pdata, &host->sibling, sibling){
+        if(pdata->port == MESON_SDIO_PORT_A) { // sdio_wifi
+            wifi_setup_dt();
+        }
 		mmc = pdata->mmc;
 		//mmc_power_restore_host(mmc);
 		mmc_resume_host(mmc);
