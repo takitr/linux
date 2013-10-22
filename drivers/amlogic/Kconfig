@@ -93,7 +93,7 @@ source "drivers/amlogic/hdmi/Kconfig"
 #comment "GPU (ARM Mali (external))"
 source "../hardware/arm/gpu/ump/Kconfig"
 source "../hardware/arm/gpu/mali/Kconfig"
-#source "drivers/amlogic/ion_dev/Kconfig"
+source "drivers/amlogic/ion_dev/Kconfig"
 
 #
 # crypto
