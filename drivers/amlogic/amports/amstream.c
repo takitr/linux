@@ -61,6 +61,7 @@
 #include "vdec.h"
 #include "adec.h"
 #include "rmparser.h"
+#include "ampotrs_priv.h"
 
 #include <linux/of.h>
 
@@ -345,6 +346,14 @@ static stream_buf_t bufs[BUF_MAX_NUM] = {
         .first_tstamp = INVALID_PTS
     }
 };
+stream_buf_t *get_buf_by_type(u32  type)
+{
+   if(type<BUF_MAX_NUM)
+       return &bufs[type];
+   else 
+       return NULL;
+}
+
 void set_sample_rate_info(int arg)
 {
     audio_dec_info.sample_rate = arg;
