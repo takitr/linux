@@ -251,6 +251,10 @@ struct snd_soc_dai_driver aml_dai[] = {
 
 EXPORT_SYMBOL_GPL(aml_dai);
 
+static const struct snd_soc_component_driver aml_component= {
+	.name		= "aml-dai",
+};
+
 static int aml_dai_probe(struct platform_device *pdev)
 {
 	printk(KERN_DEBUG "enter %s\n", __func__);
@@ -259,13 +263,14 @@ static int aml_dai_probe(struct platform_device *pdev)
 	BUG_ON(pdev->id >= ARRAY_SIZE(aml_dai));
 	return snd_soc_register_dai(&pdev->dev, &aml_dai[pdev->id]);
 #else
-	return snd_soc_register_dais(&pdev->dev, aml_dai, ARRAY_SIZE(aml_dai));
+	return snd_soc_register_component(&pdev->dev, &aml_component,
+					 aml_dai, ARRAY_SIZE(aml_dai));
 #endif
 }
 
 static int aml_dai_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_dai(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }
 

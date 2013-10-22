@@ -24,7 +24,7 @@
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 
-#include <linux/amports/amaudio.h>
+#include <linux/amlogic/amports/amaudio.h>
 
 #include <mach/mod_gate.h>
 
@@ -542,7 +542,7 @@ static void aml_hw_iec958_init(void)
 	if(IEC958_mode_codec == 4)  //dd+
 		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 4, 2); // 4x than i2s
 	else
-#if OVERCLOCK == 1 || IEC958_OVERCLOCK == 1	
+#if OVERCLOCK == 1 || IEC958_OVERCLOCK == 1
 		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 3, 4, 2);//512fs divide 4 == 128fs
 #else
 		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 1, 4, 2); //256fs divide 2 == 128fs
@@ -618,7 +618,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 			break;
 	};
 	// iec958 and i2s clock are separated after M6TV
-#if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6TV	
+#if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6TV
 	audio_set_clk(s->sample_rate, AUDIO_CLK_256FS);
 	audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 #else
@@ -627,7 +627,7 @@ static int aml_pcm_prepare(struct snd_pcm_substream *substream)
 	audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	audio_util_set_dac_958_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 #endif
-	
+
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 			aml_hw_i2s_init(runtime);
 		  aml_hw_iec958_init();
@@ -688,7 +688,7 @@ static int aml_pcm_trigger(struct snd_pcm_substream *substream,
 
 #if USE_HRTIMER == 0
 	  del_timer_sync(&prtd->timer);
-#endif      
+#endif
 	  spin_lock(&s->lock);
 #if USE_HRTIMER == 0
 	  prtd->timer.expires = jiffies + 1;
@@ -820,7 +820,7 @@ static enum hrtimer_restart aml_pcm_hrtimer_callback(struct hrtimer* timer)
   audio_stream_t* s = &prtd->s;
   struct snd_pcm_substream* substream = prtd->substream;
   struct snd_pcm_runtime* runtime= substream->runtime;
-  
+
   unsigned int last_ptr, size;
   unsigned long flag;
   //printk("------------->hrtimer start\n");
@@ -955,7 +955,7 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	}else{
 		snd_soc_set_runtime_hwparams(substream, &aml_pcm_capture);
 	}
-	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);			
+	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);
 	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
 
     /* ensure that peroid size is a multiple of 32bytes */
@@ -983,14 +983,14 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 	}
 
 	prtd->substream = substream;
-#if USE_HRTIMER == 0    
+#if USE_HRTIMER == 0
 	prtd->timer.function = &aml_pcm_timer_callback;
 	prtd->timer.data = (unsigned long)substream;
 	init_timer(&prtd->timer);
 #else
     hrtimer_init(&prtd->hrtimer,CLOCK_MONOTONIC, HRTIMER_MODE_REL);
     prtd->hrtimer.function = aml_pcm_hrtimer_callback;
-    hrtimer_start(&prtd->hrtimer, ns_to_ktime(HRTIMER_PERIOD), HRTIMER_MODE_REL); 
+    hrtimer_start(&prtd->hrtimer, ns_to_ktime(HRTIMER_PERIOD), HRTIMER_MODE_REL);
 
 
     printk("hrtimer inited..\n");
@@ -1013,7 +1013,7 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 #endif
 	kfree(prtd);
 
-	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);			
+	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		playback_substream_handle = 0;
 	return 0;
@@ -1082,7 +1082,7 @@ static int aml_pcm_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         if(pos % align){
           printk("audio data unaligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
         }
-		
+
 		if(runtime->channels == 8){
 			int32_t *lf, *cf, *rf, *ls, *rs, *lef, *sbl, *sbr;
 			lf  = to;
@@ -1145,7 +1145,7 @@ static int aml_pcm_copy_capture(struct snd_pcm_runtime *runtime, int channel,
     int i = 0, j = 0;
     unsigned int t1, t2;
     char *hwbuf = runtime->dma_area + frames_to_bytes(runtime, pos)*2;
-    unsigned char r_shift = 8;	
+    unsigned char r_shift = 8;
     if(audioin_mode&SPDIFIN_MODE) //spdif in
     {
     	r_shift = 12;
@@ -1236,7 +1236,7 @@ static int aml_pcm_new(struct snd_soc_pcm_runtime *rtd)
 {
 	int ret = 0;
        struct snd_soc_card *card = rtd->card;
-       struct snd_pcm *pcm =rtd->pcm ;  
+       struct snd_pcm *pcm =rtd->pcm ;
 	if (!card->dev->dma_mask)
 		card->dev->dma_mask = &aml_pcm_dmamask;
 	if (!card->dev->coherent_dma_mask)
@@ -1581,7 +1581,7 @@ static int aml_soc_platform_probe(struct platform_device *pdev)
 	if(pdev->dev.platform_data){
 		audioin_mode = *(unsigned *)pdev->dev.platform_data;
 		printk("AML soc audio in mode =============   %d \n",audioin_mode);
-	}	
+	}
 	return snd_soc_register_platform(&pdev->dev, &aml_soc_platform);
 }
 
