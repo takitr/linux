@@ -15,7 +15,7 @@
 
 #define MODE_ECB 0
 #define MODE_CBC 1
-#define MODE_CTR 1
+#define MODE_CTR 2
 
 #define DIR_ENCRYPT 0
 #define DIR_DECRYPT 1
