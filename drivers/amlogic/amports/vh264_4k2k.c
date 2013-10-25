@@ -1290,6 +1290,9 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     vdec_poweron(VDEC_2);
 
+    vdec_power_mode(1);
+    vdec2_power_mode(1);
+
     if (vh264_4k2k_init() < 0) {
         printk("\namvdec_h264_4k2k init failed.\n");
 
