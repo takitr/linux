@@ -280,17 +280,16 @@
 		
 //$$ MATCH "I2C_B_pin_match" = "&b_i2c_master"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 2 = "amlogic,pins"
 		b_i2c_master:b_i2c{
 			amlogic,setmask=<5 0xc000000>;
 			amlogic,pins="GPIOZ_2","GPIOZ_3";
 		};
 		
-//$$ MATCH "I2C_C_pin_match" = "&c_i2c_master"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
-//$$ L2 PROP_STR 2 = "amlogic,pins"		
+// MATCH "I2C_C_pin_match" = "&c_i2c_master"
+// L2 PROP_U32 2 = "amlogic,setmask"
+// L2 PROP_U32 2 = "amlogic,clrmask"
+// L2 PROP_STR 2 = "amlogic,pins"		
 //		c_i2c_master:c_i2c{
 //			amlogic,setmask=<5 0x3000000>;
 //			amlogic,clrmask=<6 0xc000>;
@@ -303,7 +302,6 @@
 
 //$$ MATCH "I2C_D_pin_match" = "&d_i2c_master"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 2 = "amlogic,pins"
 		d_i2c_master:d_i2c{
 			amlogic,setmask=<4 0xc>;
@@ -315,95 +313,47 @@
 //$$ L2 PROP_U32 4 = "amlogic,clrmask"
 //$$ L2 PROP_STR = "amlogic,pins"	
 		lcd_backlight_pins:lcd_backlight{
-			aamlogic,setmask=<3 0x1000000>;
+			amlogic,setmask=<3 0x1000000>;
 			amlogic,clrmask=<0 0x48 7 0x10000200>;
 			amlogic,pins = "GPIODV_9";
 		};
 		
-//$$ MATCH "Lcd_pin_0_match" = "&lcd_ttl_hvsync_pins_on"
-//$$ MATCH "Lcd_pin_1_match" = "&lcd_ttl_hvsync_pins_on"
-//$$ MATCH "Lcd_pin_3_match" = "&lcd_ttl_hvsync_pins_on"
-//$$ MATCH "Lcd_pin_4_match" = "&lcd_ttl_hvsync_pins_on"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR 2 = "amlogic,pins"
 		lcd_ttl_hvsync_pins_on:lcd_ttl_hvsync_on{
 			amlogic,setmask=<8 0x1800000>;
 			amlogic,clrmask=<0 0x3c0300 6 0xc00000>;
 			amlogic,pins = "GPIODV_24","GPIODV_25";
 		};
 		
-//$$ MATCH "Lcd_pin_2_match" = "&lcd_ttl_hvsync_pins_off"
-//$$ MATCH "Lcd_pin_5_match" = "&lcd_ttl_hvsync_pins_off"
-//$$ MATCH "Lcd_pin_6_match" = "&lcd_ttl_hvsync_pins_off"
-//$$ MATCH "Lcd_pin_7_match" = "&lcd_ttl_hvsync_pins_off"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR 2 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
 		lcd_ttl_hvsync_pins_off:lcd_ttl_hvsync_off{
 			amlogic,clrmask=<0 0x3c0300 6 0xc00000 8 0x1800000>;
 			amlogic,pins = "GPIODV_24","GPIODV_25";
 			amlogic,enable-output=<1>;
 		};
 		
-//$$ MATCH "Lcd_pin_0_match" = "&lcd_ttl_de_pins_on"
-//$$ MATCH "Lcd_pin_2_match" = "&lcd_ttl_de_pins_on"
-//$$ MATCH "Lcd_pin_3_match" = "&lcd_ttl_de_pins_on"
-//$$ MATCH "Lcd_pin_5_match" = "&lcd_ttl_de_pins_on"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR = "amlogic,pins"
 		lcd_ttl_de_pins_on:lcd_ttl_de_on{
 			amlogic,setmask=<8 0x10000000>;
 			amlogic,clrmask=<0 0x400 6 0x100000 8 0x80000>;
 			amlogic,pins = "GPIODV_27";
 		};
 		
-//$$ MATCH "Lcd_pin_1_match" = "&lcd_ttl_de_pins_off"
-//$$ MATCH "Lcd_pin_4_match" = "&lcd_ttl_de_pins_off"
-//$$ MATCH "Lcd_pin_6_match" = "&lcd_ttl_de_pins_off"
-//$$ MATCH "Lcd_pin_7_match" = "&lcd_ttl_de_pins_off"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
 		lcd_ttl_de_pins_off:lcd_ttl_de_off{
 			amlogic,clrmask=<0 0x400 6 0x100000 8 0x10080000>;
 			amlogic,pins = "GPIODV_27";
 			amlogic,enable-output=<1>;
 		};
 		
-//$$ MATCH "Lcd_pin_0_match" = "&lcd_ttl_clk_pins_on"
-//$$ MATCH "Lcd_pin_1_match" = "&lcd_ttl_clk_pins_on"
-//$$ MATCH "Lcd_pin_2_match" = "&lcd_ttl_clk_pins_on"
-//$$ MATCH "Lcd_pin_3_match" = "&lcd_ttl_clk_pins_on"
-//$$ MATCH "Lcd_pin_4_match" = "&lcd_ttl_clk_pins_on"
-//$$ MATCH "Lcd_pin_5_match" = "&lcd_ttl_clk_pins_on"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 6 = "amlogic,clrmask"
-//$$ L2 PROP_STR = "amlogic,pins"
 		lcd_ttl_clk_pins_on:lcd_ttl_clk_on{
 			amlogic,setmask=<8 0x400000>;
 			amlogic,clrmask=<0 0x80 6 0x200000 8 0x300000>;
 			amlogic,pins = "GPIODV_26";
 		};
 		
-//$$ MATCH "Lcd_pin_6_match" = "&lcd_ttl_clk_pins_off"
-//$$ MATCH "Lcd_pin_7_match" = "&lcd_ttl_clk_pins_off"
-//$$ L2 PROP_U32 6 = "amlogic,clrmask"
-//$$ L2 PROP_STR = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
 		lcd_ttl_clk_pins_off:lcd_ttl_clk_off{
 			amlogic,clrmask=<0 0x80 6 0x200000 8 0x700000>;
 			amlogic,pins = "GPIODV_26";
 			amlogic,enable-output=<1>;
 		};
 		
-//$$ MATCH "Lcd_pin_3_match" = "&lcd_ttl_rgb_8bit_pins_on"
-//$$ MATCH "Lcd_pin_4_match" = "&lcd_ttl_rgb_8bit_pins_on"
-//$$ MATCH "Lcd_pin_5_match" = "&lcd_ttl_rgb_8bit_pins_on"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 8 = "amlogic,clrmask"
-//$$ L2 PROP_STR 24 = "amlogic,pins"		
 		lcd_ttl_rgb_8bit_pins_on:lcd_ttl_rgb_8bit_on{
 			amlogic,setmask=<0 0x3f>;
 			amlogic,clrmask=<0 0x40 3 0x1000000 7 0x1003ffff 8 0xe000000>;
@@ -412,10 +362,6 @@
 						"GPIODV_16","GPIODV_17","GPIODV_18","GPIODV_19","GPIODV_20","GPIODV_21","GPIODV_22","GPIODV_23";//B0~B7
 		};
 		
-//$$ MATCH "Lcd_pin_7_match" = "&lcd_ttl_rgb_8bit_pins_off"
-//$$ L2 PROP_U32 8 = "amlogic,clrmask"
-//$$ L2 PROP_STR 24 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
 		lcd_ttl_rgb_8bit_pins_off:lcd_ttl_rgb_8bit_off{
 			amlogic,clrmask=<0 0x7f 3 0x1000000 7 0x1003ffff 8 0xe000000>;
 			amlogic,pins = "GPIODV_0","GPIODV_1","GPIODV_2","GPIODV_3","GPIODV_4","GPIODV_5","GPIODV_6","GPIODV_7",		//R0~R7
@@ -424,12 +370,6 @@
 			amlogic,enable-output=<1>;
 		};
 		
-//$$ MATCH "Lcd_pin_0_match" = "&lcd_ttl_rgb_6bit_pins_on"
-//$$ MATCH "Lcd_pin_1_match" = "&lcd_ttl_rgb_6bit_pins_on"
-//$$ MATCH "Lcd_pin_2_match" = "&lcd_ttl_rgb_6bit_pins_on"
-//$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR 24 = "amlogic,pins"	
 		lcd_ttl_rgb_6bit_pins_on:lcd_ttl_rgb_6bit_on{
 			amlogic,setmask=<0 0x15>;
 			amlogic,clrmask=<0 0x40 7 0xfcfc>;
@@ -438,10 +378,6 @@
 						"GPIODV_18","GPIODV_19","GPIODV_20","GPIODV_21","GPIODV_22","GPIODV_23";	//B2~B7
 		};
 		
-//$$ MATCH "Lcd_pin_6_match" = "&lcd_ttl_rgb_6bit_pins_off"
-//$$ L2 PROP_U32 4 = "amlogic,clrmask"
-//$$ L2 PROP_STR 24 = "amlogic,pins"
-//$$ L2 PROP_U32 = "amlogic,enable-output"
 		lcd_ttl_rgb_6bit_pins_off:lcd_ttl_rgb_6bit_off{
 			amlogic,clrmask=<0 0x55 7 0xfcfc>;
 			amlogic,pins = "GPIODV_2","GPIODV_3","GPIODV_4","GPIODV_5","GPIODV_6","GPIODV_7",		//R2~R7
@@ -449,5 +385,39 @@
 						"GPIODV_18","GPIODV_19","GPIODV_20","GPIODV_21","GPIODV_22","GPIODV_23";	//B2~B7
 			amlogic,enable-output=<1>;
         };
+
+//$$ MATCH "remote_pin_0_match" = "&remote_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_STR = "amlogic,pins"
+        remote_pins:remote_pin{
+			amlogic,setmask=<10 0x1>;
+			amlogic,pins="GPIOAO_7";
+		};
+
+//$$ MATCH "Audio_pin_0_match" = "&audio_pins"
+//$$ L2 PROP_U32 4 = "amlogic,setmask"
+//$$ L2 PROP_U32 10 = "amlogic,clrmask"
+//$$ L2 PROP_STR 6 = "amlogic,pins"
+        audio_pins:audio_pin{
+            amlogic,setmask=<1 0x80
+                             1 0x75>;
+            amlogic,clrmask=<1 0x10000
+                             1 0x0a
+                             3 0x389
+                             4 0x3c00000
+                             9 0xd>;
+            amlogic,pins = "GPIOY_3","GPIOY_4","GPIOY_5","GPIOY_6","GPIOY_7","GPIOY_8";
+        };
+
+//$$ MATCH "Spi_pin_0_match" = "&aml_spi_nor_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 4 = "amlogic,pins"
+		aml_spi_nor_pins: aml_spi_nor_pins{
+			amlogic,setmask=<5 0xf>;
+			amlogic,clrmask=<2 0x380000>;
+			amlogic,pins = "BOOT_11","BOOT_12","BOOT_13","BOOT_18";
+		};
+        
 	};
 #endif

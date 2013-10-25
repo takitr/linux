@@ -6,7 +6,7 @@
         #address-cells = <1>;
         #size-cells = <0>;
         status = "ok";
-//$$ DEVICE="vcck_dvfs"
+
 //$$ L2 PROP_U32 = "dvfs_id"
 //$$ L2 PROP_U32 = "table_count"
 //$$ L2 PROP_U32 16*3 = "dvfs_table"

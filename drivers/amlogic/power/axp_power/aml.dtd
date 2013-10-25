@@ -41,7 +41,7 @@
             ddr_voltage   = <1500000>;                          /** default voltage for DDR, optional    */
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
             board_battery = <&battery_parameter>;               /** battery parameter used, must have    */
-            status = "disable";                                 /* status of pmu, only one should be OK */
+            status = "disable";                                 /** status of pmu, only one should be OK */
         };
 //$$ DEVICE = "Pmu_rn5t618"
 //$$ L2 PROP_STR = "sub_type"
@@ -62,7 +62,7 @@
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
             board_battery = <&battery_parameter>;               /** battery parameter used, must have    */
             vbus_dcin_short_connect = <1>;
-            status = "okay";                                 /* status of pmu, only one should be OK */
+            status = "okay";                                    /** status of pmu, only one should be OK */
         };
     };
 #endif

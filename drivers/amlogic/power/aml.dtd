@@ -37,7 +37,7 @@
 //$$ L2 PROP_U32 16*3 ="pmu_bat_curve"
     battery_parameter:battery_parameter{
         status = "okay";
-		pmu_twi_id = <2>;                   /** PMU i2c bus                          */
+        pmu_twi_id = <2>;                   /** PMU i2c bus                          */
         pmu_irq_id = <0>;                   /** INT_WATCHDOG                         */
         pmu_twi_addr = <0x32>;              /** PMU i2c addr                         */
         pmu_battery_rdc = <94>;             /** battery internal resistor            */

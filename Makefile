@@ -385,6 +385,7 @@ KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
 KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
 KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
 
+
 export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
 export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP
@@ -1178,6 +1179,12 @@ $(help-board-dirs): help-%:
 		printf "  %-24s - Build for %s\\n" $*/$(b) $(subst _defconfig,,$(b));) \
 		echo '')
 
+#build amlogic device tree file meson.dtd 
+dtd:
+	$(srctree)/scripts/amlogic/aml_dtd.sh $(srctree)
+
+%.dtd:
+	$(srctree)/scripts/amlogic/aml2dtb.sh $(wildcard $(srctree)/arch/arm/boot/dts/amlogic/$@)
 
 # Documentation targets
 # ---------------------------------------------------------------------------

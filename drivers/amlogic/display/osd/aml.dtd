@@ -2,6 +2,7 @@
 //$$ DEVICE = "mesonfb"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 4 ="reg"
+//$$ L2 PROP_U32 = "rotation"
 //$$ L2 PROP_U32 = "vmode"
 //$$ L2 PROP_U32 5 = "display_size_default"
 #ifdef CONFIG_ARCH_MESON8
@@ -11,8 +12,9 @@
 		status = "okay";
 		reg = <0x05100000 0x01800000
 	   	 		0x06900000 0x00100000>;
+		rotation = <270>
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
- 		display_size_default = <2048 1536 2048 3072 32>;
+		display_size_default = <1024 768 1024 1536 32>;
 	};
 #endif
 #endif

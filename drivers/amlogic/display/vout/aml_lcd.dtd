@@ -2,15 +2,7 @@
 #ifdef CONFIG_ARCH_MESON8
 //$$ DEVICE="lcd"
 //$$ L2 PROP_STR = "status"
-//$$ L2 PROP_STR = "pinctrl-names"
-//$$ L2 PROP_CHOICE "Lcd_pin_0_match" = "pinctrl-0"
-//$$ L2 PROP_CHOICE "Lcd_pin_1_match" = "pinctrl-1"
-//$$ L2 PROP_CHOICE "Lcd_pin_2_match" = "pinctrl-2"
-//$$ L2 PROP_CHOICE "Lcd_pin_3_match" = "pinctrl-3"
-//$$ L2 PROP_CHOICE "Lcd_pin_4_match" = "pinctrl-4"
-//$$ L2 PROP_CHOICE "Lcd_pin_5_match" = "pinctrl-5"
-//$$ L2 PROP_CHOICE "Lcd_pin_6_match" = "pinctrl-6"
-//$$ L2 PROP_CHOICE "Lcd_pin_7_match" = "pinctrl-7"
+
 //$$ L2 PROP_STR = "lcd_model_name"
 //$$ L2 PROP_CHOICE "lcd_model_config_match" = "lcd_model_config"
 //$$ L2 PROP_U32 = "lcd_bits_user"

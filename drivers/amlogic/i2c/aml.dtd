@@ -54,7 +54,7 @@
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2="reg"
 //$$ L3 PROP_STR = "pinctrl-names"
-//$$ L2 PROP_CHOICE "I2C_C_pin_match" = "pinctrl-0"	
+// L2 PROP_CHOICE "I2C_C_pin_match" = "pinctrl-0"	
     i2c@c11087e0{ /*I2C-C*/
 		compatible = "amlogic,aml_i2c";
 		dev_name = "i2c-C";

@@ -1,6 +1,9 @@
 #ifdef MESON_INPUT_TOUCHSCREEN
+//$$ DEVICE = "touch"
+//$$ L2 PROP_STR = "status"
     touch{
         compatible = "amlogic,aml_touch";
+        status = "okay";
         #address-cells = <1>;
 		#size-cells = <0>;
 		
