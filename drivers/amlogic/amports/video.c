@@ -2402,9 +2402,9 @@ unsigned int vf_keep_current(void)
 
     if ((cur_dispbuf->type & VIDTYPE_VIU_422) == VIDTYPE_VIU_422) {
         canvas_read(y_index,&cd);
-        if ((Y_BUFFER_SIZE < (cs0.width *cs0.height))) {
+        if ((Y_BUFFER_SIZE < (cd.width *cd.height))) {
             printk("## [%s::%d] error: yuv data size larger than buf size: %x,%x,%x, %x,%x\n", __FUNCTION__,__LINE__,
-            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cs0.width,cs0.height);
+            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cd.width,cd.height);
             return -1;
         }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
@@ -2416,9 +2416,9 @@ unsigned int vf_keep_current(void)
         }
     } else if ((cur_dispbuf->type & VIDTYPE_VIU_444) == VIDTYPE_VIU_444) {
         canvas_read(y_index,&cd);
-        if ((Y_BUFFER_SIZE < (cs0.width *cs0.height))) {
+        if ((Y_BUFFER_SIZE < (cd.width *cd.height))) {
             printk("## [%s::%d] error: yuv data size larger than buf size: %x,%x,%x, %x,%x\n", __FUNCTION__,__LINE__,
-            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cs0.width,cs0.height);
+            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cd.width,cd.height);
             return -1;
         }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
