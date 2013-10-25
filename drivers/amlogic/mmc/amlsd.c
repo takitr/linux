@@ -2,6 +2,7 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
 
@@ -60,45 +61,40 @@
 static struct proc_dir_entry *proc_card;
 static struct mtd_partition *card_table[16];
 
-static inline int card_proc_info (char *buf, char* dev_name, int i)
+static inline int card_proc_info (struct seq_file *m, char* dev_name, int i)
 {
 	struct mtd_partition *this = card_table[i];
 
 	if (!this)
 		return 0;
 
-	return sprintf(buf, "%s%d: %8.8llx %8.8x \"%s\"\n", dev_name,
+	return seq_printf(m, "%s%d: %8.8llx %8.8x \"%s\"\n", dev_name,
 		        i+1,(unsigned long long)this->size,
 		       512*1024, this->name);
 }
 
-static int card_read_proc (char *page, char **start, off_t off, int count,
-			  int *eof, void *data_unused)
+static int card_proc_show(struct seq_file *m, void *v)
 {
-	int len, l, i;
-    off_t   begin = 0;
+	int i;
 
-	len = sprintf(page, "dev:    size   erasesize  name\n");
-    for (i=0; i< 16; i++) {
+	seq_puts(m, "dev:    size   erasesize  name\n");
+	for (i=0; i< 16; i++)
+		card_proc_info(m, "inand", i);
 
-            l = card_proc_info(page + len, "inand", i);
-            len += l;
-            if (len+begin > off+count)
-                    goto done;
-            if (len+begin < off) {
-                    begin += len;
-                    len = 0;
-            }
-    }
-
-    *eof = 1;
-
-done:
-    if (off >= len+begin)
-            return 0;
-    *start = page + (off-begin);
-    return ((count < begin+len-off) ? count : begin+len-off);
+	return 0;
 }
+
+static int card_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, card_proc_show, NULL);
+}
+
+static const struct file_operations card_proc_fops = {
+	.open = card_proc_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = seq_release,
+};
 
 /**
  * add_card_partition : add card partition , refer to 
@@ -129,8 +125,8 @@ int add_part_table(struct mtd_partition * part, unsigned int nr_part)
 		card_table[i]->name = part[i].name;
 	}
 
-	if (!proc_card && (proc_card = create_proc_entry( "inand", 0, NULL )))
-		proc_card->read_proc = card_read_proc;
+	if (!proc_card)
+		proc_card = proc_create( "inand", 0, NULL, &card_proc_fops);
 
 	return 0;
 }
@@ -279,6 +275,7 @@ static void aml_sg_miter_stop(struct sg_mapping_iter *miter)
 	/* drop resources from the last iteration */
 	if (miter->addr) {
 		miter->__offset += miter->consumed;
+		miter->__remaining -= miter->consumed;
 
 		if (miter->__flags & SG_MITER_TO_SG){
 			//printk("flush page addr %x, length %x\n", miter->addr, miter->length);
@@ -305,41 +302,41 @@ static void aml_sg_miter_stop(struct sg_mapping_iter *miter)
  */
 static bool aml_sg_miter_next(struct sg_mapping_iter *miter)
 {
-	unsigned int off, len;
 	unsigned long flags;
 
-	/* check for end and drop resources from the last iteration */
-	if (!miter->__nents)
-		return false;
+	sg_miter_stop(miter);
 
-	aml_sg_miter_stop(miter);
+	/*
+	 * Get to the next page if necessary.
+	 * __remaining, __offset is adjusted by sg_miter_stop
+	 */
+	if (!miter->__remaining) {
+		struct scatterlist *sg;
+		unsigned long pgoffset;
 
-	/* get to the next sg if necessary.  __offset is adjusted by stop */
-	while (miter->__offset == miter->__sg->length) {
-		if (--miter->__nents) {
-			miter->__sg = sg_next(miter->__sg);
-			miter->__offset = 0;
-		} else
+		if (!__sg_page_iter_next(&miter->piter))
 			return false;
+
+		sg = miter->piter.sg;
+		pgoffset = miter->piter.sg_pgoffset;
+
+		miter->__offset = pgoffset ? 0 : sg->offset;
+		miter->__remaining = sg->offset + sg->length -
+				(pgoffset << PAGE_SHIFT) - miter->__offset;
+		miter->__remaining = min_t(unsigned long, miter->__remaining,
+					   PAGE_SIZE - miter->__offset);
 	}
-
-	/* map the next page */
-	off = miter->__sg->offset + miter->__offset;
-	len = miter->__sg->length - miter->__offset;
-
-	miter->page = nth_page(sg_page(miter->__sg), off >> PAGE_SHIFT);
-	off &= ~PAGE_MASK;
-	miter->length = min_t(unsigned int, len, PAGE_SIZE - off);
-	miter->consumed = miter->length;
+	miter->page = sg_page_iter_page(&miter->piter);
+	miter->consumed = miter->length = miter->__remaining;
 
     if (PageHighMem(miter->page)){
 		printk(KERN_DEBUG "AML_SDHC miter_next highmem\n");
 		local_irq_save(flags);
-    	miter->addr = kmap_atomic(miter->page) + off;
+    	miter->addr = kmap_atomic(miter->page) + miter->__offset;
 		local_irq_restore(flags);
     }
 	else
-		miter->addr = page_address(miter->page) + off;
+		miter->addr = page_address(miter->page) + miter->__offset;
 	return true;
 }
 

@@ -196,6 +196,14 @@ struct mmc_supply {
 	struct regulator *vqmmc;	/* Optional Vccq supply */
 };
 
+struct mmc_claim {
+	unsigned int		claimed:1;	/* host exclusively claimed */
+	struct task_struct	*claimer;	/* task that has host claimed */
+	int 		claim_cnt;	/* "claim" nesting count */
+	spinlock_t		lock;		/* lock for claim and bus ops */
+	wait_queue_head_t	wq;
+};
+
 struct mmc_host {
 	struct device		*parent;
 	struct device		class_dev;
@@ -319,6 +327,9 @@ struct mmc_host {
 #ifdef CONFIG_MMC_DEBUG
 	unsigned int		removed:1;	/* host is being removed */
 #endif
+	struct mmc_claim* alldev_claim;
+    int         is_emmc_port;
+	int 		(*add_part)(struct gendisk * disk);
 
 	int			rescan_disable;	/* disable card detection */
 	int			rescan_entered;	/* used with nonremovable devices */

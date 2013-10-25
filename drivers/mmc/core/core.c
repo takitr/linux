@@ -228,7 +228,7 @@ mmc_start_request(struct mmc_host *host, struct mmc_request *mrq)
 			 mrq->stop->arg, mrq->stop->flags);
 	}
 
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	mrq->cmd->error = 0;
 	mrq->cmd->mrq = mrq;
@@ -662,7 +662,7 @@ int mmc_wait_for_cmd(struct mmc_host *host, struct mmc_command *cmd, int retries
 {
 	struct mmc_request mrq = {NULL};
 
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	memset(cmd->resp, 0, sizeof(cmd->resp));
 	cmd->retries = retries;
@@ -878,26 +878,26 @@ int __mmc_claim_host(struct mmc_host *host, atomic_t *abort)
 
 	might_sleep();
 
-	add_wait_queue(&host->wq, &wait);
-	spin_lock_irqsave(&host->lock, flags);
+	add_wait_queue(&host->alldev_claim->wq, &wait);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	while (1) {
 		set_current_state(TASK_UNINTERRUPTIBLE);
 		stop = abort ? atomic_read(abort) : 0;
-		if (stop || !host->claimed || host->claimer == current)
+		if (stop || !host->alldev_claim->claimed || host->alldev_claim->claimer == current)
 			break;
-		spin_unlock_irqrestore(&host->lock, flags);
+		spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 		schedule();
-		spin_lock_irqsave(&host->lock, flags);
+		spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	}
 	set_current_state(TASK_RUNNING);
 	if (!stop) {
-		host->claimed = 1;
-		host->claimer = current;
-		host->claim_cnt += 1;
+		host->alldev_claim->claimed = 1;
+		host->alldev_claim->claimer = current;
+		host->alldev_claim->claim_cnt += 1;
 	} else
-		wake_up(&host->wq);
-	spin_unlock_irqrestore(&host->lock, flags);
-	remove_wait_queue(&host->wq, &wait);
+		wake_up(&host->alldev_claim->wq);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
+	remove_wait_queue(&host->alldev_claim->wq, &wait);
 	if (host->ops->enable && !stop && host->claim_cnt == 1)
 		host->ops->enable(host);
 	return stop;
@@ -916,14 +916,14 @@ int mmc_try_claim_host(struct mmc_host *host)
 	int claimed_host = 0;
 	unsigned long flags;
 
-	spin_lock_irqsave(&host->lock, flags);
-	if (!host->claimed || host->claimer == current) {
-		host->claimed = 1;
-		host->claimer = current;
-		host->claim_cnt += 1;
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
+	if (!host->alldev_claim->claimed || host->alldev_claim->claimer == current) {
+		host->alldev_claim->claimed = 1;
+		host->alldev_claim->claimer = current;
+		host->alldev_claim->claim_cnt += 1;
 		claimed_host = 1;
 	}
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 	if (host->ops->enable && claimed_host && host->claim_cnt == 1)
 		host->ops->enable(host);
 	return claimed_host;
@@ -941,20 +941,18 @@ void mmc_release_host(struct mmc_host *host)
 {
 	unsigned long flags;
 
-	WARN_ON(!host->claimed);
-
+	WARN_ON(!host->alldev_claim->claimed);
 	if (host->ops->disable && host->claim_cnt == 1)
 		host->ops->disable(host);
-
-	spin_lock_irqsave(&host->lock, flags);
-	if (--host->claim_cnt) {
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
+	if (--host->alldev_claim->claim_cnt) {
 		/* Release for nested claim */
-		spin_unlock_irqrestore(&host->lock, flags);
+		spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 	} else {
-		host->claimed = 0;
-		host->claimer = NULL;
-		spin_unlock_irqrestore(&host->lock, flags);
-		wake_up(&host->wq);
+		host->alldev_claim->claimed = 0;
+		host->alldev_claim->claimer = NULL;
+		spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
+		wake_up(&host->alldev_claim->wq);
 	}
 }
 EXPORT_SYMBOL(mmc_release_host);
@@ -1277,20 +1275,8 @@ int mmc_regulator_get_supply(struct mmc_host *mmc)
 	struct regulator *supply;
 	int ret;
 
-	supply = devm_regulator_get(dev, "vmmc");
-	mmc->supply.vmmc = supply;
-	mmc->supply.vqmmc = devm_regulator_get(dev, "vqmmc");
-
-	if (IS_ERR(supply))
-		return PTR_ERR(supply);
-
-	ret = mmc_regulator_get_ocrmask(supply);
-	if (ret > 0)
-		mmc->ocr_avail = ret;
-	else
 		dev_warn(mmc_dev(mmc), "Failed getting OCR mask: %d\n", ret);
-
-	return 0;
+	return -EINVAL;
 }
 EXPORT_SYMBOL_GPL(mmc_regulator_get_supply);
 
@@ -1579,9 +1565,9 @@ static inline void mmc_bus_get(struct mmc_host *host)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	host->bus_refs++;
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 }
 
 /*
@@ -1592,11 +1578,11 @@ static inline void mmc_bus_put(struct mmc_host *host)
 {
 	unsigned long flags;
 
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	host->bus_refs--;
 	if ((host->bus_refs == 0) && host->bus_ops)
 		__mmc_release_bus(host);
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 }
 
 int mmc_resume_bus(struct mmc_host *host)
@@ -1607,10 +1593,10 @@ int mmc_resume_bus(struct mmc_host *host)
 		return -EINVAL;
 
 	printk("%s: Starting deferred resume\n", mmc_hostname(host));
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	host->bus_resume_flags &= ~MMC_BUSRESUME_NEEDS_RESUME;
 	host->rescan_disable = 0;
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 
 	mmc_bus_get(host);
 	if (host->bus_ops && !host->bus_dead) {
@@ -1640,9 +1626,9 @@ void mmc_attach_bus(struct mmc_host *host, const struct mmc_bus_ops *ops)
 	BUG_ON(!host);
 	BUG_ON(!ops);
 
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 
 	BUG_ON(host->bus_ops);
 	BUG_ON(host->bus_refs);
@@ -1651,7 +1637,7 @@ void mmc_attach_bus(struct mmc_host *host, const struct mmc_bus_ops *ops)
 	host->bus_refs = 1;
 	host->bus_dead = 0;
 
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 }
 
 /*
@@ -1663,14 +1649,14 @@ void mmc_detach_bus(struct mmc_host *host)
 
 	BUG_ON(!host);
 
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 	WARN_ON(!host->bus_ops);
 
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 
 	host->bus_dead = 1;
 
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 
 	mmc_bus_put(host);
 }
@@ -1689,9 +1675,9 @@ void mmc_detect_change(struct mmc_host *host, unsigned long delay)
 {
 #ifdef CONFIG_MMC_DEBUG
 	unsigned long flags;
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	WARN_ON(host->removed);
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 #endif
 	host->detect_change = 1;
 
@@ -2362,7 +2348,7 @@ int mmc_detect_card_removed(struct mmc_host *host)
 	struct mmc_card *card = host->card;
 	int ret;
 
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	if (!card)
 		return 1;
@@ -2478,10 +2464,12 @@ void mmc_start_host(struct mmc_host *host)
 {
 	host->f_init = max(freqs[0], host->f_min);
 	host->rescan_disable = 0;
+	mmc_claim_host(host);
 	if (host->caps2 & MMC_CAP2_NO_PRESCAN_POWERUP)
 		mmc_power_off(host);
 	else
 		mmc_power_up(host);
+	mmc_release_host(host);
 	mmc_detect_change(host, 0);
 }
 
@@ -2489,9 +2477,9 @@ void mmc_stop_host(struct mmc_host *host)
 {
 #ifdef CONFIG_MMC_DEBUG
 	unsigned long flags;
-	spin_lock_irqsave(&host->lock, flags);
+	spin_lock_irqsave(&host->alldev_claim->lock, flags);
 	host->removed = 1;
-	spin_unlock_irqrestore(&host->lock, flags);
+	spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 #endif
 
 	host->rescan_disable = 1;
@@ -2811,13 +2799,13 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 			mmc_card_clr_doing_bkops(host->card);
 		}
 
-		spin_lock_irqsave(&host->lock, flags);
+		spin_lock_irqsave(&host->alldev_claim->lock, flags);
 		if (mmc_bus_needs_resume(host)) {
-			spin_unlock_irqrestore(&host->lock, flags);
+			spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 			break;
 		}
 		host->rescan_disable = 1;
-		spin_unlock_irqrestore(&host->lock, flags);
+		spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 		if (cancel_delayed_work_sync(&host->detect))
 			wake_unlock(&host->detect_wake_lock);
 
@@ -2839,13 +2827,13 @@ int mmc_pm_notify(struct notifier_block *notify_block,
 	case PM_POST_HIBERNATION:
 	case PM_POST_RESTORE:
 
-		spin_lock_irqsave(&host->lock, flags);
+		spin_lock_irqsave(&host->alldev_claim->lock, flags);
 		if (mmc_bus_manual_resume(host)) {
-			spin_unlock_irqrestore(&host->lock, flags);
+			spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 			break;
 		}
 		host->rescan_disable = 0;
-		spin_unlock_irqrestore(&host->lock, flags);
+		spin_unlock_irqrestore(&host->alldev_claim->lock, flags);
 		mmc_detect_change(host, 0);
 
 	}

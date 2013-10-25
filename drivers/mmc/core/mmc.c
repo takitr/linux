@@ -846,7 +846,7 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 	u8 *ext_csd = NULL;
 
 	BUG_ON(!host);
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	/* Set correct bus mode for MMC before attempting init */
 	if (!mmc_host_is_spi(host))
@@ -1532,7 +1532,7 @@ int mmc_attach_mmc(struct mmc_host *host)
 	u32 ocr;
 
 	BUG_ON(!host);
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	/* Set correct bus mode for MMC before attempting attach */
 	if (!mmc_host_is_spi(host))

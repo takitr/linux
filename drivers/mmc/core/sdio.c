@@ -592,7 +592,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 	int retries = 10;
 
 	BUG_ON(!host);
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 try_again:
 	if (!retries) {
@@ -1081,6 +1081,7 @@ static const struct mmc_bus_ops mmc_sdio_ops = {
 	.alive = mmc_sdio_alive,
 };
 
+struct mmc_card* comm_card;
 
 /*
  * Starting point for SDIO card init.
@@ -1092,7 +1093,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 	struct mmc_card *card;
 
 	BUG_ON(!host);
-	WARN_ON(!host->claimed);
+	WARN_ON(!host->alldev_claim->claimed);
 
 	err = mmc_send_io_op_cond(host, 0, &ocr);
 	if (err)
@@ -1143,6 +1144,7 @@ int mmc_attach_sdio(struct mmc_host *host)
 			goto err;
 	}
 	card = host->card;
+	comm_card = card;
 
 	/*
 	 * Enable runtime PM only if supported by host+card+board
@@ -1252,6 +1254,18 @@ int sdio_reset_comm(struct mmc_card *card)
 	int err;
 
 	printk("%s():\n", __func__);
+    if (host == NULL) {
+        printk("\033[0;47;33m %s(): Error----card->host=NULL \033[0m\n", __func__);
+		err = -EINVAL;
+		goto err;
+    }
+
+    if (host->alldev_claim == NULL) {
+        printk("\033[0;47;33m %s(): Error----mmc_host->alldev_claim=NULL \033[0m\n", __func__);
+		err = -EINVAL;
+		goto err;
+    }
+
 	mmc_claim_host(host);
 
 	mmc_go_idle(host);
@@ -1281,3 +1295,13 @@ err:
 	return err;
 }
 EXPORT_SYMBOL(sdio_reset_comm);
+
+void sdio_reinit()
+{
+    if(comm_card){
+       sdio_reset_comm(comm_card);
+    }
+}
+EXPORT_SYMBOL(sdio_reinit);
+
+
