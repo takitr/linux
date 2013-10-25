@@ -223,7 +223,13 @@ static ssize_t _rmparser_write(const char __user *buf, size_t count)
                 WRITE_MPEG_REG(PARSER_CONTROL, (ES_SEARCH | ES_PARSER_START));
                 printk("reset parse_control=%x\n",READ_MPEG_REG(PARSER_CONTROL));
             }
-            return -EAGAIN;
+            if(parse_halt <= 10){/*drops first 10 pkt ,some times maybe no av data*/
+				 printk("drop this pkt=%d,len=%d\n",parse_halt,len);
+                p += len;
+                r -= len;
+            }else{
+                return -EAGAIN;
+            }
         }else{
             parse_halt = 0;
             p += len;
