@@ -210,7 +210,8 @@ s32 init_wr_node(struct i2c_client *client)
 
     register_i2c_func();
 
-    goodix_proc_entry = create_proc_entry(GOODIX_ENTRY_NAME, 0666, NULL);
+    //goodix_proc_entry = create_proc_entry(GOODIX_ENTRY_NAME, 0666, NULL);
+    goodix_proc_entry = proc_create(GOODIX_ENTRY_NAME, 0666, NULL, NULL);
     if (goodix_proc_entry == NULL)
     {
         GTP_ERROR("Couldn't create proc entry!");

@@ -391,12 +391,14 @@ int ct36x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ts = (struct ct36x_ts_info *)i2c_get_clientdata(client);
 
 	/* Create Proc Entry File */
-	ts->proc_entry = create_proc_entry(DRIVER_NAME, 0666/*S_IFREG | S_IRUGO | S_IWUSR*/, NULL);
+	//ts->proc_entry = create_proc_entry(DRIVER_NAME, 0666/*S_IFREG | S_IRUGO | S_IWUSR*/, NULL);
+	ts->proc_entry = proc_create(DRIVER_NAME, 0666/*S_IFREG | S_IRUGO | S_IWUSR*/, NULL, &ct36x_ts_fops);
 	if ( ts->proc_entry == NULL ) {
 		dev_err(dev, "Failed creating proc dir entry file.\n");
-	} else {
-		ts->proc_entry->proc_fops = &ct36x_ts_fops;
 	}
+	//else {
+		//ts->proc_entry->proc_fops = &ct36x_ts_fops;
+	//}
 
 	/* register early suspend */
 #ifdef CONFIG_HAS_EARLYSUSPEND
