@@ -16,7 +16,7 @@
 #define __TVIN_VDIN_CTL_H
 
 
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/vframe.h>
 
 #include "vdin_drv.h"
 

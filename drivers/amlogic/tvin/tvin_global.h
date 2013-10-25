@@ -16,7 +16,7 @@
 #ifndef __TVIN_GLOBAL_H
 #define __TVIN_GLOBAL_H
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 // ***************************************************************************
 // *** enum definitions *********************************************

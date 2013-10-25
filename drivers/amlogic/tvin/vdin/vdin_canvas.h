@@ -16,8 +16,8 @@
 
 #include <asm/sizes.h>
 
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
 
 #define VDIN_CANVAS_MAX_WIDTH			1920
 #define VDIN_CANVAS_MAX_HEIGH			2228

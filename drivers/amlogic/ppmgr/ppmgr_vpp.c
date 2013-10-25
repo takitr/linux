@@ -9,27 +9,27 @@
 #include <linux/timer.h>
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vfp.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/amlog.h>
-#include <linux/ge2d/ge2d_main.h>
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vfp.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
-#include <linux/sched.h>
+#include <linux/sched/rt.h>
 #include "ppmgr_log.h"
 #include "ppmgr_pri.h"
 #include "ppmgr_dev.h"
 #include <linux/mm.h>
-#include <linux/ppmgr/ppmgr.h>
-#include <linux/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/ppmgr/ppmgr.h>
+#include <linux/amlogic/ppmgr/ppmgr_status.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
@@ -92,7 +92,7 @@ static struct vframe_s *vfp_pool_free[VF_POOL_SIZE+1];
 static struct vframe_s *vfp_pool_ready[VF_POOL_SIZE+1];
 typedef struct buf_status_s{
 	int index;
-	int dirty; 
+	int dirty;
 }buf_status_t;
 static struct buf_status_s buf_status[VF_POOL_SIZE];
 
@@ -251,7 +251,7 @@ static int get_input_format(vframe_t* vf)
 {
     int format= GE2D_FORMAT_M24_YUV420;
     if(vf->type&VIDTYPE_VIU_422){
-#if 0    	
+#if 0
         if(vf->type &VIDTYPE_INTERLACE_BOTTOM){
             format =  GE2D_FORMAT_S16_YUV422|(GE2D_FORMAT_S16_YUV422B & (3<<3));
         }else if(vf->type &VIDTYPE_INTERLACE_TOP){
@@ -266,9 +266,9 @@ static int get_input_format(vframe_t* vf)
 			format = GE2D_FORMAT_S16_YUV422;
 		}else{
 			format = GE2D_FORMAT_S16_YUV422|(GE2D_FORMAT_S16_YUV422T & (3<<3));
-		} 
+		}
 #endif
-        
+
     }else if(vf->type&VIDTYPE_VIU_NV21){
         if(vf->type &VIDTYPE_INTERLACE_BOTTOM){
             format =  GE2D_FORMAT_M24_NV21|(GE2D_FORMAT_M24_NV21B & (3<<3));
@@ -447,8 +447,8 @@ void vf_local_init(void)
 
     for(i =0 ; i < VF_POOL_SIZE ;i++ ){
     	buf_status[i].index = ppmgr_canvas_tab[i];
-    	buf_status[i].dirty = 1;	
-    }  
+    	buf_status[i].dirty = 1;
+    }
     sema_init(&thread_sem,1);
 }
 
@@ -1354,7 +1354,7 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
             scaler_h = rect_h;
             for(i =0 ; i < VF_POOL_SIZE ;i++ ){
             	buf_status[i].index = ppmgr_canvas_tab[i];
-            	buf_status[i].dirty = 1;	
+            	buf_status[i].dirty = 1;
             }
             //printk("--ppmgr new rect x:%d, y:%d, w:%d, h:%d.\n", rect_x, rect_y, rect_w, rect_h);
         }
@@ -1374,13 +1374,13 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     }
 
     memset(ge2d_config,0,sizeof(config_para_ex_t));
-    
-    for(i =0 ; i < VF_POOL_SIZE ;i++ ){    	
+
+    for(i =0 ; i < VF_POOL_SIZE ;i++ ){
     	if(buf_status[i].index == new_vf->canvas0Addr){
     		break;
     	}
-    } 
-    
+    }
+
     if(buf_status[i].dirty == 1){
     	buf_status[i].dirty = 0;
     	//printk("--scale_clear_count is %d ------new_vf->canvas0Addr is %d ----------x:%d, y:%d, w:%d, h:%d.\n",scale_clear_count,new_vf->canvas0Addr, rect_x, rect_y, rect_w, rect_h);
@@ -1998,8 +1998,8 @@ static int process_vf_adjust(vframe_t *vf, ge2d_context_t *context, config_para_
     scale_clear_count = VF_POOL_SIZE;
     for(i =0 ; i < VF_POOL_SIZE ;i++ ){
     	buf_status[i].index = ppmgr_canvas_tab[i];
-    	buf_status[i].dirty = 1;	
-    }    
+    	buf_status[i].dirty = 1;
+    }
     scaler_x = rect_x;
     scaler_y = rect_y;
     scaler_w = rect_w;
@@ -2513,7 +2513,7 @@ int ppmgr_buffer_init(int vout_mode)
 	    if (ppmgr_device.disp_height == 0)
 	        ppmgr_device.disp_height = ppmgr_device.vinfo->height;
             if (get_platform_type() == PLATFORM_MID_VERTICAL) {
-                int DISP_SIZE = ppmgr_device.disp_width > ppmgr_device.disp_height ? 
+                int DISP_SIZE = ppmgr_device.disp_width > ppmgr_device.disp_height ?
                         ppmgr_device.disp_width : ppmgr_device.disp_height;
                 canvas_width = (DISP_SIZE + 0x1f) & ~0x1f;
                 canvas_height = (DISP_SIZE + 0x1f) & ~0x1f;

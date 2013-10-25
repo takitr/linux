@@ -9,7 +9,7 @@
 * it under the terms of the GNU General Public License version 2 as
 * published by the Free Software Foundation.
 */
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <linux/module.h>
 
 #include "isp_drv.h"

@@ -39,11 +39,11 @@
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
 
-#include <linux/osd/osd_dev.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/osd/osd_dev.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/canvas.h>
 #include "deinterlace.h"
 #include "deinterlace_module.h"
 /*for hisense patch*/
@@ -102,12 +102,12 @@ void reset_pulldown_state(void)
 void cal_pd_parameters(pulldown_detect_info_t* cur_info, pulldown_detect_info_t* pre_info, pulldown_detect_info_t* next_info,
                     pd_detect_threshold_t* pd_th)
 {
-    cur_info->frame_diff_skew = 
-        cur_info->frame_diff>pre_info->frame_diff ? cur_info->frame_diff-pre_info->frame_diff : 
-            pre_info->frame_diff-cur_info->frame_diff;  
-    cur_info->frame_diff_num_skew = 
+    cur_info->frame_diff_skew =
+        cur_info->frame_diff>pre_info->frame_diff ? cur_info->frame_diff-pre_info->frame_diff :
+            pre_info->frame_diff-cur_info->frame_diff;
+    cur_info->frame_diff_num_skew =
         cur_info->frame_diff_num>pre_info->frame_diff_num ? cur_info->frame_diff_num-pre_info->frame_diff_num :
-            pre_info->frame_diff_num-cur_info->frame_diff_num;  
+            pre_info->frame_diff_num-cur_info->frame_diff_num;
 
     cur_info->field_diff_by_pre = (cur_info->field_diff==0)?0xff:pre_info->field_diff/cur_info->field_diff;
     cur_info->field_diff_by_next = (cur_info->field_diff==0)?0xff:next_info->field_diff/cur_info->field_diff;
@@ -117,16 +117,16 @@ void cal_pd_parameters(pulldown_detect_info_t* cur_info, pulldown_detect_info_t*
     cur_info->frame_diff_num_by_pre = (cur_info->frame_diff_num==0)?0xff:pre_info->frame_diff_num/cur_info->frame_diff_num;
     cur_info->frame_diff_skew_ratio = (cur_info->frame_diff_skew==0)?0xff:cur_info->frame_diff/cur_info->frame_diff_skew;
     cur_info->frame_diff_num_skew_ratio = (cur_info->frame_diff_num_skew==0)?0xff:cur_info->frame_diff_num/cur_info->frame_diff_num_skew;
-    
-    if( cur_info->field_diff_by_pre         > 0xff) cur_info->field_diff_by_pre         = 0xff; 
-    if( cur_info->field_diff_by_next        > 0xff) cur_info->field_diff_by_next        = 0xff; 
-    if( cur_info->field_diff_num_by_pre     > 0xff) cur_info->field_diff_num_by_pre     = 0xff; 
-    if( cur_info->field_diff_num_by_next    > 0xff) cur_info->field_diff_num_by_next    = 0xff; 
-    if( cur_info->frame_diff_by_pre         > 0xff) cur_info->frame_diff_by_pre         = 0xff; 
-    if( cur_info->frame_diff_num_by_pre     > 0xff) cur_info->frame_diff_num_by_pre     = 0xff; 
-    if( cur_info->frame_diff_skew_ratio     > 0xff) cur_info->frame_diff_skew_ratio     = 0xff; 
-    if( cur_info->frame_diff_num_skew_ratio > 0xff) cur_info->frame_diff_num_skew_ratio = 0xff;  
-        
+
+    if( cur_info->field_diff_by_pre         > 0xff) cur_info->field_diff_by_pre         = 0xff;
+    if( cur_info->field_diff_by_next        > 0xff) cur_info->field_diff_by_next        = 0xff;
+    if( cur_info->field_diff_num_by_pre     > 0xff) cur_info->field_diff_num_by_pre     = 0xff;
+    if( cur_info->field_diff_num_by_next    > 0xff) cur_info->field_diff_num_by_next    = 0xff;
+    if( cur_info->frame_diff_by_pre         > 0xff) cur_info->frame_diff_by_pre         = 0xff;
+    if( cur_info->frame_diff_num_by_pre     > 0xff) cur_info->frame_diff_num_by_pre     = 0xff;
+    if( cur_info->frame_diff_skew_ratio     > 0xff) cur_info->frame_diff_skew_ratio     = 0xff;
+    if( cur_info->frame_diff_num_skew_ratio > 0xff) cur_info->frame_diff_num_skew_ratio = 0xff;
+
     cur_info->field_diff_pattern = pre_info->field_diff_pattern<<1;
     cur_info->field_diff_num_pattern = pre_info->field_diff_num_pattern<<1;
     cur_info->frame_diff_pattern = pre_info->frame_diff_pattern<<1;
@@ -147,7 +147,7 @@ void cal_pd_parameters(pulldown_detect_info_t* cur_info, pulldown_detect_info_t*
     if( cur_info->frame_diff_num_by_pre > pd_th->frame_diff_num_chg_th){
         cur_info->frame_diff_num_pattern |= 1;
     }
-        
+
 }
 
 static int check_p32_p22(pulldown_detect_info_t* cur_info, pulldown_detect_info_t* pre_info, pulldown_detect_info_t* pre2_info,
@@ -159,21 +159,21 @@ static int check_p32_p22(pulldown_detect_info_t* cur_info, pulldown_detect_info_
  	di_p32_info[idx] = di_p32_info[idx] << 1;
  	di_p32_info_2[idx] = di_p32_info_2[idx] << 1;
 
-	if ( cur_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff && 
-	        pre2_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff && 
-	        cur_info->field_diff_num*pd_th->field_diff_num_chg_th <= pre_info->field_diff_num && 
+	if ( cur_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff &&
+	        pre2_info->field_diff*pd_th->field_diff_chg_th <= pre_info->field_diff &&
+	        cur_info->field_diff_num*pd_th->field_diff_num_chg_th <= pre_info->field_diff_num &&
 	        pre2_info->field_diff_num*pd_th->field_diff_num_chg_th <= pre_info->field_diff_num ){
 		di_p22_info[idx] |= 1;
   }
 
-	if ( (di_p22_info[idx] & 0x1) && cur_info->frame_diff_skew*pd_th->frame_diff_skew_th <= cur_info->frame_diff 
+	if ( (di_p22_info[idx] & 0x1) && cur_info->frame_diff_skew*pd_th->frame_diff_skew_th <= cur_info->frame_diff
 	    && cur_info->frame_diff_num_skew*pd_th->frame_diff_num_skew_th <= cur_info->frame_diff_num ){
 		di_p22_info_2[idx] |= 1;
   }
 
 	if ( di_p32_counter[idx] > 0 || di_p32_info[idx] == 0 )
 	{
-		if ( cur_info->frame_diff*pd_th->frame_diff_chg_th <= pre_info->frame_diff && 
+		if ( cur_info->frame_diff*pd_th->frame_diff_chg_th <= pre_info->frame_diff &&
 		        cur_info->frame_diff_num*pd_th->frame_diff_num_chg_th <= pre_info->frame_diff_num )
 		{
 			di_p32_info[idx] |= 1;
@@ -186,14 +186,14 @@ static int check_p32_p22(pulldown_detect_info_t* cur_info, pulldown_detect_info_
 			last_big_frame_diff[idx] = 0;
 			last_big_frame_diff_num[idx] = 0;
 
-			if ( (di_p32_counter[idx] & 0x1) && cur_info->frame_diff_skew*pd_th->frame_diff_skew_th <= cur_info->frame_diff 
+			if ( (di_p32_counter[idx] & 0x1) && cur_info->frame_diff_skew*pd_th->frame_diff_skew_th <= cur_info->frame_diff
 			    && cur_info->frame_diff_num_skew*pd_th->frame_diff_num_skew_th <= cur_info->frame_diff_num )
 				di_p32_info_2[idx] |= 1;
 		}
 	}
 	else
 	{
-		if ( cur_info->frame_diff*pd_th->frame_diff_chg_th <= last_big_frame_diff[idx] && 
+		if ( cur_info->frame_diff*pd_th->frame_diff_chg_th <= last_big_frame_diff[idx] &&
 		    cur_info->frame_diff_num*pd_th->frame_diff_num_chg_th <= last_big_frame_diff_num[idx] )
 		{
 			di_p32_info[idx] |= 1;
@@ -204,14 +204,14 @@ static int check_p32_p22(pulldown_detect_info_t* cur_info, pulldown_detect_info_
 	di_p32_counter[idx]++;
 
 
-	return 0; 
+	return 0;
 }
 
 
 void pattern_check_pre_2(int idx, pulldown_detect_info_t* cur_info, pulldown_detect_info_t* pre_info, pulldown_detect_info_t* pre2_info,
                     int* pre_pulldown_mode, int* pre2_pulldown_mode, int* type,
                     pd_detect_threshold_t* pd_th)
-{ 
+{
 
 		check_p32_p22(cur_info, pre_info, pre2_info, pd_th, idx);
 
@@ -332,7 +332,7 @@ typedef struct{
     unsigned field_diff_num;
 }pd_his_t;
 
-static pd_his_t pd_his_pool[PD_HIS_NUM*2]; 
+static pd_his_t pd_his_pool[PD_HIS_NUM*2];
 static unsigned pd_his_wr_pos = 0;
 static unsigned pd_his_size = 0;
 
@@ -340,10 +340,10 @@ static unsigned pd_his_size = 0;
 
 void reset_pd_his(void)
 {
-    pd_his_wr_pos = 0;    
+    pd_his_wr_pos = 0;
     pd_his_size = 0;
 }
-    
+
 void insert_pd_his(pulldown_detect_info_t* pd_info)
 {
     pd_his_t* phis = &pd_his_pool[pd_his_wr_pos];
@@ -353,17 +353,17 @@ void insert_pd_his(pulldown_detect_info_t* pd_info)
     phis->field_diff_num = (phis+PD_HIS_NUM)->field_diff_num = pd_info->field_diff_num;
     pd_his_wr_pos++;
     if(pd_his_wr_pos >= PD_HIS_NUM){
-        pd_his_wr_pos = 0;    
-    } 
+        pd_his_wr_pos = 0;
+    }
     if(pd_his_size < PD_HIS_NUM){
         pd_his_size++;
     }
 }
 
 /* algorithm to detect pd32 */
-unsigned int pd32_match_num=0x10; 
+unsigned int pd32_match_num=0x10;
 unsigned int pd32_diff_num_0_th=1;
-unsigned int pd32_match_num_th; 
+unsigned int pd32_match_num_th;
 unsigned int pd32_debug_th =0;
 unsigned int pd22_th = 0x3;
 unsigned int pd22_num_th = 0x5;
@@ -372,7 +372,7 @@ unsigned int pd22_match_num = 0x5;
        A-odd
        A-even
        A-odd              cur_pd32_status = 1
-       B-even             cur_pd32_status = 2 
+       B-even             cur_pd32_status = 2
        B-odd              cur_pd32_status = 3
        C-even             cur_pd32_status = 4
        C-odd              cur_pd32_status = 5
@@ -380,7 +380,7 @@ unsigned int pd22_match_num = 0x5;
        D-odd
        D-even
     ...
-*/    
+*/
 static int cur_pd22_status = 0;
 
 static int cur_pd32_status = 0;
@@ -391,16 +391,16 @@ static unsigned int pd22_num = 0 ;
 void reset_pd32_status(void)
 {
     cur_pd22_status = 0;
-    cur_pd32_status = 0; 
+    cur_pd32_status = 0;
     last_small_frame_diff_num = 0;
     pattern_match_count = 0;
     pd32_diff_num_0_count = 0;
     /**/
-    pd32_match_num_th = pd32_match_num;    
-}    
+    pd32_match_num_th = pd32_match_num;
+}
 
 int detect_pd32(void)
-{ 
+{
     int blend_mode = -1;
     int i, ii;
     int  pd_pd1field = 0;
@@ -422,7 +422,7 @@ int detect_pd32(void)
 		    	(((phis_22-2*ii-1)->field_diff_num *pd22_th) > (phis_22-2*(ii+1))->field_diff_num))	{
 			blend_mode = -1;
 			break;
-			} 	                 	
+			}
 	        }
 	    }
 	    else if ((phis_22->field_diff_num*pd22_th) <=(phis_22-1)->field_diff_num)
@@ -433,10 +433,10 @@ int detect_pd32(void)
 		    	(((phis_22-2*ii-1)->field_diff_num) <=(( phis_22-2*ii-2)->field_diff_num * pd22_th)))	{
 			blend_mode = -1;
 			break;
-			} 	                 	
+			}
 	        }
 	     }
-            else 
+            else
             {
 	   	blend_mode = -1;
 */
@@ -465,7 +465,7 @@ int detect_pd32(void)
                 }
                 if(ii<5){
                     pattern_match_count--;
-                }            
+                }
             }
 
             tmp_count=phis->frame_diff_num;
@@ -475,7 +475,7 @@ int detect_pd32(void)
                 tmp_count+=(phis-ii)->frame_diff_num;
             }
             if((tmp_count==0)&&(ii==5)){
-                pd32_diff_num_0_count++;    
+                pd32_diff_num_0_count++;
                 if(pd32_diff_num_0_count>pd32_match_num){
                     pd32_diff_num_0_count=pd32_match_num;
                 }
@@ -494,20 +494,20 @@ int detect_pd32(void)
                     pattern_match_count=pd32_match_num;
                 }
             }
-            
+
             if((pattern_match_count<pd32_match_num_th)
                 ||(pd32_diff_num_0_count>pd32_diff_num_0_th)){
                 reset_pd32_status();
             }
             if(cur_pd32_status>0){
-                last_small_frame_diff_num = phis->frame_diff_num;    
+                last_small_frame_diff_num = phis->frame_diff_num;
             }
         }
     }
     if((cur_pd32_status==0)&&(pd_his_size>=pd32_pattern_len)){
         phis = pd_his(0,pd32_pattern_len);
         pd32_diff_num_0_count = 0;
-        pattern_match_count=0;        
+        pattern_match_count=0;
         for( i=0; i<pd32_pattern_len; i+=5){
             unsigned tmp_count=(phis+4)->frame_diff_num;
             for(ii=0;ii<4;ii++){
@@ -516,7 +516,7 @@ int detect_pd32(void)
                 tmp_count+=(phis+ii)->frame_diff_num;
             }
             if((tmp_count==0)&&(ii==4)){
-                pd32_diff_num_0_count++;    
+                pd32_diff_num_0_count++;
             }
             if(ii==4){
                 if((i+5)<pd32_pattern_len){
@@ -526,7 +526,7 @@ int detect_pd32(void)
                     }
                     if(ii==4){
                         pattern_match_count++;
-                    }    
+                    }
                 }
                 else{
                     pattern_match_count++;
@@ -536,7 +536,7 @@ int detect_pd32(void)
         }
         if((pattern_match_count>=pd32_match_num_th)
             &&(pd32_diff_num_0_count<=pd32_diff_num_0_th)){
-            cur_pd32_status = 1;  
+            cur_pd32_status = 1;
             last_small_frame_diff_num = pd_his(pd32_pattern_len-1,pd32_pattern_len)->frame_diff_num;
         }
     }
@@ -550,7 +550,7 @@ int detect_pd32(void)
     }
     /*for hisense static 1 filed output*/
     if ((blend_mode == -1) && pd_enable){
-        phis = pd_his(pd_pd1field_num-1,pd_pd1field_num);	    
+        phis = pd_his(pd_pd1field_num-1,pd_pd1field_num);
         cur_pd1field_status = 1;
         blend_mode = 2;
         if (cur_pd1field_status){
@@ -566,7 +566,7 @@ int detect_pd32(void)
         }
         else{
 	    pd_pd1field = 1;
-	    for (ii = 0; ii < pd_pd1field_num -1;ii ++){  
+	    for (ii = 0; ii < pd_pd1field_num -1;ii ++){
   	        if (((phis+ii)->field_diff_num > field_diff_thresh) && ((phis+ii)->frame_diff_num > frame_diff_thresh)){
 		  pd_pd1field = 0;
 		  break;
@@ -584,7 +584,7 @@ int detect_pd32(void)
                 cur_pd1field_status,blend_mode,(phis+ii)->field_diff_num,(phis+ii)->frame_diff_num);
         }
     }
-    
+
     return blend_mode;
-}    
+}
 

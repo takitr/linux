@@ -8,25 +8,25 @@
  *  Created: 2010/4/1   19:46
  *
  *******************************************************************/
-#include <linux/ppmgr/ppmgr.h>
-#include <linux/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/ppmgr/ppmgr.h>
+#include <linux/amlogic/ppmgr/ppmgr_status.h>
 #include <linux/platform_device.h>
-#include <linux/ge2d/ge2d_main.h>
-#include <linux/ge2d/ge2d.h>
-#include <linux/amlog.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d.h>
+#include <linux/amlogic/amlog.h>
 #include <linux/ctype.h>
-#include <linux/vout/vout_notify.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/vout/vout_notify.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 
 
 
 #include "ppmgr_log.h"
 #include "ppmgr_pri.h"
 #include "ppmgr_dev.h"
-#include <linux/ppmgr/ppmgr.h>
-#include <linux/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/ppmgr/ppmgr.h>
+#include <linux/amlogic/ppmgr/ppmgr_status.h>
 
 /***********************************************************************
 *

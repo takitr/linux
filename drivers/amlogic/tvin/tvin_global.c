@@ -13,7 +13,7 @@
  */
 
 #include <linux/module.h>
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "tvin_global.h"
 
 

@@ -25,9 +25,9 @@
 #include <linux/time.h>
 
 /* Amlogic Headers */
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 
 /* Local Headers */
 #include "../tvin_global.h"

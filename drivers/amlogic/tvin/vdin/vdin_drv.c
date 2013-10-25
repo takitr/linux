@@ -35,15 +35,15 @@
 #include <asm/div64.h>
 #include <linux/of.h>
 /* Amlogic Headers */
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/tsync.h>
-#include <linux/tvin/tvin_v4l2.h>
-#include <linux/aml_common.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/tsync.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
+#include <linux/amlogic/aml_common.h>
 #include <mach/irqs.h>
 #include <mach/mod_gate.h>
 /* Local Headers */

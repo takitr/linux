@@ -6,7 +6,7 @@
 #ifndef _TVAFE_ADC_H
 #define _TVAFE_ADC_H
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 //#define TVAFE_DEBUG_PIN_ENABLE
 #define TVAFE_ADC_CONFIGURE_INIT     1

@@ -1,7 +1,7 @@
 #ifndef _TVAFE_GENERAL_H
 #define _TVAFE_GENERAL_H
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "tvafe_cvd.h"
 
 // ***************************************************************************

@@ -15,7 +15,7 @@
 #define _TVHDMI_H
 
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"
 

@@ -28,12 +28,12 @@
 #include <linux/mutex.h>
 
 /* Amlogic headers */
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/tvin/tvin.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/tvin/tvin.h>
+#include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/vframe.h>
 
 /* Local include */
 #include "../tvin_frontend.h"

@@ -4,7 +4,7 @@
 #include <linux/interrupt.h>
 #include <linux/mm.h>
 
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 
 static struct vdin_v4l2_ops_s ops = {NULL};
 
@@ -16,7 +16,7 @@ int vdin_reg_v4l2(vdin_v4l2_ops_t *v4l2_ops)
         ret = memcpy(&ops,v4l2_ops,sizeof(vdin_v4l2_ops_t));
         if(ret)
                 return 0;
-        return -1;        
+        return -1;
 }
 EXPORT_SYMBOL(vdin_reg_v4l2);
 

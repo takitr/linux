@@ -3,19 +3,19 @@
 #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/platform_device.h>
-#include <linux/amports/timestamp.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vfp.h>
+#include <linux/amlogic/amports/timestamp.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vfp.h>
 #include <mach/am_regs.h>
-#include <linux/amlog.h>
-#include <linux/ge2d/ge2d.h>
-#include <linux/ge2d/ge2d_wq.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/ge2d/ge2d.h>
+#include <linux/amlogic/ge2d/ge2d_wq.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
@@ -23,8 +23,8 @@
 #include "ppmgr_log.h"
 #include "ppmgr_pri.h"
 #include "ppmgr_dev.h"
-#include <linux/ppmgr/ppmgr.h>
-#include <linux/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/ppmgr/ppmgr.h>
+#include <linux/amlogic/ppmgr/ppmgr_status.h>
 #include <linux/io.h>
 #define RECEIVER_NAME "ppmgr"
 #define PROVIDER_NAME   "ppmgr"

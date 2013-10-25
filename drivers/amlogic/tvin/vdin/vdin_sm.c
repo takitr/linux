@@ -17,7 +17,7 @@
 #include <linux/moduleparam.h>
 
 /* Amlogic Headers */
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 /* Local Headers */
 #include "../tvin_frontend.h"

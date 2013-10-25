@@ -21,7 +21,7 @@
 #include <linux/fs.h>
 
 /* Amlogic Headers */
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 
 #include "isp_drv.h"  
 
@@ -208,6 +208,7 @@ void set_af_parm(xml_algorithm_af_t *af_sw,char **parm)
 {
 	int len = AF_PARM_NUM;		
 	isp_param_t af[AF_PARM_NUM]={
+        #if 0
 		{"f0_coef0",      &af_sw->f0_coef0,      1, ISP_U32},
 		{"f0_coef1",      &af_sw->f0_coef1,      1, ISP_U32},
 		{"f0_coef2",      &af_sw->f0_coef2,      1, ISP_U32},
@@ -227,6 +228,7 @@ void set_af_parm(xml_algorithm_af_t *af_sw,char **parm)
 		{"f0_coef",       &af_sw->f0_coef,       1, ISP_U32},
 		{"f1_coef",       &af_sw->f1_coef,       1, ISP_U32},		
 		{"adapting_time", &af_sw->adapting_time, 1, ISP_U32},
+        #endif 
 	};
 	
 	if(!strcmp(parm[0],"show")){

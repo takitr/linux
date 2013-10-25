@@ -26,12 +26,12 @@
 #include <asm/atomic.h>
 #include <linux/module.h>
 
-#include <linux/amports/amstream.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
 #ifdef CONFIG_GAMMA_AUTO_TUNE
 #include <linux/amlogic/vout/lcdoutc.h>

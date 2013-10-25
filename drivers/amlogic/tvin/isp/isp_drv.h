@@ -24,7 +24,7 @@
 #include <linux/time.h>
 #include <linux/device.h>
 
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 

@@ -19,8 +19,8 @@ source "drivers/amlogic/input/Kconfig"
 source "drivers/amlogic/gpio/Kconfig"
 source "drivers/amlogic/pinctrl/Kconfig"
 source "drivers/amlogic/power/Kconfig"
-#source "drivers/amlogic/securitykeys/Kconfig"
-#source "drivers/amlogic/keymanage/Kconfig"
+source "drivers/amlogic/securitykeys/Kconfig"
+source "drivers/amlogic/keymanage/Kconfig"
 #source "drivers/amlogic/extern_io/Kconfig"
 #source "drivers/amlogic/minilvds/Kconfig"
 source "drivers/amlogic/efuse/Kconfig"
@@ -39,45 +39,45 @@ source "drivers/amlogic/efuse/Kconfig"
 source "drivers/amlogic/usb/Kconfig"
 #source "drivers/amlogic/cardreader/Kconfig"
 source "drivers/amlogic/mmc/Kconfig"
-#source "drivers/amlogic/spi_nor/Kconfig"
+source "drivers/amlogic/spi_nor/Kconfig"
 #source "drivers/amlogic/nand/Kconfig"
 source "drivers/amlogic/amlnf/Kconfig"
 
 #
 #	Network devices
 #
-#comment "Network devices"
-#source "drivers/amlogic/ethernet/Kconfig"
-#source "drivers/amlogic/wifi/Kconfig"
-#source "drivers/amlogic/bluetooth/Kconfig"
+comment "Network devices"
+source "drivers/amlogic/ethernet/Kconfig"
+source "drivers/amlogic/wifi/Kconfig"
+source "drivers/amlogic/bluetooth/Kconfig"
 #3G module power manager
 #source "drivers/amlogic/modem/Kconfig"
 
 #
 #  Audio
 #
-#comment "Audio devices"
+comment "Audio devices"
 source "drivers/amlogic/amaudio/Kconfig"
 source "drivers/amlogic/audiodsp/Kconfig"
 
 #
 #  Video
 #
-#comment "Video devices"
+comment "Video devices"
 source "drivers/amlogic/amports/Kconfig"
 source "drivers/amlogic/canvas/Kconfig"
 source "drivers/amlogic/display/Kconfig"
 source "drivers/amlogic/hdmi/Kconfig"
-#source "drivers/amlogic/tvin/Kconfig"
+source "drivers/amlogic/tvin/Kconfig"
 #source "drivers/amlogic/cmem/Kconfig"
 #source "drivers/amlogic/jpeglogo/Kconfig"
 #source "drivers/amlogic/dvb/Kconfig"
-#source "drivers/amlogic/ppmgr/Kconfig"
-#source "drivers/amlogic/camera/Kconfig"
-#source "drivers/amlogic/video_dev/Kconfig"
-#source "drivers/amlogic/deinterlace/Kconfig"
+source "drivers/amlogic/ppmgr/Kconfig"
+source "drivers/amlogic/camera/Kconfig"
+source "drivers/amlogic/video_dev/Kconfig"
+source "drivers/amlogic/deinterlace/Kconfig"
 #source "drivers/amlogic/freescale/Kconfig"
-#source "drivers/amlogic/mipi/Kconfig"
+source "drivers/amlogic/mipi/Kconfig"
 #source "drivers/amlogic/d2d3/Kconfig"
 #source "drivers/amlogic/amvecm/Kconfig"
 
@@ -87,7 +87,7 @@ source "drivers/amlogic/hdmi/Kconfig"
 #
 #	GPU
 #
-#comment "GPU (ARM Mali)"
+comment "GPU (ARM Mali)"
 #isource "drivers/amlogic/ump/Kconfig"
 #isource "drivers/amlogic/mali/Kconfig"
 #comment "GPU (ARM Mali (external))"
@@ -98,6 +98,6 @@ source "drivers/amlogic/ion_dev/Kconfig"
 #
 # crypto
 #
-#source "drivers/amlogic/crypto/Kconfig"
+source "drivers/amlogic/crypto/Kconfig"
 
 endmenu

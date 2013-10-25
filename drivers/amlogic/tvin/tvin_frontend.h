@@ -19,8 +19,8 @@
 #include <linux/list.h>
 
 /* Amlogic Headers */
-#include <linux/amports/vframe.h>
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 /* Local Headers */
 #include "tvin_global.h"

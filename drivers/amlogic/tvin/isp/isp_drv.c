@@ -26,7 +26,7 @@
 #include <linux/kthread.h>
 #include <linux/delay.h>
 /* Amlogic Headers */
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
 
 /* Local Headers */

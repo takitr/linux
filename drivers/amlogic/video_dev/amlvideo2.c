@@ -27,21 +27,22 @@
 #include <linux/kthread.h>
 #include <linux/highmem.h>
 #include <linux/freezer.h>
+#include <linux/platform_device.h>
 #include <media/videobuf-res.h>
 #include <media/videobuf-core.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <linux/types.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/ge2d/ge2d.h>
-#include <linux/amports/timestamp.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/ge2d/ge2d.h>
+#include <linux/amlogic/amports/timestamp.h>
 #include <linux/kernel.h>
-#include <linux/tvin/tvin_v4l2.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif

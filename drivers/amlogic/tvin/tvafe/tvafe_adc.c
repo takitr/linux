@@ -18,7 +18,7 @@
 
 #include <mach/am_regs.h>
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "../vdin/vdin_regs.h"
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"

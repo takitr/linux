@@ -19,7 +19,7 @@
 #include <linux/spinlock.h>
 #include <linux/device.h>
 /* Amlogic headers */
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/vframe.h>
 
 /* Local headers */
 #include "tvin_frontend.h"

@@ -22,8 +22,8 @@
 #include <linux/list.h>
 
 /* Amlogic Linux Headers */
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
 #define VF_LOG_EN
 
 #ifdef VF_LOG_EN

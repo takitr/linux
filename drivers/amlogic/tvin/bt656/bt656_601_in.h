@@ -14,7 +14,7 @@
 #ifndef __BT656_601_INPUT_H
 #define __BT656_601_INPUT_H
 #include <linux/cdev.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/pinmux.h>
 #include "../tvin_frontend.h"
 #include "../tvin_global.h"

@@ -11,7 +11,7 @@
  */
 #include <mach/am_regs.h>
 #include <linux/kernel.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include "isp_regs.h"
 #include "isp_hw.h"
 

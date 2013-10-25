@@ -6,7 +6,7 @@
 #ifndef _TVAFE_CVD_H
 #define _TVAFE_CVD_H
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 /***************************Local defines**********************************/
 /* cvd2 memory size defines */

@@ -40,7 +40,7 @@
 #include <mach/power_gate.h>
 
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 /* Local include */
 #include "hdmirx_drv.h"
 #include "hdmi_rx_reg.h"

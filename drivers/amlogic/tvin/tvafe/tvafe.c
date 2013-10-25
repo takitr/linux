@@ -27,12 +27,12 @@
 #include <linux/mm.h>
 
 /* Amlogic headers */
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/vframe.h>
 
 /* Local include */
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "../tvin_frontend.h"
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"

@@ -12,7 +12,7 @@
 #include <linux/timer.h>
 #include <linux/mutex.h>
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include "../tvin_global.h"
 #include "../tvin_frontend.h"
 #include "tvafe_general.h"   /* For Kernel used only */

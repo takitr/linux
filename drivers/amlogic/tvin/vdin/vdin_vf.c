@@ -25,7 +25,7 @@
 
 
 /* Amlogic Headers */
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/vframe.h>
 
 /* Local Headers */
 #include "vdin_vf.h"

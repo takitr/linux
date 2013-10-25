@@ -32,14 +32,14 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <linux/types.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
-#include <linux/ge2d/ge2d.h>
-#include <linux/amports/timestamp.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/ge2d/ge2d.h>
+#include <linux/amlogic/amports/timestamp.h>
 #include <linux/kernel.h>
-#include <linux/amports/tsync.h>
+#include <linux/amlogic/amports/tsync.h>
 
 #define AVMLVIDEO_MODULE_NAME "amlvideo"
 

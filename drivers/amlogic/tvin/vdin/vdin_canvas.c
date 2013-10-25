@@ -11,8 +11,8 @@
  */
 
 //#include <mach/dmc.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
 #include <linux/mm.h>
 
 #include "../tvin_format_table.h"

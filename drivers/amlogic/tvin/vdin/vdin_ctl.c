@@ -15,9 +15,9 @@
 #include <mach/am_regs.h>
 #include <mach/register.h>
 #include <mach/cpu.h>
-#include <linux/amports/canvas.h>
-#include <linux/tvin/tvin.h>
-#include <linux/aml_common.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/tvin/tvin.h>
+#include <linux/amlogic/aml_common.h>
 
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"

@@ -15,7 +15,7 @@
 #ifndef __TVIN_FORMAT_TABLE_H
 #define __TVIN_FORMAT_TABLE_H
 
-#include <linux/tvin/tvin.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 #include "tvin_global.h"
 extern const char * tvin_sig_fmt_str(enum tvin_sig_fmt_e fmt);
