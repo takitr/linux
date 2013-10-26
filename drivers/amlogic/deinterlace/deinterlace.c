@@ -179,7 +179,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static char version_s[] = "2013-10-15a";
+static char version_s[] = "2013-10-25a";
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 
@@ -1885,6 +1885,10 @@ static void dis2_di(void)
                     di_pre_stru.di_inp_buf = NULL;
                 }
                 di_uninit_buf();
+                di_set_power_control(0,0);
+                if(get_blackout_policy()){
+                    di_set_power_control(1,0);
+                }
                 di_unlock_irqfiq_restore(irq_flag2, fiq_flag);
                 spin_unlock_irqrestore(&plist_lock, flags);
 }
@@ -3105,14 +3109,14 @@ static void top_bot_config(di_buf_t* di_buf)
     vframe_t* vframe = di_buf->vframe;
     if(((invert_top_bot&0x1)!=0) && (!is_progressive(vframe))){
         if(di_buf->invert_top_bot_flag == 0){
-        if((vframe->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP){
-            vframe->type&=(~VIDTYPE_TYPEMASK);
-            vframe->type|=VIDTYPE_INTERLACE_BOTTOM;
-        }
-        else{
-            vframe->type&=(~VIDTYPE_TYPEMASK);
-            vframe->type|=VIDTYPE_INTERLACE_TOP;
-        }
+            if((vframe->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP){
+                vframe->type&=(~VIDTYPE_TYPEMASK);
+                vframe->type|=VIDTYPE_INTERLACE_BOTTOM;
+            }
+            else{
+                vframe->type&=(~VIDTYPE_TYPEMASK);
+                vframe->type|=VIDTYPE_INTERLACE_TOP;
+            }
             di_buf->invert_top_bot_flag = 1;
         }
     }
@@ -4163,6 +4167,9 @@ static int de_post_process(void* arg, unsigned zoom_start_x_lines,
     int hold_line = post_hold_line;
    	int post_blend_en, post_blend_mode;
 
+    if(di_get_power_control(1)==0){
+        return 0;        
+    }
     get_vscale_skip_count(zoom_start_x_lines);
 
     if(di_post_stru.vscale_skip_flag){
@@ -4335,6 +4342,9 @@ static int de_post_process_pd(void* arg, unsigned zoom_start_x_lines,
     int hold_line = post_hold_line;
    	int post_blend_mode;
 
+    if(di_get_power_control(1)==0){
+        return 0;        
+    }
     get_vscale_skip_count(zoom_start_x_lines);
 
     if(di_post_stru.vscale_skip_flag){
@@ -4487,6 +4497,9 @@ static int de_post_process_prog(void* arg, unsigned zoom_start_x_lines,
     int hold_line = post_hold_line;
    	int post_blend_mode;
 
+    if(di_get_power_control(1)==0){
+        return 0;        
+    }
     get_vscale_skip_count(zoom_start_x_lines);
 
     if(di_post_stru.vscale_skip_flag){
@@ -5434,6 +5447,10 @@ unreg:
                 di_print("%s: di_uninit_buf\n", __func__);
 #endif
                 di_uninit_buf();
+                di_set_power_control(0,0);
+                if(get_blackout_policy()){
+                    di_set_power_control(1,0);
+                }
                 di_unlock_irqfiq_restore(irq_flag2, fiq_flag);
 
 #if (!(defined RUN_DI_PROCESS_IN_IRQ))||(defined ENABLE_SPIN_LOCK_ALWAYS)
@@ -5467,6 +5484,10 @@ static void di_unreg_process_irq(void)
         di_print("%s: di_uninit_buf\n", __func__);
 #endif
         di_uninit_buf();
+        di_set_power_control(0,0);
+        if(get_blackout_policy()){
+            di_set_power_control(1,0);
+        }
         di_unlock_irqfiq_restore(irq_flag2, fiq_flag);
 
 #if (defined ENABLE_SPIN_LOCK_ALWAYS)
@@ -5509,6 +5530,9 @@ static void di_reg_process(void)
         vframe = vf_peek(VFM_NAME);
 
         if(vframe){
+            di_set_power_control(0,1);
+            di_set_power_control(1,1);
+            
             set_output_mode_info();
 /* add for di Reg re-init */
 #if defined(CONFIG_ARCH_MESON2)||(MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV)
@@ -6438,6 +6462,9 @@ static int di_probe(struct platform_device *pdev)
                     IRQF_SHARED, "timerC",
                     (void *)"timerC");
 #endif
+
+    di_set_power_control(0,0);
+    di_set_power_control(1,0);
     return r;
 }
 
@@ -6453,6 +6480,8 @@ static int di_remove(struct platform_device *pdev)
     vf_unreg_receiver(&di_vf_recv);
 
     di_uninit_buf();
+    di_set_power_control(0,0);
+    di_set_power_control(1,0);
     /* Remove the cdev */
     device_remove_file(di_device.dev, &dev_attr_config);
     device_remove_file(di_device.dev, &dev_attr_debug);
@@ -6475,13 +6504,19 @@ static int di_suspend(struct platform_device *pdev,pm_message_t state)
 {
 #if (defined RUN_DI_PROCESS_IN_IRQ)&&(!(defined FIQ_VSYNC))
     Wr_reg_bits(ISA_TIMER_MUX,0,18,1);// disable timer c
-#endif
+#endif    
+    di_set_power_control(0,0);
+    di_set_power_control(1,0);
     pr_info("di: di_suspend\n");
     return 0;
 }
 
 static int di_resume(struct platform_device *pdev)
 {
+    if(init_flag){
+        di_set_power_control(0,1);
+        di_set_power_control(1,1);
+    }
 #if (defined RUN_DI_PROCESS_IN_IRQ)&&(!(defined FIQ_VSYNC))
     Wr_reg_bits(ISA_TIMER_MUX,0,14,1);// one time
     Wr_reg_bits(ISA_TIMER_MUX,0,4,2);// 1us

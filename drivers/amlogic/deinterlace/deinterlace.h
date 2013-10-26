@@ -410,6 +410,7 @@ extern int nr_hfilt_en;
 #define DI_LOG_VFRAME       0x80
 
 extern unsigned int di_log_flag;
+extern unsigned int di_debug_flag;
 
 int di_print(const char *fmt, ...);
 
@@ -432,5 +433,9 @@ typedef struct reg_cfg_{
 }reg_cfg_t;
 
 int get_current_vscale_skip_count(vframe_t* vf);
+
+void di_set_power_control(unsigned char type, unsigned char enable);
+
+unsigned char di_get_power_control(unsigned char type);
 
 #endif

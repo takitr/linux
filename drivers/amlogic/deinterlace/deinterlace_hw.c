@@ -2104,6 +2104,35 @@ void di_post_read_reverse_irq(bool reverse)
     }
 }
 
+static unsigned char pre_power_on = 0;
+static unsigned char post_power_on = 0;
+void di_set_power_control(unsigned char type, unsigned char enable)
+{
+		if(di_debug_flag&0x20){
+		    return;
+		}
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    if(type==0){
+        WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 26, 2); //di pre
+        pre_power_on = enable;
+    }
+    else{
+        WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 28, 2); //di post
+        post_power_on = enable;
+    }
+#endif    
+}
+
+unsigned char di_get_power_control(unsigned char type)
+{
+    if(type==0){
+        return pre_power_on;
+    }
+    else{
+        return post_power_on;
+    }
+    
+}    
 
 #ifdef DI_POST_SKIP_LINE
 MODULE_PARM_DESC(di_vscale_skip_mode, "\n di_vscale_skip_mode\n");
