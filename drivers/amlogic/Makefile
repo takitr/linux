@@ -28,7 +28,7 @@ obj-y += keymanage/
 obj-y += uart/
 obj-y += of/
 obj-y += usb/
-#obj-y += cpufreq/
+obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
@@ -97,7 +97,7 @@ ifneq ($(CONFIG_AM_NEW_TV_ARCH),y)
 endif
 
 obj-$(CONFIG_AM_WIFI) += wifi/
-#obj-y += bluetooth/
+obj-y += bluetooth/
 #obj-y += camera/
 #obj-$(CONFIG_AMLOGIC_MODEM) += modem/
 #obj-$(CONFIG_AM_DEBUG) += debug/
@@ -122,4 +122,4 @@ obj-$(CONFIG_MALI400) += ../../../hardware/arm/gpu/mali/
 
 obj-$(CONFIG_AMLOGIC_ION) += ion_dev/
 
-#obj-y += crypto/
+obj-y += crypto/
