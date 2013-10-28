@@ -239,7 +239,29 @@ static Hdmi_tx_video_para_t hdmi_tx_video_params[] =
         .ss             = SS_SCAN_UNDER,   
         .sc             = SC_SCALE_HORIZ_VERT,
     },
-    { 
+    {
+        .VIC            = HDMI_4k2k_30,
+        .color_prefer   = COLOR_SPACE_RGB444,
+        .color_depth    = COLOR_24BIT,
+        .bar_info       = B_BAR_VERT_HORIZ,
+        .repeat_time    = NO_REPEAT,
+        .aspect_ratio   = TV_ASPECT_RATIO_16_9,
+        .cc             = CC_ITU709,
+        .ss             = SS_SCAN_UNDER,
+        .sc             = SC_SCALE_HORIZ_VERT,
+    },
+    {
+        .VIC            = HDMI_4k2k_25,
+        .color_prefer   = COLOR_SPACE_RGB444,
+        .color_depth    = COLOR_24BIT,
+        .bar_info       = B_BAR_VERT_HORIZ,
+        .repeat_time    = NO_REPEAT,
+        .aspect_ratio   = TV_ASPECT_RATIO_16_9,
+        .cc             = CC_ITU709,
+        .ss             = SS_SCAN_UNDER,
+        .sc             = SC_SCALE_HORIZ_VERT,
+    },
+    {
         .VIC            = HDMI_4k2k_24,
         .color_prefer   = COLOR_SPACE_RGB444,
         .color_depth    = COLOR_24BIT,
@@ -247,7 +269,18 @@ static Hdmi_tx_video_para_t hdmi_tx_video_params[] =
         .repeat_time    = NO_REPEAT,
         .aspect_ratio   = TV_ASPECT_RATIO_16_9,
         .cc             = CC_ITU709,
-        .ss             = SS_SCAN_UNDER,   
+        .ss             = SS_SCAN_UNDER,
+        .sc             = SC_SCALE_HORIZ_VERT,
+    },
+    {
+        .VIC            = HDMI_4k2k_smpte,
+        .color_prefer   = COLOR_SPACE_RGB444,
+        .color_depth    = COLOR_24BIT,
+        .bar_info       = B_BAR_VERT_HORIZ,
+        .repeat_time    = NO_REPEAT,
+        .aspect_ratio   = TV_ASPECT_RATIO_16_9,
+        .cc             = CC_ITU709,
+        .ss             = SS_SCAN_UNDER,
         .sc             = SC_SCALE_HORIZ_VERT,
     },
 };
@@ -300,7 +333,7 @@ static void hdmi_tx_construct_avi_packet(Hdmi_tx_video_para_t *video_param, char
     //AVI_DB[2] = 0;
 
     AVI_DB[3] = video_param->VIC;
-    if(video_param->VIC == HDMI_4k2k_24)
+    if((video_param->VIC == HDMI_4k2k_30) || (video_param->VIC == HDMI_4k2k_25) || (video_param->VIC == HDMI_4k2k_24) || (video_param->VIC == HDMI_4k2k_smpte))
         AVI_DB[3] = 0;      // HDMI Spec V1.4b P151
 
     AVI_DB[4] = video_param->repeat_time;
@@ -419,8 +452,8 @@ int hdmitx_set_display(hdmitx_dev_t* hdmitx_device, HDMI_Video_Codes_t VideoCode
             }
 
             hdmi_tx_construct_avi_packet(param, (char*)AVI_DB);
-            
-            if(VideoCode == HDMI_4k2k_24) {
+
+            if((VideoCode == HDMI_4k2k_30) || (VideoCode == HDMI_4k2k_25) || (VideoCode == HDMI_4k2k_24) || (VideoCode == HDMI_4k2k_smpte)) {
                 hdmi_set_vend_spec_infofram(hdmitx_device, VideoCode);
             }
             else {
@@ -461,8 +494,17 @@ static void hdmi_set_vend_spec_infofram(hdmitx_dev_t* hdmitx_device, HDMI_Video_
         hdmitx_device->HWOp.SetPacket(HDMI_PACKET_VEND, NULL, VEN_HB);
         return ;
     }
-    if(VideoCode == HDMI_4k2k_24)
+    if(VideoCode == HDMI_4k2k_30)
+        VEN_DB[4] = 0x1;
+    else if(VideoCode == HDMI_4k2k_25)
+        VEN_DB[4] = 0x2;
+    else if(VideoCode == HDMI_4k2k_24)
         VEN_DB[4] = 0x3;
+    else if(VideoCode == HDMI_4k2k_smpte)
+        VEN_DB[4] = 0x4;
+    else {
+        // nothing
+    }
     hdmitx_device->HWOp.SetPacket(HDMI_PACKET_VEND, VEN_DB, VEN_HB);
 }
 
