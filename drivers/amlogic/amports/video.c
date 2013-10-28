@@ -61,6 +61,10 @@
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#include <mach/vpu.h>
+#endif
+
 #include "videolog.h"
 
 #ifdef CONFIG_AM_VIDEO_LOG
@@ -130,10 +134,10 @@ static u32 next_peek_underflow;
 #define RESERVE_CLR_FRAME
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-#define VD1_MEM_POWER_ON() CLEAR_CBUS_REG_MASK(HHI_VPU_MEM_PD_REG0, 0x30)
-#define VD2_MEM_POWER_ON() CLEAR_CBUS_REG_MASK(HHI_VPU_MEM_PD_REG0, 0xc0)
-#define VD1_MEM_POWER_OFF() SET_CBUS_REG_MASK(HHI_VPU_MEM_PD_REG0, 0x30)
-#define VD2_MEM_POWER_OFF() SET_CBUS_REG_MASK(HHI_VPU_MEM_PD_REG0, 0xc0)
+#define VD1_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_ON)
+#define VD2_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_ON)
+#define VD1_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN)
+#define VD2_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN)
 #else
 #define VD1_MEM_POWER_ON()
 #define VD2_MEM_POWER_ON()
