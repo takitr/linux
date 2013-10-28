@@ -38,5 +38,6 @@ struct mmc_partitions_fmt {
 };
 
 int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk);
+unsigned int mmc_capacity (struct mmc_card *card);
 
 #endif

@@ -50,6 +50,7 @@ struct amlsd_platform {
 	unsigned int width;
 	unsigned int caps;
 	unsigned int caps2;
+    unsigned int card_capacity;
 
 	unsigned int f_min;
 	unsigned int f_max;

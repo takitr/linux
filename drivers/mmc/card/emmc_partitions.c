@@ -7,8 +7,7 @@
 #include <linux/genhd.h>
 #include <linux/blkdev.h>
 #include <linux/scatterlist.h>
-
-#include "emmc_partitions.h"
+#include <linux/mmc/emmc_partitions.h>
 
 #include <mach/am_regs.h>
 #include <mach/sd.h>
@@ -78,7 +77,7 @@ static void mmc_prepare_mrq(struct mmc_card *card,
     mmc_set_data_timeout(mrq->data, card);
 }
 
-static unsigned int mmc_capacity (struct mmc_card *card)
+unsigned int mmc_capacity (struct mmc_card *card)
 {
     if (!mmc_card_sd(card) && mmc_card_blockaddr(card))
         return card->ext_csd.sectors;
