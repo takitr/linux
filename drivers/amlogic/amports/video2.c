@@ -2860,8 +2860,13 @@ static int __init video2_early_init(void)
     	WRITE_MPEG_REG(VPP2_HOLD_LINES, 0x08080808);
     }
 
-   	WRITE_MPEG_REG_BITS(VPP2_OFIFO_SIZE, 0x780,
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+   	WRITE_VCBUS_REG_BITS(VPP2_OFIFO_SIZE, 0x800,
                         VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
+#else
+   	WRITE_VCBUS_REG_BITS(VPP2_OFIFO_SIZE, 0x780,
+                        VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
+#endif                        
                         
    	//WRITE_MPEG_REG_BITS(VPU_OSD3_MMC_CTRL, 1, 12, 2); //select vdisp_mmc_arb for VIU2_OSD1 request
    	WRITE_MPEG_REG_BITS(VPU_OSD3_MMC_CTRL, 2, 12, 2); // select vdin_mmc_arb for VIU2_OSD1 request
