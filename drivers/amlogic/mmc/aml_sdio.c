@@ -116,9 +116,9 @@ void aml_sdio_read_response(struct amlsd_platform * pdata, struct mmc_request *m
          * When we read last block in multi-blocks-mode, 
          * it will cause "ADDRESS_OUT_OF_RANGE" error in card status, we must clear it.
          */
-        if ((cmd->resp[0] & 0x80000000) // status error: address out of range
+        if ((cmd->resp[0] & R1_OUT_OF_RANGE) // status error: address out of range
                 && (mrq->data) && (is_card_last_block(pdata, cmd->arg, mrq->data->blocks))) {
-            cmd->resp[0] &= (~0x80000000); // clear the error
+            cmd->resp[0] &= (~R1_OUT_OF_RANGE); // clear the error
         }
     }
 }
