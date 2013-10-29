@@ -277,6 +277,14 @@ static void meson_vout_late_resume(struct early_suspend *h)
 **	vout driver interface  
 **
 ******************************************************************/
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#define VPP_OFIFO_SIZE_WID          13
+#else
+#define VPP_OFIFO_SIZE_WID          12
+#endif // MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#define VPP_OFIFO_SIZE_MASK         0xfff
+#define VPP_OFIFO_SIZE_BIT          0
+
 static int 
  meson_vout_probe(struct platform_device *pdev)
 {
