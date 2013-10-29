@@ -27,7 +27,7 @@
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
-#include <linux/aml_bl.h>
+//#include <linux/aml_bl.h>
 #include <linux/delay.h>
 #include <mach/usbclock.h>
 #include <mach/am_regs.h>
