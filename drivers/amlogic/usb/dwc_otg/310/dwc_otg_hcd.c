@@ -58,9 +58,9 @@ void dwc_otg_hcd_connect_timeout(void *ptr)
 	DWC_PRINTF("Connect Timeout\n");
 	__DWC_ERROR("Device Not Connected/Responding\n");
 	/** Remove buspower after 10s */
-	hcd = ptr;
-	if (hcd->core_if->otg_ver)
-		dwc_otg_set_prtpower(hcd->core_if, 0);
+//	hcd = ptr;
+//	if (hcd->core_if->otg_ver)
+//		dwc_otg_set_prtpower(hcd->core_if, 0);
 }
 
 #ifdef DEBUG
