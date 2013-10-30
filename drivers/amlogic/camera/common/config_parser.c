@@ -19,6 +19,7 @@ char *scenes_key = "scenes_start";
 char *wb_key = "wb_start";
 char *wave_key = "wave_start";
 char *lenc_key = "lenc_start";
+char *gamma_key = "gamma_start";
 
 typedef struct{
 	char *buffer;
@@ -823,6 +824,41 @@ int parse_lenc(buffer_para_t *buf_para,int *remained,int *offset){
      return 0;
 }
 
+int parse_gamma(buffer_para_t *buf_para,int *remained,int *offset){
+    int i;
+    char *iter;
+
+    iter = search_string(buf_para,offset,remained,"gamma_start","gamma_end");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    /***parser head***/
+    iter = strstr(iter,"export");
+    iter += 7;
+    for(i=0;i<GAMMA_MAX;i++){
+        sscanf(iter,"%x",&(cf->gamma.gamma_r[i]));
+        iter = strstr(iter,",");
+        if(iter == NULL)
+            break;
+        iter += 1;
+    }
+    for(i=0;i<GAMMA_MAX;i++){
+        sscanf(iter,"%x",&(cf->gamma.gamma_g[i]));
+        iter = strstr(iter,",");
+        if(iter == NULL)
+            break;
+        iter += 1;
+    }
+    for(i=0;i<GAMMA_MAX;i++){
+        sscanf(iter,"%x",&(cf->gamma.gamma_b[i]));
+        iter = strstr(iter,",");
+        if(iter == NULL)
+            break;
+        iter += 1;
+    }
+    return 0;
+}
+
 int parse_config(char *path){
     char *buffer,*iter;
     int file_size;
@@ -951,7 +987,7 @@ int parse_config(char *path){
                     buf_para.data_start += strlen(capture_key);
                 }
                 break;		
-						case 'l':
+            case 'l':
                 if(memcmp(iter,lenc_key,strlen(lenc_key)) == 0){
                     cf->lenc_valid = 1;
                     if((ret = parse_lenc(&buf_para,&remained_size,&read_offset)) != 0){
@@ -962,6 +998,17 @@ int parse_config(char *path){
                     buf_para.data_start += strlen(lenc_key);
                 }
                 break;
+            case 'g':
+                if(memcmp(iter,gamma_key,strlen(gamma_key)) == 0){
+                    cf->gamma_valid = 1;
+                    if((ret = parse_gamma(&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->gamma_valid = 0;
+                        printk("gamma invalid :%d\n",ret);									
+                    }
+                }else{
+                    buf_para.data_start += strlen(gamma_key);
+                }
+                break;             
             default:
                 buf_para.data_start += 1;
                 break;		
@@ -1065,19 +1112,18 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
     xml_wb_manual_t *wb;
     xml_capture_t *capture;
     wave_t *wave;
-    
-   	//memset(para,0,sizeof(*para));
+
     /**init callback func**/
     para->cam_function.set_af_new_step = NULL;
     if(cf->aet_valid == 1){
-	    para->cam_function.get_aet_current_step = get_aet_current_step;
-	    para->cam_function.get_aet_max_step = get_aet_max_step;
-	    para->cam_function.get_aet_current_gain = get_aet_current_gain;
-	    para->cam_function.get_aet_min_gain = get_aet_min_gain;
-	    para->cam_function.get_aet_max_gain = get_aet_max_gain;
-	    para->cam_function.get_aet_gain_by_step = get_aet_new_gain;
+        para->cam_function.get_aet_current_step = get_aet_current_step;
+        para->cam_function.get_aet_max_step = get_aet_max_step;
+        para->cam_function.get_aet_current_gain = get_aet_current_gain;
+        para->cam_function.get_aet_min_gain = get_aet_min_gain;
+        para->cam_function.get_aet_max_gain = get_aet_max_gain;
+        para->cam_function.get_aet_gain_by_step = get_aet_new_gain;
 
-   }
+    }
     /**init scenes**/
     if(cf->scene_valid == 1){
         if((para->xml_scenes = kmalloc(sizeof(xml_scenes_t),0)) == NULL){
@@ -1092,37 +1138,51 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
         para->xml_scenes = NULL;
     }
 
-     /**init hw**/
+    /**init hw**/
     if(cf->hw_valid == 1){
-    	if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
-    		printk("alloc mem failed\n");
-    		return 	-ENOMEM;
-    	}
-	    reg = para->xml_regs_map;
-	    init_hw_para(reg);
-	    for(i = 0; i < cf->hw.sum; i++){
-	        if((strcmp(hw_para[i].name,cf->hw.hw[i].name)) == 0){
-	            for(j = 0; j < hw_para[i].size; j++){
-	                hw_para[i].array[j] = cf->hw.hw[i].export[j];
-	            }
-	        }				
-	    }
-	   
-  }else{
-      para->xml_regs_map = NULL;
-  }
-  /** init lenc **/
-  if(cf->lenc_valid == 1){
-  	if(para->xml_regs_map == NULL){
-    	if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
-    		printk("alloc mem failed\n");
-    		return 	-ENOMEM;
-    	}
+        if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+            printk("alloc mem failed\n");
+            return 	-ENOMEM;
+        }
+        reg = para->xml_regs_map;
+        init_hw_para(reg);
+        for(i = 0; i < cf->hw.sum; i++){
+            if((strcmp(hw_para[i].name,cf->hw.hw[i].name)) == 0){
+                for(j = 0; j < hw_para[i].size; j++){
+                    hw_para[i].array[j] = cf->hw.hw[i].export[j];
+                }
+            }				
+        }
+
+    }else{
+        para->xml_regs_map = NULL;
     }
-	  reg = para->xml_regs_map;
-	  memcpy(reg->lnsd.reg_map,cf->lenc.export,1024*sizeof(unsigned int));
-	   
-  }
+    /** init lenc **/
+    if(cf->lenc_valid == 1){
+        if(para->xml_regs_map == NULL){
+            if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+                printk("alloc mem failed\n");
+                return 	-ENOMEM;
+            }
+        }
+        reg = para->xml_regs_map;
+        memcpy(reg->lnsd.reg_map,cf->lenc.export,1024*sizeof(unsigned int));
+
+    }
+
+    /** init lenc **/
+    if(cf->gamma_valid == 1){
+        if(para->xml_regs_map == NULL){
+            if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+                printk("alloc mem failed\n");
+                return 	-ENOMEM;
+            }
+        }
+        reg = para->xml_regs_map;
+        memcpy(reg->lut_gc.gamma_r,cf->gamma.gamma_r,GAMMA_MAX*sizeof(unsigned short));
+        memcpy(reg->lut_gc.gamma_g,cf->gamma.gamma_g,GAMMA_MAX*sizeof(unsigned short));
+        memcpy(reg->lut_gc.gamma_b,cf->gamma.gamma_b,GAMMA_MAX*sizeof(unsigned short)); 
+    } 
     /**init effect**/
     if(cf->effect_valid == 1){
         if((para->xml_effect_manual = kmalloc(sizeof(xml_effect_manual_t),0)) == NULL){
@@ -1145,25 +1205,25 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
     }else{
         para->xml_wb_manual = NULL;
     }
-    
+
     /**init capture**/
-     if(cf->capture_valid == 1){
-  		if((para->xml_capture = kmalloc(sizeof(xml_capture_t),0)) == NULL){
-	  		printk("alloc mem failed\n");
-	  		return 	-ENOMEM;
-    	}
-    	capture = para->xml_capture;
-    	capture->ae_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
-    	capture->awb_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[1]);
-    	capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
-    	capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
-    	capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
-    	capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
-    	capture->eyetime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[6]);
-    	capture->pretime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[7]);
-    	capture->postime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[8]);
+    if(cf->capture_valid == 1){
+        if((para->xml_capture = kmalloc(sizeof(xml_capture_t),0)) == NULL){
+            printk("alloc mem failed\n");
+            return 	-ENOMEM;
+        }
+        capture = para->xml_capture;
+        capture->ae_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
+        capture->awb_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[1]);
+        capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
+        capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
+        capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
+        capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+        capture->eyetime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[6]);
+        capture->pretime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[7]);
+        capture->postime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[8]);
     }else{
-    	para->xml_capture = NULL;
+        para->xml_capture = NULL;
     }
     /**init wave**/
     if(cf->wave_valid == 1){
@@ -1175,9 +1235,7 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
         memcpy(wave,cf->wave.export,12*sizeof(unsigned int));
     }else{
         para->xml_wave = NULL;
-    }
-    
-    
+    }  
     return 0;
 }
 

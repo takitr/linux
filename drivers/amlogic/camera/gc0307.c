@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -36,21 +37,15 @@
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
 #include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gc0307_early_suspend;
 #endif
 
 #define GC0307_CAMERA_MODULE_NAME "gc0307"
@@ -351,10 +346,10 @@ struct gc0307_fh {
 	unsigned int f_flags;
 };
 
-static inline struct gc0307_fh *to_fh(struct gc0307_device *dev)
+/*static inline struct gc0307_fh *to_fh(struct gc0307_device *dev)
 {
 	return container_of(dev, struct gc0307_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc0307_prev_resolution[2]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -1062,7 +1057,7 @@ void set_GC0307_param_wb(struct gc0307_device *dev,enum  camera_wb_flip_e para)
 	unsigned char  temp_reg;
 	//temp_reg=gc0307_read_byte(0x22);
 	buf[0]=0x41;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	temp_reg=i2c_get_byte_add8(client,buf[0]);
 
 	printk(" camera set_GC0307_param_wb=%d. \n ",para);
 	
@@ -1185,31 +1180,18 @@ void set_GC0307_param_wb(struct gc0307_device *dev,enum  camera_wb_flip_e para)
 *************************************************************************/
 void GC0307_night_mode(struct gc0307_device *dev,enum  camera_night_mode_flip_e enable)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
 
-	unsigned char  temp_reg;
-	//temp_reg=gc0307_read_byte(0x22);
-	//buf[0]=0x20;
-	//temp_reg=i2c_get_byte_add8(client,buf);
-	//temp_reg=0xff;
-
-    if(enable)
-    {
+	if(enable) {
 		buf[0]=0xdd;
 		buf[1]=0x32;
-		i2c_put_byte_add8(client,buf,2);
-	
-     }
-    else
-     {
+		i2c_put_byte_add8(client,buf,2);	
+	} else {
 		buf[0]=0xdd;
 		buf[1]=0x12;
 		i2c_put_byte_add8(client,buf,2);
-
-
 	}
-
 }
 /*************************************************************************
 * FUNCTION
@@ -1228,7 +1210,7 @@ void GC0307_night_mode(struct gc0307_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void GC0307_set_param_banding(struct gc0307_device *dev,enum  camera_night_mode_flip_e banding)
+void GC0307_set_param_banding(struct gc0307_device *dev,enum  camera_banding_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     unsigned char buf[4];
@@ -1308,6 +1290,8 @@ void GC0307_set_param_banding(struct gc0307_device *dev,enum  camera_night_mode_
             buf[0]=0x2f;
             buf[1]=0xb0;
             i2c_put_byte_add8(client,buf,2);
+            break;
+        default:
             break;
     }
 }
@@ -1419,15 +1403,17 @@ void set_GC0307_param_exposure(struct gc0307_device *dev,enum camera_exposure_e 
 * RETURNS
 *	None
 *
-* GLOBALS AFFECTED  脤效虏脦媒***********************************************************************/
-void set_GC0307_param_effect(struct gc0307_device *dev,enum camera_effect_flip_e para)//脤效脡脰
+* GLOBALS AFFECTED  特效参数
+*
+*************************************************************************/
+void set_GC0307_param_effect(struct gc0307_device *dev,enum camera_effect_flip_e para)//特效设置
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
 	unsigned char  temp_reg;
 	
 	buf[0]=0x47;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	temp_reg = i2c_get_byte_add8(client, buf[0]);
 
 	if((para == CAM_EFFECT_ENC_NORMAL) || (para == CAM_EFFECT_ENC_COLORINV))        
 	{
@@ -1849,48 +1835,7 @@ unsigned char v4l_2_gc0307(int val)
 static int gc0307_setting(struct gc0307_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
-#if 0
-	case V4L2_CID_BRIGHTNESS:
-		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_gc0307(value));
-		ret=i2c_put_byte(client,0x0201,v4l_2_gc0307(value));
-		break;
-	case V4L2_CID_CONTRAST:
-		ret=i2c_put_byte(client,0x0200, value);
-		break;
-	case V4L2_CID_SATURATION:
-		ret=i2c_put_byte(client,0x0202, value);
-		break;
-	case V4L2_CID_HFLIP:    /* set flip on H. */
-		ret=i2c_get_byte(client,0x0101);
-		if(ret>0) {
-			cur_val=(char)ret;
-			if(value!=0)
-				cur_val=cur_val|0x1;
-			else
-				cur_val=cur_val&0xFE;
-			ret=i2c_put_byte(client,0x0101,cur_val);
-			if(ret<0) dprintk(dev, 1, "V4L2_CID_HFLIP setting error\n");
-		}  else {
-			dprintk(dev, 1, "vertical read error\n");
-		}
-		break;
-	case V4L2_CID_VFLIP:    /* set flip on V. */
-		ret=i2c_get_byte(client,0x0101);
-		if(ret>0) {
-			cur_val=(char)ret;
-			if(value!=0)
-				cur_val=cur_val|0x10;
-			else
-				cur_val=cur_val&0xFD;
-			ret=i2c_put_byte(client,0x0101,cur_val);
-		} else {
-			dprintk(dev, 1, "vertical read error\n");
-		}
-		break;
-#endif
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(gc0307_qctrl[0].default_value!=value){
 			gc0307_qctrl[0].default_value=value;
@@ -1955,7 +1900,7 @@ static int gc0307_setting(struct gc0307_device *dev,int PROP_ID,int value )
 
 }
 
-static void power_down_gc0307(struct gc0307_device *dev)
+/*static void power_down_gc0307(struct gc0307_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
@@ -1968,7 +1913,7 @@ static void power_down_gc0307(struct gc0307_device *dev)
 	
 	msleep(5);
 	return;
-}
+}*/
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -2283,7 +2228,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 					struct v4l2_frmivalenum *fival)
 {
-	struct gc0307_fmt *fmt;
 	unsigned int k;
 	
 	if(fival->index > ARRAY_SIZE(gc0307_frmivalenum))
@@ -2403,8 +2347,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct gc0307_fh *fh = priv;
 	struct gc0307_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
 	
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2482,7 +2424,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	para.bt_path = dev->cam_info.bt_path;
 	printk("0307,h=%d, v=%d, frame_rate=%d\n", 
 		gc0307_h_active, gc0307_v_active, para.frame_rate);
@@ -2651,6 +2593,13 @@ static int gc0307_open(struct file *file)
 	struct gc0307_fh *fh = NULL;
 	int retval = 0;
 	gc0307_have_open=1;
+
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif	
@@ -2783,6 +2732,11 @@ static int gc0307_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
+
 	return 0;
 }
 
@@ -2941,9 +2895,13 @@ static const struct i2c_device_id gc0307_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc0307_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc0307",
+static struct i2c_driver gc0307_i2c_driver = {
+	.driver = {
+		.name = "gc0307",
+	},
 	.probe = gc0307_probe,
 	.remove = gc0307_remove,
 	.id_table = gc0307_id,
 };
+
+module_i2c_driver(gc0307_i2c_driver);

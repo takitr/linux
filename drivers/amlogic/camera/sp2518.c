@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,21 +36,14 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend sp2518_early_suspend;
 #endif
 
 #define SP2518_CAMERA_MODULE_NAME "sp2518"
@@ -441,10 +435,10 @@ struct sp2518_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct sp2518_fh *to_fh(struct sp2518_device *dev)
+/*static inline struct sp2518_fh *to_fh(struct sp2518_device *dev)
 {
 	return container_of(dev, struct sp2518_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete sp2518_prev_resolution[2]= //should include 352x288 and 640x480, those two size are used for recording
 {
@@ -966,7 +960,7 @@ void SP2518_set_param_wb(struct sp2518_device *dev,enum  camera_wb_flip_e para)/
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
-    switch (para)
+	switch (para)
 	{
 
 		case CAM_WB_AUTO://auto
@@ -1009,7 +1003,7 @@ void SP2518_set_param_wb(struct sp2518_device *dev,enum  camera_wb_flip_e para)/
 			i2c_put_byte_add8_new(client,0x29,0xcc);
 			break;
 
-      	case CAM_WB_FLUORESCENT:
+		case CAM_WB_FLUORESCENT:
 			i2c_put_byte_add8_new(client,0xfd,0x00);
 			i2c_put_byte_add8_new(client,0x32,0x05);
 			i2c_put_byte_add8_new(client,0xfd,0x01);
@@ -1019,6 +1013,8 @@ void SP2518_set_param_wb(struct sp2518_device *dev,enum  camera_wb_flip_e para)/
 
 		case CAM_WB_MANUAL:
 		    	// TODO
+			break;
+		default:
 			break;
 	}
 
@@ -1512,70 +1508,24 @@ void SP2518_set_night_mode(struct sp2518_device *dev,enum  camera_night_mode_fli
 	i2c_put_byte_add8_new(client,0xfd,0x00);	//enable AE,add by sp_yjp,20120905
 	i2c_put_byte_add8_new(client,0x32,0x0d);
 }    /* SP2518_NightMode */
-void SP2518_set_param_banding(struct sp2518_device *dev,enum  camera_night_mode_flip_e banding)
+void SP2518_set_param_banding(struct sp2518_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 	
-	  switch(banding)
-	
-	 {
-	
-		 case CAM_BANDING_50HZ: 		
-	
+	switch(banding) {
+	case CAM_BANDING_50HZ: 		
 		Antiflicker = DCAMERA_FLICKER_50HZ;
-	
 		printk( " set_SP2518_anti_flicker  50hz \r\n" );
-	
 		break;
-	
-			 
-	
-		 case CAM_BANDING_60HZ:
-	
+	case CAM_BANDING_60HZ:
 		Antiflicker = DCAMERA_FLICKER_60HZ;
-	
 		printk( " set_SP2518_anti_flicker  60hz \r\n" );
-	
 		break;
-	
-			 
-	
-		 //default:
-	
-			 break;
-	
-	 }
-	
-	  
-	
-	// return 0;
+	default:
+		break;
+	}
 
-
-
-
-#if 0
-	switch(banding)
-		{
-		case CAM_BANDING_50HZ:
-
-
-
-
-			
-			//i2c_put_byte_add8_new(client,);//zyy test
-			break;
-		case CAM_BANDING_60HZ:
-
-
-
-
-			
-			//i2c_put_byte_add8_new(client,);
-			break;
-
-		}
-#endif
 }
 
 static int set_flip(struct sp2518_device *dev)
@@ -1591,14 +1541,16 @@ static int set_flip(struct sp2518_device *dev)
 	buf[1] = temp;
 	if((i2c_put_byte_add8(client,buf, 2)) < 0) {
             printk("fail in setting sensor orientation\n");
-            return;
-       }
+            return -1;
+	}
+       
+	return 0;
 }	
 
 void SP2518_set_resolution(struct sp2518_device *dev,int height,int width)
 {
 
-	int ret;
+	//int ret;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	printk("---------- %s : height %d  width  %d \n " , __FUNCTION__,height,width);
 	if((width<1600)&&(height<1198)){
@@ -1709,7 +1661,7 @@ static int sp2518_setting(struct sp2518_device *dev,int PROP_ID,int value )
 {
 #if 1 //zyy test
 	int ret=0;
-	unsigned char cur_val;
+	//unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
@@ -1822,9 +1774,7 @@ static int sp2518_setting(struct sp2518_device *dev,int PROP_ID,int value )
 
 static void power_down_sp2518(struct sp2518_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	//i2c_put_byte_add8_new(client,0x0104, 0x00); //zyy test
-	//i2c_put_byte_add8_new(client,0x0100, 0x00);
+
 }
 
 /* ------------------------------------------------------------------
@@ -2137,7 +2087,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct sp2518_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(sp2518_frmivalenum))
@@ -2261,8 +2210,7 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct sp2518_fh *fh = priv;
     struct sp2518_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
+    //int ret;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2340,7 +2288,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
@@ -2508,6 +2456,11 @@ static int sp2518_open(struct file *file)
 	struct sp2518_device *dev = video_drvdata(file);
 	struct sp2518_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2639,6 +2592,9 @@ static int sp2518_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2725,7 +2681,7 @@ static const struct v4l2_subdev_ops sp2518_ops = {
 
 static ssize_t sp2518_show(struct device *dev, struct device_attribute *attr, char *_buf)
 {
-	return sprintf("0x%02x=0x%02x\n", cur_reg, cur_val);
+	return sprintf(_buf, "0x%02x=0x%02x\n", cur_reg, cur_val);
 }
 
 static u32 strtol(const char *nptr, int base)
@@ -2925,7 +2881,7 @@ static int sp2518_probe(struct i2c_client *client,
 	
 #ifdef EMDOOR_DEBUG_SP2518
 	sp2518_client = client;
-	sysfs_create_group(&client->dev.kobj, &sp2518_group);
+	err = sysfs_create_group(&client->dev.kobj, &sp2518_group);
 #endif	
 
     return 0;
@@ -2950,10 +2906,14 @@ static const struct i2c_device_id sp2518_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, sp2518_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "sp2518",
+static struct i2c_driver sp2518_i2c_driver = {
+	.driver = {
+		.name = "sp2518",
+	},
 	.probe = sp2518_probe,
 	.remove = sp2518_remove,
 	.id_table = sp2518_id,
 };
+
+module_i2c_driver(sp2518_i2c_driver);
 

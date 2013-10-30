@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,31 +36,18 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend nt99340_early_suspend;
-#endif
 
 #define NT99340_CAMERA_MODULE_NAME "nt99340"
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -101,52 +89,7 @@ static struct v4l2_fract nt99340_frmintervals_active = {
 static struct vdin_v4l2_ops_s *vops;
 /* supported controls */
 static struct v4l2_queryctrl nt99340_qctrl[] = {
-	/*{
-		.id            = V4L2_CID_BRIGHTNESS,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Brightness",
-		.minimum       = 0,
-		.maximum       = 255,
-		.step          = 1,
-		.default_value = 127,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_CONTRAST,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Contrast",
-		.minimum       = 0x10,
-		.maximum       = 0x60,
-		.step          = 0xa,
-		.default_value = 0x30,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_SATURATION,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Saturation",
-		.minimum       = 0x28,
-		.maximum       = 0x60,
-		.step          = 0x8,
-		.default_value = 0x48,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_HFLIP,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "flip on horizontal",
-		.minimum       = 0,
-		.maximum       = 1,
-		.step          = 0x1,
-		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	} ,{
-		.id            = V4L2_CID_VFLIP,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "flip on vertical",
-		.minimum       = 0,
-		.maximum       = 1,
-		.step          = 0x1,
-		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},*/{
+	{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "white balance",
@@ -413,10 +356,10 @@ struct nt99340_fh {
 	unsigned int   f_flags;
 };
 
-static inline struct nt99340_fh *to_fh(struct nt99340_device *dev)
+/*static inline struct nt99340_fh *to_fh(struct nt99340_device *dev)
 {
 	return container_of(dev, struct nt99340_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete nt99340_prev_resolution[]=
 {
@@ -1097,64 +1040,62 @@ void NT99340_set_param_effect(struct nt99340_device *dev,enum camera_effect_flip
 void NT99340_set_night_mode(struct nt99340_device *dev,enum  camera_night_mode_flip_e enable)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	int temp;
-	if (enable)
-	{
+	//int temp;
+	if (enable) {
 		i2c_put_byte(client, 0x32C4, 0x28);
 		i2c_put_byte(client, 0x302A, 0x04);
-	}
-	else
-	{
+	} else {
 		i2c_put_byte(client, 0x32C4, 0x20);
 		i2c_put_byte(client, 0x302A, 0x00);
 	}
 
 }    /* NT99340_NightMode */
-void NT99340_set_param_banding(struct nt99340_device *dev,enum  camera_night_mode_flip_e banding)
+void NT99340_set_param_banding(struct nt99340_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
-	int temp;
-	switch(banding)
-	{
-		case CAM_BANDING_50HZ:			
-			i2c_put_byte(client, 0x32BF, 0x60);
-			i2c_put_byte(client, 0x32C0, 0x78);
-			i2c_put_byte(client, 0x32C1, 0x78);
-			i2c_put_byte(client, 0x32C2, 0x78);
-			i2c_put_byte(client, 0x32C3, 0x00);
-			i2c_put_byte(client, 0x32C4, 0x20);
-			i2c_put_byte(client, 0x32C5, 0x20);
-			i2c_put_byte(client, 0x32C6, 0x20);
-			i2c_put_byte(client, 0x32C7, 0x00);
-			i2c_put_byte(client, 0x32C8, 0x78);
-			i2c_put_byte(client, 0x32C9, 0x78);
-			i2c_put_byte(client, 0x32CA, 0x98);
-			i2c_put_byte(client, 0x32CB, 0x98);
-			i2c_put_byte(client, 0x32CC, 0x98);
-			i2c_put_byte(client, 0x32CD, 0x98);
-			i2c_put_byte(client, 0x32DB, 0x6E);
-			i2c_put_byte(client, 0x32D0, 0x01);
-			printk(KERN_INFO "banding 50 in\n");			
-			break;
-		case CAM_BANDING_60HZ:			
-			i2c_put_byte(client, 0x32BF, 0x60);
-			i2c_put_byte(client, 0x32C0, 0x7C);
-			i2c_put_byte(client, 0x32C1, 0x7C);
-			i2c_put_byte(client, 0x32C2, 0x7C);
-			i2c_put_byte(client, 0x32C3, 0x00);
-			i2c_put_byte(client, 0x32C4, 0x20);
-			i2c_put_byte(client, 0x32C5, 0x20);
-			i2c_put_byte(client, 0x32C6, 0x20);
-			i2c_put_byte(client, 0x32C7, 0x00);
-			i2c_put_byte(client, 0x32C8, 0x64);
-			i2c_put_byte(client, 0x32C9, 0x7C);
-			i2c_put_byte(client, 0x32CA, 0x9C);
-			i2c_put_byte(client, 0x32CB, 0x9C);
-			i2c_put_byte(client, 0x32CC, 0x9C);
-			i2c_put_byte(client, 0x32CD, 0x9C);
-			i2c_put_byte(client, 0x32DB, 0x68);
-			i2c_put_byte(client, 0x32D0, 0x01);
-			printk(KERN_INFO " banding 60 in\n ");				
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	//int temp;
+	switch(banding) {
+	case CAM_BANDING_50HZ:			
+		i2c_put_byte(client, 0x32BF, 0x60);
+		i2c_put_byte(client, 0x32C0, 0x78);
+		i2c_put_byte(client, 0x32C1, 0x78);
+		i2c_put_byte(client, 0x32C2, 0x78);
+		i2c_put_byte(client, 0x32C3, 0x00);
+		i2c_put_byte(client, 0x32C4, 0x20);
+		i2c_put_byte(client, 0x32C5, 0x20);
+		i2c_put_byte(client, 0x32C6, 0x20);
+		i2c_put_byte(client, 0x32C7, 0x00);
+		i2c_put_byte(client, 0x32C8, 0x78);
+		i2c_put_byte(client, 0x32C9, 0x78);
+		i2c_put_byte(client, 0x32CA, 0x98);
+		i2c_put_byte(client, 0x32CB, 0x98);
+		i2c_put_byte(client, 0x32CC, 0x98);
+		i2c_put_byte(client, 0x32CD, 0x98);
+		i2c_put_byte(client, 0x32DB, 0x6E);
+		i2c_put_byte(client, 0x32D0, 0x01);
+		printk(KERN_INFO "banding 50 in\n");			
+		break;
+	case CAM_BANDING_60HZ:			
+		i2c_put_byte(client, 0x32BF, 0x60);
+		i2c_put_byte(client, 0x32C0, 0x7C);
+		i2c_put_byte(client, 0x32C1, 0x7C);
+		i2c_put_byte(client, 0x32C2, 0x7C);
+		i2c_put_byte(client, 0x32C3, 0x00);
+		i2c_put_byte(client, 0x32C4, 0x20);
+		i2c_put_byte(client, 0x32C5, 0x20);
+		i2c_put_byte(client, 0x32C6, 0x20);
+		i2c_put_byte(client, 0x32C7, 0x00);
+		i2c_put_byte(client, 0x32C8, 0x64);
+		i2c_put_byte(client, 0x32C9, 0x7C);
+		i2c_put_byte(client, 0x32CA, 0x9C);
+		i2c_put_byte(client, 0x32CB, 0x9C);
+		i2c_put_byte(client, 0x32CC, 0x9C);
+		i2c_put_byte(client, 0x32CD, 0x9C);
+		i2c_put_byte(client, 0x32DB, 0x68);
+		i2c_put_byte(client, 0x32D0, 0x01);
+		printk(KERN_INFO " banding 60 in\n ");				
+		break;
+	default:
 			break;
 	}
 }
@@ -1163,10 +1104,7 @@ static int set_flip(struct nt99340_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char temp;
-	unsigned char buf[2];
-        buf[0]=0x3021;
-        buf[1]=0x60;
-	i2c_put_byte(client,buf[0],buf[1]);
+	i2c_put_byte(client, 0x3021, 0x60);
 	temp = i2c_get_byte(client, 0x3022);
 	temp &= 0xfc;
 	temp |= dev->cam_info.m_flip << 1;
@@ -1181,8 +1119,8 @@ static int set_flip(struct nt99340_device *dev)
 void NT99340_set_resolution(struct nt99340_device *dev,int height,int width)
 {
 
-	int ret;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//int ret;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 #if 1	 
 	if(height&&width&&(height<=1536)&&(width<=2048))
@@ -1229,8 +1167,8 @@ unsigned char v4l_2_nt99340(int val)
 static int nt99340_setting(struct nt99340_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		//dprintk(dev, 1, "setting brightned:%d\n",v4l_2_NT99340(value));
@@ -1341,7 +1279,7 @@ static int nt99340_setting(struct nt99340_device *dev,int PROP_ID,int value )
 
 static void power_down_nt99340(struct nt99340_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	//i2c_put_byte(client,0x3012, 0x80);
 	msleep(5);
 	//i2c_put_byte(client,0x30ab, 0x00);
@@ -1659,7 +1597,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct nt99340_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(nt99340_frmivalenum))
@@ -1767,19 +1704,6 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	} else if (vidio_set_fmt_ticks==1) {
 		NT99340_set_resolution(dev,fh->height,fh->width);
 	}
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT	
-	if (dev->platform_dev_data.flash_support) {
-		if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
-			if (get_flashlightflag() == FLASHLIGHT_ON) {
-				set_flashlight(true);
-			}
-		} else if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV21){
-			if (get_flashlightflag() != FLASHLIGHT_TORCH) {
-				set_flashlight(false);
-			}		
-		}
-	}
-#endif	
 
 	ret = 0;
 out:
@@ -1793,8 +1717,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct nt99340_fh *fh = priv;
     struct nt99340_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -1870,7 +1792,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2;//skip num
+	para.skip_count =  2;//skip num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
             vops->start_tvin_service(0,&para);
@@ -2036,6 +1958,11 @@ static int nt99340_open(struct file *file)
 	struct nt99340_device *dev = video_drvdata(file);
 	struct nt99340_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2167,6 +2094,9 @@ static int nt99340_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2295,6 +2225,7 @@ static int nt99340_probe(struct i2c_client *client,
 	int err;
 	struct nt99340_device *t;
 	struct v4l2_subdev *sd;
+	int ret;
         aml_cam_info_t* plat_dat;
         vops = get_vdin_v4l2_ops();
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
@@ -2337,7 +2268,7 @@ static int nt99340_probe(struct i2c_client *client,
 		return err;
 	}
 
-	int ret;
+	
 	ret = class_register(&camera_ctrl_class);
 	if(ret){
 		printk(" class register camera_ctrl_class fail!\n");
@@ -2363,10 +2294,14 @@ static const struct i2c_device_id nt99340_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, nt99340_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "nt99340",
+static struct i2c_driver nt99340_i2c_driver = {
+	.driver = {
+		.name = "nt99340",
+	},
 	.probe = nt99340_probe,
 	.remove = nt99340_remove,
 	.id_table = nt99340_id,
 };
+
+module_i2c_driver(nt99340_i2c_driver);
 

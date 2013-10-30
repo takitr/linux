@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,14 +36,11 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 
@@ -50,18 +48,7 @@
 #include <mach/mod_gate.h>
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend nt99250_early_suspend;
-#endif
-
 #define NT99250_CAMERA_MODULE_NAME "nt99250"		// NTK 2012-05-08
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -110,57 +97,11 @@ static struct v4l2_fract nt99250_frmintervals_active = {
 	.denominator = 15,
 };
 
-static int nt99250_have_opened = 0;
 static struct i2c_client *this_client;
 
 /* supported controls */
 static struct v4l2_queryctrl nt99250_qctrl[] = {
-	/*{
-		.id            = V4L2_CID_BRIGHTNESS,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Brightness",
-		.minimum       = 0,
-		.maximum       = 255,
-		.step          = 1,
-		.default_value = 127,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_CONTRAST,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Contrast",
-		.minimum       = 0x10,
-		.maximum       = 0x60,
-		.step          = 0xa,
-		.default_value = 0x30,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_SATURATION,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "Saturation",
-		.minimum       = 0x28,
-		.maximum       = 0x60,
-		.step          = 0x8,
-		.default_value = 0x48,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	}, {
-		.id            = V4L2_CID_HFLIP,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "flip on horizontal",
-		.minimum       = 0,
-		.maximum       = 1,
-		.step          = 0x1,
-		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	} ,{
-		.id            = V4L2_CID_VFLIP,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
-		.name          = "flip on vertical",
-		.minimum       = 0,
-		.maximum       = 1,
-		.step          = 0x1,
-		.default_value = 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},*/{
+	{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
 		.type          = V4L2_CTRL_TYPE_INTEGER,
 		.name          = "white balance",
@@ -416,10 +357,10 @@ struct nt99250_fh {
 	unsigned int f_flags;
 };
 
-static inline struct nt99250_fh *to_fh(struct nt99250_device *dev)
+/*static inline struct nt99250_fh *to_fh(struct nt99250_device *dev)
 {
 	return container_of(dev, struct nt99250_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete nt99250_prev_resolution[]=
 {
@@ -1214,7 +1155,7 @@ int NT99250_preview(struct nt99250_device *dev)
 {
 	// set NT99250 to preview mode
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	int temp;
+	int temp_reg;
 	int i=0;
 	int regPreview[] =
 	{
@@ -1355,8 +1296,6 @@ int NT99250_preview(struct nt99250_device *dev)
 	{
 	i2c_put_byte(client,regPreview[i], regPreview[i+1]);
 	}
-	
-	int temp_reg;
 	
 	temp_reg=i2c_get_byte(client,0x3201);
 	//printk("NT99250_preview(CCCCC): NT99250_get_AE_AWB_3201=%x\n",temp_reg);
@@ -1737,24 +1676,25 @@ void NT99250_set_night_mode(struct nt99250_device *dev,enum  camera_night_mode_f
 	}
 
 }    /* NT99250_NightMode */
-void NT99250_set_param_banding(struct nt99250_device *dev,enum  camera_night_mode_flip_e banding)
+void NT99250_set_param_banding(struct nt99250_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
 	int temp;
-	switch(banding)
-	{
-		case CAM_BANDING_50HZ:			
-			temp = i2c_get_byte(client, 0x32bb);
-			temp = temp | 0x8; // banding 50, bit[3] = 1
-			i2c_put_byte(client, 0x32bb, temp);				
-			printk(KERN_INFO "banding 50 in\n");			
-			break;
-		case CAM_BANDING_60HZ:			
-			temp = i2c_get_byte(client, 0x32bb);
-			temp = temp & 0xf7; // banding 60, bit[3] = 0
-			i2c_put_byte(client, 0x32bb, temp);									
-			printk(KERN_INFO " banding 60 in\n ");				
-			break;
+	switch(banding){
+	case CAM_BANDING_50HZ:			
+		temp = i2c_get_byte(client, 0x32bb);
+		temp = temp | 0x8; // banding 50, bit[3] = 1
+		i2c_put_byte(client, 0x32bb, temp);				
+		printk(KERN_INFO "banding 50 in\n");			
+		break;
+	case CAM_BANDING_60HZ:			
+		temp = i2c_get_byte(client, 0x32bb);
+		temp = temp & 0xf7; // banding 60, bit[3] = 0
+		i2c_put_byte(client, 0x32bb, temp);									
+		printk(KERN_INFO " banding 60 in\n ");				
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1762,7 +1702,6 @@ static int set_flip(struct nt99250_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char temp;
-	unsigned char buf[2];
 	temp = i2c_get_byte(client, 0x3022);
 	temp &= 0xfc;
 	temp |= dev->cam_info.m_flip << 1;
@@ -1777,7 +1716,7 @@ static int set_flip(struct nt99250_device *dev)
 void NT99250_set_resolution(struct nt99250_device *dev,int height,int width)
 {
 
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
     #if 1	 
 	if(height&&width&&(height<=1200)&&(width<=1600))
@@ -1824,8 +1763,8 @@ unsigned char v4l_2_nt99250(int val)
 static int nt99250_setting(struct nt99250_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		//dprintk(dev, 1, "setting brightned:%d\n",v4l_2_NT99250(value));
@@ -1936,9 +1875,9 @@ static int nt99250_setting(struct nt99250_device *dev,int PROP_ID,int value )
 
 static void power_down_nt99250(struct nt99250_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	//i2c_put_byte(client,0x3012, 0x80);
-	msleep(5);
+	//msleep(5);
 	//i2c_put_byte(client,0x30ab, 0x00);
 	//i2c_put_byte(client,0x30ad, 0x0a);
 	//i2c_put_byte(client,0x30ae, 0x27);
@@ -2258,7 +2197,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 					struct v4l2_frmivalenum *fival)
 {
-	struct nt99250_fmt *fmt;
 	unsigned int k;
 	
 	if(fival->index > ARRAY_SIZE(nt99250_frmivalenum))
@@ -2301,9 +2239,7 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct nt99250_fh *fh = priv;
 	struct nt99250_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
-	
+
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
@@ -2459,7 +2395,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2;//skip num
+	para.skip_count =  2;//skip num
 	para.bt_path = dev->cam_info.bt_path;
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
@@ -2621,18 +2557,23 @@ static int vidioc_s_ctrl(struct file *file, void *priv,
 /* ------------------------------------------------------------------
 	File operations for the device
    ------------------------------------------------------------------*/
-void NT99250_get_AE_AWB_3201(struct nt99250_device *dev)		//_GJL_
+/*void NT99250_get_AE_AWB_3201(struct nt99250_device *dev)		//_GJL_
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int temp_reg=i2c_get_byte(client,0x3201);
 	//dprintk("_GJL_  NT99250_get_AE_AWB_3201=%x\n",temp_reg);
-}
+}*/
 
 static int nt99250_open(struct file *file)
 {
 	struct nt99250_device *dev = video_drvdata(file);
 	struct nt99250_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2769,6 +2710,9 @@ static int nt99250_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2897,6 +2841,7 @@ static int nt99250_probe(struct i2c_client *client,
 	int err;
 	struct nt99250_device *t;
 	struct v4l2_subdev *sd;
+	int ret;
 	aml_cam_info_t* plat_dat;
 	vops = get_vdin_v4l2_ops();
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
@@ -2952,7 +2897,6 @@ static int nt99250_probe(struct i2c_client *client,
 		return err;
 	}
 
-	int ret;
 	ret = class_register(&camera_ctrl_class);
 	if(ret){
 		printk("class register camera_ctrl_class fail!\n");
@@ -2978,10 +2922,14 @@ static const struct i2c_device_id nt99250_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, nt99250_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "nt99250",
+static struct i2c_driver nt99250_i2c_driver = {
+	.driver = {
+		.name = "nt99250",
+	},
 	.probe = nt99250_probe,
 	.remove = nt99250_remove,
 	.id_table = nt99250_id,
 };
+
+module_i2c_driver(nt99250_i2c_driver);
 

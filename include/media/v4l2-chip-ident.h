@@ -35,6 +35,46 @@ enum {
 	V4L2_IDENT_AMBIGUOUS = 1,       /* Match too general, multiple chips matched */
 	V4L2_IDENT_UNKNOWN   = 2,       /* Chip found, but cannot identify */
 
+
+	/* GT2005, 0x5138= 20792  */
+	V4L2_IDENT_GT2005 =  20,
+
+	/* GC0308, 0x5138= 20792  */
+	V4L2_IDENT_GC0308 =  21,
+	
+	/* SP0838,   */
+	V4L2_IDENT_SP0838 =  23,
+
+    /* HI253,   */
+	V4L2_IDENT_HI253 =  26,
+
+    /* HI704,   */
+	V4L2_IDENT_HI704 =  27,
+	
+	/* HI2056,   */
+	V4L2_IDENT_HI2056 =  28,
+
+	/* GC0307,   */
+	V4L2_IDENT_GC0307 =  29,
+	
+	/* GC0329,   */
+	V4L2_IDENT_GC0329 =  31,
+	
+	/* NT99250,   */
+	V4L2_IDENT_NT99250 = 32,
+
+	/* NT99252,  */
+	V4L2_IDENT_NT99252 = 33,
+	
+	/* NT99340,  */
+	V4L2_IDENT_NT99340 = 34,
+	
+	/* NT99340,  */
+	V4L2_IDENT_SP2518 = 35,
+
+	/* GC0328  */
+        V4L2_IDENT_GC0328 = 38,
+
 	/* module tvaudio: reserved range 50-99 */
 	V4L2_IDENT_TVAUDIO = 50,	/* A tvaudio chip, unknown which it is exactly */
 
@@ -77,6 +117,11 @@ enum {
 	V4L2_IDENT_OV2640 = 259,
 	V4L2_IDENT_OV9740 = 260,
 	V4L2_IDENT_OV5642 = 261,
+	V4L2_IDENT_OV5640 = 262,
+	V4L2_IDENT_OV7675 = 263,
+	V4L2_IDENT_OV2655 = 264,
+	V4L2_IDENT_OV3660 = 265,
+	V4L2_IDENT_OV5647 = 266,
 
 	/* module saa7146: reserved range 300-309 */
 	V4L2_IDENT_SAA7146 = 300,

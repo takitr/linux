@@ -298,6 +298,10 @@ typedef struct xml_algorithm_ae_s {
         unsigned int  ae_exp[3];          //0: false, 1: true
         unsigned int  ae_ag[3];           //0: false, 1: true
 		unsigned int  ae_skip[3];         //0: false, 1: true
+        unsigned int  ratio_winl;      //0 ~ 1024
+        unsigned int  ratio_winr;      //0 ~ 1024
+        unsigned int  ratio_wint;      //0 ~ 1024
+        unsigned int  ratio_winb;      //0 ~ 1024
         unsigned int  alert_mode;  //0: disable, 1: enable
         unsigned int  tune_mode;  //0: average mode, 1: blind up mode
         unsigned int  ratio_r;  // 0 ~ 255
@@ -356,6 +360,10 @@ typedef struct xml_algorithm_ae_s {
 #define AWB_PARM_NUM			53
 typedef struct xml_algorithm_awb_s {
         unsigned int           awb_algorithm;       //0:basic;    1:enhanced
+        unsigned int           ratio_winl;            //0 ~ 1024
+        unsigned int           ratio_winr;            //0 ~ 1024
+        unsigned int           ratio_wint;            //0 ~ 1024
+        unsigned int           ratio_winb;            //0 ~ 1024
         unsigned int  	       ratio_rgb;             // 0 ~ 255 
         unsigned int           ratio_yh;              // 0 ~ 255 
         unsigned int 	       ratio_ym;              // 0 ~ 255 

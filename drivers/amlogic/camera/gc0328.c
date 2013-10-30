@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,14 +36,11 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -429,10 +427,10 @@ struct gc0328_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct gc0328_fh *to_fh(struct gc0328_device *dev)
+/*static inline struct gc0328_fh *to_fh(struct gc0328_device *dev)
 {
 	return container_of(dev, struct gc0328_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc0328_prev_resolution[3]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -796,8 +794,6 @@ void GC0328_init_regs(struct gc0328_device *dev)
     int i=0;//,j;
     unsigned char buf[2];
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-    aml_camera_i2c_fig1_t*	custom_script;
-    aml_cam_info_t* plat_dat = NULL;
 
     while(1)
     {
@@ -850,8 +846,9 @@ static int set_flip(struct gc0328_device *dev)
 	buf[1] = temp;
 	if((i2c_put_byte_add8(client,buf, 2)) < 0) {
             printk("fail in setting sensor orientation\n");
-            return;
+            return -1;
         }
+        return 0;
 }
 
 static void gc0328_set_resolution(struct gc0328_device *dev,int height,int width)
@@ -1056,7 +1053,7 @@ void GC0328_night_mode(struct gc0328_device *dev,enum  camera_night_mode_flip_e 
 	unsigned char  temp_reg;
 	//temp_reg=gc0328_read_byte(0x22);
 	buf[0]=0x40;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	temp_reg=i2c_get_byte_add8(client,buf[0]);
 	temp_reg=0xff;
 
     if(enable)
@@ -1623,6 +1620,7 @@ static int gc0328_setting(struct gc0328_device *dev,int PROP_ID,int value )
 
 }
 
+#if 0
 static void power_down_gc0328(struct gc0328_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
@@ -1638,6 +1636,7 @@ static void power_down_gc0328(struct gc0328_device *dev)
 	msleep(5);
 	return;
 }
+#endif
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -1949,7 +1948,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct gc0328_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(gc0328_frmivalenum))
@@ -2069,8 +2067,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct gc0328_fh *fh = priv;
     struct gc0328_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2146,7 +2142,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
         vops->start_tvin_service(0,&para);
@@ -2312,6 +2308,11 @@ static int gc0328_open(struct file *file)
 	struct gc0328_device *dev = video_drvdata(file);
 	struct gc0328_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	gc0328_have_open=1;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -2445,6 +2446,9 @@ static int gc0328_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));	
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2600,10 +2604,14 @@ static const struct i2c_device_id gc0328_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc0328_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc0328",
+static struct i2c_driver gc0328_i2c_driver = {
+	.driver = {
+		.name = "gc0328",
+	},
 	.probe = gc0328_probe,
 	.remove = gc0328_remove,
 	.id_table = gc0328_id,
 };
+
+module_i2c_driver(gc0328_i2c_driver);
 

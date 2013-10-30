@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,13 +36,10 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 
@@ -49,18 +47,7 @@
 #include <mach/mod_gate.h>
 #endif
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend ov2655_early_suspend;
-#endif
-
 #define OV2655_CAMERA_MODULE_NAME "ov2655"
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -73,8 +60,6 @@ extern int set_flashlight(bool mode);
 #define OV2655_CAMERA_VERSION \
 	KERNEL_VERSION(OV2655_CAMERA_MAJOR_VERSION, OV2655_CAMERA_MINOR_VERSION, OV2655_CAMERA_RELEASE)
 
-static unsigned short DGain_shutter,AGain_shutter,DGain_shutterH,DGain_shutterL,AGain_shutterH,AGain_shutterL,shutterH,shutterL,shutter;
-static unsigned short UXGA_Cap = 0;
 
 MODULE_DESCRIPTION("ov2655 On Board");
 MODULE_AUTHOR("amlogic-sh");
@@ -357,10 +342,10 @@ struct ov2655_fh {
 	int  stream_on;
 };
 
-static inline struct ov2655_fh *to_fh(struct ov2655_device *dev)
+/*static inline struct ov2655_fh *to_fh(struct ov2655_device *dev)
 {
 	return container_of(dev, struct ov2655_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete ov2655_prev_resolution[2]=
 {
@@ -1275,57 +1260,57 @@ void OV2655_set_param_wb(struct ov2655_device *dev,enum  camera_wb_flip_e para)/
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int temp_reg=i2c_get_byte(client,0x3306);
 
-    switch (para)
-	{
+	switch (para) {
+	case CAM_WB_AUTO://auto
+		i2c_put_byte(client,0x3306, temp_reg&~0x2);   // select Auto WB
+		break;
 
-		case CAM_WB_AUTO://auto
-			i2c_put_byte(client,0x3306, temp_reg&~0x2);   // select Auto WB
-			break;
+	case CAM_WB_CLOUD: //cloud
 
-		case CAM_WB_CLOUD: //cloud
+		i2c_put_byte(client,0x3306, temp_reg|0x2);  // select manual WB
+		i2c_put_byte(client,0x3337, 0x68); //manual R G B
+		i2c_put_byte(client,0x3338, 0x40);
+		i2c_put_byte(client,0x3339, 0x4e);
+		break;
 
-			i2c_put_byte(client,0x3306, temp_reg|0x2);  // select manual WB
-			i2c_put_byte(client,0x3337, 0x68); //manual R G B
-			i2c_put_byte(client,0x3338, 0x40);
-			i2c_put_byte(client,0x3339, 0x4e);
-			break;
+	case CAM_WB_DAYLIGHT: //
 
-		case CAM_WB_DAYLIGHT: //
+		i2c_put_byte(client,0x3306, temp_reg|0x2);  // Disable AWB
+		i2c_put_byte(client,0x3337, 0x5e);
+		i2c_put_byte(client,0x3338, 0x40);
+		i2c_put_byte(client,0x3339, 0x46);
+		break;
 
-			i2c_put_byte(client,0x3306, temp_reg|0x2);  // Disable AWB
-			i2c_put_byte(client,0x3337, 0x5e);
-			i2c_put_byte(client,0x3338, 0x40);
-			i2c_put_byte(client,0x3339, 0x46);
-			break;
+	case CAM_WB_INCANDESCENCE:
 
-		case CAM_WB_INCANDESCENCE:
+		i2c_put_byte(client,0x3306, temp_reg|0x2);  // Disable AWB
+		i2c_put_byte(client,0x3337, 0x5e);
+		i2c_put_byte(client,0x3338, 0x40);
+		i2c_put_byte(client,0x3339, 0x58);
+		break;
 
-			i2c_put_byte(client,0x3306, temp_reg|0x2);  // Disable AWB
-			i2c_put_byte(client,0x3337, 0x5e);
-			i2c_put_byte(client,0x3338, 0x40);
-			i2c_put_byte(client,0x3339, 0x58);
-			break;
+	case CAM_WB_TUNGSTEN:
 
-		case CAM_WB_TUNGSTEN:
+		i2c_put_byte(client,0x13, temp_reg|0x2);	// Disable AWB
+		i2c_put_byte(client,0x3337, 0x54);
+		i2c_put_byte(client,0x3338, 0x40);
+		i2c_put_byte(client,0x3339, 0x70);
+		break;
 
-			i2c_put_byte(client,0x13, temp_reg|0x2);	// Disable AWB
-			i2c_put_byte(client,0x3337, 0x54);
-			i2c_put_byte(client,0x3338, 0x40);
-			i2c_put_byte(client,0x3339, 0x70);
-			break;
+	case CAM_WB_FLUORESCENT:
 
-      	case CAM_WB_FLUORESCENT:
+		i2c_put_byte(client,0x3306, temp_reg|0x2); // Disable AWB
+		i2c_put_byte(client,0x3337, 0x65);
+		i2c_put_byte(client,0x3338, 0x40);
+		i2c_put_byte(client,0x3339, 0x41);
 
-			i2c_put_byte(client,0x3306, temp_reg|0x2); // Disable AWB
-			i2c_put_byte(client,0x3337, 0x65);
-			i2c_put_byte(client,0x3338, 0x40);
-			i2c_put_byte(client,0x3339, 0x41);
+		break;
 
-			break;
-
-		case CAM_WB_MANUAL:
-		    	// TODO
-			break;
+	case CAM_WB_MANUAL:
+	    	// TODO
+		break;
+	default:
+		break;
 	}
 
 
@@ -1606,85 +1591,59 @@ void OV2655_set_night_mode(struct ov2655_device *dev,enum  camera_night_mode_fli
 	}
 
 }    /* OV2655_NightMode */
-void OV2655_set_param_banding(struct ov2655_device *dev,enum  camera_night_mode_flip_e banding)
+void OV2655_set_param_banding(struct ov2655_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
-	int temp,temp1,temp2,temp3,temp4;
-	switch(banding)
-		{
-		case CAM_BANDING_50HZ:
-			temp = i2c_get_byte(client, 0x3014);
-			temp = temp | 0x80; // banding 50, bit[3] = 1
-			i2c_put_byte(client, 0x3014, temp);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	int temp;
+	switch(banding) {
+	case CAM_BANDING_50HZ:
+		temp = i2c_get_byte(client, 0x3014);
+		temp = temp | 0x80; // banding 50, bit[3] = 1
+		i2c_put_byte(client, 0x3014, temp);
 
-			i2c_put_byte(client, 0x3070, 0x58);
-			i2c_put_byte(client, 0x3071, 0x00);
-			i2c_put_byte(client, 0x301c, 0x06);
+		i2c_put_byte(client, 0x3070, 0x58);
+		i2c_put_byte(client, 0x3071, 0x00);
+		i2c_put_byte(client, 0x301c, 0x06);
 
-//			temp1 = i2c_get_byte(client, 0x3070);
-//			temp2 = i2c_get_byte(client, 0x301c);
-//			temp3 = i2c_get_byte(client, 0x302a);
-//			temp4 = i2c_get_byte(client, 0x302b);
-//			//printk(KERN_INFO "band_step50	=%x\n",band_step50);
-//			printk(KERN_INFO "	0x3070	=%x\n",temp1);
-//			printk(KERN_INFO "	0x301c	=%x\n",temp2);
-//			printk(KERN_INFO "	0x302a	=%x\n",temp3);
-//			printk(KERN_INFO "	0x302b	=%x\n",temp4);
+		printk(KERN_INFO "banding 50 in\n");
 
-			//i2c_put_byte(client,0x0315,0x16);
-			printk(KERN_INFO "banding 50 in\n");
+		break;
+	case CAM_BANDING_60HZ:
+		temp = i2c_get_byte(client, 0x3014);
+		temp = temp & 0x7f; // night mode on, bit[3] = 1
+		i2c_put_byte(client, 0x3014, temp);
+		//i2c_put_byte(client,0x0315,0x56);
 
-			break;
-		case CAM_BANDING_60HZ:
-			temp = i2c_get_byte(client, 0x3014);
-			temp = temp & 0x7f; // night mode on, bit[3] = 1
-			i2c_put_byte(client, 0x3014, temp);
-			//i2c_put_byte(client,0x0315,0x56);
+		i2c_put_byte(client, 0x3072, 0x49);
+		i2c_put_byte(client, 0x3073, 0x00);
+		i2c_put_byte(client, 0x301d, 0x07);
 
-			i2c_put_byte(client, 0x3072, 0x49);
-			i2c_put_byte(client, 0x3073, 0x00);
-			i2c_put_byte(client, 0x301d, 0x07);
-//
-//			temp1 = i2c_get_byte(client, 0x3072);
-//			temp2 = i2c_get_byte(client, 0x301d);
-//			temp3 = i2c_get_byte(client, 0x302a);
-//			temp4 = i2c_get_byte(client, 0x302b);
-//			//printk(KERN_INFO "band_step50	=%x\n",band_step50);
-//			printk(KERN_INFO "	0x3072	=%x\n",temp1);
-//			printk(KERN_INFO "	0x301d	=%x\n",temp2);
-//			printk(KERN_INFO "	0x302a	=%x\n",temp3);
-//			printk(KERN_INFO "	0x302b	=%x\n",temp4);
+		printk(KERN_INFO " banding 60 in\n ");
+		break;
+	default:
+		break;
 
-			printk(KERN_INFO " banding 60 in\n ");
-			break;
-
-		}
+	}
 
 }
 static int set_flip(struct ov2655_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char temp = 0;
-	unsigned char buf[2];
 	temp = i2c_get_byte(client, 0x307c);
 	temp &=0xfc;
 	temp |= dev->cam_info.m_flip << 0;
 	temp |= dev->cam_info.v_flip << 1;
-	buf[0] = 0x307c;
-	buf[1] = temp;
-       if((i2c_put_byte(client,buf[0], buf[1])) < 0) {
-           printk("fail in setting sensor orientation\n");
-           return -1;
-       }
-       return 0;
+	if((i2c_put_byte(client, 0x307c, temp)) < 0) {
+		printk("fail in setting sensor orientation\n");
+		return -1;
+	}
+	return 0;
 }
 
 void OV2655_set_resolution(struct ov2655_device *dev,int height,int width)
 {
-
-	int ret;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
     #if 1
 	if(height&&width&&(height<=1200)&&(width<=1600))
@@ -1732,7 +1691,7 @@ unsigned char v4l_2_ov2655(int val)
 static int ov2655_setting(struct ov2655_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
+	//unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
@@ -2155,7 +2114,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct ov2655_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(ov2655_frmivalenum))
@@ -2266,19 +2224,6 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		OV2655_set_resolution(dev,fh->height,fh->width);
 		}
 	#endif
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT	
-	if (dev->platform_dev_data.flash_support) {
-		if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
-			if (get_flashlightflag() == FLASHLIGHT_ON) {
-				set_flashlight(true);
-			}
-		} else if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV21){
-			if (get_flashlightflag() != FLASHLIGHT_TORCH) {
-				set_flashlight(false);
-			}		
-		}
-	}
-#endif	
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
@@ -2291,8 +2236,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct ov2655_fh *fh = priv;
     struct ov2655_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2368,7 +2311,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
             vops->start_tvin_service(0,&para);
@@ -2535,6 +2478,11 @@ static int ov2655_open(struct file *file)
 	struct ov2655_device *dev = video_drvdata(file);
 	struct ov2655_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	ov2655_have_opened=1;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -2668,6 +2616,9 @@ static int ov2655_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2819,10 +2770,14 @@ static const struct i2c_device_id ov2655_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov2655_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov2655",
+static struct i2c_driver ov2655_i2c_driver = {
+	.driver = {
+		.name = "ov2655",
+	},
 	.probe = ov2655_probe,
 	.remove = ov2655_remove,
 	.id_table = ov2655_id,
 };
+
+module_i2c_driver(ov2655_i2c_driver);
 

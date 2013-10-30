@@ -1,11 +1,11 @@
 #ifndef __AML_CAM_DEV__
 #define __AML_CAM_DEV__
 #include <linux/list.h>
-//#include <media/amlogic/aml_camera.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
+#include <linux/amlogic/camera/flashlight.h>
 
 //#define AML_I2C_BUS_A 0
 //#define AML_I2C_BUS_B 1
@@ -82,6 +82,21 @@ typedef struct {
 	resulution_size_t max_cap_size;
 	char* config;
 }aml_cam_info_t;
+
+typedef struct aml_camera_i2c_fig_s{
+    unsigned short   addr;
+    unsigned char    val;
+} aml_camera_i2c_fig_t;
+
+typedef struct aml_camera_i2c_fig0_s{
+    unsigned short   addr;
+    unsigned short    val;
+} aml_camera_i2c_fig0_t;
+
+typedef struct aml_camera_i2c_fig1_s{
+    unsigned char   addr;
+    unsigned char    val;
+} aml_camera_i2c_fig1_t;
 
 extern void aml_cam_init(aml_cam_info_t* cam_dev);
 extern void aml_cam_uninit(aml_cam_info_t* cam_dev);

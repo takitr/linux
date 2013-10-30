@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -36,8 +37,6 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
@@ -45,7 +44,6 @@
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #include "ov5642_firmware.h"
@@ -54,8 +52,6 @@
 #include <mach/mod_gate.h>
 #endif
 #define OV5642_CAMERA_MODULE_NAME "ov5642"
-
-#include <media/amlogic/flashlight.h>
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -85,7 +81,6 @@ static unsigned int vid_limit = 16;
 
 //extern int disable_ov5642;
 static int ov5642_have_opened = 0;
-static struct i2c_client *this_client;
 
 static void do_download(struct work_struct *work);
 static DECLARE_DELAYED_WORK(dl_work, do_download);
@@ -474,10 +469,10 @@ struct ov5642_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct ov5642_fh *to_fh(struct ov5642_device *dev)
+/*static inline struct ov5642_fh *to_fh(struct ov5642_device *dev)
 {
 	return container_of(dev, struct ov5642_fh, dev);
-}
+}*/
 
 
 
@@ -1398,8 +1393,6 @@ struct aml_camera_i2c_fig_s OV5642_capture_2M_script[] = {
 	{0xffff, 0xff}
 };
 
-static int exposure_500m_setting(struct ov5642_device *dev);
-
 static resolution_param_t  prev_resolution_array[] = {
 	{
 		.frmsize			= {640, 480},
@@ -1498,7 +1491,7 @@ static void do_download(struct work_struct *work)
 {
 	struct ov5642_device *dev = container_of(work, struct ov5642_device, dl_work);
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	int mcu_on = 0, afc_on = 0;
+	//int mcu_on = 0, afc_on = 0;
 	int ret;
 	int i = 10;
 	mutex_lock(&firmware_mutex);
@@ -1541,7 +1534,6 @@ void OV5642_init_regs(struct ov5642_device *dev)
 }
 
 static unsigned long ov5642_preview_exposure;
-static unsigned long ov5642_preview_extra_lines;
 static unsigned long ov5642_gain;
 static unsigned long ov5642_preview_maxlines;
 
@@ -1553,8 +1545,8 @@ static unsigned char preview_reg350b;
 
 static int rewrite_preview_gain_exposure(struct ov5642_device *dev)
 {
-	int rc = 0;
-	unsigned char reg_l, reg_m, reg_h;
+	//int rc = 0;
+	//unsigned char reg_l, reg_m, reg_h;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	
 	i2c_put_byte(client, 0x3500, preview_reg3500);
@@ -1562,6 +1554,7 @@ static int rewrite_preview_gain_exposure(struct ov5642_device *dev)
 	i2c_put_byte(client, 0x3502, preview_reg3502);
 	
 	i2c_put_byte(client, 0x350b, preview_reg350b);
+	return 0;
 }
 	
 
@@ -1580,19 +1573,19 @@ static int get_preview_exposure_gain(struct ov5642_device *dev)
 	preview_reg3501 = ret_m = i2c_get_byte(client,0x3501);
 	preview_reg3502 = ret_l = i2c_get_byte(client,0x3502);
 	ov5642_preview_exposure = (ret_h << 12) + (ret_m << 4) + (ret_l >> 4);
-	printk("preview_exposure=%d\n", ov5642_preview_exposure);
+	//printk("preview_exposure=%d\n", ov5642_preview_exposure);
 	
 	ret_h = ret_m = ret_l = 0;
 	ov5642_preview_maxlines = 0;
 	ret_h = i2c_get_byte(client, 0x380e);
 	ret_l = i2c_get_byte(client, 0x380f);
 	ov5642_preview_maxlines = (ret_h << 8) + ret_l;
-	printk("Preview_Maxlines=%d\n", ov5642_preview_maxlines);
+	//printk("Preview_Maxlines=%d\n", ov5642_preview_maxlines);
 	
 	//Read back AGC Gain for preview
 	ov5642_gain = 0;
 	preview_reg350b = ov5642_gain = i2c_get_byte(client, 0x350b);
-	printk("Gain,0x350b=0x%x\n", ov5642_gain);
+	//printk("Gain,0x350b=0x%x\n", ov5642_gain);
 
 	return rc;
 }
@@ -1609,7 +1602,7 @@ static int cal_exposure(struct ov5642_device *dev)
 	int rc = 0;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	//calculate capture exp & gain
-	unsigned char ExposureLow,ExposureMid,ExposureHigh,Capture_MaxLines_High,Capture_MaxLines_Low;
+	unsigned char ExposureLow,ExposureMid,ExposureHigh;
 	unsigned int ret_l,ret_m,ret_h,Lines_10ms;
 	unsigned short ulCapture_Exposure,iCapture_Gain;
 	unsigned int ulCapture_Exposure_Gain,Capture_MaxLines;
@@ -1705,7 +1698,7 @@ static int cal_exposure(struct ov5642_device *dev)
 	i2c_put_byte(client, 0x3501, ExposureMid);
 	i2c_put_byte(client, 0x3500, ExposureHigh);
 	
-	printk("ov5642_gain=%d\n", ov5642_gain);
+	//printk("ov5642_gain=%d\n", ov5642_gain);
 	printk("ExposureLow=%d\n", ExposureLow);
 	printk("ExposureMid=%d\n", ExposureMid);
 	printk("ExposureHigh=%d\n", ExposureHigh);
@@ -1816,6 +1809,8 @@ void OV5642_set_param_wb(struct ov5642_device *dev,enum  camera_wb_flip_e para)/
 
     	case CAM_WB_MANUAL:
                 // TODO
+        	break;
+        default:
         	break;
 	}
     
@@ -2010,10 +2005,10 @@ void OV5642_set_param_effect(struct ov5642_device *dev,enum camera_effect_flip_e
 * GLOBALS AFFECTED
 *
 *************************************************************************/
-static void OV5642_set_param_banding(struct ov5642_device *dev,enum  camera_night_mode_flip_e banding)
+static void OV5642_set_param_banding(struct ov5642_device *dev,enum  camera_banding_flip_e banding)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//unsigned char buf[4];
 	switch(banding){
 	case CAM_BANDING_60HZ:
 		printk("set banding 60Hz\n");
@@ -2032,7 +2027,7 @@ static int OV5642_AutoFocus(struct ov5642_device *dev, int focus_mode)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int ret = 0;
-	int i = 0;
+	//int i = 0;
     
 	switch (focus_mode) {
 	case CAM_FOCUS_MODE_AUTO:
@@ -2083,9 +2078,9 @@ static int OV5642_AutoFocus(struct ov5642_device *dev, int focus_mode)
 
 static int OV5642_FlashCtrl(struct ov5642_device *dev, int flash_mode)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int ret = 0;
-	int i = 0;
+	//int i = 0;
     
 	switch (flash_mode) {
 	case FLASHLIGHT_ON:
@@ -2137,6 +2132,8 @@ static int set_flip(struct ov5642_device *dev)
 	temp |= dev->cam_info.m_flip << 5;
 	i2c_put_byte(client, 0x3621, temp);
 	printk("0x3621 dst is %x\n", temp);
+	
+	return 0;
 }
 		
 static resolution_param_t* 
@@ -2169,12 +2166,12 @@ static int
 set_resolution_param(struct ov5642_device *dev, resolution_param_t* res_param)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	int rc = -1;
+	//int rc = -1;
+	int i=0;
 	if (!res_param->reg_script) {
 		printk("error, resolution reg script is NULL\n");
 		return -1;
 	}
-	int i=0;
 	while(1) {
 		if (res_param->reg_script[i].val==0xff
 				&&res_param->reg_script[i].addr==0xffff) {
@@ -2192,6 +2189,7 @@ set_resolution_param(struct ov5642_device *dev, resolution_param_t* res_param)
 	ov5642_frmintervals_active.denominator = 15;//res_param->active_fps/10;
 	ov5642_frmintervals_active.numerator  = 1;
 	set_flip(dev);
+	return 0;
 }
 
 unsigned char v4l_2_ov5642(int val)
@@ -2230,18 +2228,24 @@ static int set_focus_zone(struct ov5642_device *dev, int value)
 static int ov5642_setting(struct ov5642_device *dev,int PROP_ID,int value ) 
 {
 	int ret=0;
-	unsigned char cur_val;
+	//unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
+		mutex_lock(&firmware_mutex);
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_ov5642(value));
 		ret=i2c_put_byte(client,0x0201,v4l_2_ov5642(value));
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_CONTRAST:
+		mutex_lock(&firmware_mutex);
 		ret=i2c_put_byte(client,0x0200, value);
+		mutex_unlock(&firmware_mutex);
 		break;    
 	case V4L2_CID_SATURATION:
+		mutex_lock(&firmware_mutex);
 		ret=i2c_put_byte(client,0x0202, value);
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_HFLIP:    /* set flip on H. */
 		value = value & 0x3;
@@ -2253,32 +2257,40 @@ static int ov5642_setting(struct ov5642_device *dev,int PROP_ID,int value )
 	case V4L2_CID_VFLIP:    /* set flip on V. */
 		break;    
 	case V4L2_CID_DO_WHITE_BALANCE:
+		mutex_lock(&firmware_mutex);
 		if(ov5642_qctrl[4].default_value!=value){
 			ov5642_qctrl[4].default_value=value;
 			OV5642_set_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 		}
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_EXPOSURE:
+		mutex_lock(&firmware_mutex);
 		if(ov5642_qctrl[5].default_value!=value){
 			ov5642_qctrl[5].default_value=value;
 			OV5642_set_param_exposure(dev,value);
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 		}
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_COLORFX:
+		mutex_lock(&firmware_mutex);
 		if(ov5642_qctrl[6].default_value!=value){
 			ov5642_qctrl[6].default_value=value;
 			OV5642_set_param_effect(dev,value);
 			printk(KERN_INFO " set camera  effect=%d. \n ",value);
 		}
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_WHITENESS:
+		mutex_lock(&firmware_mutex);
 		if(ov5642_qctrl[7].default_value!=value){
 			ov5642_qctrl[7].default_value=value;
 			OV5642_set_param_banding(dev,value);
 			printk(KERN_INFO " set camera  banding=%d. \n ",value);
 		}
+		mutex_unlock(&firmware_mutex);
 		break;
 	case V4L2_CID_FOCUS_AUTO:
 		mutex_lock(&firmware_mutex);
@@ -2385,7 +2397,7 @@ static void ov5642_thread_tick(struct ov5642_fh *fh)
 	buf = list_entry(dma_q->active.next,
              struct ov5642_buffer, vb.queue);
     dprintk(dev, 1, "%s\n", __func__);
-    dprintk(dev, 1, "list entry get buf is %x\n",buf);
+	dprintk(dev, 1, "list entry get buf is %x\n", (unsigned)buf);
 
     /* Nobody is waiting on this buffer, return */
     /*
@@ -2716,7 +2728,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct ov5642_device *dev = fh->dev;
 	resolution_param_t* res_param = NULL;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char gain = 0, exposurelow = 0, exposuremid = 0, exposurehigh = 0;
+	//unsigned char gain = 0, exposurelow = 0, exposuremid = 0, exposurehigh = 0;
 
 	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
@@ -2793,8 +2805,8 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct ov5642_fh *fh = priv;	
 	struct ov5642_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
+	//int ret;
+	//int i;
 
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2811,7 +2823,7 @@ static int vidioc_g_parm(struct file *file, void *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 				   struct v4l2_frmivalenum *fival)
 {
-	struct ov5642_fmt *fmt;
+	//struct ov5642_fmt *fmt;
 	unsigned int k;
 
 	if(fival->index > ARRAY_SIZE(ov5642_frmivalenum))
@@ -2906,7 +2918,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
                         para.h_active, para.v_active, para.frame_rate);
         para.hsync_phase = 1;
         para.vsync_phase  = 1;
-        para.reserved =  2;
+        para.skip_count =  2;
         ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
 		vops->start_tvin_service(0,&para);
@@ -3135,10 +3147,15 @@ static int ov5642_open(struct file *file)
 {
 	struct ov5642_device *dev = video_drvdata(file);
 	struct ov5642_fh *fh = NULL;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int retval = 0;
-	int reg_val;
-	int i = 0;
+	//int reg_val;
+	//int i = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(24*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	ov5642_have_opened=1;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -3273,6 +3290,9 @@ static int ov5642_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -3360,7 +3380,6 @@ static const struct v4l2_subdev_ops ov5642_ops = {
 static int ov5642_probe(struct i2c_client *client,
         	const struct i2c_device_id *id)
 {
-	int pgbuf;
 	int err;
 	struct ov5642_device *t;
 	struct v4l2_subdev *sd;
@@ -3427,10 +3446,14 @@ static const struct i2c_device_id ov5642_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov5642_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov5642",
+static struct i2c_driver ov5642_i2c_driver = {
+	.driver = {
+		.name = "ov5642",
+	},
 	.probe = ov5642_probe,
 	.remove = ov5642_remove,
 	.id_table = ov5642_id,
 };
+
+module_i2c_driver(ov5642_i2c_driver);
 

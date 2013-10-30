@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -36,23 +37,15 @@
 #include <mach/gpio.h>
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 
 #include <mach/am_regs.h>
 //#include <mach/am_eth_pinmux.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend sp0838_early_suspend;
 #endif
 
 #define SP0838_CAMERA_MODULE_NAME "sp0838"
@@ -442,10 +435,10 @@ struct sp0838_fh {
 	int  stream_on;
 };
 
-static inline struct sp0838_fh *to_fh(struct sp0838_device *dev)
+/*static inline struct sp0838_fh *to_fh(struct sp0838_device *dev)
 {
 	return container_of(dev, struct sp0838_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete sp0838_prev_resolution[3]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -782,8 +775,9 @@ static int set_flip(struct sp0838_device *dev)
 	buf[1] = temp;
 	if((i2c_put_byte_add8(client,buf, 2)) < 0) {
             printk("fail in setting sensor orientation\n");
-            return;
+            return -1;
         }
+        return 0;
 }	 	
 static void sp0838_set_resolution(struct sp0838_device *dev,int height,int width)
 {
@@ -1095,7 +1089,7 @@ return; // superpix fcs test
 
 void SP0838write_more_registers(struct sp0838_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
 	SP0838GammaSelect(dev,0);// SP0838_RGB_Gamma_m3);	
 }
 
@@ -1405,19 +1399,21 @@ void SP0838_night_mode(struct sp0838_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void SP0838_set_param_banding(struct sp0838_device *dev,enum  camera_night_mode_flip_e banding)
+void SP0838_set_param_banding(struct sp0838_device *dev, enum  camera_banding_flip_e banding)
 {     
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     switch(banding) {
         case CAM_BANDING_60HZ:
-			SP0838Sensor.BandingFreq = CAM_BANDING_50HZ;
-			sp0838_banding_60HZ = 1;
+		SP0838Sensor.BandingFreq = CAM_BANDING_50HZ;
+		sp0838_banding_60HZ = 1;
             break;
         case CAM_BANDING_50HZ:
-			SP0838Sensor.BandingFreq = CAM_BANDING_60HZ;
-			sp0838_banding_60HZ = 0;
+		SP0838Sensor.BandingFreq = CAM_BANDING_60HZ;
+		sp0838_banding_60HZ = 0;
             break;
-    }
+        default:
+            break;
+	}
 	
 	SP0838_BANDING_NIGHT_MODE(client);
 }
@@ -1444,7 +1440,7 @@ void set_SP0838_param_exposure(struct sp0838_device *dev,enum camera_exposure_e 
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 
-	unsigned char value_luma, value_Y;
+	//unsigned char value_luma, value_Y;
 
 //	return;
 	/*switch night or normal mode*/
@@ -1571,13 +1567,14 @@ unsigned char v4l_2_sp0838(int val)
 	if(ret<4) return ret*0x20+0x80;
 	else if(ret<8) return ret*0x20+0x20;
 	else return 0;*/
+	return 0;
 }
 
 static int sp0838_setting(struct sp0838_device *dev,int PROP_ID,int value ) 
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(sp0838_qctrl[0].default_value!=value){
@@ -1643,14 +1640,14 @@ static int sp0838_setting(struct sp0838_device *dev,int PROP_ID,int value )
 	
 }
 
-static void power_down_sp0838(struct sp0838_device *dev)
+/*static void power_down_sp0838(struct sp0838_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
 	return;
 	msleep(5);
 	return;
-}
+}*/
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -1961,7 +1958,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct sp0838_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(sp0838_frmivalenum))
@@ -2081,9 +2077,7 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct sp0838_fh *fh = priv;
     struct sp0838_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
-
+    
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
         return -EINVAL;
@@ -2166,7 +2160,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_UYVY422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
             vops->start_tvin_service(0,&para);
@@ -2332,6 +2326,11 @@ static int sp0838_open(struct file *file)
 	struct sp0838_device *dev = video_drvdata(file);
 	struct sp0838_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	sp0838_have_open=1;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -2464,6 +2463,9 @@ static int sp0838_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2548,41 +2550,16 @@ static const struct v4l2_subdev_ops sp0838_ops = {
 };
 static struct i2c_client *this_client;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void aml_sp0838_early_suspend(struct early_suspend *h)
-{
-	printk("enter -----> %s \n",__FUNCTION__);
-	if(h && h->param && sp0838_have_open) {
-		aml_plat_cam_data_t* plat_dat= (aml_plat_cam_data_t*)h->param;
-		if (plat_dat && plat_dat->early_suspend) {
-			plat_dat->early_suspend();
-		}
-	}
-}
-
-static void aml_sp0838_late_resume(struct early_suspend *h)
-{
-	aml_plat_cam_data_t* plat_dat;
-	if(sp0838_have_open){
-	    printk("enter -----> %s \n",__FUNCTION__);
-	    if(h && h->param) {
-		    plat_dat= (aml_plat_cam_data_t*)h->param;
-		    if (plat_dat && plat_dat->late_resume) {
-			    plat_dat->late_resume();
-		    }
-	    }
-	}
-}
-#endif
-
 static int sp0838_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	aml_cam_info_t* plat_dat;
-	vops = get_vdin_v4l2_ops();
 	int err;
 	struct sp0838_device *t;
 	struct v4l2_subdev *sd;
+	
+	vops = get_vdin_v4l2_ops();
+	
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2641,14 +2618,6 @@ static int sp0838_probe(struct i2c_client *client,
 	}
 	g_dev = t;
 
-#ifdef CONFIG_HAS_EARLYSUSPEND
-        sp0838_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
-	sp0838_early_suspend.suspend = aml_sp0838_early_suspend;
-	sp0838_early_suspend.resume = aml_sp0838_late_resume;
-	sp0838_early_suspend.param = plat_dat;
-	register_early_suspend(&sp0838_early_suspend);
-#endif
-
 	return 0;
 }
 
@@ -2663,37 +2632,6 @@ static int sp0838_remove(struct i2c_client *client)
 	kfree(t);
 	return 0;
 }
-static int sp0838_suspend(struct i2c_client *client, pm_message_t state)
-{
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct sp0838_device *t = to_dev(sd);	
-	struct sp0838_fh  *fh = to_fh(t);
-	if (sp0838_have_open) {
-	    if(fh->stream_on == 1){
-		    vops->stop_tvin_service(0);
-	    }
-	    power_down_sp0838(t);
-	}
-	return 0;
-}
-
-static int sp0838_resume(struct i2c_client *client)
-{
-	struct v4l2_subdev *sd = i2c_get_clientdata(client);
-	struct sp0838_device *t = to_dev(sd);
-        struct sp0838_fh  *fh = to_fh(t);
-        vdin_parm_t para;
-        if (sp0838_have_open) {
-            para.port  = TVIN_PORT_CAMERA;
-            para.fmt = TVIN_SIG_FMT_MAX;
-            SP0838_init_regs(t);
-	if(fh->stream_on == 1){
-            vops->start_tvin_service(0,&para);
-	}
-    }
-    return 0;
-}
-
 
 static const struct i2c_device_id sp0838_id[] = {
 	{ "sp0838", 0 },
@@ -2701,12 +2639,14 @@ static const struct i2c_device_id sp0838_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, sp0838_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "sp0838",
+static struct i2c_driver sp0838_i2c_driver = {
+	.driver = {
+		.name = "sp0838",
+	},
 	.probe = sp0838_probe,
 	.remove = sp0838_remove,
-	.suspend = sp0838_suspend,
-	.resume = sp0838_resume,		
 	.id_table = sp0838_id,
 };
+
+module_i2c_driver(sp0838_i2c_driver);
 

@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,32 +36,19 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gc2015_early_suspend;
-#endif
 
 #define gc2015_CAMERA_MODULE_NAME "gc2015"
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -360,10 +348,10 @@ struct gc2015_fh {
 	unsigned int f_flags;
 };
 
-static inline struct gc2015_fh *to_fh(struct gc2015_device *dev)
+/*static inline struct gc2015_fh *to_fh(struct gc2015_device *dev)
 {
 	return container_of(dev, struct gc2015_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc2015_prev_resolution[2]= //should include 352x288 and 640x480, those two size are used for recording
 {
@@ -972,6 +960,9 @@ void gc2015_set_param_wb(struct gc2015_device *dev,enum  camera_wb_flip_e para)/
 	case CAM_WB_MANUAL:
 	    	                      // TODO
 		break;
+			
+		default:
+			break;
 	}
 
 } /* gc2015_set_param_wb */
@@ -1198,8 +1189,8 @@ void gc2015_set_param_exposure(struct gc2015_device *dev,enum camera_exposure_e 
 *************************************************************************/
 void gc2015_set_param_effect(struct gc2015_device *dev,enum camera_effect_flip_e para)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 /*
 
     switch (para)
@@ -1348,8 +1339,8 @@ void gc2015_set_param_effect(struct gc2015_device *dev,enum camera_effect_flip_e
 *************************************************************************/
 void gc2015_set_night_mode(struct gc2015_device *dev,enum  camera_night_mode_flip_e enable)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 /*
 	if (enable)
 	{
@@ -1381,7 +1372,7 @@ void gc2015_set_night_mode(struct gc2015_device *dev,enum  camera_night_mode_fli
 	}
 */
 }    /* gc2015_NightMode */
-void gc2015_set_param_banding(struct gc2015_device *dev,enum  camera_night_mode_flip_e banding)
+void gc2015_set_param_banding(struct gc2015_device *dev,enum  camera_banding_flip_e banding)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
@@ -1530,6 +1521,8 @@ void gc2015_set_param_banding(struct gc2015_device *dev,enum  camera_night_mode_
 			i2c_put_byte_add8(client,buf,2);
 	             			
 			break;
+		    default:
+		    	break;
 
 		}
 	#endif	
@@ -1562,12 +1555,10 @@ static int set_flip(struct gc2015_device *dev)
 void gc2015_set_resolution(struct gc2015_device *dev,int height,int width)
 {
 #if 1
-	int ret;
 	unsigned char buf[4];
-	int ret1=0;
 	unsigned  int value;
 	unsigned   int pid=0,shutter;
-	unsigned int  hb_ori, hb_total=298;
+	unsigned int  hb_total=298;
 	unsigned int  temp_reg;
 	static unsigned int shutter_l = 0;
 	static unsigned int shutter_h = 0;
@@ -1812,8 +1803,8 @@ unsigned char v4l_2_gc2015(int val)
 static int gc2015_setting(struct gc2015_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 	
 	switch(PROP_ID)  {
@@ -2227,7 +2218,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 					struct v4l2_frmivalenum *fival)
 {
-	struct gc2015_fmt *fmt;
 	unsigned int k;
 	
 	if(fival->index > ARRAY_SIZE(gc2015_frmivalenum))
@@ -2271,8 +2261,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct gc2015_fh *fh = priv;
 	struct gc2015_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
 	
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2430,7 +2418,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	para.bt_path = dev->cam_info.bt_path;
 	printk("gc2015,h=%d, v=%d, frame_rate=%d\n", 
 		gc2015_h_active, gc2015_v_active, para.frame_rate);
@@ -2600,6 +2588,11 @@ static int gc2015_open(struct file *file)
 	struct gc2015_device *dev = video_drvdata(file);
 	struct gc2015_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif	
@@ -2735,6 +2728,9 @@ static int gc2015_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2886,10 +2882,14 @@ static const struct i2c_device_id gc2015_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc2015_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc2015_i2c",
+static struct i2c_driver gc2015_i2c_driver = {
+	.driver = {
+		.name = "gc2015",
+	},
 	.probe = gc2015_probe,
 	.remove = gc2015_remove,
 	.id_table = gc2015_id,
 };
+
+module_i2c_driver(gc2015_i2c_driver);
 

@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,8 +36,6 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 
 #include <linux/amlogic/camera/aml_cam_info.h>
 
@@ -46,7 +45,6 @@
 //#include <media/amlogic/656in.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
-#include <linux/tvin/tvin_v4l2.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
@@ -110,14 +108,15 @@ extern unsigned int sensor_aet_step;
 static unsigned int exp_mode;
 static unsigned int change_cnt;
 static unsigned int current_fmt;
-static unsigned int current_fr;
+static unsigned int current_fr = 0;//50 hz
 static unsigned int aet_index;
+static unsigned int last_af_step = 0;
 
 static struct file *debug_file;
 static struct ov5647_device *debug_dev;
 static struct ov5647_fh *debug_fh;
 
-static int i_index = 3;
+static int i_index = 4;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
@@ -230,8 +229,7 @@ static struct v4l2_queryctrl ov5647_qctrl[] = {
 		.maximum	= 270,
 		.step		= 90,
 		.default_value	= 0,
-		//.flags         = V4L2_CTRL_FLAG_SLIDER,
-		.flags         = V4L2_CTRL_FLAG_DISABLED,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	},{
         .id            = V4L2_CID_AUTO_FOCUS_STATUS,
         .type          = 8,//V4L2_CTRL_TYPE_BITMASK,
@@ -513,9 +511,10 @@ struct ov5647_dmaqueue {
 
 typedef enum resulution_size_type{
 	//SIZE_NULL = 0,
-	SIZE_QVGA_320X240,
+	SIZE_CIF_352X288,
 	SIZE_VGA_640X480,
 	SIZE_720P_1280X720,
+	SIZE_960P_1280X960,
 	SIZE_1080P_1920X1080,
 	SIZE_H1080P_2592X1944
 } resulution_size_type_t;
@@ -1403,8 +1402,13 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 };
 
 static resolution_param_t  prev_resolution_array[] = {
-	#if 1
 	{
+		.frmsize			= {640, 480},
+		.active_frmsize		= {352, 288},
+		.active_fps			= 30,
+		.size_type			= SIZE_CIF_352X288,
+		.reg_script			= OV5647_preview_VGA_script,
+	}, {
 		.frmsize			= {640, 480},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
@@ -1418,9 +1422,9 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script			= OV5647_preview_720P_script,
 	}, {
 		.frmsize			= {1280, 960},
-		.active_frmsize		= {1280, 960},
+		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
+		.size_type			= SIZE_960P_1280X960,
 		.reg_script			= OV5647_preview_960P_script,
 	}, {
 		.frmsize			= {1920, 1080},
@@ -1435,36 +1439,17 @@ static resolution_param_t  prev_resolution_array[] = {
 		.size_type			= SIZE_H1080P_2592X1944,
 		.reg_script			= OV5647_capture_5M_script,
 	},
-	#else
-	 {
-		.frmsize			= {1280, 720},
-		.active_frmsize		= {1280, 720},
-		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
-		.reg_script			= OV5647_preview_720P_script,
-	}
-	#endif
 };
 	
 
 static resolution_param_t  capture_resolution_array[] = {
-	#if 1
-	 {
-		.frmsize			= {640, 480},
-		.active_frmsize		= {640, 480},
-		.active_fps			= 30,
-		.size_type			= SIZE_VGA_640X480,
-		.reg_script			= OV5647_preview_VGA_script,
-	}, 
-#else
 	{
 		.frmsize			= {2592, 1944},
-		.active_frmsize		= {2592, 1942},
+		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
 		.size_type			= SIZE_H1080P_2592X1944,
 		.reg_script			= OV5647_capture_5M_script,
 	},
-	#endif
 };
 
 
@@ -1558,12 +1543,12 @@ static bool OV5647_set_aet_new_step(unsigned int new_step, bool exp_mode, bool a
 
 static bool OV5647_check_mains_freq(void){// when the fr change,we need to change the aet table
     int detection; 
-		struct i2c_adapter *adapter;
-		
+    struct i2c_adapter *adapter;
+#if 0		
     if(exp_mode != 2)//if current is not auto mode ,return
         return false;
 
-    detection = my_i2c_get_byte(adapter,0x36,0x3c0c);
+    detection = my_i2c_get_byte(adapter,0x36,0x3c0c) & 1;
     if(current_fr != detection){
         change_cnt++;
         if(change_cnt > 5){
@@ -1579,43 +1564,62 @@ static bool OV5647_check_mains_freq(void){// when the fr change,we need to chang
         change_cnt = 0;	
     }
     return false;
+#endif
+    return true;
 }
 
-bool OV5647_set_af_new_step(unsigned int af_control){
-	struct i2c_adapter *adapter;
-	char buf[3];
-	unsigned char byte_h  = (af_control>>8)&0x000000ff;
-	unsigned char byte_l  = (af_control>>0)&0x000000ff;
-	
-	buf[0] = byte_h;
-	buf[1] = byte_l;
-	adapter = i2c_get_adapter(4);
-	my_i2c_put_byte_add8(adapter,0x0c,buf,2);
-	return true;
+bool OV5647_set_af_new_step(unsigned int af_step){
+    struct i2c_adapter *adapter;
+    char buf[3];
+    unsigned int diff = 0;
+    int codes;
+    unsigned int vcm_data = 0;
+    unsigned char byte_h, byte_l;
+    if(af_step == last_af_step)
+        return true;
+    diff = (af_step > last_af_step) ? af_step - last_af_step : last_af_step - af_step;
+    last_af_step = af_step;
+    if(diff < 256){
+        codes = 1;
+    }else if(diff < 512){
+        codes = 2;	
+    }else
+        codes = 3;
+    vcm_data |= (codes << 2); // bit[3:2]
+    vcm_data |= (last_af_step << 4);  // bit[4:13]
+    byte_h  = (vcm_data >> 8) & 0x000000ff;
+    byte_l  = (vcm_data >> 0) & 0x000000ff;
+
+    buf[0] = byte_h;
+    buf[1] = byte_l;
+    adapter = i2c_get_adapter(4);
+    my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+    return true;
 
 }
 
 
 
 void OV5647_set_new_format(int width,int height,int fr){
-		int index = 0;
-		current_fr = fr;
-		printk("sum:%d,is_capture:%d,fr:%d\n",cf->aet.sum,is_capture,fr);
-		while(index < cf->aet.sum){
-			if(width == cf->aet.aet[index].info->fmt_hactive && height == cf->aet.aet[index].info->fmt_vactive \
-				&& fr == cf->aet.aet[index].info->fmt_main_fr && is_capture == cf->aet.aet[index].info->fmt_capture){
-					break;	
-				}
-			index++;	
-		}
-		if(index >= cf->aet.sum){
-			printk("use default value\n");
-			index = 0;	
-		}
-		sensor_aet_info = cf->aet.aet[index].info;
-		sensor_aet_table = cf->aet.aet[index].aet_table;
-		sensor_aet_step = sensor_aet_info->tbl_rated_step;
-		OV5647_set_aet_new_step(sensor_aet_step,1,1);
+    int index = 0;
+    current_fr = fr;
+    printk("sum:%d,is_capture:%d,fr:%d\n",cf->aet.sum,is_capture,fr);
+    while(index < cf->aet.sum){
+        if(width == cf->aet.aet[index].info->fmt_hactive && height == cf->aet.aet[index].info->fmt_vactive \
+                && fr == cf->aet.aet[index].info->fmt_main_fr && is_capture == cf->aet.aet[index].info->fmt_capture){
+            break;	
+        }
+        index++;	
+    }
+    if(index >= cf->aet.sum){
+        printk("use default value\n");
+        index = 0;	
+    }
+    printk("current aet index :%d\n",index);
+    sensor_aet_info = cf->aet.aet[index].info;
+    sensor_aet_table = cf->aet.aet[index].aet_table;
+    sensor_aet_step = sensor_aet_info->tbl_rated_step;
+    OV5647_set_aet_new_step(sensor_aet_step,1,1);
 }
 
 
@@ -1750,17 +1754,31 @@ static ssize_t vcm_manual_store(struct class *cls,struct class_attribute *attr, 
 {
 	struct i2c_adapter *adapter;
 	char buff[3];
-	unsigned int af_control = 0;
-	sscanf(buf,"%x",&af_control);
-	
-	unsigned char byte_h  = (af_control>>8)&0x000000ff;
-	unsigned char byte_l  = (af_control>>0)&0x000000ff;
-	
-	buff[0] = byte_h;
-	buff[1] = byte_l;
-	adapter = i2c_get_adapter(4);
-	my_i2c_put_byte_add8(adapter,0x0c,buff,2);
-	return len;
+	unsigned int af_step = 0;
+	unsigned int diff = 0;
+	int codes,vcm_data;
+	unsigned char byte_h, byte_l;
+	sscanf(buf,"%d",&af_step);
+    if(af_step == last_af_step)
+        return len;
+    diff = (af_step > last_af_step) ? af_step - last_af_step : last_af_step - af_step;
+    last_af_step = af_step;
+    if(diff < 256){
+        codes = 1;
+    }else if(diff < 512){
+        codes = 2;	
+    }else
+        codes = 3;
+    vcm_data |= (codes << 2); // bit[3:2]
+    vcm_data |= (last_af_step << 4);  // bit[4:13]
+    printk("set vcm step :%x\n",vcm_data);   
+    byte_h  = (vcm_data >> 8) & 0x000000ff;
+    byte_l  = (vcm_data >> 0) & 0x000000ff;
+    buff[0] = byte_h;
+    buff[1] = byte_l;
+    adapter = i2c_get_adapter(4);
+    my_i2c_put_byte_add8(adapter,0x0c,buff,2);
+    return len;
 }
 
 static ssize_t vcm_manual_show(struct class *cls,struct class_attribute *attr, char* buf)
@@ -1770,11 +1788,29 @@ static ssize_t vcm_manual_show(struct class *cls,struct class_attribute *attr, c
 	unsigned int af;
 	adapter = i2c_get_adapter(4);
 	af = my_i2c_get_word(adapter,0x0c);
-	printk("af:%x\n",af);
+	printk("current vcm step :%x\n",af);
 	return len;
 }
 
 static CLASS_ATTR(vcm_debug, 0664, vcm_manual_show, vcm_manual_store);
+
+static ssize_t light_source_freq_manual_store(struct class *cls,struct class_attribute *attr, const char* buf, size_t len)
+{
+	int freq;
+	sscanf(buf,"%d",&freq);
+	current_fr = freq ? 1 : 0;
+	printk("set current light soure frequency :%d\n",freq);
+	return len;
+}
+
+static ssize_t light_source_freq_manual_show(struct class *cls,struct class_attribute *attr, char* buf)
+{
+	size_t len = 0;
+	printk("light source frequence :%d\n",current_fr);
+	return len;
+}
+
+static CLASS_ATTR(light_source_debug, 0664, light_source_freq_manual_show, light_source_freq_manual_store);
 
 //load OV5647 parameters
 void OV5647_init_regs(struct ov5647_device *dev)
@@ -2117,12 +2153,14 @@ static resulution_size_type_t get_size_type(int width, int height)
         rv = SIZE_H1080P_2592X1944;
     else if (width * height >= 1900 * 1000)
         rv = SIZE_1080P_1920X1080;
+    else if (width * height >= 1200 * 900)
+        rv = SIZE_960P_1280X960;
     else if (width * height >= 1200 * 700)
         rv = SIZE_720P_1280X720;
     else if (width * height >= 600 * 400)
         rv = SIZE_VGA_640X480;
-    else if (width * height >= 300 * 200)
-        rv = SIZE_QVGA_320X240;
+    else 
+        rv = SIZE_CIF_352X288;
     return rv;
 }
 
@@ -2202,9 +2240,9 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     }
     ov5647_frmintervals_active.numerator = 1;
     ov5647_frmintervals_active.denominator = res_param->active_fps;
-    ov5647_h_active = res_param->active_frmsize.width;
-	ov5647_v_active = res_param->active_frmsize.height;
-	OV5647_set_new_format(ov5647_h_active,ov5647_v_active,0);// should set new para
+    ov5647_h_active = res_param->frmsize.width;
+    ov5647_v_active = res_param->frmsize.height;
+    OV5647_set_new_format(ov5647_h_active,ov5647_v_active,current_fr);// should set new para
 }    /* OV5647_set_resolution */
 
 unsigned char v4l_2_ov5647(int val)
@@ -2219,7 +2257,6 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-    printk("ov5647_setting:%x,value:%x,base:%x\n",PROP_ID,value,V4L2_CID_BASE);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_ov5647(value));
@@ -2514,15 +2551,6 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 
 	/* These properties only change when queue is idle, see s_fmt */
 	buf->fmt       = fh->fmt;
-	#if 0
-	if(t_index != -1){
-		buf->vb.width = dest_hactive;
-		buf->vb.height = dest_vactive;		
-	}else{
-		buf->vb.width  = fh->width;
-		buf->vb.height = fh->height;
-	}
-	#endif
 	buf->vb.width  = fh->width;
 	buf->vb.height = fh->height;
 	buf->vb.field  = field;
@@ -2711,44 +2739,29 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->height        = f->fmt.pix.height;
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
-	 if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
-	 		is_capture = 1;
-    	res_param = get_resolution_param(dev, 1, fh->width,fh->height);
-    	if (!res_param) {
-    		printk("error, resolution param not get\n");
-    		goto out;
-   		}
-    	/*get_exposure_param(dev, &gain, &exposurelow, &exposuremid, &exposurehigh);
-    	printk("gain=0x%x, exposurelow=0x%x, exposuremid=0x%x, exposurehigh=0x%x\n",
-    			 gain, exposurelow, exposuremid, exposurehigh);
-    	*/
-    	//Get_preview_exposure_gain(dev);
-    	/** set target ***/
-    	if(t_index == -1){
-    		dest_hactive = res_param->active_frmsize.width;
-				dest_vactive = res_param->active_frmsize.height;
-			}
-    	set_resolution_param(dev, res_param);
-    	//set_exposure_param_500m(dev, gain, exposurelow, exposuremid, exposurehigh);
-    	//cal_exposure(dev);
+    if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
+        is_capture = 1;
+        res_param = get_resolution_param(dev, 1, fh->width,fh->height);
+        if (!res_param) {
+            printk("error, resolution param not get\n");
+            goto out;
+        }
+        set_resolution_param(dev, res_param);
     }
     else {
-			is_capture = 0;
-			res_param = get_resolution_param(dev, 0, fh->width,fh->height);
-			if (!res_param) {
-			printk("error, resolution param not get\n");
-			goto out;
-			}
-   		    	/** set target ***/
-			if(t_index == -1){
-    		dest_hactive = res_param->active_frmsize.width;
-				dest_vactive = res_param->active_frmsize.height;
-			}
-   		set_resolution_param(dev, res_param);
+        is_capture = 0;
+        res_param = get_resolution_param(dev, 0, fh->width,fh->height);
+        if (!res_param) {
+            printk("error, resolution param not get\n");
+            goto out;
+        }
+        /** set target ***/
+        if(t_index == -1){
+            dest_hactive = res_param->active_frmsize.width;
+            dest_vactive = res_param->active_frmsize.height;
+        }
+        set_resolution_param(dev, res_param);
     }
-    //OV5647_set_new_format(ov5647_h_active,ov5647_v_activ,current_fr);
-	// here we can set flash	
-
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
@@ -2835,8 +2848,14 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.frame_rate = ov5647_frmintervals_active.denominator;
     para.h_active = ov5647_h_active;
     para.v_active = ov5647_v_active;
-   	para.dest_hactive = dest_hactive;
-   	para.dest_vactive = dest_vactive;
+    if(is_capture == 0){
+   		para.dest_hactive = dest_hactive;
+   		para.dest_vactive = dest_vactive;
+   	}else{
+        para.skip_count = 2;
+   		para.dest_hactive = 0;
+   		para.dest_vactive = 0;	
+   	}
     para.hsync_phase = 1;
     para.vsync_phase  = 1;
     para.hs_bp = 0;
@@ -2844,7 +2863,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.cfmt = TVIN_YUV422;
     para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
     para.bt_path = dev->cam_info.bt_path;
-    current_fmt = 0; 
+    current_fmt = 0;
     if(dev->cam_para == NULL)
     	return -EINVAL;
     if(generate_para(dev->cam_para,dev->pindex) == 0){
@@ -2854,25 +2873,21 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
         para.reserved = 0;
     }
     dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
- 		dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
- 		dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
-		if(is_capture == 1){
-	    		dev->cam_para->cam_mode = CAMERA_PREVIEW;
-	    }else{
-	    		dev->cam_para->cam_mode = CAMERA_PREVIEW;	
-		}
-    
+    dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
+    dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
+    dev->cam_para->cam_mode = CAMERA_PREVIEW;	
+
     printk("ov5647,h=%d, v=%d, frame_rate=%d\n", 
             ov5647_h_active, ov5647_v_active, ov5647_frmintervals_active.denominator);
     ret =  videobuf_streamon(&fh->vb_vidq);
     if(ret == 0){
         dev->vops->start_tvin_service(0,&para);
-	    fh->stream_on        = 1;
-		}
-		OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
-		OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
-		OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
-		return ret;
+        fh->stream_on        = 1;
+    }
+    OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
+    OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
+    OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
+    return ret;
 }
 
 static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
@@ -2894,6 +2909,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 }
 
 char *res_size[]={
+	"cif",
 	"480p",
 	"720p",
 	"960p",
@@ -2939,19 +2955,8 @@ static ssize_t manual_format_store(struct class *cls,struct class_attribute *att
 	}
 	res_param = &prev_resolution_array[t_index];	
 	dest_hactive = res_param->active_frmsize.width;
-	dest_vactive = res_param->active_frmsize.height;
-	#if 0
-	res_param = &prev_resolution_array[i_index];		
-	
-	vidioc_streamoff(debug_file,debug_fh,1);
-	set_resolution_param(debug_dev,res_param);
-	res_param = &prev_resolution_array[t_index];	
-	ov5647_h_active = res_param->active_frmsize.width;
-	ov5647_v_active = res_param->active_frmsize.height;
-	printk("h:%d,v:%d\n",ov5647_h_active,ov5647_v_active);
-	vidioc_streamon(debug_file,debug_fh,1);
-	#endif
-	return len;
+    dest_vactive = res_param->active_frmsize.height;
+    return len;
 }
 
 static ssize_t manual_format_show(struct class *cls,struct class_attribute *attr, char* buf)
@@ -3106,6 +3111,11 @@ static int ov5647_open(struct file *file)
     struct ov5647_device *dev = video_drvdata(file);
     struct ov5647_fh *fh = NULL;
     int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(24*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
     switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -3179,7 +3189,6 @@ static int ov5647_open(struct file *file)
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
     dev->pindex.capture_index = 0;
-    current_fr = 0;
     /**creat class file**/		
     cam_class = class_create(THIS_MODULE,"camera"); 
     if(IS_ERR(cam_class)){
@@ -3191,6 +3200,7 @@ static int ov5647_open(struct file *file)
     retval = class_create_file(cam_class,&class_attr_dg_debug);
     retval = class_create_file(cam_class,&class_attr_vcm_debug);
     retval = class_create_file(cam_class,&class_attr_resolution_debug);
+    retval = class_create_file(cam_class,&class_attr_light_source_debug);
     printk("open successfully\n");
     dev->vops = get_vdin_v4l2_ops();
 
@@ -3299,8 +3309,12 @@ static int ov5647_close(struct file *file)
     class_remove_file(cam_class,&class_attr_dg_debug);
     class_remove_file(cam_class,&class_attr_vcm_debug);
     class_remove_file(cam_class,&class_attr_resolution_debug);
+    class_remove_file(cam_class,&class_attr_light_source_debug);
     class_destroy(cam_class);
     printk("close success\n");
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
     return 0;
 }
 
@@ -3400,7 +3414,7 @@ static int ov5647_probe(struct i2c_client *client,
 	sd = &t->sd;
 	v4l2_i2c_subdev_init(sd, client, &ov5647_ops);
 
-	plat_dat = (aml_plat_cam_data_t*)client->dev.platform_data;
+	plat_dat = (aml_cam_info_t*)client->dev.platform_data;
 
 	/* Now create a video4linux device */
 	mutex_init(&t->mutex);
@@ -3455,10 +3469,14 @@ static const struct i2c_device_id ov5647_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov5647_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov5647",
+static struct i2c_driver ov5647_i2c_driver = {
+	.driver = {
+		.name = "ov5647",
+	},
 	.probe = ov5647_probe,
 	.remove = ov5647_remove,
 	.id_table = ov5647_id,
 };
+
+module_i2c_driver(ov5647_i2c_driver);
 

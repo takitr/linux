@@ -15,28 +15,27 @@
 #include <linux/interrupt.h>
 #include <linux/timer.h>
 #include <linux/time.h>
-#include <linux/vout/vinfo.h>
-#include <linux/vout/vout_notify.h>
+#include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/vout/vout_notify.h>
 #include <linux/platform_device.h>
-#include <linux/amports/ptsserv.h>
-#include <linux/amports/canvas.h>
-#include <linux/amports/vframe.h>
-#include <linux/amports/vframe_provider.h>
-#include <linux/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/ptsserv.h>
+#include <linux/amlogic/amports/canvas.h>
+#include <linux/amlogic/amports/vframe.h>
+#include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/vframe_receiver.h>
 #include <mach/am_regs.h>
-#include <linux/amlog.h>
-#include <linux/ge2d/ge2d_main.h>
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/amlog.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
 #include <linux/semaphore.h>
-#include <linux/sched.h>
+#include <linux/sched/rt.h>
 #include <linux/platform_device.h>
-#include <linux/ge2d/ge2d_main.h>
-#include <linux/ge2d/ge2d.h>
+#include <linux/amlogic/ge2d/ge2d_main.h>
+#include <linux/amlogic/ge2d/ge2d.h>
 #include "vm_log.h"
 #include "vm.h"
-#include <linux/amlog.h>
 #include <linux/ctype.h>
 #include <linux/videodev2.h>
 #include <media/videobuf-core.h>
@@ -45,9 +44,12 @@
 #include <media/videobuf-dma-sg.h>
 #include <media/videobuf-res.h>
 
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <linux/ctype.h>
 #include <linux/of.h>
+
+#include <linux/sizes.h>
+#include <linux/dma-mapping.h>
 
 /*class property info.*/
 #include "vmcls.h"
@@ -171,8 +173,66 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 }
 #endif
 
+
+
+#ifdef CONFIG_CMA
+
+void set_vm_buf_info(resource_size_t start,unsigned int size);
+void unset_vm_buf_info();
+
+static dma_addr_t vm_buf_phys = ~0;
+static void *vm_buf_virt;
+static size_t vm_buf_size;
+
+int vm_init_buf(size_t size)
+{
+
+    if(size ==0)
+        return;
+
+    if(vm_buf_phys != ~0)
+    {
+        pr_info("phys already in use phys %p, virt %p\n", vm_buf_phys, vm_buf_virt);
+        dma_free_coherent(NULL, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+    }
+
+    //pr_info("... allocating ...\n");
+    vm_buf_virt = dma_alloc_coherent(NULL, size, &vm_buf_phys, GFP_KERNEL);
+
+    //pr_info("chris allocating virt %p, phys %p\n", vm_buf_virt, vm_buf_phys);
+    if(vm_buf_virt == 0)
+        return -1;
+        //goto tryagain;
+    else
+        set_vm_buf_info(vm_buf_phys, size);
+
+    vm_buf_size = size;
+    return 0;
+}
+
+EXPORT_SYMBOL(vm_init_buf);
+
+void vm_deinit_buf()
+{
+    if(0 == vm_buf_size)
+        return;
+
+    unset_vm_buf_info();
+    if(vm_buf_phys != ~0)
+    {
+        dma_free_coherent(NULL, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+        vm_buf_phys = ~0;
+        vm_buf_virt = 0;
+        vm_buf_size = 0;
+    }
+}
+
+EXPORT_SYMBOL(vm_deinit_buf);
+#endif
+
 int start_vm_task(void) ;
 int start_simulate_task(void);
+
 
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
 static struct vframe_s vfpool[MAX_VF_POOL_SIZE];
@@ -1528,11 +1588,24 @@ typedef  struct {
 }vm_device_t;
 
 static vm_device_t  vm_device;
+
 void set_vm_buf_info(resource_size_t start,unsigned int size) {
 	vm_device.buffer_start=start;
 	vm_device.buffer_size=size;
 	vm_device.mapping = io_mapping_create_wc( start, size );
 	amlog_level(LOG_LEVEL_HIGH,"#############%p\n",vm_device.mapping);
+}
+
+
+void unset_vm_buf_info()
+{
+    if(vm_device.mapping)
+    {
+        io_mapping_free( vm_device.mapping);
+        vm_device.mapping = 0;
+        vm_device.buffer_start=0;
+        vm_device.buffer_size=0;
+    }
 }
 
 void get_vm_buf_info(resource_size_t* start,unsigned int* size,struct io_mapping **mapping) {
@@ -1670,6 +1743,9 @@ static int vm_driver_probe(struct platform_device *pdev)
 	unsigned int buf_size;
 	struct resource *mem;
 
+
+#ifndef CONFIG_CMA
+
 	if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
 	{
 		buf_start = 0;
@@ -1679,6 +1755,8 @@ static int vm_driver_probe(struct platform_device *pdev)
 		buf_size = mem->end - mem->start + 1;
 	}
 	set_vm_buf_info(mem->start,buf_size);
+#endif
+
 	init_vm_device();
 	return 0;
 }

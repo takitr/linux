@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,22 +36,15 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gc0329_early_suspend;
 #endif
 
 #define GC0329_CAMERA_MODULE_NAME "gc0329"
@@ -404,10 +398,10 @@ struct gc0329_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct gc0329_fh *to_fh(struct gc0329_device *dev)
+/*static inline struct gc0329_fh *to_fh(struct gc0329_device *dev)
 {
 	return container_of(dev, struct gc0329_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc0329_prev_resolution[3]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -1166,7 +1160,7 @@ void GC0329GammaSelect(struct gc0329_device *dev, GC0329_GAMMA_TAG GammaLvl)
 
 void GC0329write_more_registers(struct gc0329_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	
 	GC0329GammaSelect(dev,0);// GC0329_RGB_Gamma_m3);	
 }
 
@@ -1304,11 +1298,11 @@ void GC0329_night_mode(struct gc0329_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void GC0329_set_param_banding(struct gc0329_device *dev,enum  camera_night_mode_flip_e banding)
+void GC0329_set_param_banding(struct gc0329_device *dev,enum  camera_banding_flip_e banding)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(banding){
-	case CAM_BANDING_60HZ:
+        case CAM_BANDING_60HZ:
 		i2c_put_byte_add8_new(client,0x05, 0x02); 	
 		i2c_put_byte_add8_new(client,0x06, 0x4c); 
 		i2c_put_byte_add8_new(client,0x07, 0x00);
@@ -1327,9 +1321,12 @@ void GC0329_set_param_banding(struct gc0329_device *dev,enum  camera_night_mode_
 		i2c_put_byte_add8_new(client,0x31, 0x05);   //exp level 0  7.05fps
 		i2c_put_byte_add8_new(client,0x32, 0x2e); 
 		i2c_put_byte_add8_new(client,0xfe, 0x00);
-		
+
 		break;
-	case CAM_BANDING_50HZ:
+        case CAM_BANDING_50HZ:
+
+
+
 		i2c_put_byte_add8_new(client,0x05, 0x02); 	
 		i2c_put_byte_add8_new(client,0x06, 0x2c); 
 		i2c_put_byte_add8_new(client,0x07, 0x00);
@@ -1349,25 +1346,27 @@ void GC0329_set_param_banding(struct gc0329_device *dev,enum  camera_night_mode_
 		i2c_put_byte_add8_new(client,0x32, 0x40); 
 		i2c_put_byte_add8_new(client,0xfe, 0x00);
 /*
-		i2c_put_byte_add8_new(client,0x05, 0x03); 	
-		i2c_put_byte_add8_new(client,0x06, 0x26); 
-		i2c_put_byte_add8_new(client,0x07, 0x00);
-		i2c_put_byte_add8_new(client,0x08, 0x48);
-		
-		i2c_put_byte_add8_new(client, 0xfe, 0x01);
-		i2c_put_byte_add8_new(client,0x29, 0x00);   //anti-flicker step [11:8]
-		i2c_put_byte_add8_new(client,0x2a, 0x50);   //anti-flicker step [7:0]
-		
-		i2c_put_byte_add8_new(client,0x2b, 0x02);   //exp level 0  14.28fps
-		i2c_put_byte_add8_new(client,0x2c, 0x30); 
-		i2c_put_byte_add8_new(client,0x2d, 0x02);   //exp level 1  12.50fps
-		i2c_put_byte_add8_new(client,0x2e, 0x80); 
-		i2c_put_byte_add8_new(client,0x2f, 0x03);   //exp level 2  10.00fps
-		i2c_put_byte_add8_new(client,0x30, 0x20); 
-		i2c_put_byte_add8_new(client,0x31, 0x06);   //exp level 3  7.14fps
-		i2c_put_byte_add8_new(client,0x32, 0x40); 
-		i2c_put_byte_add8_new(client,0xfe, 0x00);
+			i2c_put_byte_add8_new(client,0x05, 0x03); 	
+			i2c_put_byte_add8_new(client,0x06, 0x26); 
+			i2c_put_byte_add8_new(client,0x07, 0x00);
+			i2c_put_byte_add8_new(client,0x08, 0x48);
+
+			i2c_put_byte_add8_new(client, 0xfe, 0x01);
+			i2c_put_byte_add8_new(client,0x29, 0x00);   //anti-flicker step [11:8]
+			i2c_put_byte_add8_new(client,0x2a, 0x50);   //anti-flicker step [7:0]
+			
+			i2c_put_byte_add8_new(client,0x2b, 0x02);   //exp level 0  14.28fps
+			i2c_put_byte_add8_new(client,0x2c, 0x30); 
+			i2c_put_byte_add8_new(client,0x2d, 0x02);   //exp level 1  12.50fps
+			i2c_put_byte_add8_new(client,0x2e, 0x80); 
+			i2c_put_byte_add8_new(client,0x2f, 0x03);   //exp level 2  10.00fps
+			i2c_put_byte_add8_new(client,0x30, 0x20); 
+			i2c_put_byte_add8_new(client,0x31, 0x06);   //exp level 3  7.14fps
+			i2c_put_byte_add8_new(client,0x32, 0x40); 
+			i2c_put_byte_add8_new(client,0xfe, 0x00);
 			*/
+		break;
+        default:
 		break;
 	}
 }
@@ -1531,8 +1530,8 @@ unsigned char v4l_2_gc0329(int val)
 static int gc0329_setting(struct gc0329_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(gc0329_qctrl[0].default_value!=value){
@@ -1598,14 +1597,14 @@ static int gc0329_setting(struct gc0329_device *dev,int PROP_ID,int value )
 
 }
 
-static void power_down_gc0329(struct gc0329_device *dev)
+/*static void power_down_gc0329(struct gc0329_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
 	return;
 	msleep(5);
 	return;
-}
+}*/
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -1917,7 +1916,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-	struct gc0329_fmt *fmt;
 	unsigned int k;
 	
 	if(fival->index > ARRAY_SIZE(gc0329_frmivalenum))
@@ -1958,8 +1956,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct gc0329_fh *fh = priv;
 	struct gc0329_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
 	
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2111,7 +2107,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	para.bt_path = dev->cam_info.bt_path;
 	printk("gc0329,h=%d, v=%d, frame_rate=%d\n", 
 		gc0329_h_active, gc0329_v_active, gc0329_frmintervals_active.denominator);
@@ -2280,6 +2276,11 @@ static int gc0329_open(struct file *file)
 	struct gc0329_device *dev = video_drvdata(file);
 	struct gc0329_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2410,6 +2411,9 @@ static int gc0329_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2567,10 +2571,14 @@ static const struct i2c_device_id gc0329_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc0329_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc0329",
+static struct i2c_driver gc0329_i2c_driver = {
+	.driver = {
+		.name = "gc0329",
+	},
 	.probe = gc0329_probe,
 	.remove = gc0329_remove,
 	.id_table = gc0329_id,
 };
+
+module_i2c_driver(gc0329_i2c_driver);
 

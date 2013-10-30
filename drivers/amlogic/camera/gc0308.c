@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,23 +36,16 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
-#include <media/amlogic/aml_camera.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 //#include <mach/gpio_data.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gc0308_early_suspend;
 #endif
 
 #define GC0308_CAMERA_MODULE_NAME "gc0308"
@@ -80,8 +74,6 @@ static unsigned debug;
 static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
-
-static int gc0308_have_open=0;
 
 static int gc0308_h_active=320;
 static int gc0308_v_active=240;
@@ -445,10 +437,10 @@ struct gc0308_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
+/*static inline struct gc0308_fh *to_fh(struct gc0308_device *dev)
 {
 	return container_of(dev, struct gc0308_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc0308_prev_resolution[3]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -952,7 +944,6 @@ void GC0308_init_regs(struct gc0308_device *dev)
 	int i=0;//,j;
 	unsigned char buf[2];
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	aml_camera_i2c_fig1_t*	custom_script;
 	
 	while (1) {
 		buf[0] = GC0308_script[i].addr;
@@ -1031,8 +1022,9 @@ static int set_flip(struct gc0308_device *dev)
 	buf[1] = temp;
 	if((i2c_put_byte_add8(client,buf, 2)) < 0) {
             printk("fail in setting sensor orientation\n");
-            return;
+            return -1;
         }
+        return 0;
 }
 
 
@@ -1810,7 +1802,7 @@ static int gc0308_setting(struct gc0308_device *dev,int PROP_ID,int value )
 
 }
 
-static void power_down_gc0308(struct gc0308_device *dev)
+/*static void power_down_gc0308(struct gc0308_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
@@ -1823,7 +1815,7 @@ static void power_down_gc0308(struct gc0308_device *dev)
 	
 	msleep(5);
 	return;
-}
+}*/
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -2137,7 +2129,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
                 struct v4l2_frmivalenum *fival)
 {
-        struct gc0308_fmt *fmt;
         unsigned int k;
 
         if(fival->index > ARRAY_SIZE(gc0308_frmivalenum))
@@ -2258,8 +2249,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
         struct gc0308_fh *fh = priv;
         struct gc0308_device *dev = fh->dev;
         struct v4l2_captureparm *cp = &parms->parm.capture;
-        int ret;
-        int i;
 
         dprintk(dev,3,"vidioc_g_parm\n");
         if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2335,7 +2324,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	printk("0308,h=%d, v=%d, frame_rate=%d\n",
 		gc0308_h_active, gc0308_v_active, gc0308_frmintervals_active.denominator);
 	ret =  videobuf_streamon(&fh->vb_vidq);
@@ -2503,6 +2492,11 @@ static int gc0308_open(struct file *file)
 	struct gc0308_device *dev = video_drvdata(file);
 	struct gc0308_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif	
@@ -2635,6 +2629,9 @@ static int gc0308_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));	
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2792,10 +2789,14 @@ static const struct i2c_device_id gc0308_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc0308_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc0308",
+static struct i2c_driver gc0308_i2c_driver = {
+	.driver = {
+		.name = "gc0308",
+	},
 	.probe = gc0308_probe,
 	.remove = gc0308_remove,
 	.id_table = gc0308_id,
 };
+
+module_i2c_driver(gc0308_i2c_driver);
 

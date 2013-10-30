@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,8 +36,6 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 
 #include <linux/amlogic/camera/aml_cam_info.h>
 
@@ -44,24 +43,13 @@
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 //#include <mach/gpio_data.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gt2005_early_suspend;
-#endif
 
 #define GT2005_CAMERA_MODULE_NAME "gt2005"
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -90,8 +78,6 @@ static unsigned debug;
 static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
-
-static int vidio_set_fmt_ticks=0;
 
 extern int disable_gt2005;
 
@@ -440,10 +426,10 @@ struct gt2005_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
+/*static inline struct gt2005_fh *to_fh(struct gt2005_device *dev)
 {
 	return container_of(dev, struct gt2005_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gt2005_prev_resolution[]= //should include 352x288 and 640x480, those two size are used for recording
 {
@@ -1131,9 +1117,7 @@ struct aml_camera_i2c_fig_s GT2005_script[] = {
 void GT2005_init_regs(struct gt2005_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	aml_camera_i2c_fig_t*  custom_script;
         int i=0;
-	aml_plat_cam_data_t* plat_dat = NULL;
 
 	while (1) {
 		if (GT2005_script[i].val==0xff&&GT2005_script[i].addr==0xffff)
@@ -1452,8 +1436,9 @@ static int set_flip(struct gt2005_device *dev)
 	//printk("dst temp is 0x%x\n", temp);
 	if((i2c_put_byte(client, 0x0101, temp)) < 0) {
             printk("fail in setting sensor orientation \n");
-            return;
+            return -1;
         }
+        return 0;
 }
 
 void GT2005_set_resolution(struct gt2005_device *dev,int height,int width)
@@ -1971,7 +1956,6 @@ static struct videobuf_queue_ops gt2005_video_qops = {
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct gt2005_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(gt2005_frmivalenum))
@@ -2110,19 +2094,6 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	} else{
 		GT2005_set_resolution(dev,fh->height,fh->width);
 	}
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT	
-	if (dev->platform_dev_data.flash_support) {
-		if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
-			if (get_flashlightflag() == FLASHLIGHT_ON) {
-				set_flashlight(true);
-			}
-		} else if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV21){
-			if (get_flashlightflag() != FLASHLIGHT_TORCH) {
-				set_flashlight(false);
-			}		
-		}
-	}
-#endif	
 
 	ret = 0;
 out:
@@ -2137,8 +2108,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct gt2005_fh *fh = priv;
     struct gt2005_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2214,7 +2183,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
     printk("gt2005,h=%d, v=%d, frame_rate=%d\n", 
 		gt2005_h_active, gt2005_v_active, gt2005_frmintervals_active.denominator);
 	ret =  videobuf_streamon(&fh->vb_vidq);
@@ -2383,6 +2352,11 @@ static int gt2005_open(struct file *file)
 	struct gt2005_device *dev = video_drvdata(file);
 	struct gt2005_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2519,6 +2493,9 @@ static int gt2005_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2610,7 +2587,7 @@ static int gt2005_probe(struct i2c_client *client,
 	struct gt2005_device *t;
 	struct v4l2_subdev *sd;
 	aml_cam_info_t* plat_dat;
-    vops = get_vdin_v4l2_ops();
+	vops = get_vdin_v4l2_ops();
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2619,7 +2596,7 @@ static int gt2005_probe(struct i2c_client *client,
 	sd = &t->sd;
 	v4l2_i2c_subdev_init(sd, client, &gt2005_ops);
 
-	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
+	plat_dat= (aml_cam_info_t*)client->dev.platform_data;
 
 	/* Now create a video4linux device */
 	mutex_init(&t->mutex);
@@ -2676,10 +2653,14 @@ static const struct i2c_device_id gt2005_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gt2005_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gt2005",
+static struct i2c_driver gt2005_i2c_driver = {
+	.driver = {
+		.name = "gt2005",
+	},
 	.probe = gt2005_probe,
 	.remove = gt2005_remove,
 	.id_table = gt2005_id,
 };
+
+module_i2c_driver(gt2005_i2c_driver);
 

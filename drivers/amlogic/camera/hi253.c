@@ -8,6 +8,7 @@
  * License, or (at your option) any later version
  */
  //20110916_Amlogic_8726m1+HI253_Brian_V1.0
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -36,32 +37,19 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend hi253_early_suspend;
-#endif
 
 #define HI253_CAMERA_MODULE_NAME "hi253"
-
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -73,9 +61,6 @@ extern int set_flashlight(bool mode);
 #define HI253_CAMERA_RELEASE 0
 #define HI253_CAMERA_VERSION \
 	KERNEL_VERSION(HI253_CAMERA_MAJOR_VERSION, HI253_CAMERA_MINOR_VERSION, HI253_CAMERA_RELEASE)
-
-static unsigned short DGain_shutter,AGain_shutter,DGain_shutterH,DGain_shutterL,AGain_shutterH,AGain_shutterL,shutterH,shutterL,shutter;
-static unsigned short UXGA_Cap = 0;
 
 MODULE_DESCRIPTION("hi253 On Board");
 MODULE_AUTHOR("amlogic-sh");
@@ -99,7 +84,7 @@ static int vidio_set_fmt_ticks=0;
 static int hi253_h_active=800;
 static int hi253_v_active=600;
 
-static int hi253_have_open=0;
+//static int hi253_have_open=0;
 
 /* supported controls */
 static struct v4l2_queryctrl hi253_qctrl[] = {
@@ -332,10 +317,10 @@ struct hi253_fh {
 	int  stream_on;
 };
 
-static inline struct hi253_fh *to_fh(struct hi253_device *dev)
+/*static inline struct hi253_fh *to_fh(struct hi253_device *dev)
 {
 	return container_of(dev, struct hi253_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete hi253_prev_resolution[2]= //should include 352x288 and 640x480, those two size are used for recording
 {
@@ -1466,6 +1451,8 @@ void HI253_set_param_wb(struct hi253_device *dev,enum  camera_wb_flip_e para)//w
 		case CAM_WB_MANUAL:
 		    	// TODO
 			break;
+		default:
+			break;
 	}
 	
 #endif
@@ -1894,34 +1881,31 @@ void HI253_set_param_effect(struct hi253_device *dev,enum camera_effect_flip_e p
 *************************************************************************/
 void HI253_set_night_mode(struct hi253_device *dev,enum  camera_night_mode_flip_e enable)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-
-	if (enable)
-	{
-		//i2c_put_byte(client,0x0312 , 0xc8); //Camera Enable night mode  1/5 Frame rate
-	}
-	else
-	{
-		//i2c_put_byte(client,0x0312 , 0x08); //Disable night mode  1/2 Frame rate
-	}
 
 }    /* HI253_NightMode */
 
-void HI253_set_param_banding(struct hi253_device *dev,enum  camera_night_mode_flip_e banding)
+static struct aml_camera_i2c_fig_s HI253_50HZ_scrip[] = {
+	{0x03 , 0x20},
+	{0x10 , 0x9c},
+	{0xff , 0xff},
+};
+
+static struct aml_camera_i2c_fig_s HI253_60HZ_scrip[] = {
+	{0x03 , 0x20},
+	{0x10 , 0x8c},
+	{0xff , 0xff},
+};
+
+void HI253_set_param_banding(struct hi253_device *dev,enum  camera_banding_flip_e banding)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[2];
-	int i=0;
-
+	unsigned char buf[4];
+	int i;
+	struct aml_camera_i2c_fig_s* regs;
 	switch(banding){
 	case CAM_BANDING_50HZ:
 		{
-		struct aml_camera_i2c_fig_s regs[]=
-			{
-				{0x03 , 0x20},
-				{0x10 , 0x9c},
-				{0xff , 0xff},
-			};
+		regs = HI253_50HZ_scrip;		
 		i=0;
 		while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 		{
@@ -1934,12 +1918,7 @@ void HI253_set_param_banding(struct hi253_device *dev,enum  camera_night_mode_fl
 		break;		
 	case CAM_BANDING_60HZ:
 		{
-		struct aml_camera_i2c_fig_s regs[]=
-			{
-				{0x03 , 0x20},
-				{0x10 , 0x8c},
-				{0xff , 0xff},
-			};
+		regs = HI253_60HZ_scrip;
 		i=0;
 		while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 		{
@@ -1981,23 +1960,33 @@ static int set_flip(struct hi253_device *dev)
         return 0;
 }
 
+static struct aml_camera_i2c_fig_s res_800x600_scripts[] = {
+	{0x03 , 0x00},
+	{0x10 , 0x11},					
+	{0xff , 0xff},
+};
+
+static struct aml_camera_i2c_fig_s res_1600x1200_scripts[] = {
+	{0x03 , 0x00},
+	{0x10 , 0x00},				
+	{0xff , 0xff},
+};
+
 void HI253_set_resolution(struct hi253_device *dev,int height,int width)
 {	
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);	 
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	struct aml_camera_i2c_fig_s* regs;
+	int i;
+	unsigned char buf[2];	 
 	if(height&&width&&(height<=1200)&&(width<=1600))
 	{		
 		if((height<=600)&&(width<=800))
 		{
 			#if 1
 			printk(KERN_INFO " set camera  HI253_set_resolution1111=w=%d,h=%d. \n ",width,height);
-			struct aml_camera_i2c_fig_s regs[]=
-				{
-					{0x03 , 0x00},
-					{0x10 , 0x11},//0x11					
-					{0xff , 0xff},
-				};
-			int i=0;
-			unsigned char buf[2];
+			regs = res_800x600_scripts;
+					
+			i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -2011,14 +2000,8 @@ void HI253_set_resolution(struct hi253_device *dev,int height,int width)
 			hi253_v_active=600;
 		} else {
 			//1600x1200
-			struct aml_camera_i2c_fig_s regs[]=
-				{
-					{0x03 , 0x00},
-					{0x10 , 0x00},
-					{0xff , 0xff},
-				};
-			int i=0;
-			unsigned char buf[2];
+			regs = res_1600x1200_scripts;
+			i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -2084,8 +2067,7 @@ unsigned char v4l_2_hi253(int val)
 static int hi253_setting(struct hi253_device *dev,int PROP_ID,int value ) 
 {
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_hi253(value));
@@ -2163,9 +2145,7 @@ static int hi253_setting(struct hi253_device *dev,int PROP_ID,int value )
 
 static void power_down_hi253(struct hi253_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	//i2c_put_byte(client,0x0104, 0x00);
-	//i2c_put_byte(client,0x0100, 0x00);
+
 }
 
 /* ------------------------------------------------------------------
@@ -2215,7 +2195,7 @@ static void hi253_thread_tick(struct hi253_fh *fh)
 	buf = list_entry(dma_q->active.next,
 			 struct hi253_buffer, vb.queue);
     dprintk(dev, 1, "%s\n", __func__);
-    dprintk(dev, 1, "list entry get buf is %x\n",buf);
+	dprintk(dev, 1, "list entry get buf is %x\n",(unsigned)buf);
 
 	/* Nobody is waiting on this buffer, return */
 	if (!waitqueue_active(&buf->vb.done))
@@ -2246,7 +2226,6 @@ static void hi253_sleep(struct hi253_fh *fh)
 	struct hi253_device *dev = fh->dev;
 	struct hi253_dmaqueue *dma_q = &dev->vidq;
 
-	int timeout;
 	DECLARE_WAITQUEUE(wait, current);
 
 	dprintk(dev, 1, "%s dma_q=0x%08lx\n", __func__,
@@ -2257,7 +2236,6 @@ static void hi253_sleep(struct hi253_fh *fh)
 		goto stop_task;
 
 	/* Calculate time to wake up */
-	//timeout = msecs_to_jiffies(frames_to_ms(1));
 
 	hi253_thread_tick(fh);
 
@@ -2630,7 +2608,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
-	para.reserved = 2;//skip num
+	para.skip_count =  2;//skip num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
             vops->start_tvin_service(0,&para);
@@ -2796,6 +2774,11 @@ static int hi253_open(struct file *file)
 	struct hi253_device *dev = video_drvdata(file);
 	struct hi253_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2926,6 +2909,9 @@ static int hi253_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif		
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -3011,7 +2997,6 @@ static int hi253_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	aml_cam_info_t* plat_dat;
-	int pgbuf;
 	int err;
 	struct hi253_device *t;
 	struct v4l2_subdev *sd;
@@ -3077,10 +3062,14 @@ static const struct i2c_device_id hi253_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, hi253_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "hi253",
+static struct i2c_driver hi253_i2c_driver = {
+	.driver = {
+		.name = "hi253",
+	},
 	.probe = hi253_probe,
-	.remove = hi253_remove,	
+	.remove = hi253_remove,
 	.id_table = hi253_id,
 };
+
+module_i2c_driver(hi253_i2c_driver);
 

@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,23 +36,15 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend ov7675_early_suspend;
 #endif
 
 #define OV7675_CAMERA_MODULE_NAME "ov7675"
@@ -339,10 +332,10 @@ struct ov7675_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct ov7675_fh *to_fh(struct ov7675_device *dev)
+/*static inline struct ov7675_fh *to_fh(struct ov7675_device *dev)
 {
 	return container_of(dev, struct ov7675_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete ov7675_prev_resolution[2]=
 {
@@ -557,10 +550,11 @@ static int set_flip(struct ov7675_device *dev)
 	temp |= dev->cam_info.v_flip << 4;
 	buf[0] = 0x1e;
 	buf[1] = temp;
-       if((i2c_put_byte_add8(client,buf, 2)) < 0) {
-          printk("fail in setting sensor orientation\n");
-          return;
-       }
+	if((i2c_put_byte_add8(client,buf, 2)) < 0) {
+		printk("fail in setting sensor orientation\n");
+		return -1;
+	}
+	return 0;
 }
 
 //load GT2005 parameters
@@ -678,7 +672,7 @@ void set_OV7675_param_wb(struct ov7675_device *dev,enum  camera_wb_flip_e para)
 	//temp_reg=ov7675_read_byte(0x22);
 	buf[0]=0x13;
 	buf[1]=0;
-	temp_reg=i2c_get_byte_add8(client,buf);
+	temp_reg=i2c_get_byte_add8(client, buf[0]);
 	temp_reg=0xe7;
 	printk(" camera set_OV7675_param_wb=%d. \n ",temp_reg);
 	switch (para)
@@ -852,11 +846,11 @@ void OV7675_night_mode(struct ov7675_device *dev,enum  camera_night_mode_flip_e 
 *
 *************************************************************************/
 
-void OV7675_set_param_banding(struct ov7675_device *dev,enum  camera_night_mode_flip_e banding)
+void OV7675_set_param_banding(struct ov7675_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
-	int temp;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
+	//int temp;
 	switch(banding)
 		{
 		case CAM_BANDING_60HZ:
@@ -876,6 +870,8 @@ void OV7675_set_param_banding(struct ov7675_device *dev,enum  camera_night_mode_
 			i2c_put_byte_add8(client,0x9e,0x4c);
 			i2c_put_byte_add8(client,0xab,0x05);
 			*/
+			break;
+		default:
 			break;
 
 		}
@@ -1068,7 +1064,7 @@ unsigned char v4l_2_ov7675(int val)
 static int ov7675_setting(struct ov7675_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
+	//unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
@@ -1463,7 +1459,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct ov7675_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(ov7675_frmivalenum))
@@ -1578,8 +1573,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct ov7675_fh *fh = priv;
     struct ov7675_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -1656,7 +1649,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
@@ -1696,7 +1689,11 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
 	}
 	if (fmt == NULL)
 		return -EINVAL;
-	if (fmt->fourcc == V4L2_PIX_FMT_NV21){
+	if ((fmt->fourcc == V4L2_PIX_FMT_NV21)
+		||(fmt->fourcc == V4L2_PIX_FMT_NV12)
+		||(fmt->fourcc == V4L2_PIX_FMT_YUV420)
+		||(fmt->fourcc == V4L2_PIX_FMT_YVU420)
+		){
 		if (fsize->index >= ARRAY_SIZE(ov7675_prev_resolution))
 			return -EINVAL;
 		frmsize = &ov7675_prev_resolution[fsize->index];
@@ -1819,6 +1816,12 @@ static int ov7675_open(struct file *file)
 	struct ov7675_device *dev = video_drvdata(file);
 	struct ov7675_fh *fh = NULL;
 	int retval = 0;
+
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	ov7675_have_opened=1;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -1949,6 +1952,9 @@ static int ov7675_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2102,10 +2108,14 @@ static const struct i2c_device_id ov7675_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov7675_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov7675",
+static struct i2c_driver ov7675_i2c_driver = {
+	.driver = {
+		.name = "ov7675",
+	},
 	.probe = ov7675_probe,
 	.remove = ov7675_remove,
 	.id_table = ov7675_id,
 };
+
+module_i2c_driver(ov7675_i2c_driver);
 

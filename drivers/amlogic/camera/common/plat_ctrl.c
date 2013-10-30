@@ -89,7 +89,7 @@ int i2c_get_byte(struct i2c_client *client,unsigned short addr)
 	return buff[0];
 }
 
-int i2c_get_byte_add8(struct i2c_client *client,unsigned short addr)
+int i2c_get_byte_add8(struct i2c_client *client,unsigned char addr)
 {
 	unsigned char buff[4];
     buff[0] = (unsigned char)(addr & 0xff);

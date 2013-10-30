@@ -6,13 +6,14 @@
 #include <linux/mm.h>
 #include <linux/i2c.h>
 #include <linux/string.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 
 #define EFFECT_MAX 16
 #define AET_MAX 16
 #define HW_MAX 16
 #define WB_MAX 9
 #define CAPTURE_MAX 5
+#define GAMMA_MAX 257
 #define BUFFER_SIZE 1024
 
 enum error_code {
@@ -132,6 +133,12 @@ typedef struct{
 }lenc_struct;
 
 typedef struct{
+	unsigned short gamma_r[GAMMA_MAX];
+	unsigned short gamma_g[GAMMA_MAX];
+	unsigned short gamma_b[GAMMA_MAX];
+}gamma_struct;
+
+typedef struct{
     effect_struct eff;
     int effect_valid;
     hw_struct hw;
@@ -147,7 +154,9 @@ typedef struct{
     wave_struct wave;
     int wave_valid;
     lenc_struct lenc;
-    int lenc_valid;    
+    int lenc_valid;
+    gamma_struct gamma;
+    int gamma_valid;  
 }configure;
 
 typedef struct{

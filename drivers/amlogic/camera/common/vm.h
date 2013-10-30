@@ -3,7 +3,7 @@
 
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
-#include <linux/amports/canvas.h>
+#include <linux/amlogic/amports/canvas.h>
 #include <linux/fb.h>
 #include <linux/list.h>
 #include <asm/uaccess.h>

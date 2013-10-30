@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -38,7 +39,7 @@
 #include <media/v4l2-i2c-drv.h>
 #include <media/amlogic/aml_camera.h>
 #include <linux/mipi/am_mipi_csi2.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include "common/plat_ctrl.h"
@@ -2094,6 +2095,11 @@ static int hi2056_open(struct file *file)
 	struct hi2056_device *dev = video_drvdata(file);
 	struct hi2056_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 	switch_mod_gate_by_name("mipi", 1);
@@ -2236,6 +2242,9 @@ static int hi2056_close(struct file *file)
 	switch_mod_gate_by_name("mipi", 0);
 #endif
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2377,15 +2386,19 @@ static int hi2056_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id hi2056_id[] = {
-	{ "hi2056_i2c", 0 },
+	{ "hi2056", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, hi2056_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "mipi-hi2056",
+static struct i2c_driver hi2056_i2c_driver = {
+	.driver = {
+		.name = "mipi-hi2056",
+	},
 	.probe = hi2056_probe,
 	.remove = hi2056_remove,
 	.id_table = hi2056_id,
 };
+
+module_i2c_driver(hi2056_i2c_driver);
 

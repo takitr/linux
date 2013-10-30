@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,23 +36,15 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend HI704_early_suspend;
 #endif
 
 #define HI704_CAMERA_MODULE_NAME "HI704"
@@ -348,10 +341,10 @@ struct HI704_fh {
 	unsigned int f_flags;
 };
 
-static inline struct HI704_fh *to_fh(struct HI704_device *dev)
+/*static inline struct HI704_fh *to_fh(struct HI704_device *dev)
 {
 	return container_of(dev, struct HI704_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete HI704_prev_resolution[2]= //should include 320x240 and 640x480, those two size are used for recording
 {
@@ -873,8 +866,9 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 	unsigned char buf[4];
+	int i=0;
 
-	unsigned char  temp_reg;
+	//unsigned char  temp_reg;
 	//temp_reg=HI704_read_byte(0x22);
 	//buf[0]=0x22;
 	//temp_reg=i2c_get_byte_add8(client,buf);
@@ -898,8 +892,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86 , 0x25},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -926,8 +919,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86, 0x1c},   
 					{0xff, 0xff}    
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -954,8 +946,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86, 0x1c},   
 					{0xff, 0xff}    
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -983,8 +974,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86, 0x35}, 
 					{0xff, 0xff}    
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1010,8 +1000,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86, 0x3d},   
 					{0xff, 0xff}    
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1037,8 +1026,7 @@ void set_HI704_param_wb(struct HI704_device *dev,enum  camera_wb_flip_e para)
 					{0x86, 0x10},   
 					{0xff, 0xff}  
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1079,8 +1067,9 @@ void HI704_night_mode(struct HI704_device *dev,enum  camera_night_mode_flip_e en
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
+	int i=0;
 
-	unsigned char  temp_reg;
+	//unsigned char  temp_reg;
 	//temp_reg=HI704_read_byte(0x22);
 	//buf[0]=0x20;
 	//temp_reg=i2c_get_byte_add8(client,buf);
@@ -1110,10 +1099,8 @@ void HI704_night_mode(struct HI704_device *dev,enum  camera_night_mode_flip_e en
 		
 				{0xff , 0xff},
 			};
-		int i=0;
-		unsigned char buf[2];
-		while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
-		{
+		i=0;
+		while (regs[i].addr!= 0xff && regs[i].val!= 0xff) {
 			buf[0]=regs[i].addr;
 			buf[1]=regs[i].val;
 			i2c_put_byte_add8(client,buf, 2);
@@ -1144,10 +1131,8 @@ void HI704_night_mode(struct HI704_device *dev,enum  camera_night_mode_flip_e en
 				{0x9f, 0xfa}, 
 				{0xff , 0xff},
 			};
-		int i=0;
-		unsigned char buf[2];
-		while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
-		{
+		i=0;
+		while (regs[i].addr!= 0xff && regs[i].val!= 0xff) {
 			buf[0]=regs[i].addr;
 			buf[1]=regs[i].val;
 			i2c_put_byte_add8(client,buf, 2);
@@ -1220,7 +1205,7 @@ struct aml_camera_i2c_fig_s regs50hz[]=
 	{0xff , 0xff},
 };
 
-void HI704_set_param_banding(struct HI704_device *dev,enum  camera_night_mode_flip_e banding)
+void HI704_set_param_banding(struct HI704_device *dev,enum  camera_banding_flip_e banding)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int i;
@@ -1246,6 +1231,8 @@ void HI704_set_param_banding(struct HI704_device *dev,enum  camera_night_mode_fl
 			i2c_put_byte_add8(client,buf, 2);
 			i++;
 		}
+		break;
+	default:
 		break;
 
 	}
@@ -1364,6 +1351,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
+	int i;
 	#if 1
 	switch (para) {
 	case CAM_EFFECT_ENC_NORMAL:
@@ -1379,8 +1367,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x47,0x7f}, 
 					{0xff,0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1404,8 +1391,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x45 , 0x80},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1430,8 +1416,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x45 , 0x98},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1453,8 +1438,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x14 , 0x00},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1478,8 +1462,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x45 , 0x50},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1502,8 +1485,7 @@ void set_HI704_param_effect(struct HI704_device *dev,enum camera_effect_flip_e p
 					{0x45 , 0x40},
 					{0xff , 0xff},
 				};
-			int i=0;
-			unsigned char buf[2];
+				i=0;
 			while (regs[i].addr!= 0xff && regs[i].val!= 0xff)
 			{
 				buf[0]=regs[i].addr;
@@ -1531,7 +1513,7 @@ unsigned char v4l_2_HI704(int val)
 static int HI704_setting(struct HI704_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
-	unsigned char cur_val;
+	//unsigned char cur_val;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
@@ -1639,7 +1621,7 @@ static int HI704_setting(struct HI704_device *dev,int PROP_ID,int value )
 	return ret;
 }
 
-static void power_down_HI704(struct HI704_device *dev)
+/*static void power_down_HI704(struct HI704_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
@@ -1649,7 +1631,7 @@ static void power_down_HI704(struct HI704_device *dev)
 
 	msleep(5);
 	return;
-}
+}*/
 
 /* ------------------------------------------------------------------
 	DMA and thread functions
@@ -1964,7 +1946,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 					struct v4l2_frmivalenum *fival)
 {
-	struct hi704_fmt *fmt;
 	unsigned int k;
 	
 	if(fival->index > ARRAY_SIZE(hi704_frmivalenum))
@@ -2007,8 +1988,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	struct HI704_fh *fh = priv;
 	struct HI704_device *dev = fh->dev;
 	struct v4l2_captureparm *cp = &parms->parm.capture;
-	int ret;
-	int i;
 	
 	dprintk(dev,3,"vidioc_g_parm\n");
 	if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2181,7 +2160,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2;//skip num
+	para.skip_count =  2;//skip num
 	para.bt_path = dev->cam_info.bt_path;
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
@@ -2348,6 +2327,11 @@ static int HI704_open(struct file *file)
 	struct HI704_device *dev = video_drvdata(file);
 	struct HI704_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 	
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
@@ -2479,6 +2463,9 @@ static int HI704_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2634,10 +2621,14 @@ static const struct i2c_device_id HI704_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, HI704_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "HI704",
+static struct i2c_driver HI704_i2c_driver = {
+	.driver = {
+		.name = "HI704",
+	},
 	.probe = HI704_probe,
 	.remove = HI704_remove,
 	.id_table = HI704_id,
 };
+
+module_i2c_driver(HI704_i2c_driver);
 

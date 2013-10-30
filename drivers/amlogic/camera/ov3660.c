@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,21 +36,16 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <mach/gpio.h>
 #include <mach/am_regs.h>
 //#include <mach/am_eth_pinmux.h>
 #include <mach/pinmux.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #include <mach/mod_gate.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend ov3660_early_suspend;
-#endif
+
+static struct vdin_v4l2_ops_s *vops;
 
 #define OV3660_CAMERA_MODULE_NAME "ov3660"
 #define TEST_I2C   1
@@ -89,12 +85,6 @@ static struct v4l2_fract ov3660_frmintervals_active = {
 
 #define EMDOOR_DEBUG_OV3660        1
 static struct i2c_client *ov3660_client;
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-extern aml_plat_flashlight_status_t get_flashlightflag(void);
-extern int set_flashlight(bool mode);
-#endif
-static struct vdin_v4l2_ops_s *vops;
 /* supported controls */
 static struct v4l2_queryctrl ov3660_qctrl[] = {
 	{
@@ -334,10 +324,10 @@ struct ov3660_fh {
 	int  stream_on;
 	unsigned int		f_flags;
 };
-static inline struct ov3660_fh *to_fh(struct ov3660_device *dev)
+/*static inline struct ov3660_fh *to_fh(struct ov3660_device *dev)
 {
 	return container_of(dev, struct ov3660_fh, dev);
-}
+}*/
 static struct v4l2_frmsize_discrete ov3660_prev_resolution[]= //should include 352x288 and 640x480, those two size are used for recording
 {
 	{320,240},
@@ -1080,14 +1070,14 @@ void OV3660_set_param_effect(struct ov3660_device *dev,enum camera_effect_flip_e
 				
 		case CAM_EFFECT_ENC_SEPIAGREEN://¸´¹ÅÂÌ
 			temp = i2c_get_byte(client, 0x5580);
-			i2c_put_byte(client,0x5580,temp & 0xbf | 0x18);
+			i2c_put_byte(client, 0x5580, ((temp & 0xbf )| 0x18));
 			i2c_put_byte(client,0x5583,0x60);
 			i2c_put_byte(client,0x5584,0x60);
 			break;					
 
 		case CAM_EFFECT_ENC_SEPIABLUE://¸´¹ÅÀ¶
 			temp = i2c_get_byte(client, 0x5580);
-			i2c_put_byte(client,0x5580,temp & 0xbf | 0x18);
+			i2c_put_byte(client,0x5580, ((temp & 0xbf) | 0x18));
 			i2c_put_byte(client,0x5583,0xa0);
 			i2c_put_byte(client,0x5584,0x40);
 			break;								
@@ -1148,9 +1138,9 @@ unsigned char v4l_2_ov3660(int val)
 static int ov3660_setting(struct ov3660_device *dev,int PROP_ID,int value ) 
 {
 	int ret=0;
-	unsigned char cur_val;
-	unsigned char reg_3820, reg_3821, reg_4515;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//unsigned char reg_3820, reg_3821, reg_4515;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		if(ov3660_qctrl[0].default_value!=value){
@@ -1224,7 +1214,7 @@ static int ov3660_setting(struct ov3660_device *dev,int PROP_ID,int value )
 
 static void power_down_ov3660(struct ov3660_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	/*i2c_put_byte(client,0x0104, 0x00);
 	i2c_put_byte(client,0x0100, 0x00);*/
 }
@@ -1313,7 +1303,7 @@ static void ov3660_sleep(struct ov3660_fh *fh)
 	struct ov3660_device *dev = fh->dev;
 	struct ov3660_dmaqueue *dma_q = &dev->vidq;
 
-	int timeout;
+	//int timeout;
 	DECLARE_WAITQUEUE(wait, current);
 
 	dprintk(dev, 1, "%s dma_q=0x%08lx\n", __func__,
@@ -1665,6 +1655,7 @@ static struct aml_camera_i2c_fig_s pic2048x1536[]={
 #endif
 	{0xffff, 0xff},
 };
+#if 0
 static struct aml_camera_i2c_fig_s pic1600x1200[]={
 	{0x5001,0x23},
 	{0x3800,0x00},
@@ -1709,6 +1700,7 @@ static struct aml_camera_i2c_fig_s pic1600x1200[]={
 	
 	{0xffff, 0xff},
 };
+#endif
 
 static struct aml_camera_i2c_fig_s pic800x600[]={
 	{0x5001,0x23},
@@ -1750,6 +1742,7 @@ static struct aml_camera_i2c_fig_s pic800x600[]={
 	{0xffff, 0xff},
 };
 
+#if 0
 static struct aml_camera_i2c_fig_s pic640x480[]={
 	{0x3008, 0x42},
 	{0x303c, 0x11},//12
@@ -1815,7 +1808,9 @@ static struct aml_camera_i2c_fig_s pic640x480[]={
 	
 	{0xffff, 0xff},
 };
+#endif
 
+#if 0
 static struct aml_camera_i2c_fig_s pic320x240[]={
 	{0x5001,0x23},
 	{0x3503,0x00},
@@ -1855,6 +1850,7 @@ static struct aml_camera_i2c_fig_s pic320x240[]={
 	
 	{0xffff, 0xff},
 };
+#endif
 
 static void pic_set_size(struct ov3660_device *dev, struct aml_camera_i2c_fig_s* size)
 {
@@ -1877,7 +1873,6 @@ static int set_flip(struct ov3660_device *dev)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char temp;
-	unsigned char buf[2];
 	temp = i2c_get_byte(client, 0x3821);
 	temp &= 0xfc;
 	temp |= dev->cam_info.m_flip << 0;
@@ -1897,8 +1892,6 @@ static int set_flip(struct ov3660_device *dev)
 
 void OV3660_set_resolution(struct ov3660_device *dev,int height,int width)
 {
-	int ret;
-	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	printk("<========%s w:%d, h:%d\n", __func__, width, height);
 	if((width<1600)&&(height<1200)){
 		//800*600
@@ -1957,17 +1950,17 @@ static int Get_preview_exposure_gain(struct ov3660_device *dev)
 	ov3660_preview_exposure = (ret_h << 12) + (ret_m << 4) + (ret_l >> 4);
 	ret_h = ret_m = ret_l = 0;
 	ov3660_preview_exposure = ov3660_preview_exposure + (ov3660_preview_extra_lines)/16;
-	printk("preview_exposure=%d\n", ov3660_preview_exposure);
+	//printk("preview_exposure=%d\n", ov3660_preview_exposure);
 	ret_h = ret_m = ret_l = 0;
 	ov3660_preview_maxlines = 0;
 	ret_h = i2c_get_byte(client, 0x380e);
 	ret_l = i2c_get_byte(client, 0x380f);
 	ov3660_preview_maxlines = (ret_h << 8) + ret_l;
-	printk("Preview_Maxlines=%d\n", ov3660_preview_maxlines);
+	//printk("Preview_Maxlines=%d\n", ov3660_preview_maxlines);
 	//Read back AGC Gain for preview
 	ov3660_gain = 0;
 	ov3660_gain = i2c_get_byte(client, 0x350b);
-	printk("Gain,0x350b=0x%x\n", ov3660_gain);
+	//printk("Gain,0x350b=0x%x\n", ov3660_gain);
 
 	return rc;
 }
@@ -2087,19 +2080,6 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		OV3660_set_resolution(dev,fh->height,fh->width);
 	}
 	#endif
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT	
-	if (dev->platform_dev_data.flash_support) {
-		if (f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
-			if (get_flashlightflag() == FLASHLIGHT_ON) {
-				set_flashlight(true);
-			}
-		} else if(f->fmt.pix.pixelformat == V4L2_PIX_FMT_NV21){
-			if (get_flashlightflag() != FLASHLIGHT_TORCH) {
-				set_flashlight(false);
-			}		
-		}
-	}
-#endif	
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
@@ -2200,7 +2180,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 0;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count =  2; //skip_num
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
             vops->start_tvin_service(0,&para);
@@ -2366,6 +2346,11 @@ static int ov3660_open(struct file *file)
 	struct ov3660_device *dev = video_drvdata(file);
 	struct ov3660_fh *fh = NULL;
 	int retval = 0;
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif		
@@ -2492,6 +2477,9 @@ static int ov3660_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));	
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -2624,12 +2612,11 @@ static const struct attribute_group ov3660_group =
 static int ov3660_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
-	int pgbuf;
 	int err;
 	aml_cam_info_t* plat_dat;
-	vops = get_vdin_v4l2_ops();
 	struct ov3660_device *t;
 	struct v4l2_subdev *sd;
+	vops = get_vdin_v4l2_ops();
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2670,7 +2657,7 @@ static int ov3660_probe(struct i2c_client *client,
 #ifdef EMDOOR_DEBUG_OV3660
 	//add by emdoor jf.s for debug ov3660
 	ov3660_client = client;
-	sysfs_create_group(&client->dev.kobj, &ov3660_group);
+	err = sysfs_create_group(&client->dev.kobj, &ov3660_group);
 #endif
 	return 0;
 }
@@ -2693,9 +2680,13 @@ static const struct i2c_device_id ov3660_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov3660_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov3660",
+static struct i2c_driver ov3660_i2c_driver = {
+	.driver = {
+		.name = "ov3660",
+	},
 	.probe = ov3660_probe,
 	.remove = ov3660_remove,
 	.id_table = ov3660_id,
 };
+
+module_i2c_driver(ov3660_i2c_driver);

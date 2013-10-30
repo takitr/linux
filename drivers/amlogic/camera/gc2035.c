@@ -7,6 +7,7 @@
  * as published by the Free Software Foundation; either version 2 of the
  * License, or (at your option) any later version
  */
+#include <linux/sizes.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -35,21 +36,14 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
-#include <linux/tvin/tvin_v4l2.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
 #include <mach/mod_gate.h>
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend gc2035_early_suspend;
-#endif
 
 #define gc2035_CAMERA_MODULE_NAME "gc2035"
 
@@ -78,18 +72,12 @@ static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
-static int vidio_set_fmt_ticks=0;
-
 static int GC2035_h_active=640;
 static int GC2035_v_active=480;
 static struct v4l2_fract gc2035_frmintervals_active = {
     .numerator = 1,
     .denominator = 15,
 };
-#ifdef CONFIG_VIDEO_AMLOGIC_FLASHLIGHT
-#include <media/amlogic/flashlight.h>
-
-#endif
 
 static struct vdin_v4l2_ops_s *vops;
 
@@ -166,6 +154,15 @@ static struct v4l2_queryctrl gc2035_qctrl[] = {
 		.maximum       = 300,
 		.step          = 20,
 		.default_value = 100,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	},{
+		.id		= V4L2_CID_ROTATE,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "Rotate",
+		.minimum	= 0,
+		.maximum	= 270,
+		.step		= 90,
+		.default_value	= 0,
 		.flags         = V4L2_CTRL_FLAG_SLIDER,
 	}
 };
@@ -315,10 +312,10 @@ struct gc2035_fh {
 	unsigned int		f_flags;
 };
 
-static inline struct gc2035_fh *to_fh(struct gc2035_device *dev)
+/*static inline struct gc2035_fh *to_fh(struct gc2035_device *dev)
 {
 	return container_of(dev, struct gc2035_fh, dev);
-}
+}*/
 
 static struct v4l2_frmsize_discrete gc2035_prev_resolution[]= //should include 352x288 and 640x480, those two size are used for recording
 {
@@ -1056,7 +1053,7 @@ static void gc2035_init_regs(struct gc2035_device *dev)
 	    	}
 		i++;	
 	}
-	msleep(200);
+	msleep(20);
 	return;
 }
 static struct v4l2_frmivalenum gc2035_frmivalenum[] = {
@@ -1265,6 +1262,9 @@ void gc2035_set_param_wb(struct gc2035_device *dev,enum  camera_wb_flip_e para)/
 #endif
 		case CAM_WB_MANUAL:
 		    	                      // TODO
+			break;
+			
+		default:
 			break;
 	}
 
@@ -1484,7 +1484,7 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 
 	}
 	
-	mdelay(150);
+	mdelay(20);
 
 } /* gc2035_set_param_exposure */
 /*************************************************************************
@@ -1505,8 +1505,8 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 *************************************************************************/
 void gc2035_set_param_effect(struct gc2035_device *dev,enum camera_effect_flip_e para)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 /*
 
     switch (para)
@@ -1655,8 +1655,8 @@ void gc2035_set_param_effect(struct gc2035_device *dev,enum camera_effect_flip_e
 *************************************************************************/
 void gc2035_set_night_mode(struct gc2035_device *dev,enum  camera_night_mode_flip_e enable)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 /*
 	if (enable)
 	{
@@ -1688,9 +1688,9 @@ void gc2035_set_night_mode(struct gc2035_device *dev,enum  camera_night_mode_fli
 	}
 */
 }    /* gc2035_NightMode */
-void gc2035_set_param_banding(struct gc2035_device *dev,enum  camera_night_mode_flip_e banding)
+void gc2035_set_param_banding(struct gc2035_device *dev,enum  camera_banding_flip_e banding)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	unsigned char buf[4];
 	#if 1
 	switch(banding)
@@ -1838,6 +1838,8 @@ void gc2035_set_param_banding(struct gc2035_device *dev,enum  camera_night_mode_
 			i2c_put_byte_add8(client,buf,2);
 	             			
 			break;
+		    default:
+		    	break;
 
 		}
 	#endif	
@@ -1875,24 +1877,17 @@ static int set_flip(struct gc2035_device *dev)
 
 void gc2035_set_resolution(struct gc2035_device *dev,int height,int width)
 {
-	int ret;
 	unsigned char buf[4];
-	int ret1=0;
 	unsigned  int value;
 	unsigned   int pid=0,shutter;
-
-	unsigned int  temp_reg;
 	static unsigned int shutter_l = 0;
 	static unsigned int shutter_h = 0;
-
-	//return;
-
-	printk( KERN_INFO" set camera  GC2035_set_resolution=width =0x%d \n ",width);
-	printk( KERN_INFO" set camera  GC2035_set_resolution=height =0x%d \n ",height);
-
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	
+	//printk( KERN_INFO" set camera  GC2035_set_resolution=width =0x%d \n ",width);
+	//printk( KERN_INFO" set camera  GC2035_set_resolution=height =0x%d \n ",height);
 
-	if((width<1600)&&(height<1200))
+	if((width*height<1600*1200))
 	{
 		//800*600 
 		buf[0]=0xfe;
@@ -1993,8 +1988,8 @@ void gc2035_set_resolution(struct gc2035_device *dev,int height,int width)
 		gc2035_frmintervals_active.denominator = 15;
 		GC2035_h_active=800;
 		GC2035_v_active=600;
-		mdelay(200);
-	} else if(width>=1600&&height>=1200 ) {
+		mdelay(50);
+	} else if(width*height>=1200*1600 ) {
 		#if  1
 		buf[0]=0xfe;
 		buf[1]=0x00;
@@ -2096,7 +2091,7 @@ void gc2035_set_resolution(struct gc2035_device *dev,int height,int width)
 		buf[1]=0x00;
 		i2c_put_byte_add8(client,buf,2);
 		
-		mdelay(30);
+		//mdelay(20);
 		
 		#if  1
 		shutter= shutter /2;
@@ -2120,7 +2115,7 @@ void gc2035_set_resolution(struct gc2035_device *dev,int height,int width)
 		GC2035_h_active=1600;
 		GC2035_v_active=1200;
 
-		mdelay(280);
+		mdelay(130);
 	}
 	printk(KERN_INFO " set camera  GC2035_set_resolution=w=%d,h=%d. \n ",width,height);
 	set_flip(dev);	
@@ -2140,8 +2135,8 @@ static int gc2035_setting(struct gc2035_device *dev,int PROP_ID,int value )
 	//printk("----------- %s \n",__func__);
 
 	int ret=0;
-	unsigned char cur_val;
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char cur_val;
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 
 	
 	switch(PROP_ID)  {
@@ -2210,6 +2205,13 @@ static int gc2035_setting(struct gc2035_device *dev,int PROP_ID,int value )
 			//printk(KERN_INFO " set camera  zoom mode=%d. \n ",value);
         	}
 		break;
+	case V4L2_CID_ROTATE:
+	    printk(" set camera111  rotate =%d. \n ",value);
+		if(gc2035_qctrl[8].default_value!=value){
+			gc2035_qctrl[8].default_value=value;
+			printk(" set camera  rotate =%d. \n ",value);
+		}
+		break;
 	default:
 		ret=-1;
 		break;
@@ -2222,8 +2224,8 @@ static int gc2035_setting(struct gc2035_device *dev,int PROP_ID,int value )
 
 static void power_down_gc2035(struct gc2035_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-	unsigned char buf[4];
+	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	//unsigned char buf[4];
 			//buf[0]=0x45;
 			//buf[1]=0x00;
 			//i2c_put_byte_add8(client,buf,2);
@@ -2253,6 +2255,7 @@ static void gc2035_fillbuff(struct gc2035_fh *fh, struct gc2035_buffer *buf)
 	para.v4l2_format = fh->fmt->fourcc;
 	para.v4l2_memory = 0x18221223;
 	para.zoom = gc2035_qctrl[7].default_value;
+	para.angle = gc2035_qctrl[8].default_value;
 	para.vaddr = (unsigned)vbuf;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
@@ -2441,7 +2444,6 @@ static void free_buffer(struct videobuf_queue *vq, struct gc2035_buffer *buf)
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
         struct v4l2_frmivalenum *fival)
 {
-    struct gc2035_fmt *fmt;
     unsigned int k;
 
     if(fival->index > ARRAY_SIZE(gc2035_frmivalenum))
@@ -2607,8 +2609,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
     struct gc2035_fh *fh = priv;
     struct gc2035_device *dev = fh->dev;
     struct v4l2_captureparm *cp = &parms->parm.capture;
-    int ret;
-    int i;
 
     dprintk(dev,3,"vidioc_g_parm\n");
     if (parms->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
@@ -2754,11 +2754,12 @@ static int vidiocgmbuf(struct file *file, void *priv, struct video_mbuf *mbuf)
 
 static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 {
-	printk(KERN_INFO " vidioc_streamon+++ \n ");
-	struct gc2035_fh  *fh = priv;
+	struct gc2035_fh *fh = priv;
 	struct gc2035_device *dev = fh->dev;
 	vdin_parm_t para;
 	int ret = 0 ;
+	printk(KERN_INFO " vidioc_streamon+++ \n ");
+	
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
@@ -2775,7 +2776,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vs_bp = 2;
 	para.cfmt = TVIN_YUV422;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
-	para.reserved = 2; //skip_num
+	para.skip_count = 4; //skip_num
 	para.bt_path = dev->cam_info.bt_path;
 	ret =  videobuf_streamon(&fh->vb_vidq);
 	if(ret == 0){
@@ -2957,12 +2958,18 @@ static int gc2035_open(struct file *file)
 	struct gc2035_device *dev = video_drvdata(file);
 	struct gc2035_fh *fh = NULL;
 	int retval = 0;
+
+#if CONFIG_CMA
+    retval = vm_init_buf(16*SZ_1M);
+    if(retval <0)
+        return -1;
+#endif
+
 #ifdef CONFIG_ARCH_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif	
 	aml_cam_init(&dev->cam_info);
 	gc2035_init_regs(dev);
-	msleep(40);
 	mutex_lock(&dev->mutex);
 	dev->users++;
 	if (dev->users > 1) {
@@ -3014,7 +3021,7 @@ static int gc2035_open(struct file *file)
 			sizeof(struct gc2035_buffer), fh,NULL);
 
 	gc2035_start_thread(fh);
-    	msleep(200);  // added james
+    //msleep(50);  // added james
 	return 0;
 }
 
@@ -3078,6 +3085,7 @@ static int gc2035_close(struct file *file)
 
 	gc2035_qctrl[5].default_value=0;
 	gc2035_qctrl[7].default_value=100;
+	gc2035_qctrl[8].default_value=0;
 	gc2035_frmintervals_active.numerator = 1;
 	gc2035_frmintervals_active.denominator = 15;
 	power_down_gc2035(dev);
@@ -3087,6 +3095,10 @@ static int gc2035_close(struct file *file)
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));
+
+#ifdef CONFIG_CMA
+    vm_deinit_buf();
+#endif
 	return 0;
 }
 
@@ -3239,10 +3251,15 @@ static const struct i2c_device_id gc2035_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, gc2035_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "gc2035",
+static struct i2c_driver gc2035_i2c_driver = {
+	.driver = {
+		.name = "gc2035",
+	},
 	.probe = gc2035_probe,
 	.remove = gc2035_remove,
 	.id_table = gc2035_id,
 };
+
+module_i2c_driver(gc2035_i2c_driver);
+
 
