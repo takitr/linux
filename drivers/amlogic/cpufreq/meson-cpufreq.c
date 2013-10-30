@@ -65,8 +65,7 @@ static struct cpufreq_frequency_table meson_freq_table[]=
 	{12	, 1296000  },
 	{13	, 1416000  },
 	{14	, 1512000  },
-	{15	, 1608000  },
-	{16	, CPUFREQ_TABLE_END},
+	{15	, CPUFREQ_TABLE_END},
 };
 
 //static struct cpufreq_frequency_table *p_meson_freq_table;
@@ -156,7 +155,7 @@ static int meson_cpufreq_target_locked(struct cpufreq_policy *policy,
     }
 
 
-    cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
+    cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 #ifndef CONFIG_CPU_FREQ_DEBUG
     pr_debug("cpufreq-meson: CPU%d transition: %u --> %u\n",
@@ -199,7 +198,7 @@ out:
     if (ret) {
         adjust_jiffies(freqInt != 0 ? freqInt : freqs.old, freqs.new);
     }
-    cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+    cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
     return ret;
 }
@@ -241,19 +240,17 @@ static int meson_cpufreq_init(struct cpufreq_policy *policy)
         printk(KERN_ERR "cpu %d on current thread error\n", policy->cpu);
         return -1;
     }
-#if 0
+
     /* Finish platform specific initialization */
     freq_table = aml_dvfs_get_freq_table(AML_DVFS_ID_VCCK);
     if (freq_table) {
 	    cpufreq_frequency_table_get_attr(freq_table,
                                          policy->cpu);
     } else {
-#endif
 	    cpufreq_frequency_table_get_attr(meson_freq_table,
                                          policy->cpu);
-#if 0
     }
-#endif
+
     freq_table = cpufreq_frequency_get_table(policy->cpu);
 	while(freq_table[index].frequency != CPUFREQ_TABLE_END)
 		index++;
