@@ -36,7 +36,6 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>

@@ -36,9 +36,7 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
-#include <linux/mipi/am_mipi_csi2.h>
+#include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
@@ -46,10 +44,6 @@
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#endif
-#ifdef CONFIG_HAS_EARLYSUSPEND
-#include <linux/earlysuspend.h>
-static struct early_suspend hi2056_early_suspend;
 #endif
 
 #define HI2056_CAMERA_MODULE_NAME "mipi-hi2056"
