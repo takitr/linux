@@ -624,7 +624,8 @@ static int pts_lookup_offset_inline(
     return -1;
 }
 int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin){
-	return pts_lookup_offset_inline(type,offset,val,pts_margin,0);
+	u64 pts_us;
+	return pts_lookup_offset_inline(type,offset,val,pts_margin,&pts_us);
 }
 int pts_lookup_offset_us64(u8 type, u32 offset, u32 *val ,u32 pts_margin, u64 *uS64){
 	return pts_lookup_offset_inline(type,offset,val,pts_margin,uS64);
