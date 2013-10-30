@@ -85,13 +85,16 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 	struct cpu_dbs_common_info *cdbs = dbs_data->cdata->get_cpu_cdbs(cpu);
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
 	struct cs_dbs_tuners *cs_tuners = dbs_data->tuners;
+	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
 	struct cpufreq_policy *policy;
-	unsigned int max_load = 0;
+	unsigned int max_load = 0, total_load = 0, avg_load = 0;
 	unsigned int ignore_nice;
 	unsigned int j;
 
 	if (dbs_data->cdata->governor == GOV_ONDEMAND)
 		ignore_nice = od_tuners->ignore_nice_load;
+	else if(dbs_data->cdata->governor == GOV_HOTPLUG)
+		ignore_nice = hg_tuners->ignore_nice_load;
 	else
 		ignore_nice = cs_tuners->ignore_nice_load;
 
@@ -156,10 +159,19 @@ void dbs_check_cpu(struct dbs_data *dbs_data, int cpu)
 			load *= freq_avg;
 		}
 
+		if (dbs_data->cdata->governor == GOV_HOTPLUG) {
+			total_load += load;
+		}
 		if (load > max_load)
 			max_load = load;
 	}
 
+	if (dbs_data->cdata->governor == GOV_HOTPLUG) {
+		/* calculate the average load across all related CPUs */
+		avg_load = total_load / num_online_cpus();
+		hg_tuners->hotplug_load_history[hg_tuners->hotplug_load_index] = avg_load;
+		hg_tuners->max_load_freq = max_load * policy->cur;
+	}
 	dbs_data->cdata->gov_check_cpu(cpu, max_load);
 }
 EXPORT_SYMBOL_GPL(dbs_check_cpu);
@@ -235,9 +247,11 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	struct dbs_data *dbs_data;
 	struct od_cpu_dbs_info_s *od_dbs_info = NULL;
 	struct cs_cpu_dbs_info_s *cs_dbs_info = NULL;
+	struct hg_cpu_dbs_info_s *hg_dbs_info = NULL;
 	struct od_ops *od_ops = NULL;
 	struct od_dbs_tuners *od_tuners = NULL;
 	struct cs_dbs_tuners *cs_tuners = NULL;
+	struct hg_dbs_tuners *hg_tuners = NULL;
 	struct cpu_dbs_common_info *cpu_cdbs;
 	unsigned int sampling_rate, latency, ignore_nice, j, cpu = policy->cpu;
 	int io_busy = 0;
@@ -337,7 +351,12 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		cs_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
 		sampling_rate = cs_tuners->sampling_rate;
 		ignore_nice = cs_tuners->ignore_nice_load;
-	} else {
+	}else if(dbs_data->cdata->governor == GOV_HOTPLUG){
+		hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
+		sampling_rate = &hg_tuners->sampling_rate;
+		ignore_nice = hg_tuners->ignore_nice_load;
+	}
+	else {
 		od_tuners = dbs_data->tuners;
 		od_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(cpu);
 		sampling_rate = od_tuners->sampling_rate;
@@ -403,7 +422,11 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		mutex_destroy(&cpu_cdbs->timer_mutex);
 
 		mutex_unlock(&dbs_data->mutex);
-
+		if(dbs_data->cdata->governor == GOV_HOTPLUG)
+			if(hg_tuners->hotplug_load_history){
+				kfree(hg_tuners->hotplug_load_history);
+				hg_tuners->hotplug_load_history = NULL;
+			}
 		break;
 
 	case CPUFREQ_GOV_LIMITS:
