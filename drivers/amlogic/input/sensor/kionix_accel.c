@@ -1240,7 +1240,6 @@ static int kionix_accel_probe(struct i2c_client *client,
 	const struct kionix_accel_platform_data *accel_pdata = client->dev.platform_data;
 	struct kionix_accel_driver *acceld;
 	int err;
-	struct proc_dir_entry *proc_dir, *proc_entry;
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_I2C | I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -1361,15 +1360,6 @@ static int kionix_accel_probe(struct i2c_client *client,
 	acceld->kionix_accel_update_odr(acceld, acceld->poll_interval);
 	kionix_accel_update_direction(acceld);
 
-	proc_dir = proc_mkdir("sensors", NULL);
-	if (proc_dir == NULL)
-		KMSGERR(&client->dev, "failed to create /proc/sensors\n");
-	else {
-		proc_entry = create_proc_entry( "accelinfo", 0644, proc_dir);
-		if (proc_entry == NULL)
-			KMSGERR(&client->dev, "failed to create /proc/cpu/accelinfo\n");
-	}
-
 	acceld->accel_workqueue = create_workqueue("Kionix Accel Workqueue");
 	INIT_DELAYED_WORK(&acceld->accel_work, kionix_accel_work);
 	init_waitqueue_head(&acceld->wqh_suspend);
@@ -1466,55 +1456,17 @@ static struct i2c_driver kionix_accel_driver = {
 };
 
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("kionix_accel", 0x0f),
-};
-
-#endif
-
 
 
 static int __init kionix_accel_init(void)
 {
-#ifdef CONFIG_OF
-
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-
-        return i2c_add_driver(&kionix_accel_driver);
-    }
-
-    return -1;
-#else
 	return i2c_add_driver(&kionix_accel_driver);
-#endif
 }
 module_init(kionix_accel_init);
 
 static void __exit kionix_accel_exit(void)
 {
 	i2c_del_driver(&kionix_accel_driver);
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
-
 }
 module_exit(kionix_accel_exit);
 

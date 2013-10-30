@@ -26,11 +26,11 @@
 #include <linux/err.h>
 #include <linux/gpio.h>
 #include <linux/miscdevice.h>
-#include <linux/lightsensor.h>
+//#include <linux/lightsensor.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 #include <asm/mach-types.h>
-#include <linux/cm3232.h>
+#include <linux/sensor/cm3232.h>
 #include <asm/setup.h>
 #include <linux/jiffies.h>
 
@@ -51,8 +51,9 @@ struct cm3232_info {
 	struct input_dev *ls_input_dev;
 	atomic_t delay;
 	atomic_t enable;
-	
+#ifdef CONFIG_HAS_EARLYSUSPEND	
 	struct early_suspend early_suspend;
+#endif
 	struct i2c_client *i2c_client;
 	struct workqueue_struct *lp_wq;
 	struct delayed_work work;
@@ -870,6 +871,7 @@ static int cm3232_setup(struct cm3232_info *lpi)
 	return ret;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND	
 static void cm3232_early_suspend(struct early_suspend *h)
 {
 	struct cm3232_info *lpi = lp_info;
@@ -889,7 +891,7 @@ static void cm3232_late_resume(struct early_suspend *h)
 	if (!lpi->als_enable)
 		lightsensor_enable(lpi);
 }
-
+#endif
 static int cm3232_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
@@ -986,13 +988,13 @@ static int cm3232_probe(struct i2c_client *client,
 		pr_err("[LS][CM3232 error]%s: could not create sysfs group\n", __func__);
 		goto err_sysfs_create_group_light;
 	}
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	lpi->early_suspend.level =
 			EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	lpi->early_suspend.suspend = cm3232_early_suspend;
 	lpi->early_suspend.resume = cm3232_late_resume;
 	register_early_suspend(&lpi->early_suspend);
-
+#endif
        lpi->als_enable=0;
 	D("[CM3232] %s: Probe success!\n", __func__);
 	
@@ -1035,53 +1037,16 @@ static struct i2c_driver cm3232_driver = {
 	},
 };
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("cm3232", 0x10),
-};
-
-#endif
-
 
 static int __init cm3232_init(void)
 {
-#ifdef CONFIG_OF
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-
-        return i2c_add_driver(&cm3232_driver);
-    }
-
-    return -1;
-#else
 
 	return i2c_add_driver(&cm3232_driver);
-#endif
 }
 
 static void __exit cm3232_exit(void)
 {
 	i2c_del_driver(&cm3232_driver);
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
 }
 
 module_init(cm3232_init);

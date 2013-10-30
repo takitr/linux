@@ -774,43 +774,11 @@ static int device_i2c_probe(struct i2c_client *client,const struct i2c_device_id
     return 0;
 }
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("dmard10", 0x18),
-};
-
-#endif
-
-
 
 
 static int __init device_init(void)
 {
-#ifdef CONFIG_OF
-
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-
-        return i2c_add_driver(&device_i2c_driver);
-    }
-
-    return -1;
-#else
-
 	return i2c_add_driver(&device_i2c_driver);
-#endif
 }
 
 
@@ -823,14 +791,6 @@ static void __exit device_exit(void)
 	device_destroy(devdata.class, devdata.devno);
 	class_destroy(devdata.class);
 	i2c_del_driver(&device_i2c_driver);
-
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
 
 }
 

@@ -92,6 +92,19 @@ config GRAVITY_STK8312
 	  Say yes here to support Sensortek's STK8312 accelerometer sensor
 endif
 
+config GRAVITY_MM3A310
+ 		tristate "MM3A310 GSENSOR support"
+ 		---help---
+ 		  Choose this option.
+ 		  If you say yes here you get support for MiraMEM's accelerometer
+ 		  sensor MM3A310.
+
+config GRAVITY_MXC622X
+	tristate "MXC622X 2-Axis acceleration sensor driver"
+	depends on I2C=y
+	help
+	  If you say yes here you get support for Memsic's 2-Axis
+	  acceleration sensors MXC622X.
 
 config LIGHT_CM36283
 	tristate "CM36283 light sensor driver"
@@ -117,5 +130,18 @@ config LIGHT_EPL6814
 	depends on I2C
 	help
 	   Say Y here to enable the EPL6814.
+
+config LIGHT_ISL29023
+	tristate "ISL29023 light sensor driver"
+	depends on I2C
+	help
+	   Say Y here to enable Intersil's light sensor ISL29023.
+
+config LIGHT_STK220X
+	bool "STK2203 light sensor in polling mode"
+	help
+	    Say Y here to enable SensorTek's STK2203 using polling mode.
+
+
 
 endif # SENSOR_DEVICES 
