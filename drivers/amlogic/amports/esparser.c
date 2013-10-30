@@ -184,6 +184,16 @@ static ssize_t _esparser_write(const char __user *buf,
     return len;
 }
 
+s32 es_vpts_checkin_us64(struct stream_buf_s *buf, u64 us64)
+{
+    return pts_checkin_offset_us64(PTS_TYPE_VIDEO, video_data_parsed,us64);
+
+}
+s32 es_apts_checkin_us64(struct stream_buf_s *buf, u64 us64)
+{
+    return pts_checkin_offset_us64(PTS_TYPE_AUDIO, audio_data_parsed, us64);
+}
+
 s32 es_vpts_checkin(struct stream_buf_s *buf, u32 pts)
 {
 #if 0

@@ -1294,6 +1294,18 @@ static long amstream_ioctl(struct file *file,
             r = es_apts_checkin(&bufs[BUF_TYPE_AUDIO], arg);
         }
         break;
+	case AMSTREAM_IOC_TSTAMP_uS64:
+        if ((this->type & (PORT_TYPE_AUDIO | PORT_TYPE_VIDEO)) ==
+        	((PORT_TYPE_AUDIO | PORT_TYPE_VIDEO))) {	
+        	r = -EINVAL;
+        } else{
+            if (this->type & PORT_TYPE_VIDEO) {	
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],arg);
+            } else if (this->type & PORT_TYPE_AUDIO) {
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],arg);
+            }	
+        }
+        break;
 
     case AMSTREAM_IOC_VDECSTAT:
         if ((this->type & PORT_TYPE_VIDEO) == 0) {
