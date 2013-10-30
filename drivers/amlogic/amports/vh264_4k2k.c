@@ -1257,9 +1257,6 @@ static int vh264_4k2k_stop(void)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vh264_4k2k_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
