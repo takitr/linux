@@ -58,10 +58,13 @@ struct battery_parameter   *rn5t618_battery   = NULL;
 struct input_dev           *rn5t618_power_key = NULL;
 static int rn5t618_curr_dir = 0;
 
+#ifdef CONFIG_AMLOGIC_USB
+struct work_struct          rn5t618_otg_work;
 extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
 extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
 extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
 extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+#endif
 
 int rn5t618_get_battery_voltage(void)
 {
@@ -254,11 +257,20 @@ int rn5t618_set_charge_current(int curr)
 {
     int bits;
 
-    if (curr < 100000 || curr > 1800000) {
+    if (curr < 0 || curr > 1800000) {
         RICOH_DBG("%s, invalid charge current:%d\n", __func__, curr);
         return -EINVAL;
     }
-    bits = (curr - 100000) / 100000;
+    if (curr > 100) {                           // input is uA
+        curr = curr / 1000;
+    } else {                                    // input is charge ratio
+        curr = (curr * rn5t618_battery->pmu_battery_cap) / 100 + 100; 
+    }    
+    if (curr > 1600) {
+        // for safety, do not let charge current large than 90% of max charge current
+        curr = 1600;    
+    }
+    bits = (curr - 100) / 100;
     return rn5t618_set_bits(0x00B8, bits, 0x1f);
 }
 EXPORT_SYMBOL_GPL(rn5t618_set_charge_current);
@@ -628,11 +640,21 @@ static int rn5t618_ac_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_PRESENT:
-        val->intval = charger->dcin_valid;
+        if (charger->rest_vol == 0 && 
+            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+            val->intval = 0;
+        } else {
+            val->intval = charger->dcin_valid;
+        }
         break;
 
     case POWER_SUPPLY_PROP_ONLINE:
-        val->intval = charger->dcin_valid;
+        if (charger->rest_vol == 0 && 
+            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+            val->intval = 0;
+        } else {
+            val->intval = charger->dcin_valid;
+        }
         break;
 
     case POWER_SUPPLY_PROP_VOLTAGE_NOW:
@@ -666,11 +688,21 @@ static int rn5t618_usb_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_PRESENT:
-        val->intval = charger->usb_valid;
+        if (charger->rest_vol == 0 && 
+            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+            val->intval = 0;
+        } else {
+            val->intval = charger->usb_valid;
+        }
         break;
 
     case POWER_SUPPLY_PROP_ONLINE:
-        val->intval = charger->usb_valid; 
+        if (charger->rest_vol == 0 && 
+            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+            val->intval = 0;
+        } else {
+            val->intval = charger->usb_valid;
+        }
         break;
 
     case POWER_SUPPLY_PROP_VOLTAGE_NOW:
@@ -723,13 +755,17 @@ static void rn5t618_battery_setup_psy(struct rn5t618_supply *supply)
     usb->num_properties  = ARRAY_SIZE(rn5t618_usb_props);
 }
 
-static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
+#ifdef CONFIG_AMLOGIC_USB
+static int rn5t618_otg_value = -1;
+static void rn5t618_otg_work_fun(struct work_struct *work)
 {
-    uint8_t val = 0;
-
+    uint8_t val;
+    if (rn5t618_otg_value == -1) {
+        return ;    
+    }
     msleep(100);
-    RICOH_DBG("%s, value:%d, is_short:%d\n", __func__, __LINE__, g_rn5t618_init->vbus_dcin_short_connect);
-    if (value) {
+    RICOH_DBG("%s, value:%d, is_short:%d\n", __func__, rn5t618_otg_value, g_rn5t618_init->vbus_dcin_short_connect);
+    if (rn5t618_otg_value) {
         rn5t618_read(0xB3, &val);
         if (g_rn5t618_init->vbus_dcin_short_connect) {
             val |= 0x08; 
@@ -751,8 +787,16 @@ static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, vo
     msleep(10);
     rn5t618_read(0xB3, &val);
     printk("regist 0xB3:%x\n", val);
-    return 0; 
+    rn5t618_otg_value = -1;
 }
+
+static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
+{
+    rn5t618_otg_value = value;
+    schedule_work(&rn5t618_otg_work);
+    return 0;
+}
+#endif
 
 static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
 {
@@ -1031,7 +1075,6 @@ static int rn5t618_update_state(struct aml_charger *charger)
 
     charger->vbat = rn5t618_get_battery_voltage();
     charger->ibat = rn5t618_get_battery_current();
-    charger->ocv  = rn5t618_cal_ocv(charger->ibat, charger->vbat, charger->charge_status);
     rn5t618_read(0x00BD, buff);
     status = buff[0] & 0x1f;
     charger->fault = buff[0];
@@ -1049,6 +1092,7 @@ static int rn5t618_update_state(struct aml_charger *charger)
         charger->charge_status = CHARGER_DISCHARGING;
     }
 
+    charger->ocv  = rn5t618_cal_ocv(charger->ibat, charger->vbat, charger->charge_status);
     if ((status != RN5T618_NO_BATTERY) && 
         (status != RN5T618_NO_BATTERY2)) {
         charger->bat_det = 1;
@@ -1162,12 +1206,14 @@ static void rn5t618_charging_monitor(struct work_struct *work)
 {
     struct   rn5t618_supply *supply;
     struct   aml_charger    *charger;
-    int32_t pre_rest_cap;
-    uint8_t pre_chg_status;
+    int32_t  pre_rest_cap;
+    uint8_t  pre_chg_status;
+    uint8_t  pre_pwr_status;
 
     supply  = container_of(work, struct rn5t618_supply, work.work);
     charger = &supply->aml_charger;
-    pre_chg_status = charger->ext_valid;
+    pre_pwr_status = charger->ext_valid;
+    pre_chg_status = charger->charge_status;
     pre_rest_cap   = charger->rest_vol;
 
     /*
@@ -1187,7 +1233,10 @@ static void rn5t618_charging_monitor(struct work_struct *work)
     rn5t618_feed_watchdog();
 #endif
 
-    if((charger->rest_vol - pre_rest_cap) || (pre_chg_status != charger->ext_valid) || charger->resume){
+    if ((charger->rest_vol - pre_rest_cap)         || 
+        (pre_pwr_status != charger->ext_valid)     || 
+        (pre_chg_status != charger->charge_status) ||
+         charger->resume) {
         RICOH_DBG("battery vol change: %d->%d \n", pre_rest_cap, charger->rest_vol);
         if (unlikely(charger->resume)) {
             charger->resume = 0;
@@ -1201,7 +1250,9 @@ static void rn5t618_charging_monitor(struct work_struct *work)
 #if defined CONFIG_HAS_EARLYSUSPEND
 static void rn5t618_earlysuspend(struct early_suspend *h)
 {
-    rn5t618_set_charge_current(rn5t618_battery->pmu_suspend_chgcur);
+    if (rn5t618_battery) {
+        rn5t618_set_charge_current(rn5t618_battery->pmu_suspend_chgcur);
+    }
 }
 
 static void rn5t618_lateresume(struct early_suspend *h)
@@ -1209,7 +1260,9 @@ static void rn5t618_lateresume(struct early_suspend *h)
     struct  rn5t618_supply *supply = (struct rn5t618_supply *)h->param;
 
     schedule_work(&supply->work.work);                                      // update for upper layer 
-    rn5t618_set_charge_current(rn5t618_battery->pmu_resume_chgcur);
+    if (rn5t618_battery) {
+        rn5t618_set_charge_current(rn5t618_battery->pmu_resume_chgcur);
+    }
 }
 #endif
 
@@ -1337,10 +1390,13 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     charger->soft_limit_to99     = g_rn5t618_init->soft_limit_to99;
     charger->coulomb_type        = COULOMB_SINGLE_CHG_INC; 
     supply->charge_timeout_retry = g_rn5t618_init->charge_timeout_retry;
+#ifdef CONFIG_AMLOGIC_USB
     supply->otg_nb.notifier_call = rn5t618_otg_change;
     supply->usb_nb.notifier_call = rn5t618_usb_charger;
+    INIT_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
     dwc_otg_power_register_notifier(&supply->otg_nb);
     dwc_otg_charger_detect_register_notifier(&supply->usb_nb);
+#endif
     aml_pmu_register_driver(&rn5t618_pmu_driver);
     if (supply->irq == RN5T618_IRQ_NUM) {
         INIT_WORK(&supply->irq_work, rn5t618_irq_work_func); 
@@ -1428,8 +1484,10 @@ static int rn5t618_battery_remove(struct platform_device *dev)
 {
     struct rn5t618_supply *supply= platform_get_drvdata(dev);
 
+#ifdef CONFIG_AMLOGIC_USB
     dwc_otg_power_unregister_notifier(&supply->otg_nb);
     dwc_otg_charger_detect_unregister_notifier(&supply->usb_nb);
+#endif
     cancel_work_sync(&supply->irq_work);
     cancel_delayed_work_sync(&supply->work);
     power_supply_unregister( &supply->usb);
