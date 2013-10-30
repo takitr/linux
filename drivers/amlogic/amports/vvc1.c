@@ -25,6 +25,7 @@
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
+#include <linux/kfifo.h>
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
 #include <plat/io.h>
@@ -43,7 +44,6 @@
 #define DRIVER_NAME "amvdec_vc1"
 #define MODULE_NAME "amvdec_vc1"
 
-#define HANDLE_VC1_IRQ
 #define DEBUG_PTS
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 #define NV21
@@ -69,10 +69,9 @@
 #define VC1_OFFSET_REG      AV_SCRATCH_C
 #define MEM_OFFSET_REG      AV_SCRATCH_F
 
-#define VF_POOL_SIZE        12
+#define VF_POOL_SIZE          16
+#define DECODE_BUFFER_NUM_MAX 4
 #define PUT_INTERVAL        (HZ/100)
-
-#define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
 #define STAT_TIMER_INIT     0x01
 #define STAT_MC_LOAD        0x02
@@ -109,11 +108,12 @@ static const struct vframe_operations_s vvc1_vf_provider = {
 };
 static struct vframe_provider_s vvc1_vf_prov;
 
+static DECLARE_KFIFO(newframe_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(display_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(recycle_q, vframe_t *, VF_POOL_SIZE);
+
 static struct vframe_s vfpool[VF_POOL_SIZE];
-static u32 vfpool_idx[VF_POOL_SIZE];
-static s32 vfbuf_use[4];
-static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
-static u32 frame_width, frame_height, frame_dur, frame_prog;
+static s32 vfbuf_use[DECODE_BUFFER_NUM_MAX];
 static struct timer_list recycle_timer;
 static u32 stat;
 static u32 buf_start, buf_size, buf_offset;
@@ -172,19 +172,6 @@ static inline u32 index2canvas(u32 index)
     };
 
     return canvas_tab[index];
-}
-
-static inline void ptr_atomic_wrap_inc(u32 *ptr)
-{
-    u32 i = *ptr;
-
-    i++;
-
-    if (i >= VF_POOL_SIZE) {
-        i = 0;
-    }
-
-    *ptr = i;
 }
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
@@ -251,14 +238,10 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
     //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
 }
 
-#ifdef HANDLE_VC1_IRQ
 static irqreturn_t vvc1_isr(int irq, void *dev_id)
-#else
-static void vvc1_isr(void)
-#endif
 {
     u32 reg;
-    vframe_t *vf;
+    vframe_t *vf = NULL;
     u32 repeat_count;
     u32 picture_type;
     u32 buffer_index;
@@ -285,16 +268,17 @@ static void vvc1_isr(void)
         buffer_index = ((reg & 0x7) - 1) & 3;
         picture_type = (reg >> 3) & 7;
 
+        if (buffer_index >= DECODE_BUFFER_NUM_MAX) {
+            printk("fatal error, invalid buffer index.");
+            return IRQ_HANDLED;
+        }
+
         if ((intra_output == 0) && (picture_type != 0)) {
             WRITE_VREG(VC1_BUFFERIN, ~(1 << buffer_index));
             WRITE_VREG(VC1_BUFFEROUT, 0);
             WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
-#ifdef HANDLE_VC1_IRQ
             return IRQ_HANDLED;
-#else
-            return;
-#endif
         }
 
         intra_output = 1;
@@ -349,8 +333,12 @@ static void vvc1_isr(void)
         }
 
         if (reg & INTERLACE_FLAG) { // interlace
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -388,10 +376,16 @@ static void vvc1_isr(void)
 
             vfbuf_use[buffer_index]++;
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
+
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -418,11 +412,16 @@ static void vvc1_isr(void)
 
             vfbuf_use[buffer_index]++;
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
+
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         } else { // progressive
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -461,7 +460,8 @@ static void vvc1_isr(void)
 
             vfbuf_use[buffer_index]++;
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
+
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         }
 
@@ -473,62 +473,49 @@ static void vvc1_isr(void)
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
-#ifdef HANDLE_VC1_IRQ
     return IRQ_HANDLED;
-#else
-    return;
-#endif
 }
 
 static vframe_t *vvc1_vf_peek(void* op_arg)
 {
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    vframe_t *vf;
+
+    if (kfifo_peek(&display_q, &vf)) {
+        return vf;
     }
 
-    return &vfpool[get_ptr];
+    return NULL;
 }
 
 static vframe_t *vvc1_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    if (kfifo_get(&display_q, &vf)) {
+        return vf;
     }
 
-    vf = &vfpool[get_ptr];
-
-    INCPTR(get_ptr);
-
-    return vf;
+    return NULL;
 }
 
 static void vvc1_vf_put(vframe_t *vf, void* op_arg)
 {
-    INCPTR(putting_ptr);
+    kfifo_put(&recycle_q, (const vframe_t **)&vf);
 }
 
 static int vvc1_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
-    int i;
-    spin_lock_irqsave(&lock, flags);
-    states->vf_pool_size = VF_POOL_SIZE;
 
-    i = put_ptr - fill_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_free_num = i;
-    
-    i = putting_ptr - put_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_recycle_num = i;
-    
-    i = fill_ptr - get_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_avail_num = i;
+    spin_lock_irqsave(&lock, flags);
+
+    states->vf_pool_size = VF_POOL_SIZE;
+    states->buf_free_num = kfifo_len(&newframe_q);
+    states->buf_avail_num = kfifo_len(&display_q);
+    states->buf_recycle_num = kfifo_len(&recycle_q);
     
     spin_unlock_irqrestore(&lock, flags);
+
     return 0;
 }
 
@@ -722,10 +709,6 @@ static void vvc1_local_init(void)
 
     avi_flag = (u32)vvc1_amstream_dec_info.param;
 
-    fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-
-    frame_width = frame_height = frame_dur = frame_prog = 0;
-
     total_frame = 0;
 
     next_pts = 0;
@@ -736,8 +719,18 @@ static void vvc1_local_init(void)
 
     memset(&frm, 0, sizeof(frm));
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++) {
         vfbuf_use[i] = 0;
+    }
+
+    INIT_KFIFO(display_q);
+    INIT_KFIFO(recycle_q);
+    INIT_KFIFO(newframe_q);
+
+    for (i=0; i<VF_POOL_SIZE; i++) {
+        const vframe_t *vf = &vfpool[i];
+        vfpool[i].index = -1;
+        kfifo_put(&newframe_q, &vf);
     }
 }
 
@@ -758,10 +751,6 @@ static void vvc1_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
-#ifndef HANDLE_VC1_IRQ
-    vvc1_isr();
-#endif
-
 #if 1
     if (READ_VREG(VC1_SOS_COUNT) > 10) {
         amvdec_stop();
@@ -777,14 +766,17 @@ static void vvc1_put_timer_func(unsigned long arg)
     }
 #endif
 
-    if ((putting_ptr != put_ptr) && (READ_VREG(VC1_BUFFERIN) == 0)) {
-        u32 index = vfpool_idx[put_ptr];
+    while (!kfifo_is_empty(&recycle_q) &&
+           (READ_VREG(VC1_BUFFERIN) == 0)) {
+        vframe_t *vf;
+        if (kfifo_get(&recycle_q, &vf)) {
+            if ((vf->index >= 0) && (--vfbuf_use[vf->index] == 0)) {
+                WRITE_VREG(VC1_BUFFERIN, ~(1 << vf->index));
+                vf->index = -1;
+            }
 
-        if (--vfbuf_use[index] == 0) {
-            WRITE_VREG(VC1_BUFFERIN, ~(1 << index));
+            kfifo_put(&newframe_q, (const vframe_t **)&vf);
         }
-
-        INCPTR(put_ptr);
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -828,7 +820,6 @@ static s32 vvc1_init(void)
     /* enable AMRISC side protocol */
     vvc1_prot_init();
 
-#ifdef HANDLE_VC1_IRQ
     if (request_irq(INT_VDEC, vvc1_isr,
                     IRQF_SHARED, "vvc1-irq", (void *)vvc1_dec_id)) {
         amvdec_disable();
@@ -836,17 +827,16 @@ static s32 vvc1_init(void)
         printk("vvc1 irq register error.\n");
         return -ENOENT;
     }
-#endif
 
     stat |= STAT_ISR_REG;
- #ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_POST_PROCESS_MANAGER
     vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
     vf_reg_provider(&vvc1_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
- #else 
+#else 
     vf_provider_init(&vvc1_vf_prov, PROVIDER_NAME, &vvc1_vf_provider, NULL);
     vf_reg_provider(&vvc1_vf_prov);
- #endif 
+#endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -909,10 +899,6 @@ static int amvdec_vc1_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-        spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vvc1_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
