@@ -637,10 +637,10 @@ static void vpp_settings_h(vpp_frame_par_t *framePtr)
     VSYNC_WR_MPEG_REG(VPP_HSC_START_PHASE_STEP + cur_dev->vpp_off,
                    vpp_filter->vpp_hf_start_phase_step);
 
-    VSYNC_WR_MPEG_REG(VPP_HSC_REGION1_PHASE_SLOPE,
+    VSYNC_WR_MPEG_REG(VPP_HSC_REGION1_PHASE_SLOPE + cur_dev->vpp_off,
                    vpp_filter->vpp_hf_start_phase_slope);
 
-    VSYNC_WR_MPEG_REG(VPP_HSC_REGION3_PHASE_SLOPE,
+    VSYNC_WR_MPEG_REG(VPP_HSC_REGION3_PHASE_SLOPE + cur_dev->vpp_off,
                    vpp_filter->vpp_hf_end_phase_slope);
 
     VSYNC_WR_MPEG_REG(VPP_LINE_IN_LENGTH + cur_dev->vpp_off, framePtr->VPP_line_in_length_);
@@ -659,11 +659,11 @@ static void vpp_settings_v(vpp_frame_par_t *framePtr)
                    ((framePtr->VPP_vsc_endp   & VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
 
     if ((framePtr->VPP_post_blend_vd_v_end_ - framePtr->VPP_post_blend_vd_v_start_ + 1) > VPP_PREBLEND_VD_V_END_LIMIT) {
-        VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END,
+        VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END + cur_dev->vpp_off,
                    ((framePtr->VPP_post_blend_vd_v_start_ & VPP_VD_SIZE_MASK) << VPP_VD1_START_BIT) |
                    ((framePtr->VPP_post_blend_vd_v_end_   & VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
     } else {
-        VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END,
+        VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END + cur_dev->vpp_off,
                    ((0 & VPP_VD_SIZE_MASK) << VPP_VD1_START_BIT) |
                    (((VPP_PREBLEND_VD_V_END_LIMIT-1) & VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
     }
@@ -2052,11 +2052,11 @@ SET_FILTER:
         VSYNC_WR_MPEG_REG(VPP_POSTBLEND_H_SIZE + cur_dev->vpp_off, cur_frame_par->VPP_post_blend_h_size_);
 
         if((cur_frame_par->VPP_post_blend_vd_v_end_ - cur_frame_par->VPP_post_blend_vd_v_start_+1)>1080){
-            VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END,
+            VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END + cur_dev->vpp_off,
                        ((cur_frame_par->VPP_post_blend_vd_v_start_ & VPP_VD_SIZE_MASK) << VPP_VD1_START_BIT) |
                        ((cur_frame_par->VPP_post_blend_vd_v_end_ & VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
         }else{
-            VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END,
+            VSYNC_WR_MPEG_REG(VPP_PREBLEND_VD1_V_START_END + cur_dev->vpp_off,
                        ((0 & VPP_VD_SIZE_MASK) << VPP_VD1_START_BIT) |
                        ((1079 & VPP_VD_SIZE_MASK) << VPP_VD1_END_BIT));
         }

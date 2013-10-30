@@ -14,6 +14,10 @@
 #include "detect3d.h"
 #endif
 
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+#include <mach/vpu.h>
+#endif
+
 #ifndef DI_CHAN2_CANVAS
 #define DI_CHAN2_CANVAS DI_CHAN2_CANVAS0
 #endif
@@ -350,6 +354,11 @@ void di_hw_init(void)
     Wr(DI_NRMTN_CTRL0, 0xb00a0603);
 #endif
 
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        //need not set DI_CLKG_CTRL, hardware default value of this register is already 0 
+    //Wr_reg_bits(DI_CLKG_CTRL, 0x0, 0, 2);    // bit 0: 1, no clock; bit 1: 0, auto clock gate
+#endif    
 }
 
 void di_hw_uninit(void)
@@ -2113,11 +2122,13 @@ void di_set_power_control(unsigned char type, unsigned char enable)
 		}
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
     if(type==0){
-        WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 26, 2); //di pre
+        //WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 26, 2); //di pre
+        switch_vpu_mem_pd_vmod(VPU_DI_PRE, enable?VPU_MEM_POWER_ON:VPU_MEM_POWER_DOWN);
         pre_power_on = enable;
     }
     else{
-        WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 28, 2); //di post
+        //WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 28, 2); //di post
+        switch_vpu_mem_pd_vmod(VPU_DI_POST, enable?VPU_MEM_POWER_ON:VPU_MEM_POWER_DOWN);
         post_power_on = enable;
     }
 #endif    
