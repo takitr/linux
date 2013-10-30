@@ -3708,55 +3708,16 @@ static struct i2c_driver bma250_driver = {
 };
 
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("bma250", 0x18),
-};
-
-#endif
-
-
 
 static int __init BMA250_init(void)
 {
-#ifdef CONFIG_OF
-
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-
-        return i2c_add_driver(&bma250_driver);
-    }
-
-    return -1;
-#else
 	return i2c_add_driver(&bma250_driver);
-#endif
 }
 
 static void __exit BMA250_exit(void)
 {
 	i2c_del_driver(&bma250_driver);
 
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
 }
 
 MODULE_AUTHOR("Albert Zhang <xu.zhang@bosch-sensortec.com>");

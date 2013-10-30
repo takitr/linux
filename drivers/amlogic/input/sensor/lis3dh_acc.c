@@ -1637,40 +1637,12 @@ static struct i2c_driver lis3dh_acc_driver = {
 	.id_table = lis3dh_acc_id,
 };
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("lis3dh_acc", 0x28),
-};
-
-#endif
-
 
 
 static int __init lis3dh_acc_init(void)
 {
-#ifdef CONFIG_OF
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-       return i2c_add_driver(&lis3dh_acc_driver);
-    }
-
-    return -1;
-#else
-    
+   
 	return i2c_add_driver(&lis3dh_acc_driver);
-#endif
 }
 
 static void __exit lis3dh_acc_exit(void)
@@ -1680,14 +1652,6 @@ static void __exit lis3dh_acc_exit(void)
 						LIS3DH_ACC_DEV_NAME);   
      
 	i2c_del_driver(&lis3dh_acc_driver);
-
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
 
 	return;
 }

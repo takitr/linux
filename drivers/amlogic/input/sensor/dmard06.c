@@ -805,54 +805,15 @@ exit_alloc_data_failed:
 	return err;
 }
 
-#if CONFIG_OF
-
-static struct i2c_client *g_i2c_client;
-static struct i2c_board_info i2c_info =
-{
-    I2C_BOARD_INFO("dmard06", 0x1c),
-};
-
-#endif
-
-
 
 static int __init dmard06_i2c_init(void)
 {
-#ifdef CONFIG_OF
-
-	struct i2c_adapter *adapter;
-    int i2c_bus_nr; 
-    if(sensor_setup_i2c_dev(&i2c_info, &i2c_bus_nr, 0) >= 0)
-    {
-        adapter = i2c_get_adapter(i2c_bus_nr);
-        if(!adapter)
-           return -1;
-
-        g_i2c_client = i2c_new_device(adapter, &i2c_info);
-        if(!g_i2c_client)
-            return -1;
-
-        return i2c_add_driver(&dmard06_driver);
-    }
-
-    return -1;
-#else
 	return i2c_add_driver(&dmard06_driver);
-#endif
 }
 
 static void __exit dmard06_i2c_exit(void)
 {
 	i2c_del_driver(&dmard06_driver);
-#ifdef CONFIG_OF
-    if(g_i2c_client)
-    {
-        i2c_unregister_device(g_i2c_client);
-        g_i2c_client = 0;
-    }
-#endif
-
 
 }
 
