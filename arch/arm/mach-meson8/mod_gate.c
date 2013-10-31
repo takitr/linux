@@ -200,7 +200,7 @@ static mod_record_t mod_records[MOD_MAX_NUM + 1] = {
 	}, //end of the record array
 };
 
-
+#if 0
 static int _switch_gate(mod_type_t type, int flag)
 {
 	int ret = 0;
@@ -512,7 +512,9 @@ static int _switch_gate(mod_type_t type, int flag)
 	}
 	return ret;
 }
+#endif
 
+#if 0
 static int get_mod(mod_record_t* mod_record)
 {
 	int ret = 0;
@@ -533,7 +535,9 @@ static int get_mod(mod_record_t* mod_record)
 	spin_unlock_irqrestore(&mod_lock, flags);
 	return ret;
 }
+#endif
 
+#if 0
 static int put_mod(mod_record_t* mod_record)
 {
 	int ret = 0;
@@ -554,7 +558,9 @@ static int put_mod(mod_record_t* mod_record)
 	spin_unlock_irqrestore(&mod_lock, flags);
 	return ret;
 }
+#endif
 
+#if 0
 static void _switch_mod_gate_by_type(mod_type_t type, int flag, int dc_protect)
 {
 #if 0
@@ -568,6 +574,7 @@ static void _switch_mod_gate_by_type(mod_type_t type, int flag, int dc_protect)
 	}
 #endif
 }
+#endif
 
 void switch_mod_gate_by_type(mod_type_t type, int flag)
 {

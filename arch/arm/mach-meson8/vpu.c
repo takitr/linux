@@ -127,17 +127,20 @@ static vpu_mod_t get_vpu_mod(unsigned int vmod)
 	return vpu_mod;
 } 
 
+#ifdef CONFIG_VPU_DYNAMIC_ADJ
 static unsigned int get_vpu_clk_level_max_vmod(void)
 {
 	unsigned int max_level;
-	int i,j;
+	int i;
 	
 	max_level = 0;
 	for (i=VPU_MOD_START; i<VPU_MAX; i++) {
 		if (vpu_clk_vmod[i-VPU_MOD_START] > max_level)
 			max_level = vpu_clk_vmod[i-VPU_MOD_START];
 	}
+	return max_level;
 }
+#endif
 
 static unsigned int get_vpu_clk_level(unsigned int video_clk)
 {

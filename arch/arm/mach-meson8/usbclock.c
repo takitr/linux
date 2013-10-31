@@ -50,12 +50,11 @@ static const char * clock_src_name[] = {
 static int init_count;
 int clk_enable_usb(struct clk *clk)
 {
-	int port_idx,i;
+	int port_idx;
 	char * clk_name;
 	usb_peri_reg_t * peri_a,* peri_b,*peri;
 	usb_config_data_t config;
 	usb_ctrl_data_t control;
-	usb_dbg_uart_data_t uart;
 	int clk_sel,clk_div,clk_src;
 	int time_dly = 500; //usec
 	
@@ -122,8 +121,7 @@ int clk_disable_usb(struct clk *clk)
 {
 	char * clk_name;
 	usb_peri_reg_t * peri_a,* peri_b,*peri;
-	usb_dbg_uart_data_t uart;
-	
+
 	if(!clk)
 		return -1;
 
