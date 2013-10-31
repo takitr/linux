@@ -1,5 +1,4 @@
 #ifdef CONFIG_AM_LCD_OUTPUT
-#ifdef CONFIG_ARCH_MESON8
 //$$ DEVICE="lcd"
 //$$ L2 PROP_STR = "status"
 
@@ -23,7 +22,7 @@
 //$$ L2 PROP_U32 = "clock_spread_spectrum"
 //$$ L2 PROP_U32 = "clock_auto_generation"
 //$$ L2 PROP_U32 3 = "clk_pll_div_clk_ctrl"
-//$$ L2 PROP_U32 = "phy_ctrl"
+//$$ L2 PROP_U32 = "lvds_vswing"
 //$$ L2 PROP_U32 2 = "lvds_user_repack"
 //$$ L2 PROP_U32 3 = "edp_user_link_rate_lane_count"
 //$$ L2 PROP_U32 2 = "edp_link_adaptive_vswing"
@@ -112,7 +111,7 @@
 		clock_spread_spectrum=<0>;	/** ss_level(0=disable, 1=0.5%, 2=1%, 3=2%, 4=3%, 5=4%, 6=5%) */
 		clock_auto_generation=<1>;	/** clk_auto_generation(0 for using customer clock parameters, as clk_pll_div_clk_ctrl defined, 1 for auto generate clock parameters by lcd_clock) */
 		clk_pll_div_clk_ctrl=<0x1000038 0x918803 0x44003101>;	/** pll_ctrl, div_ctrl, clk_ctrl : (only valid when clk_auto_generation=0) */
-		phy_ctrl=<0xaf40>; /** phy ctrl */
+		lvds_vswing=<1>;	/** lvds_vswing_level(default level=1, support level 0,1,2,3,4) */
 		lvds_user_repack=<0 0>;	/** lvds_repack_user(0 for auto setting, 1 for user define), lvds_repack(0 for JEIDA data mapping, 1 for VESA data mapping. only valid when lvds_repack_user=1) */
 		edp_user_link_rate_lane_count=<1 1 4>;	/** edp_user(0 for auto setting, 1 for user define), link_rate(0 for 1.62G, 1 for 2.7G, only valid when edp_user=1), lane_count(support 1,2,4, only valid when edp_user=1) */
 		edp_link_adaptive_vswing=<0 0>;	/** adaptive(0 for fixed user defined vswing, 1 for auto setting vswing by training), vswing(support level 0,1,2,3, user defined vswing, only valid when adaptive=0) */
@@ -297,6 +296,4 @@
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
 	};
 
-
-#endif
 #endif
