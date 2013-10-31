@@ -57,7 +57,7 @@
 
 static int task_running = 0;
 
-#ifdef CONFIG_ARCH_MESON6
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #define GE2D_NV
 #endif
 
