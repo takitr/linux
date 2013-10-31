@@ -44,7 +44,6 @@
 //#include <mach/hardware.h>
 //#include <mach/clk_set.h>
 //#include <mach/power_gate.h>
-#define CONFIG_MESON_FIX_SMP_SCALING_WARNING 1
 static DEFINE_SPINLOCK(clockfw_lock);
 static DEFINE_MUTEX(clock_ops_lock);
 
@@ -171,17 +170,8 @@ static unsigned setup_a9_clk_min =    24000000;
 static unsigned int freq_limit = 1;
 
 static int set_sys_pll(struct clk *clk,  unsigned long dst);
-static void get_a9_divid(unsigned int idx, unsigned int * scale_divn, unsigned int * scale_out);
 
 #define IS_CLK_ERR(a)  (IS_ERR(a) || a == 0)
-
-#if 0
-#ifdef CONFIG_INIT_A9_CLOCK_FREQ
-static unsigned long __initdata init_clock = CONFIG_INIT_A9_CLOCK;
-#else
-static unsigned long __initdata init_clock = 0;
-#endif
-#endif
 
 static unsigned long clk_get_rate_a9(struct clk * clkdev);
 
@@ -764,8 +754,6 @@ static unsigned long clk_get_rate_a9(struct clk * clkdev)
 	return clk;
 }
 
-static unsigned long a9_cur_clk = 0;
-
 /**
  * udelay will delay depending on lpj.  lpj is adjusted before|after
  * cpu freq is changed, so udelay could take longer or shorter than
@@ -789,14 +777,9 @@ static int _clk_set_rate_cpu(struct clk *clk, unsigned long cpu, unsigned long g
 	unsigned long parent = 0;
 	unsigned long oldcpu = clk_get_rate_a9(clk);
 	unsigned int cpu_clk_cntl = aml_read_reg32(P_HHI_SYS_CPU_CLK_CNTL);
-	unsigned int idx;
-
+	
 //	if ((cpu_clk_cntl & 3) == 1) {
 	{
-		unsigned int n = 0;
-		//unsigned char factor = 1;
-		unsigned int scale_out = 0;
-
 		parent = clk_get_rate_sys(clk->parent);
 		// CPU switch to xtal 
 		aml_write_reg32(P_HHI_SYS_CPU_CLK_CNTL, cpu_clk_cntl & ~(1 << 7));
@@ -807,59 +790,8 @@ static int _clk_set_rate_cpu(struct clk *clk, unsigned long cpu, unsigned long g
 			// when decreasing frequency, lpj has not yet been adjusted
 			udelay_scaled(10, oldcpu / 1000000, 24 /*clk_get_rate_xtal*/);
 		}
-#if 0
-		if (parent == cpu)
-			scale_out = 0;
-		else if ((parent >> 1) == cpu)
-			scale_out = 1;
-		else if (parent == ((cpu << 1) + cpu))
-			scale_out = 2;
-		else {
-			parent = cpu;
-
-			while (parent < 750000000) {
-				switch (factor) {
-				case 1:
-					scale_out = 1;
-					factor = 2;
-					break;
-				case 2:
-					scale_out = 2;
-					factor = 3;
-					break;
-				default:
-					scale_out = 3;
-					n++;
-					factor = (n << 1);
-					break;
-				}
-
-				parent = cpu * factor;
-			}
-
-			set_sys_pll(clk->parent, parent);
-		}
-
-		cpu_clk_cntl = ((cpu_clk_cntl & ~((3 << 2) | (0x3f << 8))) | (scale_out << 2) | (n << 8));
-		printk(KERN_INFO "(CTS_CPU_CLK) syspll=%lu n=%d scale_out=%d cpu_clk_cntl=0x%x\n", parent, n, scale_out, cpu_clk_cntl);
-		aml_write_reg32(P_HHI_SYS_CPU_CLK_CNTL, cpu_clk_cntl);
-#else
-	#if 1
 		set_sys_pll(clk->parent, cpu);
-	#else
-		clk->parent->old_rate = oldcpu;
-		idx = set_sys_pll(clk->parent, cpu);
-		get_a9_divid(idx, &n, &scale_out);
-		parent = clk_get_rate_sys(clk->parent);
-		// update actual cpu freq
-		cpu = parent;
-		cpu_clk_cntl = ((cpu_clk_cntl & ~((3 << 2) | (0x3f << 8))) | (scale_out << 2) | (n << 8));
-#ifdef CONFIG_CPU_FREQ_DEBUG_DETAIL
-		pr_debug("(CTS_CPU_CLK) syspll=%lu n=%d scale_out=%d cpu_clk_cntl=0x%x\n", parent, n, scale_out, cpu_clk_cntl);
-#endif /* CONFIG_CPU_FREQ_DEBUG_DETAIL */
-		aml_write_reg32(P_HHI_SYS_CPU_CLK_CNTL, cpu_clk_cntl);
-	#endif
-#endif
+
 		// Read CBUS for short delay, then CPU switch to sys pll
 		cpu_clk_cntl = aml_read_reg32(P_HHI_SYS_CPU_CLK_CNTL);
 		aml_write_reg32(P_HHI_SYS_CPU_CLK_CNTL, (cpu_clk_cntl) | (1 << 7));
@@ -950,12 +882,7 @@ void meson_set_cpu_ctrl_addr(uint32_t cpu, const uint32_t addr)
 	aml_write_reg32((MESON_CPU1_CONTROL_ADDR_REG + ((cpu-1) << 2)), addr);
 	spin_unlock(&clockfw_lock);	
 }
-#if 0
-static unsigned long cpu_sleep_max_count = 0;
-static unsigned long cpu_wait_max_count = 0;
 
-static unsigned tag_print=0;
-#endif
 static inline unsigned long meson_smp_wait_others(unsigned status)
 {
 	unsigned long count = 0;
@@ -989,162 +916,11 @@ static inline void meson_smp_init_transaction(void)
     }
 }
 
-static void smp_a9_clk_change(struct clk_change_info * info)
-{
-    int cpu = smp_processor_id();
-#if USE_ON_EACH_CPU
-    unsigned long count = 0;
-    if (cpu != info->cpu) {
-        unsigned long flags;
-        MESON_CPU_SET_STATUS(MESON_CPU_SLEEP);
-        pr_debug("CPU%u: Hey CPU %d, I am going to sleep\n", cpu, info->cpu);
-        smp_wmb();
-	dsb_sev();
-	local_irq_save(flags);
-        while ((aml_read_reg32(MESON_CPU_CONTROL_REG) & (1 << cpu)) == 0) {
-		count++;
-
-            __asm__ __volatile__ ("wfe" : : : "memory");
-        }
-        local_irq_restore(flags);
-        MESON_CPU_SET_STATUS(MESON_CPU_WAKEUP);
-
-        if (count > cpu_sleep_max_count) cpu_sleep_max_count = count;
-
-        pr_debug("CPU%u: Hey CPU %d, I woke up (%lu %lu)\n", cpu, info->cpu, count, cpu_sleep_max_count);
-        smp_wmb();
-        dsb_sev();
-    }
-    else
-
-    {
-        pr_debug("CPU%u: Hey other CPU, I am waiting for you to sleep\n", cpu);
-
-        count = meson_smp_wait_others(MESON_CPU_SLEEP);
-        if (count > cpu_wait_max_count) cpu_wait_max_count = count;
-
-        pr_debug("CPU%u: All other CPU in sleep (%lu %lu)\n", cpu, count, cpu_wait_max_count);
-
-        info->err = _clk_set_rate_cpu(info->clk, info->rate, 0);
-        aml_write_reg32(MESON_CPU_CONTROL_REG, 0xf);
-        smp_wmb();
-        dsb_sev();
-    }
-
-#else
-        if(cpu!=info->cpu){
-            info->err = _clk_set_rate_cpu(info->clk, info->rate, 0);
-        }
-#endif
-}
 #endif /* CONFIG_SMP */
 
-#ifdef CONFIG_MESON_FIX_SMP_SCALING_WARNING
-/********************************************************
-A cpu want to scaling, it must let the other cpu wait in smp_wait;
-After finishing scaling, let the other cpu go. This avoid smp_funciton
-waring. 
-Quad-core need this mechanism when they use union sys pll control.
-***********************************************************/
-static DEFINE_SPINLOCK(ipi_lock);
-unsigned int timeout_flag; //smp_wait cpu sometimes can not response ipi request.
-typedef enum _ENUM_SCAL_FLAG {
-    SCAL_FLAG_IDLE = 0,
-    SCAL_FLAG_GETED,
-    SCAL_FLAG_FINISHED,
-    SCAL_FLAG_NUM
-} ENUM_SCAL_FLAG;
-
-static ENUM_SCAL_FLAG scal_finish_flag = SCAL_FLAG_IDLE;
-/*
-static inline void wait_for_flag(ENUM_SCAL_FLAG flags, unsigned long delay)
-{
-	if(delay)
-	{
-		while(scal_finish_flag != flags)
-		{
-			udelay(delay);
-			cpu_relax();
-		}
-	}
-	else
-		while(scal_finish_flag != flags)
-			cpu_relax();
-
-	return;
-}
-*/
-static void smp_wait(struct clk_change_info * info)
-{
-	unsigned long flags;
-	unsigned long irq_flags;
-
-	info = info;
-
-	irq_flags = arch_local_irq_save();
-	preempt_disable();
-
-	spin_lock(&ipi_lock);
-	if(timeout_flag)
-	{/*
-	  * We must discard this smp_wait because of previous timeout.
-	  */
-		timeout_flag = 0;
-		scal_finish_flag = SCAL_FLAG_IDLE;
-		spin_unlock(&ipi_lock);
-		arch_local_irq_restore(irq_flags);
-		return;
-	}
-	scal_finish_flag = SCAL_FLAG_GETED;
-	spin_unlock(&ipi_lock);
-
-	while(scal_finish_flag == SCAL_FLAG_GETED)//waiting until flag != SCAL_FLAG_GETED
-		cpu_relax();
-
-	spin_lock(&ipi_lock);
-	scal_finish_flag = SCAL_FLAG_IDLE;
-	spin_unlock(&ipi_lock);
-
-	preempt_enable();
-	arch_local_irq_restore(irq_flags);
-}
-
-#ifdef CONFIG_HOTPLUG_CPU
-unsigned int stop_scaling;
-
-static int __cpuinit meson6_clock_callback(struct notifier_block *nfb,
-					unsigned long action, void *hcpu)
-{
-	nfb = nfb;
-	hcpu = hcpu;
-	
-	switch (action) {
-		case CPU_DOWN_PREPARE:
-		case CPU_UP_PREPARE:
-			stop_scaling = 1;
-			break;
-		case CPU_DOWN_FAILED:
-		case CPU_POST_DEAD:
-		case CPU_UP_CANCELED:
-		case CPU_ONLINE:
-			stop_scaling = 0;
-			break;
-	}
-
-	return NOTIFY_OK;
-}
-
-static struct notifier_block __refdata meson6_clock_notifier = {
-    .notifier_call = meson6_clock_callback,
-};
-#endif
-
-#endif //CONFIG_MESON_FIX_SMP_SCALING_WARNING
-#if 1
 static int clk_set_rate_a9(struct clk *clk, unsigned long rate)
 {
-	int ret;
-	unsigned long flags;
+	int ret;	
 	unsigned long irq_flags;
 
 	//printk("clk_set_rate_a9() clk: %d\n",rate);
@@ -1162,99 +938,6 @@ static int clk_set_rate_a9(struct clk *clk, unsigned long rate)
 
 	return ret;
 }
-#else
-static int clk_set_rate_a9(struct clk *clk, unsigned long rate)
-{
-#ifdef CONFIG_SMP
-	struct clk_change_info info;
-#endif /* CONFIG_SMP */
-	int error = 0;
-#ifdef CONFIG_MESON_FIX_SMP_SCALING_WARNING
-	unsigned long flags;
-	unsigned long jiffy_timeout;
-#if 0//CONFIG_HOTPLUG_CPU
-	if(stop_scaling)
-	{
-		printk("Hotplug cpu...do not to scaling.\n");
-		return -1;
-	}
-#endif
-#endif
-	if (rate < 1000)
-		rate *= 1000000;
-
-#define CPU_FREQ_LIMIT 1560000000
-
-	if(freq_limit && rate > CPU_FREQ_LIMIT)
-	{
-		rate = CPU_FREQ_LIMIT;
-		printk("cpu freq limited to %ld \n", rate);
-	}		
-#ifdef CONFIG_SMP
-#if USE_ON_EACH_CPU
-	if (aml_read_reg32(MESON_CPU_CONTROL_REG)) {
-#else
-	if (num_online_cpus()>1 && num_active_cpus()>1) {
-#endif
-		info.cpu  = smp_processor_id();
-		info.clk  = clk;
-		info.rate = rate;
-		info.err  = 0;
-#if USE_ON_EACH_CPU
-		meson_smp_init_transaction();
-		on_each_cpu((void (*) (void * info))smp_a9_clk_change, &info, 0);
-		error = info.err;
-#else
-
-#ifndef CONFIG_MESON_FIX_SMP_SCALING_WARNING
-		smp_call_function((void (*) (void * info))smp_a9_clk_change, &info, 1);
-		error = info.err;
-#else
-		if(timeout_flag)
-		{
-			printk("Cpu1 still not response.\n");
-			return -1;// give up this scaling request
-		}
-
-		while(scal_finish_flag != SCAL_FLAG_IDLE)
-			cpu_relax();
-		smp_call_function((void (*) (void * info))smp_wait, NULL, 0);
-
-		jiffy_timeout = jiffies + HZ/5; //0.2s
-		while(scal_finish_flag != SCAL_FLAG_GETED)
-		{
-			if(!(num_online_cpus()>1 && num_active_cpus()>1) || time_after(jiffies, jiffy_timeout))
-			{
-				printk("Cpu1 is not full work or timeout.\n");
-				spin_lock(&ipi_lock);
-				if(!timeout_flag)
-					timeout_flag = 1;
-				scal_finish_flag = SCAL_FLAG_IDLE;
-				spin_unlock(&ipi_lock);
-				return -1;
-			}
-		}
-
-		spin_lock_irqsave(&ipi_lock,flags);
-		error = _clk_set_rate_cpu(clk, rate, 0);
-		scal_finish_flag = SCAL_FLAG_FINISHED;
-		spin_unlock_irqrestore(&ipi_lock,flags);
-#endif //CONFIG_MESON_FIX_SMP_SCALING_WARNING
-#endif
-	}
-	else {
-		error = _clk_set_rate_cpu(clk, rate, 0);
-	}
-
-	if (error == 0)
-		a9_cur_clk = clk->rate;
-#else
-	error = _clk_set_rate_cpu(clk, rate, 0);
-#endif /* CONFIG_SMP */
-
-	return error;
-}
-#endif
 static unsigned long clk_get_rate_vid(struct clk * clkdev)
 {
 
@@ -1456,7 +1139,7 @@ SETPLL:
 			udelay_scaled(100, dst / 1000000, 24 /*clk_get_rate_xtal*/);
 			cntl = aml_read_reg32(P_HHI_SYS_PLL_CNTL);
 			if(loop++ > 10000){
-				printk(KERN_ERR"CPU freq: %d MHz, syspll (%x) can't lock: \n",dst/1000000,cntl);
+				printk(KERN_ERR"CPU freq: %ld MHz, syspll (%x) can't lock: \n",dst/1000000,cntl);
 				printk(KERN_ERR"  [10c0..10c4]%08x, %08x, %08x, %08x, %08x: [10a5]%08x, [10c7]%08x \n",
 					aml_read_reg32(P_HHI_SYS_PLL_CNTL),
 					aml_read_reg32(P_HHI_SYS_PLL_CNTL2),	
@@ -1487,112 +1170,9 @@ SETPLL:
 	return idx;
 }
 
-static void get_a9_divid(unsigned int idx, unsigned int * scale_divn, unsigned int * scale_out)
-{/*
-	*scale_divn = sys_pll_settings[idx][5];
-	*scale_out  = sys_pll_settings[idx][4];*/
-}
-
-
 static int set_hpll_pll(struct clk * clk, unsigned long dst)
 {
 	printk("TODO: set_hpll_pll not implement\n");
-#if 0
-	unsigned od,M,N;
-	unsigned long parent_clk = 0, rate;
-	rate = clk_get_rate(clk);
-
-printk("=============== set_hpll_pll : %d ==============\n",(int)dst); 
-
-	if(dst > clk->max || dst < clk->min){
-		printk("vid pll: invalid rate : %lu  [%lu ~ %lu]\n",dst,clk->min,clk->max);
-		return -1;
-	}
-	if(dst != rate){
-		unsigned vco;
-		unsigned od_fb = 0;
-		int found = 0;
-		if(clk->parent)
-			parent_clk = clk_get_rate(clk->parent);
-		else
-			printk("vid2 pll: no parent clock assigned!\n");
-		parent_clk /= 1000000;
-		dst /= 1000000;
-		if(dst > 750)
-			od = 1;
-		else if( (dst * 2) > 750)
-			od = 2;
-		else
-			od = 4;
-
-		vco = dst * od;
-
-		//vco 750M ~1.5G
-		for(N = 1; N < 0x1F; N++){		
-				for(M = 0x1FF * 4; M > 0; M--){
-					rate = parent_clk * M / N;
-					if(rate == vco){
-						if(M > 0x1FF){
-							if(((M / 2) < 0x1FF) && ((M%2) == 0)){
-									od_fb = 2;
-									M = M / od_fb;
-									found = 1;
-							}else if((M%4) == 0){
-								od_fb = 4;
-								M = M/od_fb;
-								found = 1;
-							}
-							else
-								break;
-						}
-						else{
-							od_fb = 1;
-							found = 1;
-							break;
-						}
-					}
-					else if(rate > vco)
-						continue;
-					else
-						break;
-				}
-
-				if(found)
-					break;
-		}
-		
-		if(found){		
-			unsigned vid_cntl = 0;
-			if(od == 4)
-				od = 2;
-			else if(od == 2)
-				od = 1;
-			else
-				od = 0;
-			if(od_fb == 4)
-				od_fb = 2;
-			else if(od_fb == 2)
-				od_fb = 1;
-			else
-				od_fb = 0;
-				
-			vid_cntl = (M) | (N <<10) | (od << 18) | (od_fb <<20);
-	
-			//VID PLL
-			M6_PLL_RESET(P_HHI_VID_PLL_CNTL);
-			aml_write_reg32(P_HHI_VID_PLL_CNTL2, M6_VID_PLL_CNTL_2 );
-			aml_write_reg32(P_HHI_VID_PLL_CNTL3, M6_VID_PLL_CNTL_3 );
-			aml_write_reg32(P_HHI_VID_PLL_CNTL4, M6_VID_PLL_CNTL_4 );
-			aml_write_reg32(P_HHI_VID_PLL_CNTL,  vid_cntl );
-			M6_PLL_WAIT_FOR_LOCK(P_HHI_VID_PLL_CNTL);
-		}	
-		else
-		{	
-			printk("vid pll: no clock setting matched.\n");		
-			return -1;
-		}
-	}
-#endif	
 	return 1;
 }
 static int set_fixed_pll(struct clk * clk, unsigned long dst)
@@ -2074,16 +1654,16 @@ static int __init meson_clock_init(void)
 	clk_pll_fixed.get_rate = clk_get_rate_fixed;
 	clk_pll_hpll.get_rate = clk_get_rate_hpll;
 
-	clk_pll_vid.max = 3000000000;//3.0G
-	clk_pll_vid.min = 1200000000;//1.2G
-	clk_pll_hpll.max = 3000000000;//3.0G
-	clk_pll_hpll.min = 1200000000;//1.2G
-	clk_pll_sys.max = 2500000000;//2.5G
-	clk_pll_sys.min = 1200000000;//1.2G
-	clk_pll_ddr.max = 1512000000;//1.5G
-	clk_pll_ddr.min = 750000000;//750M
-	clk_pll_fixed.max = 2550000000;//2.55G
-	clk_pll_fixed.min = 2550000000;//2.55G
+	clk_pll_vid.max = 3000000000U;//3.0G
+	clk_pll_vid.min = 1200000000U;//1.2G
+	clk_pll_hpll.max = 3000000000U;//3.0G
+	clk_pll_hpll.min = 1200000000U;//1.2G
+	clk_pll_sys.max = 2500000000U;//2.5G
+	clk_pll_sys.min = 1200000000U;//1.2G
+	clk_pll_ddr.max = 1512000000U;//1.5G
+	clk_pll_ddr.min = 750000000U;//750M
+	clk_pll_fixed.max = 2550000000U;//2.55G
+	clk_pll_fixed.min = 2550000000U;//2.55G
 
 	//create pll tree
 	PLL_RELATION_DEF(sys,xtal);

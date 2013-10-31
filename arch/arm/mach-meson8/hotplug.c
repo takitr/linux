@@ -16,6 +16,8 @@
 #include <asm/mach-types.h>
 #include <asm/cp15.h>
 
+extern void meson_cleanup(void);
+
 int meson_cpu_kill(unsigned int cpu)
 {
 	unsigned int value;
@@ -38,7 +40,6 @@ void meson_cpu_die(unsigned int cpu)
 	dsb();
 	dmb();	
 
-	extern meson_cleanup();
 	meson_cleanup();
 	aml_set_reg32_bits(MESON_CPU_POWER_CTRL_REG,0x3,(cpu << 3),2);
 	asm volatile(

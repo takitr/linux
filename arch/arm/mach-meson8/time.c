@@ -146,6 +146,7 @@ static int meson_tick_set_next_event(unsigned long evt,
 #define meson_tick_rating 300
 #endif
 
+#if 0
 static struct meson_clock meson_timer_a = {
         .clockevent={
             .name           = "MESON TIMER-A",
@@ -169,6 +170,7 @@ static struct meson_clock meson_timer_a = {
         .mux_reg=P_ISA_TIMER_MUX,
         .reg=P_ISA_TIMERA
 };
+#endif
 
 static struct meson_clock meson_timer_f = {
         .clockevent={
@@ -194,6 +196,7 @@ static struct meson_clock meson_timer_f = {
         .reg=P_ISA_TIMERF,
 };
 
+#if 0
 static struct meson_clock meson_timer_b = {
         .clockevent={
             .name           = "MESON TIMER-B",
@@ -217,6 +220,7 @@ static struct meson_clock meson_timer_b = {
         .mux_reg=P_ISA_TIMER_MUX,
         .reg=P_ISA_TIMERB,
 };
+#endif
 
 static struct meson_clock meson_timer_g = {
         .clockevent={
@@ -242,6 +246,7 @@ static struct meson_clock meson_timer_g = {
         .reg=P_ISA_TIMERG,
 };
 
+#if 0
 static struct meson_clock meson_timer_c = {
         .clockevent={
             .name           = "MESON TIMER-C",
@@ -265,6 +270,7 @@ static struct meson_clock meson_timer_c = {
         .mux_reg=P_ISA_TIMER_MUX,
         .reg=P_ISA_TIMERC,
 };
+#endif
 
 static struct meson_clock meson_timer_h = {
         .clockevent={
@@ -290,6 +296,7 @@ static struct meson_clock meson_timer_h = {
         .reg=P_ISA_TIMERH,
 };
 
+#if 0
 static struct meson_clock meson_timer_d = {
         .clockevent={
             .name           = "MESON TIMER-D",
@@ -313,6 +320,7 @@ static struct meson_clock meson_timer_d = {
         .mux_reg=P_ISA_TIMER_MUX,
         .reg=P_ISA_TIMERD,
 };
+#endif
 
 static struct meson_clock meson_timer_i = {
         .clockevent={
@@ -449,7 +457,7 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 
 	cpu = smp_processor_id();
 	if(cpu == 0)
-		return;
+		return 0;
 	
 	clk = meson8_smp_local_timer[cpu];
 	

@@ -46,7 +46,7 @@ struct clk {
     
     unsigned long(*get_rate)(struct clk *);
     int (*set_rate)(struct clk *, unsigned long);
-    int (*round_rate)(struct clk *, unsigned long);
+    long (*round_rate)(struct clk *, unsigned long);
     int (*enable)(struct clk *);///disable my self
     int (*disable)(struct clk *);///enable my self
     bool (*status)(struct clk *);
