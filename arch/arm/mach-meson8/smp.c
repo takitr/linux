@@ -77,28 +77,6 @@ extern void  init_fiq(void);
 	spin_unlock(&boot_lock);
 }
 
-static void __init wakeup_secondary(unsigned int cpu)
-{
-#if 0
-	meson_set_cpu_power_ctrl(cpu, 1);
-	//msleep(1);
-	/*
-	* Write the address of secondary startup routine into the
-	* AuxCoreBoot1 where ROM code will jump and start executing
-	* on secondary core once out of WFE
-	* A barrier is added to ensure that write buffer is drained
-	*/
-	meson_secondary_set(cpu);
-	/*
-	 * Send a 'sev' to wake the secondary core from WFE.
-	 * Drain the outstanding writes to memory
-	 */
-	 //mb();
-	dsb_sev();
-#endif
-
-}
-unsigned int bootflag[4]={0};
 int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
@@ -108,35 +86,18 @@ int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	* and the secondary one
 	*/
 	spin_lock(&boot_lock);
-//	wakeup_secondary(cpu);
-	
-	//meson_secondary_set(cpu);
 	 
 	/*
 	 * The secondary processor is waiting to be released from
 	 * the holding pen - release it, then wait for it to flag
 	 * that it has been released by resetting pen_release.
 	 */
-printk("write pen_release: %d\n",cpu_logical_map(cpu));
+	printk("write pen_release: %d\n",cpu_logical_map(cpu));
 	write_pen_release(cpu_logical_map(cpu));
 
-#if 0			//hotplug via power off		
-			meson_set_cpu_power_ctrl(cpu, 1);
-			meson_secondary_set(cpu);
-			dsb_sev();
-
-#else		// hotplug via wfi
-
-	if(bootflag[cpu] == 0){
-		bootflag[cpu]=1;
-		printk("first boot secondary! addr=0x%x, value=0x%x\n", &(bootflag[cpu]), bootflag[cpu]);
-		meson_set_cpu_power_ctrl(cpu, 1);
-	}
-
+	meson_set_cpu_power_ctrl(cpu, 1);
 	meson_secondary_set(cpu);
 	dsb_sev();
-	//gic_raise_softirq(cpumask_of(cpu), 0);
-#endif
 
 	smp_send_reschedule(cpu);
 	timeout = jiffies + (10* HZ);
@@ -186,10 +147,6 @@ void __init meson_smp_prepare_cpus(unsigned int max_cpus)
 	* wakeup_secondary().
 	*/
 	scu_enable((void __iomem *) IO_PERIPH_BASE);
-	for (i = 1; i < max_cpus; i++)
-		wakeup_secondary(i);
-	///    dsb_sev();
-
 }
 
 struct smp_operations meson_smp_ops __initdata = {
