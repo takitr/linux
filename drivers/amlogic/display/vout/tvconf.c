@@ -334,7 +334,7 @@ static int tv_set_current_vmode(vmode_t mod)
 	info->vinfo = &tv_info[mod & VMODE_MODE_BIT_MASK];
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
 	
-	request_vpu_clk_vomd(info->vinfo->video_clk, info->vinfo->mode);
+	request_vpu_clk_vmod(info->vinfo->video_clk, info->vinfo->mode);
 	tvoutc_setmode(vmode_tvmode_tab[mod]);
 //	change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
@@ -364,7 +364,7 @@ static int tv_vmode_is_supported(vmode_t mode)
 static int tv_module_disable(vmode_t cur_vmod)
 {
 	if (info->vinfo)
-		release_vpu_clk_vomd(info->vinfo->mode);
+		release_vpu_clk_vmod(info->vinfo->mode);
 	//video_dac_disable();
 	return 0;
 }

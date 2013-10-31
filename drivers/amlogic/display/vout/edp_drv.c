@@ -67,9 +67,9 @@ unsigned char preset_vswing_tx, preset_vswing_rx;
 unsigned char preset_preemp_tx, preset_preemp_rx;
 unsigned char adj_req_lane01, adj_req_lane23;
 
-static inline void trdp_wait(unsigned ms)
+static inline void trdp_wait(unsigned n)
 {
-	mdelay(ms);
+	mdelay(n);
 }
 
 static EDP_Link_Config_t *dptx_get_link_config(void)

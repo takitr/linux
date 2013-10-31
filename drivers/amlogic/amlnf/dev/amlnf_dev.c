@@ -4,7 +4,7 @@
  * (C) 2012 8
  */
 
-#include "../include/amlnf_dev.h"
+#include "../include/phynand.h"
 
 #define CONFIG_OF
 
@@ -506,9 +506,10 @@ static void amlnf_shutdown(struct platform_device *pdev)
 	
 	list_for_each_entry(phy_dev, &nphy_dev_list, list){
 		if(phy_dev){
-			amlnand_get_device(phy_dev, CHIP_SHUTDOWN);
+			struct amlnand_chip *aml_chip = (struct amlnand_chip *)phy_dev->priv;
+			amlnand_get_device(aml_chip, CHIP_SHUTDOWN);
 			phy_dev->option |= NAND_SHUT_DOWN;
-			amlnand_release_device(phy_dev);
+			amlnand_release_device(aml_chip);
 		}
 	}
 	

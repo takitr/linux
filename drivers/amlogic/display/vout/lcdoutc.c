@@ -108,6 +108,7 @@ static DSI_Config_t lcd_mipi_config = {
 };
 
 static LVDS_Config_t lcd_lvds_config = {
+	.lvds_vswing = 1,
 	.lvds_repack_user = 0,
 	.lvds_repack = 0,
 	.pn_swap = 0,
@@ -1901,13 +1902,35 @@ static void set_control_mlvds(Lcd_Config_t *pConf)
 
 static void init_phy_lvds(Lcd_Config_t *pConf)
 {
+    unsigned swing_ctrl;
     DBG_PRINT("%s\n", __FUNCTION__);
 	
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
     WRITE_LCD_REG(LVDS_PHY_CNTL3, 0xee1);
     WRITE_LCD_REG(LVDS_PHY_CNTL4 ,0);
 
-	WRITE_LCD_REG(LVDS_PHY_CNTL5, pConf->lcd_control.dphy_config->phy_ctrl);
+	//WRITE_LCD_REG(LVDS_PHY_CNTL5, pConf->lcd_control.dphy_config->phy_ctrl);
+	switch (pConf->lcd_control.lvds_config->lvds_vswing) {
+		case 0:
+			swing_ctrl = 0xaf20;
+			break;
+		case 1:
+			swing_ctrl = 0xaf40;
+			break;
+		case 2:
+			swing_ctrl = 0xa840;
+			break;
+		case 3:
+			swing_ctrl = 0xa880;
+			break;
+		case 4:
+			swing_ctrl = 0xa8c0;
+			break;
+		default:
+			swing_ctrl = 0xaf40;
+			break;
+	}
+	WRITE_LCD_REG(LVDS_PHY_CNTL5, swing_ctrl);
 
 	WRITE_LCD_REG(LVDS_PHY_CNTL0,0x001f);
 	WRITE_LCD_REG(LVDS_PHY_CNTL1,0xffff);
@@ -1922,7 +1945,28 @@ static void init_phy_lvds(Lcd_Config_t *pConf)
     WRITE_LCD_REG(LVDS_PHY_CNTL1, 0xff00);
 	WRITE_LCD_REG(LVDS_PHY_CNTL4, 0x007f);
 	
-	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL1, 0x00000348);
+	//WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL1, 0x00000348);
+	switch (pConf->lcd_control.lvds_config->lvds_vswing) {
+		case 0:
+			swing_ctrl = 0x328;
+			break;
+		case 1:
+			swing_ctrl = 0x348;
+			break;
+		case 2:
+			swing_ctrl = 0x388;
+			break;
+		case 3:
+			swing_ctrl = 0x3c8;
+			break;
+		case 4:
+			swing_ctrl = 0x3f8;
+			break;
+		default:
+			swing_ctrl = 0x348;
+			break;
+	}
+	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL1, swing_ctrl);
 	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL2, 0x004665b7);
 	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL3, 0x84070000);
 #endif
@@ -2640,6 +2684,7 @@ static void _init_lcd_driver(Lcd_Config_t *pConf)	//before power on lcd
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 	switch_lcd_gates(lcd_type);
 #elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+	switch_vpu_mem_pd_vmod(pDev->lcd_info.mode, VPU_MEM_POWER_ON);
 	switch_lcd_gates(ON);
 #endif
 	
@@ -2771,6 +2816,7 @@ static void _disable_lcd_driver(Lcd_Config_t *pConf)	//after power off lcd
 	switch_mod_gate_by_name("lvds", 0);
 #elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 	switch_lcd_gates(OFF);
+	switch_vpu_mem_pd_vmod(pDev->lcd_info.mode, VPU_MEM_POWER_DOWN);
 #endif	
 	printk("disable lcd display driver.\n");
 }
@@ -2846,7 +2892,7 @@ static int lcd_set_current_vmode(vmode_t mode)
 	WRITE_LCD_REG(VPP_POSTBLEND_H_SIZE, pDev->lcd_info.width);
 
 	if( !(mode&VMODE_LOGO_BIT_MASK) ){
-		request_vpu_clk_vomd(pDev->lcd_info.video_clk, pDev->lcd_info.mode);
+		request_vpu_clk_vmod(pDev->lcd_info.video_clk, pDev->lcd_info.mode);
 		_lcd_module_enable();
 	}
 	if (VMODE_INIT_NULL == pDev->lcd_info.mode)
@@ -2868,7 +2914,7 @@ static int lcd_set_current_vmode2(vmode_t mode)
 
     WRITE_LCD_REG(VPP2_POSTBLEND_H_SIZE, pDev->lcd_info.width);
 	
-	request_vpu_clk_vomd(pDev->lcd_info.video_clk, pDev->lcd_info.mode);
+	request_vpu_clk_vmod(pDev->lcd_info.video_clk, pDev->lcd_info.mode);
     _lcd_module_enable();
     if (VMODE_INIT_NULL == pDev->lcd_info.mode)
         pDev->lcd_info.mode = VMODE_LCD;
@@ -2898,7 +2944,7 @@ static int lcd_vout_disable(vmode_t cur_vmod)
 	mutex_lock(&lcd_vout_mutex);
 	_disable_backlight();
 	_lcd_module_disable();
-	release_vpu_clk_vomd(pDev->lcd_info.mode);
+	release_vpu_clk_vmod(pDev->lcd_info.mode);
 	mutex_unlock(&lcd_vout_mutex);
 	return 0;
 }
@@ -4127,13 +4173,21 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 				printk("pll_ctrl = 0x%x, div_ctrl = 0x%x, clk_ctrl=0x%x\n", pDev->pConf->lcd_timing.pll_ctrl, pDev->pConf->lcd_timing.div_ctrl, (pDev->pConf->lcd_timing.clk_ctrl & 0xffff));
 			}
 		}
-		ret = of_property_read_u32(pdev->dev.of_node,"phy_ctrl",&val);
+		// ret = of_property_read_u32(pdev->dev.of_node,"phy_ctrl",&val);
+		// if(ret){
+			// printk("don't find to match phy_ctrl, use default setting.\n");
+		// }
+		// else {
+			// pDev->pConf->lcd_control.dphy_config->phy_ctrl = val;
+			// DBG_PRINT("phy_ctrl = 0x%x\n", pDev->pConf->lcd_control.dphy_config->phy_ctrl);
+		// }
+		ret = of_property_read_u32(pdev->dev.of_node,"lvds_vswing",&val);
 		if(ret){
-			printk("don't find to match phy_ctrl, use default setting.\n");
+			printk("don't find to match lvds_vswing, use default setting.\n");
 		}
 		else {
-			pDev->pConf->lcd_control.dphy_config->phy_ctrl = val;
-			DBG_PRINT("phy_ctrl = 0x%x\n", pDev->pConf->lcd_control.dphy_config->phy_ctrl);
+			pDev->pConf->lcd_control.lvds_config->lvds_vswing = val;
+			DBG_PRINT("lvds_vswing = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_vswing = val);
 		}
 		ret = of_property_read_u32_array(pdev->dev.of_node,"lvds_user_repack",&lcd_para[0], 2);
 		if(ret){

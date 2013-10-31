@@ -376,8 +376,8 @@ extern void   nand_get_chip(void *aml_chip);
 extern  void  nand_release_chip(void *aml_chip);
 extern int check_storage_device(void);
 
-extern chip_state_t get_chip_state(struct amlnand_phydev *phydev);
-extern void set_chip_state(struct amlnand_phydev *phydev, chip_state_t state);
+
+
 extern ssize_t verify_nand_page(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t dump_nand_page(struct class *class, struct class_attribute *attr, const char *buf, size_t count);
 extern ssize_t show_nand_info(struct class *class, struct class_attribute *attr, char *buf);
@@ -417,8 +417,7 @@ extern int amlnf_get_logicdev(struct amlnf_logicdev_t *amlnf_logicdev);
 extern int amlnf_free_logicdev(struct amlnf_logicdev_t *amlnf_logicdev);
 extern int amlnf_logicdev_mis_init(struct amlnf_logicdev_t *amlnf_logicdev);
 
-extern int amlnand_get_device(struct amlnand_phydev *phydev, chip_state_t new_state);
-extern void amlnand_release_device(struct amlnand_phydev *phydev);
+
 extern void pinmux_select_chip(unsigned ce_enable, unsigned rb_enable, unsigned flag);
 
 #ifdef AML_NAND_UBOOT

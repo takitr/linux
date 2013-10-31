@@ -25,15 +25,15 @@
 
 //#define AMLNF_READ_REG_BITS(reg, start, len) 	(((__raw_readl(reg) >> (start)) & ((1L<<(len))-1)))
 //#define AMLNF_CLEAR_REG_MASK(reg, mask)   			(clrbits_le32(reg, (mask)))
-#define AMLNF_SET_REG_MASK(reg, mask)     			AMLNF_WRITE_REG(reg, AMLNF_READ_REG(reg) | mask)
-
+#define AMLNF_SET_REG_MASK(reg, mask)     			AMLNF_WRITE_REG(reg, AMLNF_READ_REG(reg) | (mask))
+#define AMLNF_CLEAR_REG_MASK(reg, mask) 				AMLNF_WRITE_REG(reg, AMLNF_READ_REG(reg) & (~mask)) 
 #else
 
 #define AMLNF_WRITE_REG(reg, val) 					(aml_write_reg32(reg, (val)))
 #define AMLNF_READ_REG(reg) 						(aml_read_reg32(reg))
 #define AMLNF_WRITE_REG_BITS(reg, val, start, len) 	(aml_set_reg32_bits(reg, (val),start,len))
 //#define AMLNF_READ_REG_BITS(bus,reg, start, len) 	(aml_get_reg32_bits(reg,start,len))
-//#define AMLNF_CLEAR_REG_MASK(reg, mask)   			(aml_clr_reg32_mask(reg, (mask)))
+#define AMLNF_CLEAR_REG_MASK(reg, mask)   			(aml_clr_reg32_mask(reg, (mask)))
 #define AMLNF_SET_REG_MASK(reg, mask)     			(aml_set_reg32_mask(reg, (mask)))
 
 #endif
@@ -88,7 +88,9 @@
 #define NFC_SET_TIMING_SYNC(bus_tim,bus_cyc,sync_mode)  		AMLNF_WRITE_REG_BITS(P_NAND_CFG,(bus_cyc&31)|((bus_tim&31)<<5)|((sync_mode&2)<<10),0,12)
 #define NFC_SET_TIMING_SYNC_ADJUST() 
 #define NFC_SET_DMA_MODE(is_apb,spare_only)             		AMLNF_WRITE_REG_BITS(P_NAND_CFG,((spare_only<<1)|(is_apb)),14,2)
-
+#define NFC_SET_OOB_MODE(mode)						AMLNF_SET_REG_MASK(P_NAND_CFG,mode);
+#define NFC_CLR_OOB_MODE(mode)						AMLNF_CLEAR_REG_MASK(P_NAND_CFG,mode);
+													
 /**
     Register Operation and Controller Status 
 */

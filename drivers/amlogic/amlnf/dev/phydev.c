@@ -18,17 +18,13 @@
 	extern struct amlnf_partition * amlnand_config;
 #endif
 
-chip_state_t get_chip_state(struct amlnand_phydev *phydev)
+chip_state_t get_chip_state(struct amlnand_chip *aml_chip)
 {
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
-
 	return aml_chip->state;
 }
 
-void set_chip_state(struct amlnand_phydev *phydev, chip_state_t state)
+void set_chip_state(struct amlnand_chip *aml_chip, chip_state_t state)
 {
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
-
 	aml_chip->state = state;
 }
 
@@ -143,7 +139,7 @@ static int nand_read(struct amlnand_phydev *phydev)
 		return NAND_SUCCESS;
 	}
 	
-	amlnand_get_device(phydev, CHIP_READING);
+	amlnand_get_device(aml_chip, CHIP_READING);
 
 	//clear ops_para here
 	memset(ops_para, 0, sizeof(struct chip_ops_para));
@@ -202,14 +198,14 @@ static int nand_read(struct amlnand_phydev *phydev)
 
  	devops->retlen = readlen;
 	
-	amlnand_release_device(phydev);
+	amlnand_release_device(aml_chip);
 
 	if(!ret){
 		if(ops_para->ecc_err){
 			ret = NAND_ECC_FAILURE;
 		}
 		else if(ops_para->bit_flip){
-			ret = 0;
+			ret = -EUCLEAN; //117
 		}
 	}
 
@@ -244,7 +240,7 @@ static int nand_write(struct amlnand_phydev *phydev)
 	}
 #endif
 
-	amlnand_get_device(phydev, CHIP_WRITING);
+	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	len = devops->len;
 	
@@ -293,7 +289,7 @@ static int nand_write(struct amlnand_phydev *phydev)
 	if(aml_chip->debug_flag & NAND_WRITE_VERIFY){
 		nand_write_verify(phydev);
 	}
-	amlnand_release_device(phydev);
+	amlnand_release_device(aml_chip);
 
 	return ret;
 }
@@ -324,7 +320,7 @@ int nand_erase(struct amlnand_phydev *phydev)
 		return NAND_SUCCESS;
 	}
 #endif	
-	amlnand_get_device(phydev, CHIP_ERASING);
+	amlnand_get_device(aml_chip, CHIP_ERASING);
 
 	//clear ops_para here
 	memset(ops_para, 0, sizeof(struct chip_ops_para));
@@ -361,7 +357,7 @@ int nand_erase(struct amlnand_phydev *phydev)
 
 	devops->retlen = eraselen;
 		
-	amlnand_release_device(phydev);
+	amlnand_release_device(aml_chip);
 		
 	return ret;
 }
@@ -388,7 +384,7 @@ static int nand_block_isbad(struct amlnand_phydev *phydev)
 		return NAND_SUCCESS;
 	}
 #endif
-	amlnand_get_device(phydev, CHIP_READING);
+	amlnand_get_device(aml_chip, CHIP_READING);
 
 	//clear ops_para here
 	memset(ops_para, 0, sizeof(struct chip_ops_para));
@@ -410,7 +406,7 @@ static int nand_block_isbad(struct amlnand_phydev *phydev)
 		aml_nand_msg("fail page_addr:ret=%d, %x len:%llx", ret, ops_para->page_addr, devops->len);
 	}
 		
-	amlnand_release_device(phydev);
+	amlnand_release_device(aml_chip);
 
 	return ret;
 }
@@ -436,7 +432,7 @@ static int nand_block_markbad(struct amlnand_phydev *phydev)
 		return NAND_SUCCESS;
 	}
 #endif
-	amlnand_get_device(phydev, CHIP_READING);
+	amlnand_get_device(aml_chip, CHIP_READING);
 	
 	//clear ops_para here
 	memset(ops_para, 0, sizeof(struct chip_ops_para));
@@ -462,7 +458,7 @@ static int nand_block_markbad(struct amlnand_phydev *phydev)
 		aml_nand_msg("nand mark bad failed at page %d",ops_para->page_addr);
 	}
 		
-	amlnand_release_device(phydev);
+	amlnand_release_device(aml_chip);
 
 	return ret;
 }
@@ -587,7 +583,7 @@ void amlchip_resume(struct amlnand_phydev *phydev)
     	}
     	
     	//if (aml_chip->state == CHIP_PM_SUSPENDED)
-    		amlnand_release_device(phydev);
+    		amlnand_release_device(aml_chip);
     	
     	aml_nand_dbg("nand resume entered\n");
     }

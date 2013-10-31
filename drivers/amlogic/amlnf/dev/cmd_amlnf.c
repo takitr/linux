@@ -176,8 +176,8 @@ int amlnand_write(struct amlnf_dev* nftl_dev, unsigned char *buf, uint64_t offse
          ret |= nftl_dev->read_sector(nftl_dev, head_sector, 1, local_buf);
 	     memcpy(local_buf+head_start_bytes, buf, size);
 	     ret |= nftl_dev->write_sector(nftl_dev, head_sector, 1, local_buf);
-	     return ret;
-    }
+		goto flush;
+	}
 
     ret |= nftl_dev->read_sector(nftl_dev, head_sector, 1, local_buf);
     memcpy(local_buf+head_start_bytes,buf, head_bytes_num);
@@ -199,13 +199,22 @@ int amlnand_write(struct amlnf_dev* nftl_dev, unsigned char *buf, uint64_t offse
     }
 
 	if(size == 0)
-       return ret;
+		goto flush;
 
 	tail_sector = offset >> AML_NFTL_ALIGN_SHIFT;
 	tail_bytes_num = size;
     ret |= nftl_dev->read_sector(nftl_dev, tail_sector, 1, local_buf);
     memcpy(local_buf, buf, tail_bytes_num);
     ret |= nftl_dev->write_sector(nftl_dev, tail_sector, 1, local_buf);
+
+
+flush:
+	ret = nftl_dev->flush((struct amlnf_dev *)nftl_dev);
+	if(ret < 0){
+		aml_nand_msg("nftl flush cache failed");
+		ret = -1;
+	}
+
     return ret;
 }
 
@@ -696,6 +705,9 @@ int do_amlnfphy(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
 					puts("scrub aborted\n");
 					return -1;
 				}
+			}
+			else{
+			    scrub_flag = 1;
 			}
 		}
 		

@@ -20,6 +20,8 @@
 
 #define KEYSIZE (CONFIG_KEYSIZE - (sizeof(uint32_t)))
 
+extern wait_queue_head_t amlnf_wq;
+
 static struct amlnand_chip *aml_chip_key = NULL;
 
 static int aml_nand_update_key(struct amlnand_chip * chip)
@@ -44,6 +46,8 @@ static int32_t nand_key_read(aml_keybox_provider_t * provider, uint8_t *buf,int 
 	key_ptr = kzalloc(CONFIG_KEYSIZE, GFP_KERNEL);
 	if(key_ptr == NULL)
 		return -ENOMEM;
+	printk("nand_key_read: start\n");
+	amlnand_get_device(aml_chip, CHIP_READING);
 	memset(key_ptr,0,CONFIG_KEYSIZE);
 
 	error = amlnand_read_info_by_name(aml_chip, &(aml_chip->nand_key),key_ptr,KEY_INFO_HEAD_MAGIC, CONFIG_KEYSIZE);
@@ -56,7 +60,9 @@ static int32_t nand_key_read(aml_keybox_provider_t * provider, uint8_t *buf,int 
 	}
 	memcpy(buf, key_ptr->data, len);
 	
+	printk("nand_key_read: ok\n");
 exit:
+	amlnand_release_device(aml_chip);
 	kfree(key_ptr);
 	return 0;
 }
@@ -75,6 +81,7 @@ static int32_t nand_key_write(aml_keybox_provider_t * provider, uint8_t *buf,int
 	key_ptr = kzalloc(CONFIG_KEYSIZE, GFP_KERNEL);
 	if(key_ptr == NULL)
 		return -ENOMEM;
+	amlnand_get_device(aml_chip, CHIP_READING);
 	memset(key_ptr,0,CONFIG_KEYSIZE);
 	memcpy(key_ptr->data + 0, buf, len);
 
@@ -86,6 +93,7 @@ static int32_t nand_key_write(aml_keybox_provider_t * provider, uint8_t *buf,int
 		goto exit;
 	}
 exit:
+	amlnand_release_device(aml_chip);
 	kfree(key_ptr);
 	return error;
 }
