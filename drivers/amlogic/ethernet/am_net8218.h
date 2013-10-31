@@ -5,45 +5,7 @@
 #include <linux/io.h>
 #include <plat/io.h>
 #include <linux/skbuff.h>
-/* IP101 WOL */
-#define IP101G_EN			1
-#define IP101G_DIS			0
-#define IP101G_PAGE_SEL			0x14
-#define IP101G_PAGE_16			0x10
-#define IP101G_SPEC_CTRL_STATUS		0x10
-#define IP101G_AUTO_MDIX_DIS		0x0800
-#define IP101G_APS_ON			0x0002
-#define IP101G_ANALOG_OFF		0x0001
-#define IP101G_INTR_STATUS		0x11
-#define IP101G_INTR_INIT		0x8000
-#define IP101G_INTR_CLEAR		0x0000
-#define IP101G_INTR_EVENT		0x000F
-#define IP101G_PAGE_4			0x4
-#define WOL_MODE_MASTER			1
-#define WOL_MODE_SLAVE			0
-#define INTR_HIGH			1
-#define INTR_LOW			0
-#define WOL_TIMER_10			1
-#define WOL_TIMER_3			0
-#define IP101G_WOL_CTRL			0x10
-#define IP101G_WOL_EN			(IP101G_EN << 15)
-#define IP101G_WOL_MODE_MASTER		(WOL_MODE_MASTER << 14)
-#define IP101G_INTR_ACT_HIGH		(INTR_HIGH << 13)
-#define IP101G_WOL_SENSE_MAGIC_PKT	0x0800
-#define IP101G_WOL_SENSE_ANY_PKT	0x0400
-#define IP101G_WOL_DNSPD_EN		0x0100
-#define IP101G_WOL_TIMER_SEL_10		(WOL_TIMER_10 << 7)
-#define IP101G_WOL_MANUAL_SET		0x0020
-#define IP101G_PAGE_5			0x5
-#define IP101G_WOL_MAC_ADDR		0x10
-#define IP101G_PAGE_17			0x11
-#define IP101G_WOL_STATUS		0x11
-#define IP101G_WOL_INTR_PIN_DIS		0x8000
-#define IP101G_WOL_INTR_EVENT		0x0008
-#define IP101G_WOL_SLEEPING		0x0004
-#define IP101G_WOL_SLEEP		0x0002
-#define IP101G_WOL_WAKE			0x0001
-
+#include <linux/phy.h>
 
 /* ETH_MAC_4_GMII_Addr */
 #define ETH_MAC_4_GMII_Addr_GB_P                0
@@ -62,8 +24,6 @@
 #define  DMA_USE_SKB_BUF
 //#define DMA_USE_MALLOC_ADDR
 #define ETH_INTERRUPT	(INT_ETHERNET)
-#define IO_WRITE32(val,addr)	 __raw_writel(val,addr)
-#define IO_READ32(addr)	 	__raw_readl(addr)
 #define ETHBASE (IO_ETH_BASE)
 #define WRITE_PERIPHS_REG(v,addr) __raw_writel(v,addr)
 #define READ_PERIPHS_REG(addr) __raw_readl(addr)
@@ -88,8 +48,6 @@
 #define IS_CACHE_ALIGNED(x)		(!((unsigned long )x &(CACHE_LINE-1)))
 #define CACHE_HEAD_ALIGNED(x)	((x-CACHE_LINE) & (~(CACHE_LINE-1)))
 #define CACHE_END_ALIGNED(x)	((x+CACHE_LINE) & (~(CACHE_LINE-1)))
-#define EEPROM_SIZE		8
-#define MII_CNT 1
 #define PKT_BUF_SZ		1536	/* Size of each temporary Rx buffer. */
 
 #define TX_TIMEOUT 		(HZ * 200 / 1000)
@@ -193,13 +151,6 @@ struct _rx_desc {
 	unsigned long reverse[1];
 };
 
-#define PHY_SMSC_8700			0x7c0c4
-#define PHY_SMSC_8720			0x7c0f1
-#define PHY_ATHEROS_8032		0x004dd023
-#define PHY_ATHEROS_8035		0x004dd072
-#define PHY_IC_IP101ALF         0x02430c54
-#define PHY_ID_KS8081           0x00221560
-
 struct am_net_private {
 	struct _rx_desc *rx_ring;
 	struct _rx_desc *rx_ring_dma;
@@ -222,16 +173,18 @@ struct am_net_private {
 	unsigned int tx_full;	/* The Tx queue is full. */
 	int first_tx;
 
-	/* MII transceiver section. */
-	int mii_cnt;		/* MII device addresses. */
-	unsigned char phys[MII_CNT];	/* MII device addresses, but only the first is used */
-
-	int phy_Identifier;
-
-	u32 mii;
-	int phy_set[MII_CNT];	//save the latest phy_set;
-	struct mii_if_info mii_if;
 	unsigned long base_addr;
+
+	struct mii_bus *mii;
+	phy_interface_t phy_interface;
+	int phy_addr;
+	int phy_mask; 
+	struct phy_device *phydev;
+	int oldlink;
+	int speed;
+	int oldduplex;
+
+
 };
 
-#endif				/*  */
+#endif			

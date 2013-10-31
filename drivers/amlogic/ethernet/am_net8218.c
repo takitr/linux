@@ -34,12 +34,14 @@
 #include <linux/crc32.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
+
 #include <plat/eth.h>
 #include <plat/regops.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include <asm/delay.h>
+
 #include <linux/of_platform.h>
 #include <linux/kthread.h> 
 #include "am_net8218.h"
@@ -74,6 +76,8 @@ static unsigned int MDCCLK = ETH_MAC_4_GMII_Addr_CR_100_150;
 module_param_named(amlog_level, g_debug, int, 0664);
 MODULE_PARM_DESC(amlog_level, "ethernet debug level\n");
 
+#include "am_mdio.c"
+
 //#define LOOP_BACK_TEST
 //#define MAC_LOOPBACK_TEST
 //#define PHY_LOOPBACK_TEST
@@ -88,71 +92,12 @@ static char DEFMAC[] = "\x00\x01\x23\xcd\xee\xaf";
 
 #define PERIPHS_SET_BITS(reg, mask)	\
 	aml_set_reg32_mask(reg, mask)
-#define PERIPHS_CLEAR_BITS(reg, mask) \
+#define PERIPHS_CLEAR_BITS(reg, mask)	\
 	aml_clr_reg32_mask(reg, mask)
 
 void start_test(struct net_device *dev);
 static void write_mac_addr(struct net_device *dev, char *macaddr);
 static int ethernet_reset(struct net_device *dev);
-static void set_phy_mode(void);
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  mdio_read 
- *
- * @param  dev
- * @param  phyid
- * @param  reg
- *
- * @return 
- */
-/* --------------------------------------------------------------------------*/
-static int mdio_read(struct net_device *dev, int phyid, int reg)
-{
-#define WR (1<<1)
-#define BUSY 0x1
-
-	struct am_net_private *priv = netdev_priv(dev);
-	unsigned long busy = 0;
-	unsigned long reg4;
-	unsigned long val = 0;
-	reg4 = phyid << 11 | reg << 6 | MDCCLK | BUSY;
-	__raw_writel(reg4, priv->base_addr + ETH_MAC_4_GMII_Addr);
-	do {			//waiting the phy is ready to write ...
-		busy = __raw_readl(priv->base_addr + ETH_MAC_4_GMII_Addr);
-	} while (busy & 0x1);
-	val = __raw_readl(priv->base_addr + ETH_MAC_5_GMII_Data) & 0xffff;
-	return val;
-}
-
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  mdio_write 
- *
- * @param  dev
- * @param  phyid
- * @param  reg
- * @param  val
- */
-/* --------------------------------------------------------------------------*/
-static void mdio_write(struct net_device *dev, int phyid, int reg, int val)
-{
-
-#define WR (1<<1)
-#define BUSY 0x1
-
-	struct am_net_private *priv = netdev_priv(dev);
-	unsigned long busy = 0;
-	unsigned long reg4;
-	reg4 = phyid << 11 | reg << 6 | MDCCLK | WR | BUSY;
-	__raw_writel(val, priv->base_addr + ETH_MAC_5_GMII_Data);
-	do {			//waiting the phy is ready to write ...
-		busy = __raw_readl(priv->base_addr + ETH_MAC_4_GMII_Addr);
-	} while (busy & 0x1);
-	__raw_writel(reg4, priv->base_addr + ETH_MAC_4_GMII_Addr);
-	do {			//waiting the phy is ready to write ...
-		busy = __raw_readl(priv->base_addr + ETH_MAC_4_GMII_Addr);
-	} while (busy & 0x1);
-}
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -229,54 +174,20 @@ static void rx_data_dump(unsigned char *p, int len)
 /* --------------------------------------------------------------------------*/
 static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
-	struct mii_ioctl_data *data = if_mii(rq);
-	struct am_net_private *np = netdev_priv(dev);
-	char addr[MAX_ADDR_LEN];
-	if (g_debug > 0) {
-		printk("Ethernet Driver ioctl (%x)\n", cmd);
-	}
-	switch (cmd) {
-	case SIOCGMIIPHY:	/* Get address of MII PHY in use. */
-		data->phy_id =
-		    ((struct am_net_private *)netdev_priv(dev))->phys[0] & 0x1f;
-		/* Fall Through */
+	struct am_net_private *priv = netdev_priv(dev);
+        int ret;
 
-	case SIOCGMIIREG:	/* Read MII PHY register. */
-		spin_lock_irq(&np->lock);
-		data->val_out =
-		    mdio_read(dev, data->phy_id & 0x1f, data->reg_num & 0x1f);
-		spin_unlock_irq(&np->lock);
-		return 0;
+        if (!netif_running(dev))
+                return -EINVAL;
 
-	case SIOCSMIIREG:	/* Write MII PHY register. */
-		if (!capable(CAP_NET_ADMIN)) {
-			return -EPERM;
-		}
-		spin_lock_irq(&np->lock);
-		mdio_write(dev, data->phy_id & 0x1f, data->reg_num & 0x1f, data->val_in);
-		spin_unlock_irq(&np->lock);
-		return 0;
-	case SIOCSIFHWADDR:
-		if (copy_from_user(&addr,
-		                   (void __user *)rq->ifr_hwaddr.sa_data,
-		                   MAX_ADDR_LEN)) {
-			return -EFAULT;
-		}
-		if (g_debug > 0)
-			printk("set mac addr to %02x:%02x:%02x:%02x:%02x:%02x\n",
-			       addr[0], addr[1], addr[2], addr[3], addr[4],
-			       addr[5]);
-		spin_lock_irq(&np->lock);
-		memcpy(dev->dev_addr, &addr, MAX_ADDR_LEN);
-		write_mac_addr(dev, addr);
-		spin_unlock_irq(&np->lock);
-	default:
-		if (g_debug > 0) {
-			printk("Ethernet Driver unknow ioctl (%x) \n", cmd);
-		}
-		return -EOPNOTSUPP;
-	}
-	return 0;
+        if (!priv->phydev)
+                return -EINVAL;
+
+        spin_lock(&priv->lock);
+        ret = phy_mii_ioctl(priv->phydev, rq, cmd);
+        spin_unlock(&priv->lock);
+
+        return ret;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -365,7 +276,6 @@ int init_rxtx_rings(struct net_device *dev)
 	return 0;
 }
 
-EXPORT_SYMBOL(init_rxtx_rings);
 /* --------------------------------------------------------------------------*/
 /**
  * @brief  alloc_ringdesc 
@@ -466,191 +376,6 @@ static int free_ringdesc(struct net_device *dev)
 	np->tx_ring = NULL;
 	return 0;
 }
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  phy_linked 
- *
- * @param  np
- *
- * @return 
- */
-/* --------------------------------------------------------------------------*/
-static int phy_linked(struct am_net_private *np)
-{
-	unsigned int val;
-	switch (np->phy_Identifier) {
-	case PHY_ATHEROS_8032:
-		val = mdio_read(np->dev, np->phys[0], 17);
-		val = (val & (1 << 10));
-		break;
-	case PHY_ID_KS8081:
-		val = mdio_read(np->dev, np->phys[0], 1);
-		val = (val & (1 << 2));
-		break;
-	case PHY_SMSC_8700:
-	case PHY_SMSC_8720:
-	default:
-		val = mdio_read(np->dev, np->phys[0], 1);
-		val = (val & (1 << 2));
-	}
-	return val;
-}
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  mac_PLL_changed 
- *
- * @param  np
- * @param  clk_mhz
- *
- * @return 
- */
-/* --------------------------------------------------------------------------*/
-static int mac_PLL_changed(struct am_net_private *np, int clk_mhz)
-{
-	unsigned long tmp;
-	switch (clk_mhz) {
-	case 0://disable clock
-		PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);	//disable clk
-		PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, (1 << 0 | 1 << 2 | 1 << 3));
-		break;
-	case 10:
-		if (g_debug > 0) {
-			printk("10m\n");
-		}
-		tmp = __raw_readl(np->base_addr + ETH_MAC_0_Configuration);
-		tmp &= ~(1 << 14);
-		__raw_writel(tmp, np->base_addr + ETH_MAC_0_Configuration);
-		PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);
-		PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, (1 << 1));
-		PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, 1);
-		break;
-	case 100:
-	default:
-		if (g_debug > 0) {
-			printk("100m\n");
-		}
-		tmp = __raw_readl(np->base_addr + ETH_MAC_0_Configuration);
-		tmp |= 1 << 14;
-		__raw_writel(tmp, np->base_addr + ETH_MAC_0_Configuration);
-		PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);
-		PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, (1 << 1));
-		PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, 1);
-	}
-	udelay(10);
-	return 0;
-}
-
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  phy_auto_negotiation_set 
- *
- * @param  np
- */
-/* --------------------------------------------------------------------------*/
-static void phy_auto_negotiation_set(struct am_net_private *np)
-{
-	unsigned int rint;
-	int s100, full, tmp;
-	switch (np->phy_Identifier) {
-	case PHY_ATHEROS_8032:
-	case PHY_ATHEROS_8035:
-		rint = mdio_read(np->dev, np->phys[0], 0x11);
-		s100 = rint & (1 << 14);
-		full = ((rint) & (1 << 13));
-        break;
-	case PHY_ID_KS8081:
-		rint = mdio_read(np->dev, np->phys[0], 0x1E);
-		s100 = rint & 0x07;
-		full = ((rint >> 1) & 3);
-		break;
-	case PHY_IC_IP101ALF:
-		rint = mdio_read(np->dev, np->phys[0], 0);
-		s100 = (rint & (0x1 << 13)) ? 1 : 0;
-		full = (rint & (0x1 << 8)) ? 1 : 0;
-		break;
-	case PHY_SMSC_8700:
-	case PHY_SMSC_8720:
-	default:
-		rint = mdio_read(np->dev, np->phys[0], 31);
-		s100 = rint & (1 << 3);
-		full = ((rint >> 4) & 1);
-		break;
-	}
-	if (full) {
-		if (g_debug > 0) {
-			printk("duplex\n");
-		}
-		tmp = __raw_readl(np->base_addr + ETH_MAC_0_Configuration);
-		tmp |= 1 << 11;
-		__raw_writel(tmp, np->base_addr + ETH_MAC_0_Configuration);
-	} else {
-		if (g_debug > 0) {
-			printk("half duplex\n");
-		}
-		tmp = __raw_readl(np->base_addr + ETH_MAC_0_Configuration);
-		tmp &= ~(1 << 11);
-		__raw_writel(tmp, np->base_addr + ETH_MAC_0_Configuration);
-	}
-	mac_PLL_changed(np, s100 ? 100 : 10);
-	return;
-}
-
-/* --------------------------------------------------------------------------*/
-/**
- * @brief  netdev_timer 
- *
- * @param  data
- */
-/* --------------------------------------------------------------------------*/
-static void netdev_timer(unsigned long data)
-{
-	struct net_device *dev = (struct net_device *)data;
-	struct am_net_private *np = netdev_priv(dev);
-	unsigned long ioaddr = np->base_addr;
-	static int error_num = 0;
-	int val;
-
-	if (g_debug > 2)
-		printk(KERN_DEBUG "%s: Media selection timer tick, mac status %8.8x \n",
-		       dev->name,
-		       ioread32(ioaddr + ETH_DMA_5_Status));
-	if (!phy_linked(np)) {	//unlink .....
-		error_num++;
-		if (error_num > 30) {
-			error_num = 0;
-			spin_lock_irq(&np->lock);
-			if(np->phy_Identifier == PHY_SMSC_8720){
-				val = (1 << 14) | (7 << 5) | np->phys[0];
-				mdio_write(dev, np->phys[0], 18, val);
-			}
-			// Auto negotiation restart
-			val = mdio_read(dev, np->phys[0], MII_BMCR);
-
-#ifdef PHY_LOOPBACK_TEST
-			val = 1 << 14 | 1 << 8 | 1 << 13; //100M,full,seting it as
-#else
-			val |= BMCR_ANENABLE | BMCR_ANRESTART;
-#endif
-			mdio_write(dev, np->phys[0], MII_BMCR, val);
-			spin_unlock_irq(&np->lock);
-		}
-		np->timer.expires = jiffies + 1 * HZ;
-		netif_stop_queue(dev);
-		netif_carrier_off(dev);
-		np->phy_set[0] = 0;
-	} else {		//linked
-		val = mdio_read(dev, np->phys[0], 1);
-		if (np->phy_set[0] != val) {
-			np->phy_set[0] = val;
-			phy_auto_negotiation_set(np);
-		}
-		error_num = 0;
-		netif_carrier_on(dev);
-		netif_start_queue(dev);
-		np->timer.expires = jiffies + 1 * HZ;
-	}
-	add_timer(&np->timer);
-}
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -672,18 +397,18 @@ static inline int update_status(struct net_device *dev, unsigned long status,
 	int res = 0;
 	if (status & NOR_INTR_EN) {	//Normal Interrupts Process
 		if (status & TX_INTR_EN) {	//Transmit Interrupt Process
-			__raw_writel((1 << 0 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
+			writel((1 << 0 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
 			res |= 1;
 		}
 		if (status & RX_INTR_EN) {	//Receive Interrupt Process
-			__raw_writel((1 << 6 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
+			writel((1 << 6 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
 			res |= 2;
 		}
 		if (status & EARLY_RX_INTR_EN) {
-			__raw_writel((EARLY_RX_INTR_EN | NOR_INTR_EN), np->base_addr + ETH_DMA_5_Status);
+			writel((EARLY_RX_INTR_EN | NOR_INTR_EN), np->base_addr + ETH_DMA_5_Status);
 		}
 		if (status & TX_BUF_UN_EN) {
-			__raw_writel((1 << 2 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
+			writel((1 << 2 | 1 << 16), np->base_addr + ETH_DMA_5_Status);
 			res |= 1;
 			//this error will cleard in start tx...
 			if (g_debug > 1) {
@@ -692,7 +417,7 @@ static inline int update_status(struct net_device *dev, unsigned long status,
 		}
 	} else if (status & ANOR_INTR_EN) {	//Abnormal Interrupts Process
 		if (status & RX_BUF_UN) {
-			__raw_writel((RX_BUF_UN | ANOR_INTR_EN), np->base_addr + ETH_DMA_5_Status);
+			writel((RX_BUF_UN | ANOR_INTR_EN), np->base_addr + ETH_DMA_5_Status);
 			np->stats.rx_over_errors++;
 			need_rx_restart++;
 			res |= 2;
@@ -702,39 +427,39 @@ static inline int update_status(struct net_device *dev, unsigned long status,
 			}
 		}
 		if (status & RX_STOP_EN) {
-			__raw_writel((RX_STOP_EN | ANOR_INTR_EN),
+			writel((RX_STOP_EN | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			need_rx_restart++;
 			res |= 2;
 		}
 		if (status & RX_WATCH_TIMEOUT) {
-			__raw_writel((RX_WATCH_TIMEOUT | ANOR_INTR_EN),
+			writel((RX_WATCH_TIMEOUT | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			need_rx_restart++;
 		}
 		if (status & FATAL_BUS_ERROR) {
-			__raw_writel((FATAL_BUS_ERROR | ANOR_INTR_EN),
+			writel((FATAL_BUS_ERROR | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			need_reset++;
 			printk(KERN_WARNING "[" DRV_NAME "]" "fatal bus error\n");
 		}
 		if (status & EARLY_TX_INTR_EN) {
-			__raw_writel((EARLY_TX_INTR_EN | ANOR_INTR_EN),
+			writel((EARLY_TX_INTR_EN | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 		}
 		if (status & TX_STOP_EN) {
-			__raw_writel((TX_STOP_EN | ANOR_INTR_EN),
+			writel((TX_STOP_EN | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			res |= 1;
 		}
 		if (status & TX_JABBER_TIMEOUT) {
-			__raw_writel((TX_JABBER_TIMEOUT | ANOR_INTR_EN),
+			writel((TX_JABBER_TIMEOUT | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			printk(KERN_WARNING "[" DRV_NAME "]" "tx jabber timeout\n");
 			np->first_tx = 1;
 		}
 		if (status & RX_FIFO_OVER) {
-			__raw_writel((RX_FIFO_OVER | ANOR_INTR_EN),
+			writel((RX_FIFO_OVER | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			np->stats.rx_fifo_errors++;
 			need_rx_restart++;
@@ -742,7 +467,7 @@ static inline int update_status(struct net_device *dev, unsigned long status,
 			printk(KERN_WARNING "[" DRV_NAME "]" "Rx fifo over\n");
 		}
 		if (status & TX_UNDERFLOW) {
-			__raw_writel((TX_UNDERFLOW | ANOR_INTR_EN),
+			writel((TX_UNDERFLOW | ANOR_INTR_EN),
 			           np->base_addr + ETH_DMA_5_Status);
 			printk(KERN_WARNING "[" DRV_NAME "]" "Tx underflow\n");
 			np->first_tx = 1;
@@ -755,7 +480,7 @@ static inline int update_status(struct net_device *dev, unsigned long status,
 		free_ringdesc(dev);
 		ethernet_reset(dev);
 	} else if (need_rx_restart) {
-		__raw_writel(1, np->base_addr + ETH_DMA_2_Re_Poll_Demand);
+		writel(1, np->base_addr + ETH_DMA_2_Re_Poll_Demand);
 	}
 	return res;
 }
@@ -852,7 +577,7 @@ void net_tasklet(unsigned long dev_instance)
 	if (result & 1) {
 		struct _tx_desc *c_tx, *tx = NULL;
 
-		c_tx = (void *)__raw_readl(np->base_addr + ETH_DMA_18_Curr_Host_Tr_Descriptor);
+		c_tx = (void *)readl(np->base_addr + ETH_DMA_18_Curr_Host_Tr_Descriptor);
 		c_tx = np->tx_ring + (c_tx - np->tx_ring_dma);
 		tx = np->start_tx;
 		CACHE_RSYNC(tx, sizeof(struct _tx_desc));
@@ -901,7 +626,7 @@ void net_tasklet(unsigned long dev_instance)
 	}
 	if (result & 2) {
 		struct _rx_desc *c_rx, *rx = NULL;
-		c_rx = (void *)__raw_readl(np->base_addr + ETH_DMA_19_Curr_Host_Re_Descriptor);
+		c_rx = (void *)readl(np->base_addr + ETH_DMA_19_Curr_Host_Re_Descriptor);
 		c_rx = np->rx_ring + (c_rx - np->rx_ring_dma);
 		rx = np->last_rx->next;
 		while (rx != NULL) {
@@ -1014,7 +739,7 @@ to_next:
 		}
 	}
 release:
-	__raw_writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
+	writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 }
 
 /* --------------------------------------------------------------------------*/
@@ -1033,10 +758,10 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
 	struct am_net_private *np = netdev_priv(dev);
 	unsigned long status = 0;
 	unsigned long mask = 0;
-	__raw_writel(0, (np->base_addr + ETH_DMA_7_Interrupt_Enable));//disable irq
-	np->pmt = __raw_readl(np->base_addr + ETH_MAC_PMT_Control_and_Status);
-	status = __raw_readl(np->base_addr + ETH_DMA_5_Status);
-	mask = __raw_readl(np->base_addr + ETH_MAC_Interrupt_Mask);
+	writel(0, (np->base_addr + ETH_DMA_7_Interrupt_Enable));//disable irq
+	np->pmt = readl(np->base_addr + ETH_MAC_PMT_Control_and_Status);
+	status = readl(np->base_addr + ETH_DMA_5_Status);
+	mask = readl(np->base_addr + ETH_MAC_Interrupt_Mask);
 	np->int_rx_tx |= update_status(dev, status, mask);
 	tasklet_schedule(&np->rx_tasklet);
 	return IRQ_HANDLED;
@@ -1055,37 +780,37 @@ static int mac_pmt_enable(unsigned int enable)
 			val = 0 << 0  //Power Down
 				| 1 << 1  //Magic Packet Enable
 				| 0;
-			__raw_writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
+			writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
 			break;
 		case 2:
 			val = 0 << 0  //Power Down
 				| 1 << 2  //Wake-Up Frame Enable
 				| 1 << 31 //Wake-Up Frame Filter Register Pointer Reset
 				| 0;
-			__raw_writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
+			writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
 
 			/* setup Wake-Up Frame Filter */
 			/* Filter 0 */
 			val = 0x7f;
-			__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+			writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 			val = 0;
 			/* Filter 1,2,3 */
 			for (i = 0; i < 3; i++) {
-				__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+				writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 			}
 			val = 1 << 0 //Enable Filter 0
 				| 1 << 3 //Multicast
 				| 0;
-			__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+			writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 			val = 42;
-			__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+			writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 			val = 0x5b3e;
-			__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+			writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 			val = 0;
-			__raw_writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
+			writel(val, (np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter));
 
 			for (i = 0; i < 8; i++) {
-				val = __raw_readl(np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter);
+				val = readl(np->base_addr + ETH_MAC_Remote_Wake_Up_Frame_Filter);
 				printk("ETH_MAC_Remote_Wake_Up_Frame_Filter=%d : 0x%lx\n", i, val);
 			}
 			break;
@@ -1094,7 +819,7 @@ static int mac_pmt_enable(unsigned int enable)
 				| 1 << 2  //Wake-Up Frame Enable
 				| 1 << 9  //Global Unicast
 				| 0;
-			__raw_writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
+			writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
 			break;
 		default:
 			break;
@@ -1103,7 +828,7 @@ static int mac_pmt_enable(unsigned int enable)
 	} else {
 		/* setup pmt mode */
 		val = 0;
-		__raw_writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
+		writel(val, (np->base_addr + ETH_MAC_PMT_Control_and_Status));
 
 		/* setup Wake-Up Frame Filter */
 	}
@@ -1124,69 +849,21 @@ extern int get_aml_key_kernel(const char* key_name, unsigned char* data, int asc
 extern int extenal_api_key_set_version(char *devvesion);
 static char print_buff[1025];
 
-static int phy_reset(struct net_device *ndev)
+static int aml_mac_init(struct net_device *ndev)
 {
 	struct am_net_private *np = netdev_priv(ndev);
 	unsigned long val;
-	int k;
-	printk("phy_reset!\n");
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
-	/* make sure PHY power-on */
-	set_phy_mode();
-#endif
-	//mac reset ...
-	__raw_writel(1, np->base_addr + ETH_DMA_0_Bus_Mode);
-	//waiting mac reset...
-	for (k = 0;
-	     (__raw_readl(np->base_addr + ETH_DMA_0_Bus_Mode) & 1) && k < 1000;
-	     k++) {
-		udelay(1);
-	}
-	if (k >= 1000) {
-		printk("error to reset mac!\n");
-		goto error_reset;
-	}
-	//set for RMII mode;
-	if(np->phy_Identifier == PHY_SMSC_8720){
-		val = (1 << 14) | (7 << 5) | np->phys[0];
-		mdio_write(ndev, np->phys[0], 18, val);
-	}
-	val = BMCR_RESET;
-	mdio_write(ndev, np->phys[0], MII_BMCR, val);
-	//waiting to phy reset ok....
-	for (k = 0; (mdio_read(ndev, np->phys[0], MII_BMCR)) & (BMCR_RESET)
-	     && k < 1000; k++) {
-		udelay(1);
-	}
-	if (k >= 1000) {
-		printk("error to reset phy!\n");
-		goto error_reset;
-	}
-
-	if(np->phy_Identifier == PHY_SMSC_8720){
-		val = (1 << 14) | (7 << 5) | np->phys[0];
-		mdio_write(ndev, np->phys[0], 18, val);
-	}
-	if(np->phy_Identifier == PHY_IC_IP101ALF){
-		mdio_write(ndev, np->phys[0], 0xd, 0x7);
-		mdio_write(ndev, np->phys[0], 0xe, 0x3c);
-		mdio_write(ndev, np->phys[0], 0xd, 0x4007);
-		mdio_write(ndev, np->phys[0], 0xe, 0x0);
-	}
-	// Auto negotiation restart
-	val = BMCR_ANENABLE | BMCR_ANRESTART;
-	mdio_write(ndev, np->phys[0], MII_BMCR, val);
-	if (g_debug > 1) {
-		printk("starting to auto negotiation!\n");
-	}
-
-	__raw_writel(0x00100800, np->base_addr + ETH_DMA_0_Bus_Mode);
-	printk("--1--write mac add to:");
-	data_dump(ndev->dev_addr, 6);
-	int ret,j;
+	int ret;
 	int use_nand_mac=0;
 	u8 mac[ETH_ALEN];
 	char *endp;
+	int j;
+
+	writel(1, np->base_addr + ETH_DMA_0_Bus_Mode);
+	writel(0x00100800, np->base_addr + ETH_DMA_0_Bus_Mode);
+	printk("--1--write mac add to:");
+
+	data_dump(ndev->dev_addr, 6);
 #ifdef CONFIG_AML_NAND_KEY
 	extenal_api_key_set_version("nand3");
 	ret = get_aml_key_kernel("mac", print_buff, 0);
@@ -1210,39 +887,158 @@ static int phy_reset(struct net_device *ndev)
 #ifdef MAC_LOOPBACK_TEST
 	val |= 1 << 12; //mac loop back
 #endif
-	__raw_writel(val, np->base_addr + ETH_MAC_0_Configuration);
+
+	writel(val, np->base_addr + ETH_MAC_0_Configuration);
 
 	val = 1 << 4;/*receive all muticast*/
 	//| 1 << 31;	//receive all the data
-	__raw_writel(val, np->base_addr + ETH_MAC_1_Frame_Filter);
-#ifdef PHY_LOOPBACK_TEST
-	/*phy loop back*/
-	val = mdio_read(ndev, np->phys[0], MII_BMCR);
-	val = 1 << 14 | 1 << 8; /////10M,full,seting it as ;
-	mdio_write(ndev, np->phys[0], MII_BMCR, val);
+	writel(val, np->base_addr + ETH_MAC_1_Frame_Filter);
 
-#endif
-
-	__raw_writel((unsigned long)&np->rx_ring_dma[0], (np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
-	__raw_writel((unsigned long)&np->tx_ring_dma[0], (np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
-	__raw_writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
-	__raw_writel((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
+	writel((unsigned long)&np->rx_ring_dma[0], (np->base_addr + ETH_DMA_3_Re_Descriptor_List_Addr));
+	writel((unsigned long)&np->tx_ring_dma[0], (np->base_addr + ETH_DMA_4_Tr_Descriptor_List_Addr));
+	writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
+	writel((0), (np->base_addr + ETH_MAC_Interrupt_Mask));
 	val = 7 << 14 //TTC
 		| 1 << 8  //EFC
 		| 1 << 21 //TSF
 		| 1 << 25 //RSF
 		| 1 << 26;//DT
 	/*don't start receive here */
-	printk("Current DMA mode=%x, set mode=%lx\n", __raw_readl(np->base_addr + ETH_DMA_6_Operation_Mode), val);
-	__raw_writel(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
-	np->phy_set[0] = 0;	//make sure reset the phy speed
+	printk("Current DMA mode=%x, set mode=%lx\n", readl(np->base_addr + ETH_DMA_6_Operation_Mode), val);
+	writel(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 
 	/* enable mac mpt mode */
 	//mac_pmt_enable(1);
 	return 0;
+}
 
-error_reset:
-	return -1;
+static void aml_adjust_link(struct net_device *dev)
+{
+	struct am_net_private *priv = netdev_priv(dev);
+	struct phy_device *phydev = priv->phydev;
+	unsigned long flags;
+	int new_state = 0;
+
+	if (phydev == NULL) 
+		return;
+
+	spin_lock_irqsave(&priv->lock, flags);
+	if (phydev->link) {
+		u32 ctrl = readl(priv->base_addr + ETH_MAC_0_Configuration);
+
+		/* Now we make sure that we can be in full duplex mode.
+		 * If not, we operate in half-duplex mode. */
+		if (phydev->duplex != priv->oldduplex) {
+			new_state = 1;
+			if (!(phydev->duplex)) 
+				ctrl &= ~(1 << 11);
+			else 
+				ctrl |= (1 << 11);
+
+			priv->oldduplex = phydev->duplex;
+		}
+
+		if (phydev->speed != priv->speed) {
+			new_state = 1;
+			PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);
+			switch (phydev->speed) {
+				case 1000:
+					break;
+				case 100:
+					ctrl |= (1 << 14);
+					PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, (1 << 1));
+					break;
+				case 10:
+					ctrl &= ~(1 << 14);
+					PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, (1 << 1));
+					break;
+				default:
+					printk("%s: Speed (%d) is not 10"
+								" or 100!\n", dev->name, phydev->speed);
+					break;
+			}
+			PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, 1);
+			priv->speed = phydev->speed;
+		}
+
+		writel(ctrl, priv->base_addr + ETH_MAC_0_Configuration);
+
+		if (!priv->oldlink) {
+			new_state = 1;
+			priv->oldlink = 1;
+		}
+	} else if (priv->oldlink) {
+		new_state = 1;
+		priv->oldlink = 0;
+		priv->speed = 0;
+		priv->oldduplex = -1;
+
+	}
+
+	if (new_state) 
+		phy_print_status(phydev);
+
+	spin_unlock_irqrestore(&priv->lock, flags);
+
+#ifdef LOOP_BACK_TEST
+#ifdef PHY_LOOPBACK_TEST 
+	mdio_write(priv->mii, priv->phy_addr, MII_BMCR, BMCR_LOOPBACK | BMCR_SPEED100 | BMCR_FULLDPLX);
+#endif
+	start_test(priv->dev);
+#endif
+}
+
+
+static int aml_phy_init(struct net_device *dev)
+{
+        struct am_net_private *priv = netdev_priv(dev);
+        struct phy_device *phydev;
+        char phy_id[MII_BUS_ID_SIZE + 3];
+        char bus_id[MII_BUS_ID_SIZE];
+
+        priv->oldlink = 0;
+        priv->speed = 0;
+        priv->oldduplex = -1;
+	priv->phy_interface = PHY_INTERFACE_MODE_RMII;
+
+        if (priv->phy_addr == -1) {
+                /* We don't have a PHY, so do nothing */
+                pr_err("%s: have no attached PHY\n", dev->name);
+                return -1;
+        }
+
+        snprintf(bus_id, MII_BUS_ID_SIZE, "%x", 0);
+        snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
+                 priv->phy_addr);
+        pr_debug("aml_phy_init:  trying to attach to %s\n", phy_id);
+
+        phydev = phy_connect(dev, phy_id, &aml_adjust_link, priv->phy_interface);
+
+        if (IS_ERR(phydev)) {
+                pr_err("%s: Could not attach to PHY\n", dev->name);
+                return PTR_ERR(phydev);
+        }
+
+        /*
+         * Broken HW is sometimes missing the pull-up resistor on the
+         * MDIO line, which results in reads to non-existent devices returning
+         * 0 rather than 0xffff. Catch this here and treat 0 as a non-existent
+         * device as well.
+         * Note: phydev->phy_id is the result of reading the UID PHY registers.
+         */
+        if (phydev->phy_id == 0) {
+                phy_disconnect(phydev);
+                return -ENODEV;
+        }
+        pr_debug("aml_phy_init:  %s: attached to PHY (UID 0x%x)"
+               " Link = %d\n", dev->name, phydev->phy_id, phydev->link);
+
+        priv->phydev = phydev;
+
+	if (priv->phydev)
+		phy_start(priv->phydev);
+
+        return 0;
 }
 
 /* --------------------------------------------------------------------------*/
@@ -1269,11 +1065,15 @@ static int ethernet_reset(struct net_device *dev)
 		printk(KERN_INFO "can't alloc ring desc!err=%d\n", res);
 		goto out_err;
 	}
-	res = phy_reset(dev);
+
+	res = aml_phy_init(dev);
 	if (res != 0) {
-		printk(KERN_INFO "can't reset ethernet phy!err=%d\n", res);
+		printk(KERN_INFO "init phy failed! err=%d\n", res);
 		goto out_err;
 	}
+
+	aml_mac_init(dev);
+
 	np->first_tx = 1;
 
 out_err:
@@ -1305,7 +1105,6 @@ static int netdev_open(struct net_device *dev)
 		printk(KERN_INFO "ethernet_reset err=%d\n", res);
 		goto out_err;
 	}
-	printk( "%s: request_irq  %d.\n",dev->name, dev->irq);
 
 	res = request_irq(dev->irq, &intr_handler, IRQF_SHARED, dev->name, dev);
 	if (res) {
@@ -1318,19 +1117,13 @@ static int netdev_open(struct net_device *dev)
 		printk(KERN_DEBUG "%s: opened (irq %d).\n",
 		       dev->name, dev->irq);
 
-	/* Set the timer to check for link beat. */
-	init_timer(&np->timer);
-	np->timer.expires = jiffies + 1;
-	np->timer.data = (unsigned long)dev;
-	np->timer.function = &netdev_timer;	/* timer handler */
-	add_timer(&np->timer);
-	val = __raw_readl((np->base_addr + ETH_DMA_6_Operation_Mode));
+	val = readl((np->base_addr + ETH_DMA_6_Operation_Mode));
 	val |= (1 << 1); /*start receive*/
-	__raw_writel(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
+	writel(val, (np->base_addr + ETH_DMA_6_Operation_Mode));
 	running = 1;
-#ifdef LOOP_BACK_TEST
-	start_test(np->dev);
-#endif
+
+	netif_start_queue(dev);
+
 	return 0;
 out_err:
 	running = 0;
@@ -1354,28 +1147,32 @@ static int netdev_close(struct net_device *dev)
 	if (!running) {
 		return 0;
 	}
+
+	if (np->phydev) {
+		phy_stop(np->phydev);
+		phy_disconnect(np->phydev);
+	}
+
 	running = 0;
 
-	__raw_writel(0, (np->base_addr + ETH_DMA_6_Operation_Mode));
-	__raw_writel(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
-	val = __raw_readl((np->base_addr + ETH_DMA_5_Status));
+	writel(0, (np->base_addr + ETH_DMA_6_Operation_Mode));
+	writel(0, np->base_addr + ETH_DMA_7_Interrupt_Enable);
+	val = readl((np->base_addr + ETH_DMA_5_Status));
 	while ((val & (7 << 17)) || (val & (7 << 20))) { /*DMA not finished?*/
 		printk(KERN_ERR "ERROR! DMA is not stoped, val=%lx!\n", val);
 		msleep(1);//waiting all dma is finished!!
-		val = __raw_readl((np->base_addr + ETH_DMA_5_Status));
+		val = readl((np->base_addr + ETH_DMA_5_Status));
 	}
 	if (g_debug > 0) {
 		printk(KERN_INFO "NET DMA is stoped, ETH_DMA_Status=%lx!\n", val);
 	}
 	disable_irq(dev->irq);
+	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
 	netif_carrier_off(dev);
 	netif_stop_queue(dev);
 	free_ringdesc(dev);
 	free_irq(dev->irq, dev);
-	del_timer_sync(&np->timer);
-	//      free_rxtx_rings(np);
-	//      free_ringdesc(np);
-	//      PERIPHS_CLEAR_BITS(P_ETH_PLL_CNTL,1);//disable clk
+
 	if (g_debug > 0) {
 		printk(KERN_DEBUG "%s: closed\n", dev->name);
 	}
@@ -1409,7 +1206,7 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 	}
 	tasklet_disable(&np->rx_tasklet);
 	spin_lock_irqsave(&np->lock, flags);
-	__raw_writel(0, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
+	writel(0, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 
 	if (np->last_tx != NULL) {
 		tx = np->last_tx->next;
@@ -1451,14 +1248,14 @@ static int start_tx(struct sk_buff *skb, struct net_device *dev)
 #endif
 	if (np->first_tx) {
 		np->first_tx = 0;
-		tmp = __raw_readl(np->base_addr + ETH_DMA_6_Operation_Mode);
+		tmp = readl(np->base_addr + ETH_DMA_6_Operation_Mode);
 		tmp |= (7 << 14) | (1 << 13);
-		__raw_writel(tmp, np->base_addr + ETH_DMA_6_Operation_Mode);
+		writel(tmp, np->base_addr + ETH_DMA_6_Operation_Mode);
 	} else {
 		//ETH_DMA_1_Tr_Poll_Demand
-		__raw_writel(1, np->base_addr + ETH_DMA_1_Tr_Poll_Demand);
+		writel(1, np->base_addr + ETH_DMA_1_Tr_Poll_Demand);
 	}
-	__raw_writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));	
+	writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));	
 	spin_unlock_irqrestore(&np->lock, flags);
 	tasklet_enable(&np->rx_tasklet);
 	return NETDEV_TX_OK;
@@ -1466,7 +1263,7 @@ err:
 	np->tx_full = 1;
 	np->stats.tx_dropped++;
 	netif_stop_queue(dev);
-	__raw_writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
+	writel(np->irq_mask, (np->base_addr + ETH_DMA_7_Interrupt_Enable));
 	spin_unlock_irqrestore(&np->lock, flags);
 	tasklet_enable(&np->rx_tasklet);
 	return NETDEV_TX_BUSY;
@@ -1518,6 +1315,20 @@ void test_loop_back(struct net_device *dev)
 	}
 }
 
+static void force_speed100_duplex_set(struct am_net_private *np)
+{
+	int val;
+
+	val = readl(np->base_addr + ETH_MAC_0_Configuration);
+	val |= (1 << 11) | (1 << 14);
+	writel(val, np->base_addr + ETH_MAC_0_Configuration);
+
+	PERIPHS_CLEAR_BITS(P_PREG_ETHERNET_ADDR0, 1);
+	PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, (1 << 1));
+	PERIPHS_SET_BITS(P_PREG_ETHERNET_ADDR0, 1);
+
+	return;
+}
 /* --------------------------------------------------------------------------*/
 /**
  * @brief  start_test 
@@ -1529,10 +1340,13 @@ void start_test(struct net_device *dev)
 {
 	static int test_running = 0;
 	struct am_net_private *np = netdev_priv(dev);
+
+	force_speed100_duplex_set(np);
+
 	if (test_running) {
 		return ;
 	}
-	phy_auto_negotiation_set(np);
+
 	kernel_thread((void *)test_loop_back, (void *)dev, CLONE_FS | CLONE_SIGHAND);
 	test_running++;
 
@@ -1557,12 +1371,14 @@ static void tx_timeout(struct net_device *dev)
 	int val;
 
 	spin_lock_irq(&np->lock);
-	val = mdio_read(dev, np->phys[0], MII_BMSR);
+	val = mdio_read(np->mii, np->phy_addr, MII_BMSR);
 	spin_unlock_irq(&np->lock);
 	if (!(val & (BMSR_LSTATUS))) {	//unlink .....
 		netif_stop_queue(dev);
+	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
 		netif_carrier_off(dev);
 	} else {
+	printk("XYMA FILE:%s %s:%d on.\n", __FILE__, __func__, __LINE__);
 		netif_carrier_on(dev);
 		netif_wake_queue(dev);
 		dev->trans_start = jiffies;
@@ -1611,9 +1427,9 @@ static void write_mac_addr(struct net_device *dev, char *macaddr)
 	struct am_net_private *np = netdev_priv(dev);
 	unsigned int val;
 	val = *((unsigned short *)&macaddr[4]);
-	__raw_writel(val, np->base_addr + ETH_MAC_Addr0_High);
+	writel(val, np->base_addr + ETH_MAC_Addr0_High);
 	val = *((unsigned long *)macaddr);
-	__raw_writel(val, np->base_addr + ETH_MAC_Addr0_Low);
+	writel(val, np->base_addr + ETH_MAC_Addr0_Low);
 	printk("write mac add to:");
 	data_dump(macaddr, 6);
 }
@@ -1652,23 +1468,11 @@ static unsigned char inline chartonum(char c)
 /* --------------------------------------------------------------------------*/
 static void config_mac_addr(struct net_device *dev, void *mac)
 {
-	unsigned long mac_fir = 0;
-	unsigned char mac_add[6] = {};
+	if(g_mac_addr_setup) 
+		memcpy(dev->dev_addr, mac, 6);
+	else
+		random_ether_addr(dev->dev_addr);	
 
-	if(g_mac_addr_setup == 0) {
-		printk("*****WARNING: Haven't setup MAC address! Using random MAC address.\n");
-		mac_fir = READ_MPEG_REG(RAND64_ADDR1);
-		mac_add[1] = mac_fir&0xFF;
-		mac_add[2] = (mac_fir>>16)&0xFF;
-		mac_add[3] = (mac_fir>>8)&0xFF;
-		mac_add[4] = (mac_fir>>24) &0xFF;
-		mac_add[5] = (mac_add[1]<<4)|(mac_add[4]>>4);
-		memcpy(mac, mac_add, 6);
-		printk("mac-addr: %x:%x:%x:%x:%x:%x\n", mac_add[0], mac_add[1], mac_add[2],
-							mac_add[3], mac_add[4], mac_add[5]);
-	}
-
-	memcpy(dev->dev_addr, mac, 6);
 	write_mac_addr(dev, dev->dev_addr);
 }
 
@@ -1731,25 +1535,25 @@ static void set_multicast_list(struct net_device *dev)
 	if(dev->flags != dev_flags)//not always change
 	{
 		if ((dev->flags & IFF_PROMISC)) {
-			tmp = __raw_readl(np->base_addr + ETH_MAC_1_Frame_Filter);
+			tmp = readl(np->base_addr + ETH_MAC_1_Frame_Filter);
 			tmp |= 1;
-			__raw_writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+			writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
 			printk("ether enter promiscuous mode\n");
 		} else {
-			tmp = __raw_readl(np->base_addr + ETH_MAC_1_Frame_Filter);
+			tmp = readl(np->base_addr + ETH_MAC_1_Frame_Filter);
 			tmp &= ~1;
-			__raw_writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+			writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
 			printk("ether leave promiscuous mode\n");
 		}
 		if ((dev->flags & IFF_ALLMULTI)) {
-			tmp = __raw_readl(np->base_addr + ETH_MAC_1_Frame_Filter);
+			tmp = readl(np->base_addr + ETH_MAC_1_Frame_Filter);
 			tmp |= (1 << 4);
-			__raw_writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+			writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
 			printk("ether enter all multicast mode\n");
 		} else {
-			tmp = __raw_readl(np->base_addr + ETH_MAC_1_Frame_Filter);
+			tmp = readl(np->base_addr + ETH_MAC_1_Frame_Filter);
 			tmp &= ~(1 << 4);
-			__raw_writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
+			writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);
 			printk("ether leave all muticast mode\n");
 		}
 		dev_flags=dev->flags;
@@ -1779,13 +1583,13 @@ static void set_multicast_list(struct net_device *dev)
 		dev_hash[0]=hash[0] ;
 		dev_hash[1]=hash[1];
 		printk("set hash low=%x,high=%x\n", hash[0], hash[1]);
-		__raw_writel(hash[1], np->base_addr + ETH_MAC_2_Hash_Table_High);
-		__raw_writel(hash[0], np->base_addr + ETH_MAC_3_Hash_Table_Low);
-		tmp = __raw_readl(np->base_addr + ETH_MAC_1_Frame_Filter);
+		writel(hash[1], np->base_addr + ETH_MAC_2_Hash_Table_High);
+		writel(hash[0], np->base_addr + ETH_MAC_3_Hash_Table_Low);
+		tmp = readl(np->base_addr + ETH_MAC_1_Frame_Filter);
 		tmp |= (1 << 2) | 	//hash filter
 		       0;
 		printk("changed the filter setting to :%x\n", tmp);
-		__raw_writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
+		writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
 	}
 }
 
@@ -1839,28 +1643,6 @@ static int setup_net_device(struct net_device *dev)
 	return res;
 }
 
-static void set_phy_mode(void)
-{
-	struct am_net_private *priv = netdev_priv(my_ndev);
-
-	if (priv == NULL) {
-		printk("set_phy_mode() ndev null.\n");
-		return;
-	}
-
-	if (g_debug > 0)
-		printk("set_phy_mode() phy_Identifier: 0x%x\n", priv->phy_Identifier);
-	switch (priv->phy_Identifier) {
-	case PHY_ATHEROS_8032:
-	case PHY_ATHEROS_8035:
-		break;
-	case PHY_SMSC_8700:
-	case PHY_SMSC_8720:
-	default:
-		mdio_write(my_ndev, 1, 18, 1 | (1 << 14 | 7 << 5));
-		break;
-	}
-}
 /* --------------------------------------------------------------------------*/
 /**
  * @brief  probe_init 
@@ -1872,90 +1654,27 @@ static void set_phy_mode(void)
 /* --------------------------------------------------------------------------*/
 static int probe_init(struct net_device *ndev)
 {
-	int phy = 0;
-	int phy_idx = 0;
-	int found = 0;
 	int res = 0;
-	unsigned int val;
-	int k, kk;
+
 	struct am_net_private *priv = netdev_priv(ndev);
 	priv->dev = ndev;
-	ndev->base_addr = (unsigned long)ETHBASE;//(ethbaseaddr);
+	ndev->base_addr = (unsigned long)(ETHBASE);
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
-	priv->mii_if.dev = ndev;
-	priv->mii_if.mdio_read = mdio_read;
-	priv->mii_if.mdio_write = mdio_write;
 	priv->base_addr = ndev->base_addr;
 	if (g_debug > 0) {
 		printk("ethernet base addr is %x\n", (unsigned int)ndev->base_addr);
 	}
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
-	/* make sure PHY power-on */
-	set_phy_mode();
-#endif
-	/* mac reset */
-	for (k = 0; k < 100 && !found; k++) {
-		//mac reset ...
-		__raw_writel(1, priv->base_addr + ETH_DMA_0_Bus_Mode);
-		//waiting mac reset...
-		for (kk = 0;
-		     (__raw_readl(priv->base_addr + ETH_DMA_0_Bus_Mode) & 1) && kk < 1000;
-		     kk++) {
-			udelay(1);
-		}
-		if (kk >= 1000) {
-			printk("error to reset mac at probe!\n");
-			goto error0;
-		}
-
-		for (phy = 0; phy < 32 && phy_idx < MII_CNT; phy++) {
-			int mii_status = mdio_read(ndev, phy, MII_BMSR);
-			if (mii_status != 0xffff && mii_status != 0x0000) {
-				priv->phys[phy_idx++] = phy;
-				priv->mii_if.advertising =
-				    mdio_read(ndev, phy, MII_ADVERTISE);
-				priv->mii =
-				    (mdio_read(ndev, phy, MII_PHYSID1) << 16) +
-				    mdio_read(ndev, phy, MII_PHYSID2);
-				if (g_debug > 0)
-					printk(KERN_INFO
-					       "%s: MII PHY %8.8xh found at address %d, status "
-					       "0x%4.4x advertising %4.4x.\n", DRV_NAME,
-					       priv->mii, phy, mii_status,
-					       priv->mii_if.advertising);
-				found++;
-			}
-		}
-	}
-
-	if (!found) {
-		printk("can't find any mii phy device !\n");
-		res = -EIO;
-		goto error0;
-	}
-	if(priv->mii == PHY_SMSC_8720){
-		mdio_write(ndev, priv->phys[0], 18, priv->phys[0] | (1 << 14 | 7 << 5));
-	}
-	if(priv->mii == PHY_IC_IP101ALF){
-		mdio_write(ndev, priv->phys[0], 0xd,0x7);
-		mdio_write(ndev, priv->phys[0], 0xe,0x3c);
-		mdio_write(ndev, priv->phys[0], 0xd,0x4007);
-		mdio_write(ndev, priv->phys[0], 0xe,0x0);
-	}
-
-	val = mdio_read(ndev, priv->phys[0], 2); //phy_rw(0, phyad, 2, &val);
-	priv->phy_Identifier = val << 16;
-	val = mdio_read(ndev, priv->phys[0], 3); //phy_rw(0, phyad, 3, &val);
-	priv->phy_Identifier |= val;
-	printk("find phy phy_Identifier=%x\n", priv->phy_Identifier);
 	res = setup_net_device(ndev);
 	if (res != 0) {
 		printk("setup net device error !\n");
 		res = -EIO;
 		goto error0;
 	}
+
+	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
+	netif_carrier_off(ndev);
 
 	res = register_netdev(ndev);
 	if (res != 0) {
@@ -1964,9 +1683,16 @@ static int probe_init(struct net_device *ndev)
 		goto error0;
 	}
 	tasklet_init(&priv->rx_tasklet, net_tasklet, (unsigned long)ndev);
-	return 0;
-error0:
 
+	res = aml_mdio_register(ndev);
+	if (res < 0) {
+		goto out_unregister;
+	}
+	return 0;
+
+out_unregister:
+	unregister_netdev(ndev);	
+error0:
 	return res;
 }
 
@@ -1989,7 +1715,7 @@ static void am_net_dump_phyreg(void)
 
 	printk("========== ETH PHY regs ==========\n");
 	for (reg = 0; reg < 32; reg++) {
-		val = mdio_read(np->dev, np->phys[0], reg);
+		val = mdio_read(np->mii, np->phy_addr, reg);
 		printk("[reg_%d] 0x%x\n", reg, val);
 	}
 }
@@ -2019,7 +1745,7 @@ static int am_net_read_phyreg(int argc, char **argv)
 	}
 	reg = simple_strtol(argv[1], NULL, 16);
 	if (reg >= 0 && reg <= 31) {
-		val = mdio_read(np->dev, np->phys[0], reg);
+		val = mdio_read(np->mii, np->phy_addr, reg);
 		printk("read phy [reg_%d] 0x%x\n", reg, val);
 	} else {
 		printk("Invalid parameter\n");
@@ -2055,8 +1781,8 @@ static int am_net_write_phyreg(int argc, char **argv)
 	reg = simple_strtol(argv[1], NULL, 16);
 	val = simple_strtol(argv[2], NULL, 16);
 	if (reg >=0 && reg <=31) {
-		mdio_write(np->dev, np->phys[0], reg, val);
-		//printk("write phy [reg_%d] 0x%x, 0x%x\n", reg, val, mdio_read(np->dev, np->phys[0], reg));
+		mdio_write(np->mii, np->phy_addr, reg, val);
+		printk("write phy [reg_%d] 0x%x, 0x%x\n", reg, val, mdio_read(np->mii, np->phy_addr, reg));
 	} else {
 		printk("Invalid parameter\n");
 	}
@@ -2159,19 +1885,13 @@ static void am_net_dump_macreg(void)
 
 	printk("========== ETH_MAC regs ==========\n");
 	for (reg = ETH_MAC_0_Configuration; reg <= ETH_MAC_54_SGMII_RGMII_Status; reg += 0x4) {
-		val = __raw_readl(np->base_addr + reg);
+		val = readl(np->base_addr + reg);
 		printk("[0x%04x] 0x%x\n", reg, val);
 	}
-#if 0
-	printk("========== ETH_MMC regs ==========\n");
-	for (reg = ETH_MMC_cntrl; reg <= ETH_MMC_rxicmp_err_octets; reg += 0x4) {
-		val = __raw_readl(np->base_addr + reg);
-		printk("[0x%04x] 0x%x\n", reg, val);
-	}
-#endif
+
 	printk("========== ETH_DMA regs ==========\n");
 	for (reg = ETH_DMA_0_Bus_Mode; reg <= ETH_DMA_21_Curr_Host_Re_Buffer_Addr; reg += 0x4) {
-		val = __raw_readl(np->base_addr + reg);
+		val = readl(np->base_addr + reg);
 		printk("[0x%04x] 0x%x\n", reg, val);
 	}
 }
@@ -2190,7 +1910,6 @@ static int am_net_read_macreg(int argc, char **argv)
 {
 	int reg = 0;
 	int val = 0;
-	printk("am_net_read_macreg\n");
 	struct am_net_private *np = netdev_priv(my_ndev);
 
 	if ((np == NULL) || (np->dev == NULL))
@@ -2202,7 +1921,7 @@ static int am_net_read_macreg(int argc, char **argv)
 	}
 	reg = simple_strtol(argv[1], NULL, 16);
 	if (reg >= 0 && reg <= ETH_DMA_21_Curr_Host_Re_Buffer_Addr) {
-		val = __raw_readl(np->base_addr + reg);
+		val = readl(np->base_addr + reg);
 		printk("read mac [0x04%x] 0x%x\n", reg, val);
 	} else {
 		printk("Invalid parameter\n");
@@ -2225,7 +1944,6 @@ static int am_net_write_macreg(int argc, char **argv)
 {
 	int reg = 0;
 	int val = 0;
-	printk("am_net_write_macreg\n");
 	struct am_net_private *np = netdev_priv(my_ndev);
 
 	if ((np == NULL) || (np->dev == NULL))
@@ -2239,8 +1957,8 @@ static int am_net_write_macreg(int argc, char **argv)
 	reg = simple_strtol(argv[1], NULL, 16);
 	val = simple_strtol(argv[2], NULL, 16);
 	if (reg >= 0 && reg <= ETH_DMA_21_Curr_Host_Re_Buffer_Addr) {
-		__raw_writel(val, np->base_addr + reg);
-		printk("write mac [0x%x] 0x%x, 0x%x\n", reg, val, __raw_readl(np->base_addr + reg));
+		writel(val, np->base_addr + reg);
+		printk("write mac [0x%x] 0x%x, 0x%x\n", reg, val, readl(np->base_addr + reg));
 	} else {
 		printk("Invalid parameter\n");
 	}
@@ -2474,8 +2192,8 @@ static ssize_t eth_debug_store(struct class *class, struct class_attribute *attr
 /* --------------------------------------------------------------------------*/
 static ssize_t eth_count_show(struct class *class, struct class_attribute *attr, char *buf)
 {
-	printk("Ethernet TX count: 0x%08d\n", g_tx_cnt);
-	printk("Ethernet RX count: 0x%08d\n", g_rx_cnt);
+	printk("Ethernet TX count: 0x%08x\n", g_tx_cnt);
+	printk("Ethernet RX count: 0x%08x\n", g_rx_cnt);
 
 	return 0;
 }
@@ -2540,256 +2258,29 @@ static ssize_t eth_wol_store(struct class *class, struct class_attribute *attr, 
 
 	return count;
 }
-static void get_phy_linkspeed(char *buf)
-{
-	struct am_net_private *np = netdev_priv(my_ndev);
-	unsigned int rint, link;
-	int s100, full, linkflag = 0,speed;
-	switch (np->phy_Identifier) {
-	case PHY_ATHEROS_8032:
-	case PHY_ATHEROS_8035:
-		link = mdio_read(np->dev, np->phys[0], 17);
-		linkflag = (link & (1 << 10));
-		rint = mdio_read(np->dev, np->phys[0], 0x11);
-		s100 = rint & (1 << 14);
-		full = ((rint) & (1 << 13));
-        break;
-	case PHY_IC_IP101ALF:
-		link = mdio_read(np->dev, np->phys[0], 1);
-		linkflag = (link & (1 << 2));
-		rint = mdio_read(np->dev, np->phys[0], 0);
-		s100 = (rint & (0x1 << 13)) ? 1 : 0;
-		full = (rint & (0x1 << 8)) ? 1 : 0;
-		break;
-	case PHY_SMSC_8700:
-	case PHY_SMSC_8720:
-	default:
-		link = mdio_read(np->dev, np->phys[0], 1);
-		linkflag = (link & (1 << 2));
-		rint = mdio_read(np->dev, np->phys[0], 31);
-		s100 = rint & (1 << 3);
-		full = ((rint >> 4) & 1);
-		break;
-	}
-        if (linkflag) {
-                        strcpy(buf,"link status: link\n");
-        } else {
-                        strcpy(buf,"link status: unlink\n");
-        }
-        if (full) {
-                        strcat(buf,"duplex\n");
-        } else {
-                        strcat(buf,"half duplex\n");
-        }
-        speed =(s100?100:10);
-        if(speed == 100){
-                        strcat(buf,"speed : 100\n");
-        }
-        else if(speed  == 10)
-        {
-                        strcat(buf,"speed : 10\n");
-        }
-}
 static ssize_t eth_linkspeed_show(struct class *class, struct class_attribute *attr, char *buf)
 {
-        int ret;
-	char buff[100];
-	get_phy_linkspeed(buff);
-        ret = sprintf(buf, "%s\n", buff);
-	return ret;
-}
-
-static ssize_t eth_phywol_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
-{
-	unsigned int cnt = 0;
-	int en = 0,high = 0;
-	int wol = 0,wol_en = 0;
-	int wol_pkt = 0;
 	struct am_net_private *np = netdev_priv(my_ndev);
-	cnt = simple_strtoul(buf, NULL, 0);		
-	if (cnt == 1){
-		printk("enable phy wol magic func\n");
-		//set interrupt
-		mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_16);
-		wol_en = mdio_read(np->dev, np->phys[0], IP101G_WOL_STATUS);
-		mdio_write(np->dev, np->phys[0], IP101G_WOL_STATUS,
-				(wol_en |IP101G_WOL_EN));
-		// enable intr_32
-		wol_en= 0;
-		wol_en = mdio_read(np->dev, np->phys[0], 0x1d);
-		mdio_write(np->dev, np->phys[0], 0x1d,
-				(wol_en |1<<2));
-		mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_4);
-		wol =mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		mdio_write(np->dev, np->phys[0],IP101G_WOL_CTRL,0x5f40);
-		
-		// set master +3min
-		mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_4);
-		mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		mdio_write(np->dev, np->phys[0],IP101G_WOL_CTRL,0x5f40);
-		mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		mdio_write(np->dev, np->phys[0],IP101G_WOL_CTRL,0xdb40);
-		//magic pkt enable
-		//mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_4);
-		//wol_pkt = mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		//mdio_write(np->dev, np->phys[0], IP101G_WOL_CTRL, (wol_pkt | IP101G_WOL_SENSE_MAGIC_PKT));
-	}
-	else if(cnt == 0){
-		printk("disable phy wol magic func\n");
-		mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_4);
-		wol =mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		wol &= ~IP101G_WOL_EN;
-		mdio_write(np->dev, np->phys[0],IP101G_WOL_CTRL, wol);
-		mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_4);
-		wol_pkt = mdio_read(np->dev, np->phys[0], IP101G_WOL_CTRL);
-		mdio_write(np->dev, np->phys[0], IP101G_WOL_CTRL, (wol_pkt & ~IP101G_WOL_SENSE_MAGIC_PKT));
-	}
-	else
-	{
-		printk("input error\n");
-	}
-	return count;
-}
-static ssize_t eth_magic_mac_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
-{
-	int i;
-	struct am_net_private *np = netdev_priv(my_ndev);
-	u16 u16dat[3];
-	char *buff, *p, *para;
-	char *argv[6];
-	buff = kstrdup(buf, GFP_KERNEL);
-	p = buff;
-	for (i = 0; i < 6; i++) {
-		para = strsep(&p, ":");
-		if (para == NULL)
-			break;
-		argv[i] = para;
-	}
-	if (i < 1 || i > 6)
-		goto end;
-	for(i= 0;i<3;i++){
-		u16dat[i] =( simple_strtol(argv[2*i], NULL, 16)<<8 |simple_strtol(argv[2*i+1], NULL, 16));
-	}
-	mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_5);
-	for (i=0; i < 3; i++)
-	{
-		printk("dat = %x\n",u16dat[i]);
-		mdio_write(np->dev, np->phys[0], IP101G_WOL_MAC_ADDR, u16dat[i]);
-	}
-	return count;
-end:
-kfree(buff);
-return 0;
-	
-}
-static ssize_t eth_magic_mac_show(struct class *class, struct class_attribute *attr, char *buf)
-{
+	struct phy_device *phydev = np->phydev;
 	int ret;
-	int i;
-	u16 u16dat[3];
-	struct am_net_private *np = netdev_priv(my_ndev);
-	mdio_write(np->dev, np->phys[0], IP101G_PAGE_SEL, IP101G_PAGE_5);
-	for (i=0; i < 3; i++)
-	{
-		u16dat[i] = (mdio_read(np->dev, np->phys[0], IP101G_WOL_MAC_ADDR));
-	}
-	ret = sprintf(buf, "%x%x%x\n", u16dat[0],u16dat[1],u16dat[2]);
-	return ret;
-}
-typedef struct kthread_t {
-        int pid;
-}kthread_s;
+	char buff[100];
 
-static kthread_s ethernet_thread;
-static struct completion thread_exited;
+	if(np->phydev) {
+		phy_print_status(np->phydev);
 
-static int kthread_entry(void *arg)
-{
-	int i = 0;
-	char header[64] = "";
-	struct net_device *dev =(struct net_device*)arg;
+		genphy_update_link(phydev);
+		if (phydev->link)
+			strcpy(buff,"link status: link\n");
+		else
+			strcpy(buff,"link status: unlink\n");
+	} else
+		strcpy(buff,"link status: unlink\n");
 
-	allow_signal(SIGTERM);
+	ret = sprintf(buf, "%s\n", buff);
 
-	printk("start sending!!\n");
-	for (i = 0; i < 6; i++)
-		header[i] = i;
-    
-	memcpy(header + 6, dev->dev_addr, 6);
-	header[12] = 0x80;
-	header[13] = 0;
-
-	while (!signal_pending(current)) {
-		struct sk_buff *skb = dev_alloc_skb(1600);
-		while (!running) {
-			i = 0;
-			msleep(10);
-		}
-
-		skb_put(skb, 1400);
-		memset(skb->data, 0x55, skb->len);
-		memcpy(skb->data, header, 16);
-		if (start_tx(skb, dev) != 0) {
-			/*tx list is full*/
-			msleep(1);
-			dev_kfree_skb(skb);
-		} else {
-			i++;
-		}
-        set_current_state(TASK_INTERRUPTIBLE);
-        schedule_timeout(10);
-
-	}
-	complete_and_exit(&thread_exited, 1);
-	return 0;
-}
-
-static void kthread_start(struct net_device *dev)
-{
-	static int test_running = 0;
-	if (test_running) {
-		return;
-	}
-
-	init_completion(&thread_exited);
-	ethernet_thread.pid = kernel_thread(kthread_entry, (void *)dev, CLONE_KERNEL | SIGCHLD);
-
-	test_running = 1;
-
-}
-
-static void kthread_exit(struct net_device *dev)
-{
-	kill_pid(find_vpid(ethernet_thread.pid), SIGTERM, 1);
-	wait_for_completion(&thread_exited);
-
-	printk("stop sending.\n");
-}
-static const char *g_eth_send_test_help = {
-	"Ethernet send test:\n"
-	"  echo 1 >eth_send_test : start send test\n"
-	"  echo 0 >eth_send_test : stop send test\n"
-};
-
-static ssize_t eth_send_show(struct class *class, struct class_attribute *attr, char *buf)
-{
-	int ret = 0;
-	ret = sprintf(buf, "%s\n",g_eth_send_test_help);
 	return ret;
 }
 
-static ssize_t eth_send_store(struct class *class, struct class_attribute *attr, const char *buf, size_t count)
-{
-	unsigned int cnt = 0;
-	cnt = simple_strtoul(buf, NULL, 0);
-	if (cnt == 1) {
-		kthread_start(my_ndev);
-	}
-	else{
-		kthread_exit(my_ndev);
-	}
-	return count;
-}
 static struct class *eth_sys_class;
 static CLASS_ATTR(mdcclk, S_IWUSR | S_IRUGO, eth_mdcclk_show, eth_mdcclk_store);
 static CLASS_ATTR(debug, S_IWUSR | S_IRUGO, eth_debug_show, eth_debug_store);
@@ -2798,10 +2289,6 @@ static CLASS_ATTR(phyreg, S_IWUSR | S_IRUGO, eth_phyreg_help, eth_phyreg_func);
 static CLASS_ATTR(macreg, S_IWUSR | S_IRUGO, eth_macreg_help, eth_macreg_func);
 static CLASS_ATTR(wol, S_IWUSR | S_IRUGO, eth_wol_show, eth_wol_store);
 static CLASS_ATTR(linkspeed, S_IWUSR | S_IRUGO, eth_linkspeed_show, NULL);
-static CLASS_ATTR(phywolen, S_IWUSR | S_IRUGO, NULL, eth_phywol_store);
-static CLASS_ATTR(magic_mac, S_IWUSR | S_IRUGO, eth_magic_mac_show, eth_magic_mac_store);
-static CLASS_ATTR(ethsend, S_IWUSR | S_IRUGO, eth_send_show, eth_send_store);
-
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -2823,10 +2310,7 @@ static int __init am_eth_class_init(void)
 	ret = class_create_file(eth_sys_class, &class_attr_macreg);
 	ret = class_create_file(eth_sys_class, &class_attr_wol);
 	ret = class_create_file(eth_sys_class, &class_attr_linkspeed);
-	ret = class_create_file(eth_sys_class, &class_attr_phywolen);
-	ret = class_create_file(eth_sys_class, &class_attr_magic_mac);
-	ret = class_create_file(eth_sys_class, &class_attr_ethsend);
-	
+
 	return ret;
 }
 
@@ -2960,17 +2444,19 @@ static int __init am_net_init(void)
 		printk(DRV_NAME "ndev alloc failed!!\n");
 		return -ENOMEM;
 	}
-	res = am_eth_class_init();
-	if (platform_driver_register(&ethernet_driver)) {
-		printk("failed to register ethernet_pm driver\n");
-		g_ethernet_registered = 0;
-	} else {
-		g_ethernet_registered = 1;
-	}
 	res = probe_init(my_ndev);
 	if (res != 0) {
 		free_netdev(my_ndev);
-	} 
+	} else {
+		res = am_eth_class_init();
+
+		if (platform_driver_register(&ethernet_driver)) {
+			printk("failed to register ethernet_pm driver\n");
+			g_ethernet_registered = 0;
+		} else {
+			g_ethernet_registered = 1;
+		}
+	}
 
 	return res;
 }
@@ -2998,8 +2484,10 @@ static void am_net_free(struct net_device *ndev)
 static void __exit am_net_exit(void)
 {
 	printk(DRV_NAME "exit\n");
+	
 	am_net_free(my_ndev);
 	free_netdev(my_ndev);
+	aml_mdio_unregister(my_ndev);
 	class_destroy(eth_sys_class);
 	if (g_ethernet_registered == 1) {
 		printk("ethernet_pm driver remove.\n");
