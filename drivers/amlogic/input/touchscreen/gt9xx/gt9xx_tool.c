@@ -62,8 +62,8 @@ static struct i2c_client *gt_client = NULL;
 
 static struct proc_dir_entry *goodix_proc_entry;
 
-static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigned long len, void *data);
-static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int *eof, void *data );
+//static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigned long len, void *data);
+//static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int *eof, void *data );
 static s32 (*tool_i2c_read)(u8 *, u16);
 static s32 (*tool_i2c_write)(u8 *, u16);
 
@@ -175,66 +175,6 @@ static void unregister_i2c_func(void)
     GTP_INFO("I2C function: unregister i2c transfer function!");
 }
 
-
-s32 init_wr_node(struct i2c_client *client)
-{
-    s32 i;
-
-    gt_client = client;
-    memset(&cmd_head, 0, sizeof(cmd_head));
-    cmd_head.data = NULL;
-
-    i = 5;
-    while ((!cmd_head.data) && i)
-    {
-        cmd_head.data = kzalloc(i * DATA_LENGTH_UINT, GFP_KERNEL);
-        if (NULL != cmd_head.data)
-        {
-            break;
-        }
-        i--;
-    }
-    if (i)
-    {
-        DATA_LENGTH = i * DATA_LENGTH_UINT + GTP_ADDR_LENGTH;
-        GTP_INFO("Applied memory size:%d.", DATA_LENGTH);
-    }
-    else
-    {
-        GTP_ERROR("Apply for memory failed.");
-        return FAIL;
-    }
-
-    cmd_head.addr_len = 2;
-    cmd_head.retry = 5;
-
-    register_i2c_func();
-
-    //goodix_proc_entry = create_proc_entry(GOODIX_ENTRY_NAME, 0666, NULL);
-    goodix_proc_entry = proc_create(GOODIX_ENTRY_NAME, 0666, NULL, NULL);
-    if (goodix_proc_entry == NULL)
-    {
-        GTP_ERROR("Couldn't create proc entry!");
-        return FAIL;
-    }
-    else
-    {
-        GTP_INFO("Create proc entry success!");
-        goodix_proc_entry->write_proc = goodix_tool_write;
-        goodix_proc_entry->read_proc = goodix_tool_read;
-    }
-
-    return SUCCESS;
-}
-
-void uninit_wr_node(void)
-{
-    kfree(cmd_head.data);
-    cmd_head.data = NULL;
-    unregister_i2c_func();
-    remove_proc_entry(GOODIX_ENTRY_NAME, NULL);
-}
-
 static u8 relation(u8 src, u8 dst, u8 rlt)
 {
     u8 ret = 0;
@@ -325,7 +265,7 @@ Input:
 Output:
 	Return write length.
 ********************************************************/
-static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigned long len, void *data)
+static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len, loff_t *offset)
 {
     s32 ret = 0;
     GTP_DEBUG_FUNC();
@@ -480,7 +420,7 @@ Input:
 Output:
 	Return read length.
 ********************************************************/
-static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int *eof, void *data )
+static ssize_t goodix_tool_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
     GTP_DEBUG_FUNC();
     
@@ -535,11 +475,11 @@ static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int
                 GTP_ERROR("[READ]Read data failed!");
                 return FAIL;
             }
-            memcpy(&page[loc], &cmd_head.data[GTP_ADDR_LENGTH], len);
+            memcpy(&buf[loc], &cmd_head.data[GTP_ADDR_LENGTH], len);
             loc += len;
 
             GTP_DEBUG_ARRAY(&cmd_head.data[GTP_ADDR_LENGTH], len);
-            GTP_DEBUG_ARRAY(page, len);
+            GTP_DEBUG_ARRAY(buf, len);
         }
     }
     else if (2 == cmd_head.wr)
@@ -548,16 +488,16 @@ static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int
        // memcpy(page, "GT818", 5);
       //  page[5] = 0;
 
-        GTP_DEBUG("Return ic type:%s len:%d.", page, (s32)cmd_head.data_len);
+        GTP_DEBUG("Return ic type:%s len:%d.", buf, (s32)cmd_head.data_len);
         return cmd_head.data_len;
         //return sizeof(IC_TYPE_NAME);
     }
     else if (4 == cmd_head.wr)
     {
-        page[0] = show_len >> 8;
-        page[1] = show_len & 0xff;
-        page[2] = total_len >> 8;
-        page[3] = total_len & 0xff;
+        buf[0] = show_len >> 8;
+        buf[1] = show_len & 0xff;
+        buf[2] = total_len >> 8;
+        buf[3] = total_len & 0xff;
 
         return cmd_head.data_len;
     }
@@ -570,9 +510,87 @@ static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int
        // memcpy(page, GTP_DRIVER_VERSION, strlen(GTP_DRIVER_VERSION));
        s32 tmp_len;
        tmp_len = strlen(GTP_DRIVER_VERSION);
-       memcpy(page, GTP_DRIVER_VERSION, tmp_len);
-       page[tmp_len] = 0;
+       memcpy(buf, GTP_DRIVER_VERSION, tmp_len);
+       buf[tmp_len] = 0;
     }
 
     return cmd_head.data_len;
+}
+
+static int goodix_ts_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int goodix_ts_close(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static struct file_operations goodix_ts_fops = {
+	.owner = THIS_MODULE,
+	.open = goodix_ts_open,
+	.release = goodix_ts_close,
+	.write = goodix_tool_write,
+	.read = goodix_tool_read,
+};
+
+
+s32 init_wr_node(struct i2c_client *client)
+{
+    s32 i;
+
+    gt_client = client;
+    memset(&cmd_head, 0, sizeof(cmd_head));
+    cmd_head.data = NULL;
+
+    i = 5;
+    while ((!cmd_head.data) && i)
+    {
+        cmd_head.data = kzalloc(i * DATA_LENGTH_UINT, GFP_KERNEL);
+        if (NULL != cmd_head.data)
+        {
+            break;
+        }
+        i--;
+    }
+    if (i)
+    {
+        DATA_LENGTH = i * DATA_LENGTH_UINT + GTP_ADDR_LENGTH;
+        GTP_INFO("Applied memory size:%d.", DATA_LENGTH);
+    }
+    else
+    {
+        GTP_ERROR("Apply for memory failed.");
+        return FAIL;
+    }
+
+    cmd_head.addr_len = 2;
+    cmd_head.retry = 5;
+
+    register_i2c_func();
+
+    //goodix_proc_entry = create_proc_entry(GOODIX_ENTRY_NAME, 0666, NULL);
+    goodix_proc_entry = proc_create(GOODIX_ENTRY_NAME, 0666, NULL, &goodix_ts_fops);
+    if (goodix_proc_entry == NULL)
+    {
+        GTP_ERROR("Couldn't create proc entry!");
+        return FAIL;
+    }
+//    else
+//    {
+//        GTP_INFO("Create proc entry success!");
+//        goodix_proc_entry->write_proc = goodix_tool_write;
+//        goodix_proc_entry->read_proc = goodix_tool_read;
+//    }
+
+    return SUCCESS;
+}
+
+void uninit_wr_node(void)
+{
+    kfree(cmd_head.data);
+    cmd_head.data = NULL;
+    unregister_i2c_func();
+    remove_proc_entry(GOODIX_ENTRY_NAME, NULL);
 }
