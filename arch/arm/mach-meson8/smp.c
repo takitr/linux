@@ -163,8 +163,7 @@ struct smp_operations meson_smp_ops __initdata = {
 #endif
 };
 
-
-static DEFINE_MUTEX(exclu_lock);
+#ifdef CONFIG_SMP
 static DEFINE_PER_CPU(unsigned long, in_wait);
 static unsigned long timeout_flag;
 extern void cpu_maps_update_begin(void);
@@ -177,7 +176,6 @@ typedef enum _ENUM_SMP_FLAG {
     SMP_FLAG_NUM
 } ENUM_SCAL_FLAG;
 
-#ifdef CONFIG_SMP
 static void smp_wait(void * info)
 {
 /*This function is call under automic context. So, need not irq protect.*/
@@ -245,10 +243,10 @@ int try_exclu_cpu_exe(exl_call_func_t func, void * p_arg)
 	ret = func(p_arg);
 
 finish1:
-	arch_local_irq_restore(irq_flags);
-
 	for(cpu=0; cpu< CONFIG_NR_CPUS; cpu++)
 		per_cpu(in_wait, cpu) = SMP_FLAG_IDLE;
+
+	arch_local_irq_restore(irq_flags);
 
 finish2:
 	cpu_maps_update_done();
