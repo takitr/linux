@@ -77,8 +77,8 @@ void root_func(){
 	memory{
 		device_type = "memory";
 		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x187fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x18800000 0x27800000>;
+		aml_reserved_end = <0x173fffff>;/**reserved memory end */
+		linux,usable-memory = <0x00000000 0x04000000 0x17400000 0x28c00000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -245,8 +245,7 @@ void root_func(){
     vm{
 		compatible = "amlogic,vm";
 		dev_name = "vm.0";
-		//status = "okay";
-		reg = <0x17400000 0x01400000>;
+		status = "okay";
 	};
 
 /// ***************************************************************************************
