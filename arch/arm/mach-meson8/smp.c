@@ -18,12 +18,14 @@
 #include <plat/io.h>
 #include <mach/io.h>
 #include <mach/cpu.h>
+#include <mach/smp.h>
 #include <asm/smp_scu.h>
 #include <asm/hardware/gic.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
 #include <asm/cacheflush.h>
 #include <asm/mach-types.h>
+#include <linux/percpu.h>
 
 static DEFINE_SPINLOCK(boot_lock);
 
@@ -160,4 +162,102 @@ struct smp_operations meson_smp_ops __initdata = {
 	.cpu_disable    =meson_cpu_disable,
 #endif
 };
+
+
+static DEFINE_MUTEX(exclu_lock);
+static DEFINE_PER_CPU(unsigned long, in_wait);
+static unsigned long timeout_flag;
+extern void cpu_maps_update_begin(void);
+extern void cpu_maps_update_done(void);
+
+typedef enum _ENUM_SMP_FLAG {
+    SMP_FLAG_IDLE = 0,
+    SMP_FLAG_GETED,
+    SMP_FLAG_FINISHED,
+    SMP_FLAG_NUM
+} ENUM_SCAL_FLAG;
+
+#ifdef CONFIG_SMP
+static void smp_wait(void * info)
+{
+/*This function is call under automic context. So, need not irq protect.*/
+	unsigned long cpu;
+
+	cpu = smp_processor_id();
+
+	info = info;
+
+	per_cpu(in_wait, cpu) = SMP_FLAG_GETED;
+
+	printk("cpu%d stall.\n", cpu);
+	while((per_cpu(in_wait, cpu) == SMP_FLAG_GETED) && !timeout_flag)//waiting until flag != SMP_FLAG_GETED
+		cpu_relax();
+
+	return;
+}
+
+/*
+Try exclusive cpu run func, the others wait it for finishing.
+ If try fail, you can try again.
+ NOTE: It need call at non-automatic context, because of mutex_lock @ cpu_maps_update_begin*/
+int try_exclu_cpu_exe(exl_call_func_t func, void * p_arg)
+{
+	unsigned int cpu;
+	unsigned long irq_flags;
+	unsigned long jiffy_timeout;
+	unsigned long count=0;
+	int ret;
+	/*Protect hotplug scenary*/
+	cpu_maps_update_begin();
+
+	timeout_flag = 0; // clean timeout flag;
+
+	for(cpu=0; cpu< CONFIG_NR_CPUS; cpu++)
+		if(per_cpu(in_wait, cpu))
+		{
+			printk("The previous call is not complete yet!\n");
+			ret = -1;
+			goto finish2;
+		}
+
+	smp_call_function(/*(void (*) (void * info))*/smp_wait, NULL, 0);
+
+	irq_flags = arch_local_irq_save();
+
+	jiffy_timeout = jiffies + HZ/2; //0.5s
+	while(count+1 != num_online_cpus())//the other cpus all in wait loop when count+1 == num_online_cpus()
+	{
+		if(time_after(jiffies, jiffy_timeout))
+		{
+			printk("Cannot stall other cpus. Timeout!\n");
+
+			timeout_flag = 1;
+
+			ret = -1;
+			goto finish1;
+		}
+
+		for(cpu=0, count=0; cpu< CONFIG_NR_CPUS; cpu++)
+			if(per_cpu(in_wait, cpu) == SMP_FLAG_GETED)
+				count ++;
+	}
+
+	ret = func(p_arg);
+
+finish1:
+	arch_local_irq_restore(irq_flags);
+
+	for(cpu=0; cpu< CONFIG_NR_CPUS; cpu++)
+		per_cpu(in_wait, cpu) = SMP_FLAG_IDLE;
+
+finish2:
+	cpu_maps_update_done();
+	return ret;
+}
+#else//CONFIG_SMP
+int try_exclu_cpu_exe(exl_call_func_t func, void * p_arg)
+{
+	return func(p_arg);
+}
+#endif
 
