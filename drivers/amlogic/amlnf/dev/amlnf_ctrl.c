@@ -35,8 +35,8 @@ struct bch_desc bch_list[MAX_ECC_MODE_NUM] = {
 #ifndef 	AML_NAND_UBOOT
 static dma_addr_t nfdata_dma_addr;
 static dma_addr_t nfinfo_dma_addr;	
-static spinlock_t amlnf_lock;
-static wait_queue_head_t amlnf_wq;	
+spinlock_t amlnf_lock;
+wait_queue_head_t amlnf_wq;
 #endif
 
 struct list_head nphy_dev_list;
@@ -112,13 +112,15 @@ int amlphy_prepare(unsigned flag)
 
 int phydev_suspend(struct amlnand_phydev *phydev)
 {
+    struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;	
+    
 	if (!strncmp((char*)phydev->name, NAND_BOOT_NAME, strlen((const char*)NAND_BOOT_NAME)))
 		return 0;
 	aml_nand_dbg("phydev_suspend: entered!");
 	spin_lock(&amlnf_lock);	
-	set_chip_state(phydev, CHIP_PM_SUSPENDED);
+	//set_chip_state(phydev, CHIP_PM_SUSPENDED);
+	set_chip_state(aml_chip, CHIP_PM_SUSPENDED);
 	spin_unlock(&amlnf_lock);
-
 	return 0;
 }
 
@@ -170,16 +172,16 @@ void   nand_get_chip(void *chip)
  *
  * Get the device and lock it for exclusive access
  */
-int amlnand_get_device(struct amlnand_phydev *phydev, chip_state_t new_state)
+int amlnand_get_device(struct amlnand_chip *aml_chip, chip_state_t new_state)
 {	
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;
+
 	DECLARE_WAITQUEUE(wait, current);
 	
 retry:
 	spin_lock(&amlnf_lock);
 
-	if (get_chip_state(phydev) == CHIP_READY) {
-		set_chip_state(phydev, new_state);	
+	if (get_chip_state(aml_chip) == CHIP_READY) {
+		set_chip_state(aml_chip, new_state);	
 		spin_unlock(&amlnf_lock);
 		//set nand pinmux here
 		nand_get_chip(aml_chip);	
@@ -200,13 +202,11 @@ retry:
  *
  * Deselect, release chip lock and wake up anyone waiting on the device
  */
-void amlnand_release_device(struct amlnand_phydev *phydev)
+void amlnand_release_device(struct amlnand_chip *aml_chip)
 {
-	struct amlnand_chip *aml_chip = (struct amlnand_chip *)phydev->priv;
-
 	/* Release the controller and the chip */
 	spin_lock(&amlnf_lock);
-	set_chip_state(phydev, CHIP_READY);
+	set_chip_state(aml_chip, CHIP_READY);
 	wake_up(&amlnf_wq);
 	spin_unlock(&amlnf_lock);
 	//clear nand pinmux here
@@ -214,17 +214,17 @@ void amlnand_release_device(struct amlnand_phydev *phydev)
 }
 
 #else
-int amlnand_get_device(struct amlnand_phydev *phydev, chip_state_t new_state)
+int amlnand_get_device(struct amlnand_chip *aml_chip, chip_state_t new_state)
 {
 	nand_get_chip();	
-	set_chip_state(phydev, new_state);
+	set_chip_state(aml_chip, new_state);
 
 	return 0;
 }
 
- void amlnand_release_device(struct amlnand_phydev *phydev)
+ void amlnand_release_device(struct amlnand_chip *aml_chip)
 {
-	 set_chip_state(phydev, CHIP_READY);
+	 set_chip_state(aml_chip, CHIP_READY);
 	//clear nand pinmux here
 	nand_release_chip();
 }

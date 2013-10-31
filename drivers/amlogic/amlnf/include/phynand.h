@@ -317,7 +317,7 @@ typedef union nand_core_clk {
 #define 	RETRY_NAND_COPY_NUM					4
 
 #define	READ_RETRY_REG_NUM   					8
-#define	READ_RETRY_CNT   						20
+#define	READ_RETRY_CNT   						30
 
 #define	EN_SLC_REG_NUM   						8
 
@@ -343,7 +343,9 @@ typedef union nand_core_clk {
 #define	NAND_CMD_SANDISK_DYNAMIC_ENABLE			0xB6
 #define	NAND_CMD_SANDISK_DYNAMIC_DISABLE			0xD6
 #define 	NAND_CMD_SANDISK_SLC  							0xA2     
-
+#define   NAND_CMD_SANDISK_SET_VALUE					0XEF
+#define	NAND_CMD_SANDISK_DSP_ON						0x26
+#define	NAND_CMD_SANDISK_RETRY_STA					 0x5D
 //for hynix 20nm OTP
 #define 	HYNIX_OTP_COPY							8
 #define 	HYNIX_OTP_LEN							256
@@ -355,13 +357,14 @@ typedef union nand_core_clk {
 #define	HYNIX_20NM_8GB 							4		//
 //for Toshiba
 #define	TOSHIBA_2XNM 							20		//TC58NVG5D2HTA00
-															//TC58NVG6D2GTA00
+#define	TOSHIBA_A19NM 							21																//TC58NVG6D2GTA00
 //for SAMSUNG
 #define	SUMSUNG_2XNM 							30	
 
 //for SANDISK
 #define      SANDISK_19NM								40
 #define 	SANDISK_24NM								41
+#define 	SANDISK_A19NM								42
 #define      MICRON_20NM								50
 
 struct read_retry_info
@@ -451,7 +454,9 @@ struct hw_controller{
 	unsigned char user_mode;
 	unsigned char ran_mode;
 	unsigned char oobavail;	
-
+	unsigned char oob_mod;
+	int oob_fill_data;
+	int oob_fill_boot;
 	unsigned char ecc_cnt_limit;
 	unsigned char ecc_cnt_cur;
 	unsigned char ecc_max;
@@ -693,7 +698,13 @@ extern struct nand_flash flash_ids_mlc[];
 extern struct bch_desc bch_list[MAX_ECC_MODE_NUM];
 extern struct amlnand_chip *aml_chip_secure;
 extern struct amlnand_chip * aml_nand_chip;
+extern spinlock_t amlnf_lock;
+extern wait_queue_head_t amlnf_wq;
 
+extern chip_state_t get_chip_state(struct amlnand_chip *aml_chip);
+extern void set_chip_state(struct amlnand_chip *aml_chip, chip_state_t state);
+extern int amlnand_get_device(struct amlnand_chip *aml_chip, chip_state_t new_state);
+extern void amlnand_release_device(struct amlnand_chip *aml_chip);
 extern int amlnand_hwcontroller_init(struct amlnand_chip *aml_chip);
 extern int amlnand_init_operation(struct amlnand_chip *aml_chip);
 extern int amlnand_get_dev_configs(struct amlnand_chip *aml_chip);

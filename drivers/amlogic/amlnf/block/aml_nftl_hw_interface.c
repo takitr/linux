@@ -71,8 +71,10 @@ int nand_read_page(struct aml_nftl_part_t *part, _physic_op_par *p)
 		PRINT("read reclaim\n");
 	}
 
-	if ((ret!=0) &&(ret != -EUCLEAN))
+	if ((ret!=0) &&(ret != -EUCLEAN)){
 		PRINT("aml_ops_read_page failed: %llx %d %d\n", from, p->phy_page.blkNO_in_chip, p->phy_page.Page_NO);
+		ret =  -EBADMSG;
+	}
 
 	return ret;
 }
