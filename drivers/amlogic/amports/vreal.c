@@ -25,6 +25,7 @@
 #include <linux/interrupt.h>
 #include <linux/timer.h>
 #include <linux/fs.h>
+#include <linux/kfifo.h>
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
 #include <plat/io.h>
@@ -53,7 +54,6 @@
 #define DRIVER_NAME "amvdec_real"
 #define MODULE_NAME "amvdec_real"
 
-#define HANDLE_REAL_IRQ
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 #define NV21
 #endif
@@ -91,11 +91,9 @@
 /* values between 6 and 14 are reserved */
 #define PARC_EXTENDED              15
 
-#define VF_POOL_SIZE        12
+#define VF_POOL_SIZE        16
 #define VF_BUF_NUM          4
 #define PUT_INTERVAL        HZ/100
-
-#define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
 #define STAT_TIMER_INIT     0x01
 #define STAT_MC_LOAD        0x02
@@ -105,10 +103,6 @@
 #define STAT_VDEC_RUN       0x20
 
 #define PARSER_FATAL_ERROR  0x10
-
-#define REAL_RECYCLE_Q_BITS 3
-#define REAL_RECYCLE_Q_SIZE (1<<(REAL_RECYCLE_Q_BITS))
-#define REAL_RECYCLE_Q_MASK ((REAL_RECYCLE_Q_SIZE)-1)
 
 static vframe_t *vreal_vf_peek(void*);
 static vframe_t *vreal_vf_get(void*);
@@ -131,10 +125,13 @@ static const struct vframe_operations_s vreal_vf_provider = {
 };
 static struct vframe_provider_s vreal_vf_prov;
 
+static DECLARE_KFIFO(newframe_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(display_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(recycle_q, vframe_t *, VF_POOL_SIZE);
+
 static struct vframe_s vfpool[VF_POOL_SIZE];
-static u32 vfpool_idx[VF_POOL_SIZE];
-static s32 vfbuf_use[4];
-static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
+static s32 vfbuf_use[VF_BUF_NUM];
+
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
 static u32 stat;
@@ -148,10 +145,6 @@ static u32 current_vdts;
 static u32 hold;
 static u32 decoder_state;
 static u32 real_err_count;
-
-static u32 real_recycle_q[REAL_RECYCLE_Q_SIZE];
-static u32 real_recycle_rd;
-static u32 real_recycle_wr;
 
 static u32 fatal_flag;
 static s32 wait_buffer_counter = 0;
@@ -187,19 +180,6 @@ static inline u32 index2canvas(u32 index)
     };
 
     return canvas_tab[index];
-}
-
-static inline void ptr_atomic_wrap_inc(u32 *ptr)
-{
-    u32 i = *ptr;
-
-    i++;
-
-    if (i >= VF_POOL_SIZE) {
-        i = 0;
-    }
-
-    *ptr = i;
 }
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
@@ -240,14 +220,10 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
     vf->ratio_control |= (ar << DISP_RATIO_ASPECT_RATIO_BIT);
 }
 
-#ifdef HANDLE_REAL_IRQ
 static irqreturn_t vreal_isr(int irq, void *dev_id)
-#else
-static void vreal_isr(void)
-#endif
 {
     u32 from;
-    vframe_t *vf;
+    vframe_t *vf = NULL;
     u32 buffer_index;
     unsigned int status;
     unsigned int vdts;
@@ -256,11 +232,7 @@ static void vreal_isr(void)
     unsigned int pictype;
 
     if (decoder_state == 0) {
-#ifdef HANDLE_REAL_IRQ
         return IRQ_HANDLED;
-#else
-        return;
-#endif
     }
 
     status = READ_VREG(STATUS_AMRISC);
@@ -275,7 +247,12 @@ static void vreal_isr(void)
         tr = READ_VREG(VPTS_TR);
         pictype = (tr >> 13) & 3;
         tr = (tr & 0x1fff) * 96;
-        vf = &vfpool[fill_ptr];
+
+        if (kfifo_get(&newframe_q, &vf) == 0) {
+            printk("fatal error, no available buffer slot.");
+            return IRQ_HANDLED;
+        }
+
         vdts = READ_VREG(VDTS);
         if (last_tr == -1) { // ignore tr for first time
             vf->duration = frame_dur;
@@ -313,13 +290,8 @@ static void vreal_isr(void)
             if (wait_key_frame) {
                 while (READ_VREG(TO_AMRISC)) {}
                 WRITE_VREG(TO_AMRISC, ~(1 << buffer_index));
-                //INCPTR(put_ptr);
                 WRITE_VREG(FROM_AMRISC, 0);
-#ifdef HANDLE_REAL_IRQ
                 return IRQ_HANDLED;
-#else
-                return;
-#endif
             } else {
                 current_vdts += vf->duration - (vf->duration >> 4);
                 vf->pts = current_vdts;
@@ -329,6 +301,7 @@ static void vreal_isr(void)
         //printk("pts %d, picture type %d\n", vf->pts, pictype);
 
         info = READ_VREG(RV_PIC_INFO);
+        vf->index = buffer_index;
         vf->width = info >> 16;
         vf->height = (info >> 4) & 0xfff;
         vf->bufWidth = 1920;
@@ -342,11 +315,10 @@ static void vreal_isr(void)
 #endif
         vf->canvas0Addr = vf->canvas1Addr = index2canvas(buffer_index);
         vf->orientation = 0 ;
-        vfpool_idx[fill_ptr] = buffer_index;
 
         vfbuf_use[buffer_index] = 1;
 
-        INCPTR(fill_ptr);
+        kfifo_put(&display_q, (const vframe_t **)&vf);
 
         frame_count++;
         vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
@@ -355,44 +327,34 @@ static void vreal_isr(void)
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
-#ifdef HANDLE_REAL_IRQ
     return IRQ_HANDLED;
-#else
-    return;
-#endif
 }
 
 static vframe_t *vreal_vf_peek(void* op_arg)
 {
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    vframe_t *vf;
+
+    if (kfifo_peek(&display_q, &vf)) {
+        return vf;
     }
 
-    return &vfpool[get_ptr];
+    return NULL;
 }
 
 static vframe_t *vreal_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    if (kfifo_get(&display_q, &vf)) {
+        return vf;
     }
 
-    vf = &vfpool[get_ptr];
-
-    INCPTR(get_ptr);
-
-    return vf;
+    return NULL;
 }
 
 static void vreal_vf_put(vframe_t *vf, void* op_arg)
 {
-    if (vf->index >= VF_BUF_NUM) {
-        return;
-    }
-
-    INCPTR(putting_ptr);
+    kfifo_put(&recycle_q, (const vframe_t **)&vf);
 }
 
 static int vreal_event_cb(int type, void *data, void *private_data)
@@ -418,23 +380,15 @@ static int vreal_event_cb(int type, void *data, void *private_data)
 static int  vreal_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
-    int i;
     spin_lock_irqsave(&lock, flags);
-    states->vf_pool_size = VF_POOL_SIZE;
 
-    i = put_ptr - fill_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_free_num = i;
-    
-    i = putting_ptr - put_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_recycle_num = i;
-    
-    i = fill_ptr - get_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_avail_num = i;
+    states->vf_pool_size = VF_POOL_SIZE;
+    states->buf_free_num = kfifo_len(&newframe_q);
+    states->buf_avail_num = kfifo_len(&display_q);
+    states->buf_recycle_num = kfifo_len(&recycle_q);
     
     spin_unlock_irqrestore(&lock, flags);
+
     return 0;
 }
 
@@ -454,10 +408,6 @@ static void vreal_put_timer_func(unsigned long arg)
     struct timer_list *timer = (struct timer_list *)arg;
     //unsigned int status;
 
-#ifndef HANDLE_REAL_IRQ
-    vreal_isr();
-#endif
-
 #if 0
     receviver_start_e state = RECEIVER_INACTIVE ;
     if (vf_get_receiver(PROVIDER_NAME)){
@@ -471,9 +421,8 @@ static void vreal_put_timer_func(unsigned long arg)
     }
 
     if ((READ_VREG(WAIT_BUFFER) != 0) &&
-        (get_ptr == fill_ptr) &&
-        (putting_ptr == put_ptr) &&
-        (real_recycle_rd == real_recycle_wr) && 
+        kfifo_is_empty(&display_q) &&
+        kfifo_is_empty(&recycle_q) &&
         (state == RECEIVER_INACTIVE)) {
         printk("$$$$$$decoder is waiting for buffer\n");
         if (++wait_buffer_counter > 2) {
@@ -492,32 +441,17 @@ static void vreal_put_timer_func(unsigned long arg)
     }
 #endif
 
-    if (putting_ptr != put_ptr) {
-        u32 index = vfpool_idx[put_ptr];
-
-        if (--vfbuf_use[index] == 0) {
-#if 0
-            //WRITE_MPEG_REG(VIDEO_PTS, realdec.buffer_timestamp[disbuf->buffer_index]);
-            /* this frame is not used, need return this buffer back to decoder side */
-            /* todo: fix this polling, something on amrisc side */
-            while (READ_VREG(TO_AMRISC)) {
-                status = READ_VREG(STATUS_AMRISC);
-                if (status & (PARSER_ERROR_WRONG_PACKAGE_SIZE | PARSER_ERROR_WRONG_HEAD_VER | DECODER_ERROR_VLC_DECODE_TBL)) {
-                    break;
-                }
+    while (!kfifo_is_empty(&recycle_q) &&
+           (READ_VREG(TO_AMRISC) == 0)) {
+        vframe_t *vf;
+        if (kfifo_get(&recycle_q, &vf)) {
+            if ((vf->index >= 0) && (--vfbuf_use[vf->index] == 0)) {
+                WRITE_VREG(TO_AMRISC, ~(1 << vf->index));
+                vf->index = -1;
             }
-            WRITE_VREG(TO_AMRISC, ~(1 << index));
-#endif
-            real_recycle_q[real_recycle_wr++] = ~(1 << index);
-            real_recycle_wr &= REAL_RECYCLE_Q_MASK;
+
+            kfifo_put(&newframe_q, (const vframe_t **)&vf);
         }
-
-        INCPTR(put_ptr);
-    }
-
-    if ((real_recycle_rd != real_recycle_wr) && !READ_VREG(TO_AMRISC)) {
-        WRITE_VREG(TO_AMRISC, real_recycle_q[real_recycle_rd++]);
-        real_recycle_rd &= REAL_RECYCLE_Q_MASK;
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -539,7 +473,6 @@ int vreal_dec_status(struct vdec_status *vstatus)
     //printk("vreal_dec_status 0x%x\n", vstatus->status);
     return 0;
 }
-
 
 /****************************************/
 static void vreal_canvas_init(void)
@@ -695,20 +628,24 @@ static void vreal_local_init(void)
     //vreal_ratio = vreal_amstream_dec_info.ratio;
     vreal_ratio = 0x100;
 
-    fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-
     frame_prog = 0;
 
     frame_width = vreal_amstream_dec_info.width;
     frame_height = vreal_amstream_dec_info.height;
     frame_dur = vreal_amstream_dec_info.rate;
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < VF_BUF_NUM; i++) {
         vfbuf_use[i] = 0;
     }
 
-    for (i = 0; i < VF_POOL_SIZE; i++) {
-        vfpool_idx[i] = VF_BUF_NUM;
+    INIT_KFIFO(display_q);
+    INIT_KFIFO(recycle_q);
+    INIT_KFIFO(newframe_q);
+
+    for (i=0; i<VF_POOL_SIZE; i++) {
+        const vframe_t *vf = &vfpool[i];
+        vfpool[i].index = -1;
+        kfifo_put(&newframe_q, &vf);
     }
 
     decoder_state = 1;
@@ -718,9 +655,6 @@ static void vreal_local_init(void)
     frame_count = 0;
     current_vdts = 0;
     real_err_count = 0;
-
-    real_recycle_rd = 0;
-    real_recycle_wr = 0;
 
     pic_sz_tbl_map = 0;
 
@@ -817,7 +751,6 @@ s32 vreal_init(void)
     /* enable AMRISC side protocol */
     vreal_prot_init();
 
-#ifdef HANDLE_REAL_IRQ
     if (request_irq(INT_VDEC, vreal_isr,
                     IRQF_SHARED, "vreal-irq", (void *)vreal_dec_id)) {
         amvdec_disable();
@@ -825,17 +758,16 @@ s32 vreal_init(void)
         printk("vreal irq register error.\n");
         return -ENOENT;
     }
-#endif
 
     stat |= STAT_ISR_REG;
- #ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_POST_PROCESS_MANAGER
     vf_provider_init(&vreal_vf_prov, PROVIDER_NAME, &vreal_vf_provider, NULL);
     vf_reg_provider(&vreal_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
- #else 
+#else 
     vf_provider_init(&vreal_vf_prov, PROVIDER_NAME, &vreal_vf_provider, NULL);
     vf_reg_provider(&vreal_vf_prov);
- #endif 
+#endif 
 
     stat |= STAT_VF_HOOK;
 
@@ -907,10 +839,6 @@ static int amvdec_real_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-        spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vreal_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
