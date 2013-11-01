@@ -5,7 +5,7 @@
  *
  * $ Copyright Open License Broadcom Corporation $
  *
- * $Id: bcmsdh.h 391577 2013-03-18 21:28:17Z $
+ * $Id: bcmsdh.h 414953 2013-07-26 17:36:27Z $
  */
 
 /**
@@ -29,8 +29,6 @@ extern const uint bcmsdh_msglevel;
 /* forward declarations */
 typedef struct bcmsdh_info bcmsdh_info_t;
 typedef void (*bcmsdh_cb_fn_t)(void *);
-
-extern struct device *pm_dev;
 
 /* Attach and build an interface to the underlying SD host driver.
  *  - Allocates resources (structs, arrays, mem, OS handles, etc) needed by bcmsdh.
@@ -199,9 +197,7 @@ extern int bcmsdh_set_drvdata(void * dhdp);
 extern int bcmsdh_register_oob_intr(void * dhdp);
 extern void bcmsdh_unregister_oob_intr(void);
 extern void bcmsdh_oob_intr_set(bool enable);
-#endif
-#if defined(HW_OOB)
-void bcmsdh_config_hw_oob_intr(bcmsdh_info_t *sdh, uint chip);
+extern bool bcmsdh_is_oob_intr_registered(void);
 #endif
 
 /* Function to pass device-status bits to DHD. */

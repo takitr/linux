@@ -7,7 +7,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: dhdioctl.h 390859 2013-03-14 01:09:31Z $
+ * $Id: dhdioctl.h 419132 2013-08-19 21:33:05Z $
  */
 
 #ifndef _dhdioctl_h_
@@ -71,6 +71,7 @@ enum {
 #define DHD_ARPOE_VAL	0x4000
 #define DHD_REORDER_VAL	0x8000
 #define DHD_NOCHECKDIED_VAL		0x20000 /* UTF WAR */
+#define DHD_PNO_VAL		0x80000
 #define DHD_ANDROID_VAL	0x10000
 #define DHD_IW_VAL	0x20000
 #define DHD_CFG_VAL	0x40000

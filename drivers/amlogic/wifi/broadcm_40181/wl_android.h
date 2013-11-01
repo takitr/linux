@@ -121,8 +121,15 @@ void wl_delete_dirty_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl);
 void wl_delete_disconnected_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, u8 *bssid);
 void wl_reset_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl);
 void wl_update_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, wl_scan_results_t *ss_list);
-void wl_update_connected_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, struct net_device *net);
+int wl_update_connected_rssi_cache(struct net_device *net, wl_rssi_cache_ctrl_t *rssi_cache_ctrl, int *rssi_avg);
 int16 wl_get_avg_rssi(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, void *addr);
+#endif
+
+
+#if defined(ESCAN_RESULT_PATCH)
+#define REPEATED_SCAN_RESULT_CNT	2
+#else
+#define REPEATED_SCAN_RESULT_CNT	1
 #endif
 
 #if defined(RSSIOFFSET)
@@ -136,11 +143,7 @@ int wl_update_rssi_offset(int rssi);
 #endif
 
 #if defined(BSSCACHE)
-#if defined(ESCAN_RESULT_PATCH)
-#define BSSCACHE_LEN	8
-#else
 #define BSSCACHE_LEN	4
-#endif
 #define BSSCACHE_TIME	15000
 
 typedef struct wl_bss_cache {

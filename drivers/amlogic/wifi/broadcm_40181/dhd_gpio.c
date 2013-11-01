@@ -43,10 +43,12 @@ int bcm_wlan_get_oob_irq(void)
 {
 	int host_oob_irq = 0;
 
+#ifdef CONFIG_MACH_ODROID_4210
 	printk("GPIO(WL_HOST_WAKE) = EXYNOS4_GPX0(7) = %d\n", EXYNOS4_GPX0(7));
 	host_oob_irq = gpio_to_irq(EXYNOS4_GPX0(7));
 	gpio_direction_input(EXYNOS4_GPX0(7));
 	printk("host_oob_irq: %d \r\n", host_oob_irq);
+#endif
 
 	return host_oob_irq;
 }
@@ -56,13 +58,18 @@ void bcm_wlan_power_on(int flag)
 {
 	if (flag == 1) {
 		printk("======== PULL WL_REG_ON HIGH! ========\n");
+#ifdef CONFIG_MACH_ODROID_4210
 		gpio_set_value(EXYNOS4_GPK1(0), 1);
+		/* Lets customer power to get stable */
 		mdelay(100);
 		printk("======== Card detection to detect SDIO card! ========\n");
 		sdhci_s3c_force_presence_change(&sdmmc_channel, 1);
+#endif
 	} else {
 		printk("======== PULL WL_REG_ON HIGH! (flag = %d) ========\n", flag);
+#ifdef CONFIG_MACH_ODROID_4210
 		gpio_set_value(EXYNOS4_GPK1(0), 1);
+#endif
 	}
 }
 
@@ -70,13 +77,17 @@ void bcm_wlan_power_off(int flag)
 {
 	if (flag == 1) {
 		printk("======== Card detection to remove SDIO card! ========\n");
+#ifdef CONFIG_MACH_ODROID_4210
 		sdhci_s3c_force_presence_change(&sdmmc_channel, 0);
 		mdelay(100);
 		printk("======== PULL WL_REG_ON LOW! ========\n");
 		gpio_set_value(EXYNOS4_GPK1(0), 0);
+#endif
 	} else {
 		printk("======== PULL WL_REG_ON LOW! (flag = %d) ========\n", flag);
+#ifdef CONFIG_MACH_ODROID_4210
 		gpio_set_value(EXYNOS4_GPK1(0), 0);
+#endif
 	}
 }
 

@@ -4,7 +4,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: bcmsdbus.h 401994 2013-05-14 06:53:19Z $
+ * $Id: bcmsdbus.h 408155 2013-06-17 21:52:27Z $
  */
 
 #ifndef	_sdio_api_h_
@@ -50,13 +50,13 @@
 #define SDPCM_DEFGLOM_MODE	SDPCM_TXGLOM_CPY
 #define SDPCM_DEFGLOM_SIZE  3
 #endif /* BCMSDIOH_TXGLOM_HIGHSPEED */
-#endif /* BCMSDIOH_TXGLOM */
 
 #if SDPCM_DEFGLOM_SIZE > SDPCM_MAXGLOM_SIZE
 #warning "SDPCM_DEFGLOM_SIZE cannot be higher than SDPCM_MAXGLOM_SIZE!!"
 #undef SDPCM_DEFGLOM_SIZE
 #define SDPCM_DEFGLOM_SIZE SDPCM_MAXGLOM_SIZE
 #endif
+#endif /* BCMSDIOH_TXGLOM */
 
 typedef int SDIOH_API_RC;
 
