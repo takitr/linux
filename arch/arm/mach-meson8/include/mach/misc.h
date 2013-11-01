@@ -79,6 +79,18 @@
 #define AUDIN_FIFO0_CHAN     11    //14:11   channel number.  in M1 suppose there's only 1 channel and 2 channel.
 #define AUDIN_FIFO0_UG       15    // urgent request enable.
 
+#define AUDIN_FIFO1_EN       0
+#define AUDIN_FIFO1_LOAD     2    //write 1 to load address to AUDIN_FIFO0.
+         
+#define AUDIN_FIFO1_DIN_SEL  3
+            // 0     spdifIN
+            // 1     i2Sin
+            // 2     PCMIN
+            // 3     HDMI in
+            // 4     DEMODULATOR IN
+#define AUDIN_FIFO1_ENDIAN   8    //10:8   data endian control.
+#define AUDIN_FIFO1_CHAN     11    //14:11   channel number.  in M1 suppose there's only 1 channel and 2 channel.
+#define AUDIN_FIFO1_UG       15    // urgent request enable.
 
 /*BT656 MACRO */
 //#define BT_CTRL 0x2240 	///../ucode/register.h
