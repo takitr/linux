@@ -8,7 +8,8 @@
 #include <linux/blkdev.h>
 #include <linux/scatterlist.h>
 
-#include "emmc_partitions.h"
+#include <linux/mmc/emmc_partitions.h>
+#include "emmc_key.h"
 
 #include <mach/am_regs.h>
 #include <mach/sd.h>
@@ -78,7 +79,7 @@ static void mmc_prepare_mrq(struct mmc_card *card,
     mmc_set_data_timeout(mrq->data, card);
 }
 
-static unsigned int mmc_capacity (struct mmc_card *card)
+unsigned int mmc_capacity (struct mmc_card *card)
 {
     if (!mmc_card_sd(card) && mmc_card_blockaddr(card))
         return card->ext_csd.sectors;
@@ -123,19 +124,17 @@ exit_err:
     return ret;
 }
 
-static int mmc_read_internal (struct mmc_card *card, unsigned dev_addr,
+int mmc_read_internal (struct mmc_card *card, unsigned dev_addr,
         unsigned blocks, void *buf)
 {
     return mmc_transfer(card, dev_addr, blocks, buf, 0);
 }
 
-/*
-static int mmc_write_internal (struct mmc_card *card, unsigned dev_addr,
+int mmc_write_internal (struct mmc_card *card, unsigned dev_addr,
         unsigned blocks, void *buf)
 {
     return mmc_transfer(card, dev_addr, blocks, buf, 1);
 }
-*/
 
 // static struct partitions* find_mmc_partition_by_name (struct partitions *pp, int part_num, char *name)
 // {
@@ -194,6 +193,17 @@ int get_reserve_partition_off (struct mmc_card *card) // byte unit
                 " storage_flag=%d\n", __FUNCTION__, storage_flag);
 
     return off;
+}
+
+int get_reserve_partition_off_from_tbl (void)
+{
+    int i;
+
+    for(i=0; i<pt_fmt->part_num; i++){
+        if (!strcmp(pt_fmt->partitions[i].name, MMC_RESERVED_NAME))
+            return pt_fmt->partitions[i].offset;
+	}
+    return -1;
 }
 
 // static void show_mmc_patition (struct partitions *part, int part_num)
@@ -426,6 +436,7 @@ static int add_emmc_partition(struct gendisk * disk, struct mmc_partitions_fmt *
     struct hd_struct * ret=NULL;
     uint64_t offset, size, cap;
     struct partitions *pp;
+    struct proc_dir_entry *proc_card;
     
     printk("add_emmc_partition\n");
 
@@ -447,7 +458,8 @@ static int add_emmc_partition(struct gendisk * disk, struct mmc_partitions_fmt *
         }
     }
 
-	if (!proc_create( "inand", 0, NULL, &card_proc_fops)) // create /proc/inand
+    proc_card = proc_create( "inand", 0, NULL, &card_proc_fops); // create /proc/inand
+	if (!proc_card)
         printk("[%s] create /proc/inand fail. \n", __FUNCTION__);
 
 	if (!proc_create( "ntd", 0, NULL, &card_proc_fops)) // create /proc/ntd
@@ -469,10 +481,10 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     struct disk_part_iter piter;
     struct hd_struct *part;
 
-    printk("Enter %s\n", __FUNCTION__);
+    // printk("Enter %s\n", __FUNCTION__);
 
     if (!is_card_emmc(card)) { // not emmc, nothing to do
-        printk("[%s] %s is not eMMC!\n", __FUNCTION__, disk->disk_name);
+        // printk("[%s] %s is not eMMC!\n", __FUNCTION__, disk->disk_name);
         return 0;
     }
     
@@ -485,7 +497,7 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     mmc_claim_host(card->host);
     disk_part_iter_init(&piter, disk, DISK_PITER_INCL_EMPTY);
     while ((part = disk_part_iter_next(&piter))){
-	printk("Delete invalid mbr partition part %x, part->partno %d\n",
+	printk("Delete invalid mbr partition part %p, part->partno %d\n",
 		 (u32)part, part->partno);
         delete_partition(disk, part->partno);
     }
@@ -497,6 +509,14 @@ int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk)
     }
 
     mmc_release_host(card->host);
+
+#ifdef CONFIG_SECURITYKEY
+    if (ret == 0) { // ok
+        ret = emmc_key_init(card);
+        // emmc_key_write();
+        // emmc_key_read();
+    }
+#endif
 
     // if(pt_fmt){ // should not free, because the card_read_proc() will access it
         // kfree(pt_fmt);

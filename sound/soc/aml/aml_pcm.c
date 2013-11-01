@@ -19,7 +19,7 @@
 #include <sound/control.h>
 #include <sound/soc.h>
 #include <sound/pcm_params.h>
-#include <sound/rt5631.h>
+#include <linux/amlogic/rt5631.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>

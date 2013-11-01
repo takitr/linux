@@ -1,6 +1,8 @@
 #ifndef _EMMC_PARTITIONS_H
 #define _EMMC_PARTITIONS_H
 
+#include<linux/genhd.h>
+
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
 #include <linux/mmc/mmc.h>
@@ -12,6 +14,7 @@
 #define     MAX_PART_NAME_LEN               16
 #define     MAX_MMC_PART_NUM                16
 #define     MMC_PARTITIONS_MAGIC            "MPT" // MMC Partition Table
+#define     MMC_RESERVED_NAME               "reserved"
 
 #define     SZ_1M                           0x00100000
 #define     MMC_BOOT_PARTITION_SIZE         (4*SZ_1M) // the size of bootloader partition
@@ -38,5 +41,9 @@ struct mmc_partitions_fmt {
 };
 
 int aml_emmc_partition_ops (struct mmc_card *card, struct gendisk *disk);
+unsigned int mmc_capacity (struct mmc_card *card);
+int mmc_read_internal (struct mmc_card *card, unsigned dev_addr, unsigned blocks, void *buf);
+int mmc_write_internal (struct mmc_card *card, unsigned dev_addr, unsigned blocks, void *buf);
+int get_reserve_partition_off_from_tbl (void);
 
 #endif

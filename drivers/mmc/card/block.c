@@ -50,7 +50,7 @@
 
 #include <mtd/mtd-abi.h> // add by gch
 #include <mach/sd.h> // add by gch
-#include "emmc_partitions.h" // add by gch
+#include <linux/mmc/emmc_partitions.h> // add by gch
 
 MODULE_ALIAS("mmc:block");
 #ifdef MODULE_PARAM_PREFIX
