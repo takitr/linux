@@ -1,7 +1,6 @@
 #ifdef CONFIG_AMLOGIC_BACKLIGHT
 //$$ DEVICE="backlight"
 //$$ L2 PROP_STR = "status"
-//$$ L2 PROP_STR = "pinctrl-names"
 //$$ L2 PROP_CHOICE "Bl_pin_0_match" = "pinctrl-0"
 //$$ L2 PROP_U32 = "bl_level_default"
 //$$ L2 PROP_U32 = "bl_ctrl_method"
