@@ -61,6 +61,10 @@
 #include <asm/fiq.h>
 #include <asm/uaccess.h>
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#include <mach/vpu.h>
+#endif
+
 #include "videolog.h"
 
 #ifdef CONFIG_AM_VIDEO_LOG
@@ -129,8 +133,21 @@ static u32 next_peek_underflow;
 
 #define RESERVE_CLR_FRAME
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#define VD1_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_ON)
+#define VD2_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_ON)
+#define VD1_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN)
+#define VD2_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN)
+#else
+#define VD1_MEM_POWER_ON()
+#define VD2_MEM_POWER_ON()
+#define VD1_MEM_POWER_OFF()
+#define VD2_MEM_POWER_OFF()
+#endif
+
 #define VSYNC_EnableVideoLayer()  \
     do { \
+      VD1_MEM_POWER_ON(); \
       if ((READ_VCBUS_REG(VPP_MISC+ cur_dev->vpp_off) & (VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND)) != (VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND)) { \
          VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, READ_VCBUS_REG(VPP_MISC + cur_dev->vpp_off) |\
          VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND); \
@@ -141,29 +158,44 @@ static u32 next_peek_underflow;
     } while (0)
 
 #define EnableVideoLayer()  \
-    do { SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-         VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND); \
+    do { \
+         VD1_MEM_POWER_ON(); \
+         SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
+           VPP_VD1_PREBLEND | VPP_PREBLEND_EN | VPP_VD1_POSTBLEND); \
          if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
             printk("EnableVideoLayer()\n"); \
          } \
     } while (0)
 
 #define EnableVideoLayer2()  \
-    do { SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-         VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+    do { \
+         VD2_MEM_POWER_ON(); \
+         SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
+           VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
     } while (0)
 
 #define VSYNC_EnableVideoLayer2()  \
-    do { VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, READ_VCBUS_REG(VPP_MISC + cur_dev->vpp_off) |\
-         VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+    do { \
+         VD2_MEM_POWER_ON(); \
+         VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, READ_VCBUS_REG(VPP_MISC + cur_dev->vpp_off) |\
+           VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
     } while (0)
 
 #define DisableVideoLayer() \
-    do { CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-         VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+    do { \
+         CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
+           VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+         VD1_MEM_POWER_OFF(); \
          if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
             printk("DisableVideoLayer()\n"); \
          } \
+    } while (0)
+
+#define DisableVideoLayer2() \
+    do { \
+        CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
+          VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
+        VD2_MEM_POWER_OFF(); \
     } while (0)
 
 #define DisableVideoLayer_PREBELEND() \
@@ -4016,6 +4048,7 @@ static int __init video_init(void)
 #endif
 
     DisableVideoLayer();
+    DisableVideoLayer2();
 
     cur_dispbuf = NULL;
 
@@ -4124,6 +4157,7 @@ static void __exit video_exit(void)
     vf_unreg_receiver(&video4osd_vf_recv);
 
     DisableVideoLayer();
+    DisableVideoLayer2();
 
     vsync_fiq_down();
 #ifdef CONFIG_SUPPORT_VIDEO_ON_VPP2

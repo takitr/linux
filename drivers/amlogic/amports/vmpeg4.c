@@ -24,6 +24,7 @@
 #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/timer.h>
+#include <linux/kfifo.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <mach/am_regs.h>
@@ -58,7 +59,6 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define DRIVER_NAME "amvdec_mpeg4"
 #define MODULE_NAME "amvdec_mpeg4"
 
-#define HANDLE_MPEG4_IRQ
 #define DEBUG_PTS
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
@@ -96,10 +96,9 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 /* values between 6 and 14 are reserved */
 #define PARC_EXTENDED              15
 
-#define VF_POOL_SIZE        12
+#define VF_POOL_SIZE          16
+#define DECODE_BUFFER_NUM_MAX 4
 #define PUT_INTERVAL        HZ/100
-
-#define INCPTR(p) ptr_atomic_wrap_inc(&p)
 
 #define STAT_TIMER_INIT     0x01
 #define STAT_MC_LOAD        0x02
@@ -135,10 +134,12 @@ static const struct vframe_operations_s vmpeg_vf_provider = {
 };
 static struct vframe_provider_s vmpeg_vf_prov;
 
+static DECLARE_KFIFO(newframe_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(display_q, vframe_t *, VF_POOL_SIZE);
+static DECLARE_KFIFO(recycle_q, vframe_t *, VF_POOL_SIZE);
+
 static struct vframe_s vfpool[VF_POOL_SIZE];
-static u32 vfpool_idx[VF_POOL_SIZE];
-static s32 vfbuf_use[4];
-static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
+static s32 vfbuf_use[DECODE_BUFFER_NUM_MAX];
 static u32 frame_width, frame_height, frame_dur, frame_prog;
 static struct timer_list recycle_timer;
 static u32 stat;
@@ -182,19 +183,6 @@ static inline u32 index2canvas(u32 index)
     };
 
     return canvas_tab[index];
-}
-
-static inline void ptr_atomic_wrap_inc(u32 *ptr)
-{
-    u32 i = *ptr;
-
-    i++;
-
-    if (i >= VF_POOL_SIZE) {
-        i = 0;
-    }
-
-    *ptr = i;
 }
 
 static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
@@ -257,17 +245,12 @@ static void set_aspect_ratio(vframe_t *vf, unsigned pixel_ratio)
     ar = min(ar, DISP_RATIO_ASPECT_RATIO_MAX);
 
     vf->ratio_control = (ar << DISP_RATIO_ASPECT_RATIO_BIT);
-    //vf->ratio_control |= DISP_RATIO_FORCECONFIG | DISP_RATIO_KEEPRATIO;
 }
 
-#ifdef HANDLE_MPEG4_IRQ
 static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
-#else
-static void vmpeg4_isr(void)
-#endif
 {
     u32 reg;
-    vframe_t *vf;
+    vframe_t *vf = NULL;
     u32 picture_type;
     u32 buffer_index;
     u32 pts, pts_valid = 0, offset = 0;
@@ -282,6 +265,11 @@ static void vmpeg4_isr(void)
         repeat_cnt = READ_VREG(MP4_NOT_CODED_CNT);
         vop_time_inc = READ_VREG(MP4_VOP_TIME_INC);
 
+        if (buffer_index >= DECODE_BUFFER_NUM_MAX) {
+            printk("fatal error, invalid buffer index.");
+            return IRQ_HANDLED;
+        }
+
         if (vmpeg4_amstream_dec_info.width == 0) {
             vmpeg4_amstream_dec_info.width = READ_VREG(MP4_PIC_WH) >> 16;
         }
@@ -292,6 +280,7 @@ static void vmpeg4_isr(void)
                    READ_VREG(MP4_PIC_WH) >> 16);
         }
 #endif
+
         if (vmpeg4_amstream_dec_info.height == 0) {
             vmpeg4_amstream_dec_info.height = READ_VREG(MP4_PIC_WH) & 0xffff;
         }
@@ -397,8 +386,12 @@ static void vmpeg4_isr(void)
         }
 
         if (reg & INTERLACE_FLAG) { // interlace
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -416,10 +409,16 @@ static void vmpeg4_isr(void)
 
             vfbuf_use[buffer_index]++;
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
+
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -443,13 +442,17 @@ static void vmpeg4_isr(void)
                        __FUNCTION__, __LINE__,
                        vf->duration, vmpeg4_amstream_dec_info.rate, picture_type);
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
 
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
         } else { // progressive
-            vfpool_idx[fill_ptr] = buffer_index;
-            vf = &vfpool[fill_ptr];
+            if (kfifo_get(&newframe_q, &vf) == 0) {
+                printk("fatal error, no available buffer slot.");
+                return IRQ_HANDLED;
+            }
+
+            vf->index = buffer_index;
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
@@ -471,7 +474,7 @@ static void vmpeg4_isr(void)
 
             vfbuf_use[buffer_index]++;
 
-            INCPTR(fill_ptr);
+            kfifo_put(&display_q, (const vframe_t **)&vf);
 
             vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
         }
@@ -485,40 +488,34 @@ static void vmpeg4_isr(void)
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
-#ifdef HANDLE_MPEG4_IRQ
     return IRQ_HANDLED;
-#else
-    return;
-#endif
 }
 
 static vframe_t *vmpeg_vf_peek(void* op_arg)
 {
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    vframe_t *vf;
+
+    if (kfifo_peek(&display_q, &vf)) {
+        return vf;
     }
 
-    return &vfpool[get_ptr];
+    return NULL;
 }
 
 static vframe_t *vmpeg_vf_get(void* op_arg)
 {
     vframe_t *vf;
 
-    if (get_ptr == fill_ptr) {
-        return NULL;
+    if (kfifo_get(&display_q, &vf)) {
+        return vf;
     }
 
-    vf = &vfpool[get_ptr];
-
-    INCPTR(get_ptr);
-
-    return vf;
+    return NULL;
 }
 
 static void vmpeg_vf_put(vframe_t *vf, void* op_arg)
 {
-    INCPTR(putting_ptr);
+    kfifo_put(&recycle_q, (const vframe_t **)&vf);
 }
 
 static int vmpeg_event_cb(int type, void *data, void *private_data)
@@ -544,23 +541,15 @@ static int vmpeg_event_cb(int type, void *data, void *private_data)
 static int  vmpeg_vf_states(vframe_states_t *states, void* op_arg)
 {
     unsigned long flags;
-    int i;
     spin_lock_irqsave(&lock, flags);
-    states->vf_pool_size = VF_POOL_SIZE;
 
-    i = put_ptr - fill_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_free_num = i;
-    
-    i = putting_ptr - put_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_recycle_num = i;
-    
-    i = fill_ptr - get_ptr;
-    if (i < 0) i += VF_POOL_SIZE;
-    states->buf_avail_num = i;
+    states->vf_pool_size = VF_POOL_SIZE;
+    states->buf_free_num = kfifo_len(&newframe_q);
+    states->buf_avail_num = kfifo_len(&display_q);
+    states->buf_recycle_num = kfifo_len(&recycle_q);
     
     spin_unlock_irqrestore(&lock, flags);
+
     return 0;
 }
 
@@ -568,17 +557,17 @@ static void vmpeg_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
 
-#ifndef HANDLE_MPEG4_IRQ
-    vmpeg4_isr();
-#endif
-    if ((putting_ptr != put_ptr) && (READ_VREG(MREG_BUFFERIN) == 0)) {
-        u32 index = vfpool_idx[put_ptr];
+    while (!kfifo_is_empty(&recycle_q) &&
+           (READ_VREG(MREG_BUFFERIN) == 0)) {
+        vframe_t *vf;
+        if (kfifo_get(&recycle_q, &vf)) {
+            if ((vf->index >= 0) && (--vfbuf_use[vf->index] == 0)) {
+                WRITE_VREG(MREG_BUFFERIN, ~(1 << vf->index));
+                vf->index = -1;
+            }
 
-        if (--vfbuf_use[index] == 0) {
-            WRITE_VREG(MREG_BUFFERIN, ~(1 << index));
+            kfifo_put(&newframe_q, (const vframe_t **)&vf);
         }
-
-        INCPTR(put_ptr);
     }
 
     timer->expires = jiffies + PUT_INTERVAL;
@@ -742,8 +731,6 @@ static void vmpeg4_local_init(void)
 
     vmpeg4_rotation = (((u32)vmpeg4_amstream_dec_info.param) >> 16) & 0xffff;
 
-    fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-
     frame_width = frame_height = frame_dur = frame_prog = 0;
 
     total_frame = 0;
@@ -760,8 +747,18 @@ static void vmpeg4_local_init(void)
     pts_hit = pts_missed = pts_i_hit = pts_i_missed = 0;
 #endif
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < DECODE_BUFFER_NUM_MAX; i++) {
         vfbuf_use[i] = 0;
+    }
+
+    INIT_KFIFO(display_q);
+    INIT_KFIFO(recycle_q);
+    INIT_KFIFO(newframe_q);
+
+    for (i=0; i<VF_POOL_SIZE; i++) {
+        const vframe_t *vf = &vfpool[i];
+        vfpool[i].index = -1;
+        kfifo_put(&newframe_q, &vf);
     }
 }
 
@@ -824,7 +821,6 @@ static s32 vmpeg4_init(void)
     /* enable AMRISC side protocol */
     vmpeg4_prot_init();
 
-#ifdef HANDLE_MPEG4_IRQ
     if (request_irq(INT_VDEC, vmpeg4_isr,
                     IRQF_SHARED, "vmpeg4-irq", (void *)vmpeg4_dec_id)) {
         amvdec_disable();
@@ -832,17 +828,16 @@ static s32 vmpeg4_init(void)
         amlog_level(LOG_LEVEL_ERROR, "vmpeg4 irq register error.\n");
         return -ENOENT;
     }
-#endif
 
     stat |= STAT_ISR_REG;
- #ifdef CONFIG_POST_PROCESS_MANAGER
+#ifdef CONFIG_POST_PROCESS_MANAGER
     vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
     vf_reg_provider(&vmpeg_vf_prov);
     vf_notify_receiver(PROVIDER_NAME,VFRAME_EVENT_PROVIDER_START,NULL);
- #else 
+#else 
     vf_provider_init(&vmpeg_vf_prov, PROVIDER_NAME, &vmpeg_vf_provider, NULL);
     vf_reg_provider(&vmpeg_vf_prov);
- #endif 
+#endif 
     stat |= STAT_VF_HOOK;
 
     recycle_timer.data = (ulong) & recycle_timer;
@@ -903,10 +898,6 @@ static int amvdec_mpeg4_remove(struct platform_device *pdev)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        fill_ptr = get_ptr = put_ptr = putting_ptr = 0;
-        spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vmpeg_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
