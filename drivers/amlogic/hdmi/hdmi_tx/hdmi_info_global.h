@@ -24,7 +24,10 @@ typedef enum HDMI_Video_Type_ {
     HDMI_1080p24,
     HDMI_1080p25,
     HDMI_1080p30,
-    HDMI_4k2k_24 = 68,  //todo
+    HDMI_4k2k_30 = 68,  //tmp VIC
+    HDMI_4k2k_25,
+    HDMI_4k2k_24,
+    HDMI_4k2k_smpte,
 } HDMI_Video_Codes_t ;
 
 

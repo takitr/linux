@@ -950,6 +950,29 @@ static int hdmitx_edid_3d_parse(rx_cap_t* pRXCap, unsigned char *dat, unsigned s
     return 1;
 }
 
+//parse Sink 4k2k information
+static void hdmitx_edid_4k2k_parse(rx_cap_t* pRXCap, unsigned char *dat, unsigned size)
+{
+    if((size > 4) || (size == 0)) {
+        printk("HDMI: 4k2k in edid out of range, SIZE = %d\n", size);
+        return;
+    }
+    while(size--) {
+        if(*dat == 1)
+            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_30;
+        else if(*dat == 2)
+            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_25;
+        else if(*dat == 3)
+            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_24;
+        else if(*dat == 4)
+            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_smpte;
+        else {
+        }
+        dat ++;
+        pRXCap->VIC_count++ ;
+    }
+}
+
 static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *BlockBuf)
 {
     unsigned char offset,End ;
@@ -1014,6 +1037,21 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
                 
                 if(count > 7)
                     hdmitx_edid_3d_parse(pRXCap, &BlockBuf[offset+7], count - 7);
+
+                {   // parsing 4k2k mode
+                    unsigned int idx = offset + 7;
+                    unsigned int e4k2k_len = 0;
+                    if((BlockBuf[offset+7] & (1 << 5)) == 0x00) 
+                        break;
+                    if(BlockBuf[offset+7] & (1 << 7))
+                        idx += 2;
+                    if(BlockBuf[offset+7] & (1 << 6))
+                        idx += 2;
+                    e4k2k_len = BlockBuf[idx + 2] >> 5;
+                    if(e4k2k_len) {
+                        hdmitx_edid_4k2k_parse(pRXCap, &BlockBuf[idx + 3], e4k2k_len);
+                    }
+                }
 
                 offset += count ; // ignore the remaind.
                 break ;
@@ -1247,7 +1285,11 @@ static dispmode_vic_t dispmode_VIC_tab[]=
     {"720p50hz", HDMI_720p50},
     {"1080i50hz", HDMI_1080i50},
     {"1080p50hz", HDMI_1080p50},
-};    
+    {"4k2k30hz", HDMI_4k2k_30},
+    {"4k2k25hz", HDMI_4k2k_25},
+    {"4k2k24hz", HDMI_4k2k_24},
+    {"4k2ksmpte", HDMI_4k2k_smpte},
+};
 
 HDMI_Video_Codes_t hdmitx_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode)
 {
@@ -1293,7 +1335,7 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
                 vic = HDMI_Unkown;
             }
         }
-    }    
+    }
     return vic;
 }    
 

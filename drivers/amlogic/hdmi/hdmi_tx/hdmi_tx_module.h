@@ -11,7 +11,7 @@
 /************************************
 *    hdmitx device structure
 *************************************/
-#define VIC_MAX_NUM 60
+#define VIC_MAX_NUM 72  // consider 4k2k
 #define AUD_MAX_NUM 60
 typedef struct
 {

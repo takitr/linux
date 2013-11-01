@@ -69,7 +69,8 @@ SET_TV_CLASS_ATTR(vdac_setting,parse_vdac_setting)
 static const tvmode_t vmode_tvmode_tab[] =
 {
 	TVMODE_480I, TVMODE_480CVBS,TVMODE_480P, TVMODE_576I,TVMODE_576CVBS, TVMODE_576P, TVMODE_720P, TVMODE_1080I, TVMODE_1080P,
-    TVMODE_720P_50HZ, TVMODE_1080I_50HZ, TVMODE_1080P_50HZ,TVMODE_1080P_24HZ, TVMODE_4K2K_24HZ, TVMODE_VGA,TVMODE_SVGA,TVMODE_XGA,TVMODE_SXGA
+    TVMODE_720P_50HZ, TVMODE_1080I_50HZ, TVMODE_1080P_50HZ,TVMODE_1080P_24HZ, TVMODE_4K2K_30HZ, TVMODE_4K2K_25HZ, TVMODE_4K2K_24HZ, TVMODE_4K2K_SMPTE, 
+    TVMODE_VGA,TVMODE_SVGA,TVMODE_XGA,TVMODE_SXGA
 };
 
 
@@ -231,10 +232,46 @@ static const vinfo_t tv_info[] =
         .sync_duration_den = 1,
         .video_clk         = 74250000,
     },
-    { /* VMODE_1080P_24HZ */
-		.name              = "4k2k24hz",
-		.mode              = TVMODE_4K2K_24HZ,
+    { /* VMODE_4K2K_30HZ */
+        .name              = "4k2k30hz",
+        .mode              = TVMODE_4K2K_30HZ,
         .width             = 3840,
+        .height            = 2160,
+        .field_height      = 2160,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 30,
+        .sync_duration_den = 1,
+        .video_clk         = 297000000,
+    },
+    { /* VMODE_4K2K_25HZ */
+        .name              = "4k2k25hz",
+        .mode              = TVMODE_4K2K_25HZ,
+        .width             = 3840,
+        .height            = 2160,
+        .field_height      = 2160,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 25,
+        .sync_duration_den = 1,
+        .video_clk         = 297000000,
+    },
+    { /* VMODE_4K2K_24HZ */
+        .name              = "4k2k24hz",
+        .mode              = TVMODE_4K2K_24HZ,
+        .width             = 3840,
+        .height            = 2160,
+        .field_height      = 2160,
+        .aspect_ratio_num  = 16,
+        .aspect_ratio_den  = 9,
+        .sync_duration_num = 24,
+        .sync_duration_den = 1,
+        .video_clk         = 297000000,
+    },
+    { /* VMODE_4K2K_SMPTE */
+        .name              = "4k2ksmpte",
+        .mode              = TVMODE_4K2K_SMPTE,
+        .width             = 4096,
         .height            = 2160,
         .field_height      = 2160,
         .aspect_ratio_num  = 16,
