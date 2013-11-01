@@ -85,7 +85,7 @@ int crypto_done(crypto_device_t * pcrypt_info)
     else
         pad_byte = 0;
 
-    if(strcmp(pcrypt_info->algname,"cbc-aes-aml")==0)
+    if((strcmp(pcrypt_info->algname,"cbc-aes-aml")==0)||(strcmp(pcrypt_info->algname,"ctr-aes-aml")==0))
     {
         keysize +=16; 
     }
