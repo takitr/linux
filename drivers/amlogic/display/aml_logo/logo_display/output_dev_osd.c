@@ -47,6 +47,9 @@ static  hdmi_only_info_t hdmi_only_info[PARA_HDMI_ONLY]={
 	{"1080i50hz",VMODE_1080I_50HZ},
 	{"1080p50hz",VMODE_1080P_50HZ},
 	{"4k2k24hz",VMODE_4K2K_24HZ},
+	{"4k2k25hz",VMODE_4K2K_25HZ},
+	{"4k2k30hz",VMODE_4K2K_30HZ},
+	{"4k2ksmpte",VMODE_4K2K_SMPTE},
 };
 
 static vmode_t hdmimode_hdmionly = VMODE_1080P;
@@ -144,7 +147,7 @@ static int osd0_init(logo_object_t *plogo)
 			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
 		}
 #ifdef CONFIG_AM_HDMI_ONLY	
-		if(plogo->para.vout_mode > VMODE_4K2K_24HZ) {
+		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
 			set_current_vmode(plogo->para.vout_mode);
 		} else {
 			extern int read_hpd_gpio(void);
@@ -187,7 +190,7 @@ static int osd1_init(logo_object_t *plogo)
 			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
 		}
 #ifdef CONFIG_AM_HDMI_ONLY	
-		if(plogo->para.vout_mode > VMODE_4K2K_24HZ) {
+		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
 			set_current_vmode(plogo->para.vout_mode);
 		} else {
 			extern int read_hpd_gpio(void);
