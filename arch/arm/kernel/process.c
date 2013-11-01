@@ -41,6 +41,14 @@
 #include <asm/stacktrace.h>
 #include <asm/mach/time.h>
 
+#if defined (CONFIG_PLAT_MESON)
+#include <asm/cacheflush.h>
+#include <plat/sram.h>
+#include <plat/io.h>
+#endif /* CONFIG_PLAT_MESON */
+#include <mach/system.h>
+#include <mach/register.h>
+
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
 unsigned long __stack_chk_guard __read_mostly;
@@ -154,13 +162,73 @@ static void null_restart(char mode, const char *cmd)
 {
 }
 
+void arm_machine_restart(char mode, const char *cmd)
+{
+#if defined (CONFIG_PLAT_MESON) && !defined(CONFIG_ARCH_MESON2)
+    u32 reboot_reason = MESON_NORMAL_BOOT;
+    if (cmd) {
+        if (strcmp(cmd, "charging_reboot") == 0)
+            reboot_reason = MESON_CHARGING_REBOOT;
+        else if (strcmp(cmd, "recovery") == 0 || strcmp(cmd, "factory_reset") == 0)
+            reboot_reason = MESON_FACTORY_RESET_REBOOT;
+        else if (strcmp(cmd, "update") == 0)
+            reboot_reason = MESON_UPDATE_REBOOT;
+        else if (strcmp(cmd, "report_crash") == 0)
+            reboot_reason = MESON_CRASH_REBOOT;
+        else if (strcmp(cmd, "factory_testl_reboot") == 0)
+            reboot_reason = MESON_FACTORY_TEST_REBOOT;
+        else if (strcmp(cmd, "switch_system") == 0)
+            reboot_reason = MESON_SYSTEM_SWITCH_REBOOT;
+        else if (strcmp(cmd, "safe_mode") == 0)
+            reboot_reason = MESON_SAFE_REBOOT;
+        else if (strcmp(cmd, "lock_system") == 0)
+            reboot_reason = MESON_LOCK_REBOOT;
+        else if (strcmp(cmd, "usb_burner_reboot") == 0)
+            reboot_reason = MESON_USB_BURNER_REBOOT;
+	}
+    aml_write_reg32(P_AO_RTI_STATUS_REG1, reboot_reason);
+    printk("reboot_reason(0x%x) = 0x%x\n", P_AO_RTI_STATUS_REG1, aml_read_reg32(P_AO_RTI_STATUS_REG1));
+#endif /* CONFIG_PLAT_MESON */
+
+    /* Flush the console to make sure all the relevant messages make it
+     * out to the console drivers */
+    arm_machine_flush_console();
+
+    /* Disable interrupts first */
+    local_irq_disable();
+    local_fiq_disable();
+
+    /*
+     * Tell the mm system that we are going to reboot -
+     * we may need it to insert some 1:1 mappings so that
+     * soft boot works.
+     */
+    setup_mm_for_reboot();
+
+    /* Clean and invalidate caches */
+    flush_cache_all();
+
+    /* Turn off caching */
+    cpu_proc_fin();
+
+    /* Push out any further dirty data, and ensure cache is empty */
+    flush_cache_all();
+
+    /*
+     * Now call the architecture specific reboot code.
+     */
+    arch_reset(mode, cmd);
+
+}
+
 /*
  * Function pointers to optional machine specific functions
  */
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
-void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
+//void (*arm_pm_restart)(char str, const char *cmd) = null_restart;
+void (*arm_pm_restart)(char str, const char *cmd) = arm_machine_restart;
 EXPORT_SYMBOL_GPL(arm_pm_restart);
 
 /*
