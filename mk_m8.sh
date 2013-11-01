@@ -4,6 +4,7 @@
 make uImage -j
 #make modules
 
+make meson8_skt.dtd
 make meson8_skt.dtb
 
 #cd ../root/g18
@@ -14,6 +15,6 @@ make meson8_skt.dtb
 ROOTFS="rootfs.cpio"
 
 #cd ..
-./mkbootimg --kernel ./arch/arm/boot/uImage --ramdisk ./${ROOTFS} --second ./arch/arm/boot/dts/meson8_skt.dtb --output ./m8boot.img
+./mkbootimg --kernel ./arch/arm/boot/uImage --ramdisk ./${ROOTFS} --second ./arch/arm/boot/dts/amlogic/meson8_skt.dtb --output ./m8boot.img
 ls -l ./m8boot.img
 echo "m8boot.img done"

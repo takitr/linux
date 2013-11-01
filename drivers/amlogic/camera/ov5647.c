@@ -36,8 +36,6 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
-#include <media/v4l2-i2c-drv.h>
-#include <media/amlogic/aml_camera.h>
 
 #include <linux/amlogic/camera/aml_cam_info.h>
 
@@ -47,7 +45,6 @@
 //#include <media/amlogic/656in.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
-#include <linux/tvin/tvin_v4l2.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
@@ -84,12 +81,12 @@ static unsigned debug;
 //module_param(debug, uint, 0644);
 //MODULE_PARM_DESC(debug, "activates debug info");
 
-static unsigned int vid_limit = 32;
+static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
-static int ov5647_h_active = 800;
-static int ov5647_v_active = 600;
+static int ov5647_h_active=800;
+static int ov5647_v_active=600;
 static struct v4l2_fract ov5647_frmintervals_active = {
     .numerator = 1,
     .denominator = 15,
@@ -256,7 +253,7 @@ static struct v4l2_frmivalenum ov5647_frmivalenum[]={
                 {
                         .discrete	={
                                 .numerator	= 1,
-                                .denominator	= 30,
+                                .denominator	= 25,
                         }
                 }
         },{
@@ -513,7 +510,7 @@ struct ov5647_dmaqueue {
 };
 
 typedef enum resulution_size_type{
-	SIZE_NULL_TYPE = 0,
+	//SIZE_NULL = 0,
 	SIZE_CIF_352X288,
 	SIZE_VGA_640X480,
 	SIZE_720P_1280X720,
@@ -1435,7 +1432,13 @@ static resolution_param_t  prev_resolution_array[] = {
 		.active_fps			= 15,
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script			= OV5647_preview_1080P_script,
-	}
+	},{
+		.frmsize			= {2592, 1944},
+		.active_frmsize		= {2592, 1944},
+		.active_fps			= 7.5,
+		.size_type			= SIZE_H1080P_2592X1944,
+		.reg_script			= OV5647_capture_5M_script,
+	},
 };
 	
 
@@ -2145,7 +2148,7 @@ static int set_flip(struct ov5647_device *dev)
 
 static resulution_size_type_t get_size_type(int width, int height)
 {
-    resulution_size_type_t rv = SIZE_NULL_TYPE;
+    resulution_size_type_t rv = SIZE_NULL;
     if (width * height >= 2500 * 1900)
         rv = SIZE_H1080P_2592X1944;
     else if (width * height >= 1900 * 1000)
@@ -2192,9 +2195,9 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
     int i = 0;
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
-    resulution_size_type_t res_type = SIZE_NULL_TYPE;
+    resulution_size_type_t res_type = SIZE_NULL;
     res_type = get_size_type(width, height);
-    if (res_type == SIZE_NULL_TYPE)
+    if (res_type == SIZE_NULL)
         return NULL;
     if (is_capture == 1) {
         tmp_resolution_param = capture_resolution_array;
@@ -2203,6 +2206,7 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
         tmp_resolution_param = prev_resolution_array;
         arry_size = ARRAY_SIZE(prev_resolution_array);
     }
+
     for (i = 0; i < arry_size; i++) {
         if (tmp_resolution_param[i].size_type == res_type)
             return &tmp_resolution_param[i];
@@ -2910,6 +2914,7 @@ char *res_size[]={
 	"720p",
 	"960p",
 	"1080p",
+	"5m",	
 };
 static int get_index(char *res){
 	int i = 0;
@@ -2986,7 +2991,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
                               "   before fsize->index== %d\n",fsize->index);//potti
               if (fsize->index >= ARRAY_SIZE(prev_resolution_array))
                       return -EINVAL;
-              frmsize = &prev_resolution_array[fsize->index].active_frmsize;
+              frmsize = &prev_resolution_array[fsize->index].frmsize;
               printk("ov5647_prev_resolution[fsize->index]"
                               "   after fsize->index== %d\n",fsize->index);
               fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
@@ -3409,7 +3414,7 @@ static int ov5647_probe(struct i2c_client *client,
 	sd = &t->sd;
 	v4l2_i2c_subdev_init(sd, client, &ov5647_ops);
 
-	plat_dat = (aml_plat_cam_data_t*)client->dev.platform_data;
+	plat_dat = (aml_cam_info_t*)client->dev.platform_data;
 
 	/* Now create a video4linux device */
 	mutex_init(&t->mutex);
@@ -3464,10 +3469,14 @@ static const struct i2c_device_id ov5647_id[] = {
 };
 MODULE_DEVICE_TABLE(i2c, ov5647_id);
 
-static struct v4l2_i2c_driver_data v4l2_i2c_data = {
-	.name = "ov5647",
+static struct i2c_driver ov5647_i2c_driver = {
+	.driver = {
+		.name = "ov5647",
+	},
 	.probe = ov5647_probe,
 	.remove = ov5647_remove,
 	.id_table = ov5647_id,
 };
+
+module_i2c_driver(ov5647_i2c_driver);
 
