@@ -1,5 +1,5 @@
 /*
- * Driver for the amlogic vpu controller
+ * Driver for the amlogic pin controller
  *
  *
  */
@@ -82,39 +82,36 @@ static int dft_clk_level;
 static vpu_mod_t get_vpu_mod(unsigned int vmod)
 {
 	unsigned int vpu_mod;
-
+	
 	if (vmod < VPU_MOD_START) {
-		switch (vmod) {
-			case VMODE_480P:
-			case VMODE_576P:
-			case VMODE_720P:
-			case VMODE_1080I:
-			case VMODE_1080P:
-			case VMODE_720P_50HZ:
-			case VMODE_1080I_50HZ:
-			case VMODE_1080P_50HZ:
-			case VMODE_1080P_24HZ:
-			case VMODE_4K2K_30HZ:
-			case VMODE_4K2K_25HZ:
-			case VMODE_4K2K_24HZ:
-			case VMODE_4K2K_SMPTE:
-			case VMODE_VGA:
-			case VMODE_SVGA:
-			case VMODE_XGA:
-			case VMODE_SXGA:
+	switch (vmod) {
+		case VMODE_480P:
+		case VMODE_576P:
+		case VMODE_720P:
+		case VMODE_1080I:
+		case VMODE_1080P:
+		case VMODE_720P_50HZ:
+		case VMODE_1080I_50HZ:
+		case VMODE_1080P_50HZ:
+		case VMODE_1080P_24HZ:
+		case VMODE_4K2K_24HZ:
+		case VMODE_VGA:
+		case VMODE_SVGA:
+		case VMODE_XGA:
+		case VMODE_SXGA:
 				vpu_mod = VPU_VENCP;
-				break;
+			break;
 			case VMODE_480I:
 			case VMODE_576I:
-			case VMODE_480CVBS:
-			case VMODE_576CVBS:
+		case VMODE_480CVBS:
+		case VMODE_576CVBS:
 				vpu_mod = VPU_VENCI;
-				break;
-			case VMODE_LCD:
-			case VMODE_LVDS_1080P:
-			case VMODE_LVDS_1080P_50HZ:
+			break;
+		case VMODE_LCD:
+		case VMODE_LVDS_1080P:
+		case VMODE_LVDS_1080P_50HZ:
 				vpu_mod = VPU_VENCL;
-				break;
+			break;
 			default:
 				vpu_mod = VPU_MAX;
 				break;
@@ -130,17 +127,20 @@ static vpu_mod_t get_vpu_mod(unsigned int vmod)
 	return vpu_mod;
 } 
 
+#ifdef CONFIG_VPU_DYNAMIC_ADJ
 static unsigned int get_vpu_clk_level_max_vmod(void)
 {
 	unsigned int max_level;
-	int i,j;
+	int i;
 	
 	max_level = 0;
 	for (i=VPU_MOD_START; i<VPU_MAX; i++) {
 		if (vpu_clk_vmod[i-VPU_MOD_START] > max_level)
 			max_level = vpu_clk_vmod[i-VPU_MOD_START];
 	}
+	return max_level;
 }
+#endif
 
 static unsigned int get_vpu_clk_level(unsigned int video_clk)
 {
@@ -228,24 +228,23 @@ set_vpu_clk_limit:
 	return ret;
 }
 
-//***********************************************//
-//VPU_CLK control
-//***********************************************//
 /*
  *  Function: get_vpu_clk_vmod
- *      Get vpu clk holding frequency with specified vmod
+ *      Get vpu clk holding frequency with specified vomd
  *
  *	Parameters:
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE, VMODE is supported by VOUT
- *                 VPU_MOD, supported by vpu_mod_t
+ *                 VMODE supported by VOUT
+ *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
  *
  *  Returns:
  *      unsigned int, vpu clk frequency unit in Hz
  * 
  *	Example:
  *      video_clk = get_vpu_clk_vmod(VMODE_720P);
- *      video_clk = get_vpu_clk_vmod(VPU_VIU_OSD1);
+ *      video_clk = get_vpu_clk_vmod(VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
  *
 */
 unsigned int get_vpu_clk_vmod(unsigned int vmod)
@@ -270,22 +269,24 @@ unsigned int get_vpu_clk_vmod(unsigned int vmod)
 }
 
 /*
- *  Function: request_vpu_clk_vmod
- *      Request a new vpu clk holding frequency with specified vmod
+ *  Function: request_vpu_clk_vomd
+ *      Request a new vpu clk holding frequency with specified vomd
  *      Will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level
  *
  *	Parameters:
  *      vclk - unsigned int, vpu clk frequency unit in Hz
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE, VMODE is supported by VOUT
- *                 VPU_MOD, supported by vpu_mod_t
+ *                 VMODE supported by VOUT
+ *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
  *
  *  Returns:
  *      int, 0 for success, 1 for failed
  * 
  *	Example:
- *      ret = request_vpu_clk_vmod(100000000, VMODE_720P);
- *      ret = request_vpu_clk_vmod(300000000, VPU_VIU_OSD1);
+ *      ret = request_vpu_clk_vomd(100000000, VMODE_720P);
+ *      ret = request_vpu_clk_vomd(300000000, VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
  *
 */
 int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
@@ -329,21 +330,23 @@ request_vpu_clk_limit:
 }
 
 /*
- *  Function: release_vpu_clk_vmod
- *      Release vpu clk holding frequency to 0 with specified vmod
+ *  Function: release_vpu_clk_vomd
+ *      Release vpu clk holding frequency to 0 with specified vomd
  *      Will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level
  *
  *	Parameters:
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE, VMODE is supported by VOUT
- *                 VPU_MOD, supported by vpu_mod_t
+ *                 VMODE supported by VOUT
+ *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
+ *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
  *
  *  Returns:
  *      int, 0 for success, 1 for failed
  * 
  *	Example:
- *      ret = release_vpu_clk_vmod(VMODE_720P);
- *      ret = release_vpu_clk_vmod(VPU_VIU_OSD1);
+ *      ret = release_vpu_clk_vomd(VMODE_720P);
+ *      ret = release_vpu_clk_vomd(VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
  *
 */
 int release_vpu_clk_vmod(unsigned int vmod)
@@ -373,10 +376,7 @@ int release_vpu_clk_vmod(unsigned int vmod)
 }
 
 //***********************************************//
-//VPU_MEM_PD control
-//***********************************************//
 #define VPU_MEM_PD_MASK		0x3
-
 /*
  *  Function: switch_vpu_mem_pd_vmod
  *      switch vpu memory power down by specified vmod
@@ -433,11 +433,6 @@ void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag)
 	printk("switch_vpu_mem_pd: %s %s\n", vpu_mod_table[vpu_mod - VPU_MOD_START], ((flag > 0) ? "OFF" : "ON"));
 	spin_unlock_irqrestore(&vpu_mem_lock, flags);
 }
-//***********************************************//
-
-//***********************************************//
-//VPU sysfs function
-//***********************************************//
 static const char * vpu_usage_str =
 {"Usage:\n"
 "	echo get > clk ; print current vpu clk\n"
