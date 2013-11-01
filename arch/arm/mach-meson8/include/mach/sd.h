@@ -13,6 +13,10 @@
 #include <linux/mmc/host.h>
 #include <linux/earlysuspend.h>
 
+#define AML_MMC_MAJOR_VERSION   1
+#define AML_MMC_MINOR_VERSION   00
+#define AML_MMC_VERSION     ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
+
 enum aml_mmc_waitfor {
 	XFER_INIT,
 	XFER_START,				/* 1 */
@@ -165,6 +169,8 @@ struct amlsd_host {
 
     struct pinctrl *pinctrl;
     int storage_flag; // used for judging if there is a tsd/emmc
+
+    int         version; // bit[7-0]--minor version, bit[31-8]--major version
 };
 
 /*-sdio-*/
@@ -177,6 +183,8 @@ struct amlsd_host {
 #define SDIO_MULT       (0x14)
 #define SDIO_ADDR       (0x18)
 #define SDIO_EXT        (0x1c)
+#define SDIO_CCTL       (0x40)
+#define SDIO_CDAT       (0x44)
 
 #define CLK_DIV         (0x1f4)
 

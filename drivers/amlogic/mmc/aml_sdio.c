@@ -635,9 +635,9 @@ static void aml_sdio_set_clk_rate(struct amlsd_platform* pdata, u32 clk_ios)
 	struct amlsd_host* host = (void*)pdata->host;
     u32 vconf = readl(host->base + SDIO_CONF);
     struct sdio_config* conf = (void*)&vconf;
-    //struct clk* clk_src = clk_get_sys("clk81", NULL);
-    //u32 clk_rate = clk_get_rate(clk_src)/2;
-    u32 clk_rate = 159000000/2; //tmp for 3.10
+    struct clk* clk_src = clk_get_sys("clk81", NULL);
+    u32 clk_rate = clk_get_rate(clk_src)/2;
+    // u32 clk_rate = 159000000/2; //tmp for 3.10
 	u32 clk_div;
 
     // aml_sdio_init_param(pdata);
@@ -904,7 +904,8 @@ static struct amlsd_host* aml_sdio_init_host(void)
 	host->xfer_step = XFER_INIT;
 
 	INIT_LIST_HEAD(&host->sibling);
-
+    
+    host->version = AML_MMC_VERSION;
     host->storage_flag = storage_flag;
 	return host;
 }
@@ -921,6 +922,9 @@ static int aml_sdio_probe(struct platform_device *pdev)
 	host = aml_sdio_init_host();
 	if(!host)
 		goto fail_init_host;
+    
+    printk("mmc driver version: %2d.%02d\n", host->version>>8, host->version&0xff);
+
 	if(amlsd_get_reg_base(pdev, host))
 		goto fail_init_host;
 
