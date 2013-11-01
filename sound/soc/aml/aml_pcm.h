@@ -18,6 +18,7 @@ typedef struct audio_stream {
     spinlock_t lock;
     struct snd_pcm_substream *stream;
 	unsigned i2s_mode; //0:master, 1:slave,
+    unsigned device_type;
 } audio_stream_t;
 
 typedef struct aml_audio {
@@ -63,6 +64,7 @@ struct aml_runtime_data {
 	dma_addr_t dma_buffer;		/* physical address of dma buffer */
 	dma_addr_t dma_buffer_end;	/* first address beyond DMA buffer */
 
+	struct snd_pcm *pcm;
 	struct snd_pcm_substream *substream;
 	audio_stream_t s;	
 	struct timer_list timer;	// timeer for playback and capture

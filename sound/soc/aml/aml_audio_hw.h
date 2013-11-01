@@ -1,73 +1,6 @@
 #ifndef __AML_AUDIO_HW_H__
 #define __AML_AUDIO_HW_H__
 
-#if defined (CONFIG_ARCH_MESON) || defined (CONFIG_ARCH_MESON2) || defined (CONFIG_ARCH_MESON3)
-
-
-/* assumming PLL source is 24M */
-
-#define AUDIO_384FS_PLL_192K        0x507d  /* 36.864M */
-#define AUDIO_384FS_PLL_192K_MUX    12
-#define AUDIO_384FS_CLK_192K        0x5eb
-
-#define AUDIO_384FS_PLL_176K        0x0e7c  /* 33.8688M */
-#define AUDIO_384FS_PLL_176K_MUX    25
-#define AUDIO_384FS_CLK_176K        0x5eb
-
-#define AUDIO_384FS_PLL_96K         0x507d  /* 36.864M */
-#define AUDIO_384FS_PLL_96K_MUX     12
-#define AUDIO_384FS_CLK_96K         0x5ef
-
-#define AUDIO_384FS_PLL_88K         0x0e7c  /* 33.8688M */
-#define AUDIO_384FS_PLL_88K_MUX     25
-#define AUDIO_384FS_CLK_88K         0x5ef
-
-#define AUDIO_384FS_PLL_48K         0x487d  /* 18.432M */
-#define AUDIO_384FS_PLL_48K_MUX     12
-#define AUDIO_384FS_CLK_48K_AC3     0x5ed
-#define AUDIO_384FS_CLK_48K         0x5ef
-
-#define AUDIO_384FS_PLL_44K         0x0aa3  /* 16.9344M */
-#define AUDIO_384FS_PLL_44K_MUX     23
-#define AUDIO_384FS_CLK_44K         0x5ef
-
-#define AUDIO_384FS_PLL_32K         0x1480  /* 12.288M */
-#define AUDIO_384FS_PLL_32K_MUX     24
-#define AUDIO_384FS_CLK_32K         0x5ef
-
-#define AUDIO_384FS_DAC_CFG         0x6
-
-#define AUDIO_256FS_PLL_192K        0x0a53  /* 24.576M */
-#define AUDIO_256FS_PLL_192K_MUX    17
-#define AUDIO_256FS_CLK_192K        0x5c7
-
-#define AUDIO_256FS_PLL_176K        0x0eba  /* 22.5792M */
-#define AUDIO_256FS_PLL_176K_MUX    25
-#define AUDIO_256FS_CLK_176K        0x5c7
-
-#define AUDIO_256FS_PLL_96K         0x0a53  /* 24.576M */
-#define AUDIO_256FS_PLL_96K_MUX     17
-#define AUDIO_256FS_CLK_96K         0x5db
-
-#define AUDIO_256FS_PLL_88K         0x0eba  /* 22.5792M */
-#define AUDIO_256FS_PLL_88K_MUX     25
-#define AUDIO_256FS_CLK_88K         0x5db
-
-#define AUDIO_256FS_PLL_48K         0x08d3  /* 12.288M */
-#define AUDIO_256FS_PLL_48K_MUX     27
-#define AUDIO_256FS_CLK_48K_AC3     0x5d9
-#define AUDIO_256FS_CLK_48K         0x5db
-
-#define AUDIO_256FS_PLL_44K         0x06b9  /* 11.2896M */
-#define AUDIO_256FS_PLL_44K_MUX     29
-#define AUDIO_256FS_CLK_44K         0x5db
-
-#define AUDIO_256FS_PLL_32K         0x4252  /* 8.192M */
-#define AUDIO_256FS_PLL_32K_MUX     14
-#define AUDIO_256FS_CLK_32K         0x5db
-#define AUDIO_256FS_DAC_CFG         0x7
-
-#endif
 
 typedef struct {
     unsigned short pll;
@@ -118,6 +51,15 @@ enum {
 	I2SIN_SLAVE_MODE  =   1<<0,
 	SPDIFIN_MODE   = 1<<1,
 };
+enum {
+	AML_AUDIO_NA = 0,	
+	AML_AUDIO_SPDIFIN = 1<<0,
+	AML_AUDIO_SPDIFOUT = 1<<1,
+	AML_AUDIO_I2SIN = 1<<2,
+	AML_AUDIO_I2SOUT = 1<<3,
+	AML_AUDIO_PCMIN = 1<<4,
+	AML_AUDIO_PCMOUT = 1<<5,				
+};
 #define AUDIO_CLK_256FS             0
 #define AUDIO_CLK_384FS             1
 
@@ -162,6 +104,7 @@ void audio_in_i2s_enable(int flag);
 void audio_in_spdif_enable(int flag);
 unsigned int audio_in_i2s_rd_ptr(void);
 unsigned int audio_in_i2s_wr_ptr(void);
+unsigned int audio_in_spdif_wr_ptr(void);
 void audio_set_i2s_mode(u32 mode);
 void audio_set_clk(unsigned freq, unsigned fs_config);
 void audio_set_i2s_clk(unsigned freq, unsigned fs_config);
@@ -178,10 +121,14 @@ unsigned int read_i2s_mute_swap_reg(void);
 void audio_i2s_swap_left_right(unsigned int flag);
 int if_audio_out_enable(void);
 int if_audio_in_i2s_enable(void);
+int if_audio_in_spdif_enable(void);
+void audio_out_i2s_enable(unsigned flag);
 void audio_hw_958_enable(unsigned flag);
 void audio_out_enabled(int flag);
 void audio_util_set_dac_format(unsigned format);
 unsigned int audio_hdmi_init_ready(void);
+unsigned int read_iec958_rd_ptr(void);
+void audio_in_spdif_enable(int flag);
 
 #include "mach/cpu.h"
 
