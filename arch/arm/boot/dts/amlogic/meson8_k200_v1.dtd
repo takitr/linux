@@ -927,11 +927,21 @@ sdio{
 //$$ DEVICE="audio_dai"
 //$$ L2 PROP_STR = "status"
     audio_dai{
-        compatible = "amlogic,aml-dai";
-        dev_name = "aml-dai.0";
+        compatible = "amlogic,aml-i2s-dai";
+        dev_name = "aml-i2s-dai.0";
+        status = "okay";
+    };
+    audio_spdif_dai{
+        compatible = "amlogic,aml-spdif-dai";
+        dev_name = "aml-spdif-dai.0";
         status = "okay";
     };
 
+    audio_spdif_codec{
+        compatible = "amlogic,aml-spdif-codec";
+        dev_name = "spdif-dit.0";
+        status = "okay";
+    };
 //$$ DEVICE="audio_m8_audio"
 //$$ L2 PROP_STR = "status"
     audio_m8_audio{
@@ -952,7 +962,7 @@ sdio{
     aml_m8_sound_card{
         compatible = "sound_card, aml_snd_m8";
         aml,sound_card = "AML-M8AUDIO";
-        aml,codec_dai = "AML-M8";
+        aml,codec_dai = "AML-M8","dit-hifi";
         aml,audio-routing =
             "Ext Spk","LINEOUTL",
             "Ext Spk","LINEOUTR",

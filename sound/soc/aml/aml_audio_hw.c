@@ -304,40 +304,36 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
 static void spdifin_fifo1_set_buf(u32 addr, u32 size)
 {
 	WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)&0x7fffffff);
-	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
-	WRITE_MPEG_REG(AUDIN_FIFO0_PTR, (addr&0xffffffc0));
-	WRITE_MPEG_REG(AUDIN_FIFO0_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
-	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL, (1<<AUDIN_FIFO0_EN)	// FIFO0_EN
-    								|(1<<AUDIN_FIFO0_LOAD)	// load start address./* AUDIN_FIFO0_LOAD */
-								|(0<<AUDIN_FIFO0_DIN_SEL)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */
+	WRITE_MPEG_REG(AUDIN_FIFO1_START, addr & 0xffffffc0);
+	WRITE_MPEG_REG(AUDIN_FIFO1_PTR, (addr&0xffffffc0));
+	WRITE_MPEG_REG(AUDIN_FIFO1_END, (addr&0xffffffc0) + (size&0xffffffc0)-8);
+	WRITE_MPEG_REG(AUDIN_FIFO1_CTRL, (1<<AUDIN_FIFO1_EN)	// FIFO0_EN
+    								|(1<<AUDIN_FIFO1_LOAD)	// load start address./* AUDIN_FIFO0_LOAD */
+								|(0<<AUDIN_FIFO1_DIN_SEL)	// DIN from i2sin./* AUDIN_FIFO0_DIN_SEL */
 	    							//|(1<<6)	// 32 bits data in./*AUDIN_FIFO0_D32b */
 									//|(0<<7)	// put the 24bits data to  low 24 bits./* AUDIN_FIFO0_h24b */16bit
-								|(4<<AUDIN_FIFO0_ENDIAN)	// /*AUDIN_FIFO0_ENDIAN */
-								|(2<<AUDIN_FIFO0_CHAN)//2 channel./* AUDIN_FIFO0_CHAN*/
+								|(4<<AUDIN_FIFO1_ENDIAN)	// /*AUDIN_FIFO0_ENDIAN */
+								|(2<<AUDIN_FIFO1_CHAN)//2 channel./* AUDIN_FIFO0_CHAN*/
 		    						|(0<<16)	//to DDR
-                                                       |(1<<AUDIN_FIFO0_UG)    // Urgent request.  DDR SDRAM urgent request enable.
+                                                       |(1<<AUDIN_FIFO1_UG)    // Urgent request.  DDR SDRAM urgent request enable.
                                                        |(0<<17)    // Overflow Interrupt mask
                                                        |(0<<18)    // Audio in INT
 			                                	//|(1<<19)	//hold 0 enable
-								|(0<<AUDIN_FIFO0_UG)	// hold0 to aififo
+								|(0<<AUDIN_FIFO1_UG)	// hold0 to aififo
 				  );
-	WRITE_MPEG_REG(AUDIN_FIFO0_CTRL1,0xc);
+	WRITE_MPEG_REG(AUDIN_FIFO1_CTRL1,0xc);
 }
 void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode)
 {
-	if(i2s_mode&SPDIFIN_MODE){ //spdif in ,use fifo1
-		printk("spdifin_fifo1_set_buf \n");			
-		spdifin_fifo1_set_buf(addr,size);
-	}
-	else{
-		printk("i2sin_fifo0_set_buf \n");		
-		i2sin_fifo0_set_buf(addr,size,i2s_mode);
-	}	
-       audio_in_buf_ready = 1;
-
+	printk("i2sin_fifo0_set_buf \n");		
+	i2sin_fifo0_set_buf(addr,size,i2s_mode);
+	audio_in_buf_ready = 1;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
 {
+	printk("spdifin_fifo1_set_buf \n");			
+	spdifin_fifo1_set_buf(addr,size);
+	
 }
 //extern void audio_in_enabled(int flag);
 
@@ -355,23 +351,13 @@ reset_again:
               printk("error %08x, %08x !!!!!!!!!!!!!!!!!!!!!!!!\n", rd, start);
               goto reset_again;
             }
-		if(audioin_mode == 	SPDIFIN_MODE)
-			WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)| (1<<31));
-		else
 			WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 1, I2SIN_EN, 1);
 
 	}else{
-		if(audioin_mode == 	SPDIFIN_MODE)	
-			WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)& ~(1<<31));
-		else
 			WRITE_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, 0, I2SIN_EN, 1);
 	}
 }
 
-int if_audio_in_i2s_enable()
-{
-	return READ_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, I2SIN_EN, 1);
-}
 
 void audio_in_spdif_enable(int flag)
 {
@@ -379,7 +365,6 @@ void audio_in_spdif_enable(int flag)
 
 	if(flag){
 reset_again:
-#if 0	
 	     WRITE_MPEG_REG_BITS(AUDIN_FIFO1_CTRL, 1, 1, 1); // reset FIFO 0
             WRITE_MPEG_REG(AUDIN_FIFO1_PTR, 0);
             rd = READ_MPEG_REG(AUDIN_FIFO1_PTR);
@@ -388,17 +373,31 @@ reset_again:
               printk("error %08x, %08x !!!!!!!!!!!!!!!!!!!!!!!!\n", rd, start);
               goto reset_again;
             }
-#endif			
 		WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)| (1<<31));		
 	}else{
 		WRITE_MPEG_REG(AUDIN_SPDIF_MODE, READ_MPEG_REG(AUDIN_SPDIF_MODE)& ~(1<<31));				
 	}
+}
+int if_audio_in_i2s_enable()
+{
+	return READ_MPEG_REG_BITS(AUDIN_I2SIN_CTRL, I2SIN_EN, 1);
+}
+int if_audio_in_spdif_enable()
+{
+	return READ_MPEG_REG_BITS(AUDIN_SPDIF_MODE, 31, 1);
 }
 unsigned int audio_in_i2s_rd_ptr(void)
 {
 	unsigned int val;
 	val = READ_MPEG_REG(AUDIN_FIFO0_RDPTR);
 	printk("audio in i2s rd ptr: %x\n", val);
+	return val;
+}
+unsigned int audio_in_spdif_rd_ptr(void)
+{
+	unsigned int val;
+	val = READ_MPEG_REG(AUDIN_FIFO1_RDPTR);
+	printk("audio in spdif rd ptr: %x\n", val);
 	return val;
 }
 unsigned int audio_in_i2s_wr_ptr(void)
@@ -409,11 +408,21 @@ unsigned int audio_in_i2s_wr_ptr(void)
 	return (val)&(~0x3F);
 	//return val&(~0x7);
 }
+unsigned int audio_in_spdif_wr_ptr(void)
+{
+	unsigned int val;
+      WRITE_MPEG_REG(AUDIN_FIFO1_PTR, 1);
+	val = READ_MPEG_REG(AUDIN_FIFO1_PTR);
+	return (val)&(~0x3F);
+}
 void audio_in_i2s_set_wrptr(unsigned int val)
 {
 	WRITE_MPEG_REG(AUDIN_FIFO0_RDPTR, val);
 }
-
+void audio_in_spdif_set_wrptr(unsigned int val)
+{
+	WRITE_MPEG_REG(AUDIN_FIFO1_RDPTR, val);
+}
 void audio_set_i2s_mode(u32 mode)
 {
     const unsigned short mask[4] = {
@@ -987,7 +996,7 @@ void audio_enable_ouput(int flag)
         READ_MPEG_REG(AIU_I2S_SYNC);
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
 
-        if (ENABLE_IEC958) {
+        if (0/*ENABLE_IEC958*/) {
             if(IEC958_MODE == AIU_958_MODE_RAW)
             {
               //audio_hw_958_raw();
@@ -1006,7 +1015,7 @@ void audio_enable_ouput(int flag)
     } else {
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 1, 2);
 
-        if (ENABLE_IEC958) {
+        if (0/*ENABLE_IEC958*/) {
             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 0);
             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);
         }
@@ -1027,7 +1036,12 @@ unsigned int read_i2s_rd_ptr(void)
     val = READ_MPEG_REG(AIU_MEM_I2S_RD_PTR);
     return val;
 }
-
+unsigned int read_iec958_rd_ptr(void)
+{
+    unsigned int val;
+    val = READ_MPEG_REG(AIU_MEM_IEC958_RD_PTR);
+    return val;
+}
 void audio_i2s_unmute(void)
 {
     WRITE_MPEG_REG_BITS(AIU_I2S_MUTE_SWAP, 0, 8, 8);
@@ -1160,13 +1174,35 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 
     WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 1);
 }
+void audio_out_i2s_enable(unsigned flag)
+{
+    if (flag) {
+        WRITE_MPEG_REG(AIU_RST_SOFT, 0x05);
+        READ_MPEG_REG(AIU_I2S_SYNC);
+        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
+        // Maybe cause POP noise
+        // audio_i2s_unmute();
+    } else {
+        WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 1, 2);
 
+        // Maybe cause POP noise
+        // audio_i2s_mute();
+    }
+    //audio_out_enabled(flag);
+}
 void audio_hw_958_enable(unsigned flag)
 {
-    if (ENABLE_IEC958) {
-        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, flag, 2, 1);
-        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, flag, 1, 1);
-        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, flag, 0, 1);
+    if (ENABLE_IEC958)
+    {
+    		if(flag){
+	              WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 0);
+	              WRITE_MPEG_REG_BITS(AIU_958_DCU_FF_CTRL, 1, 0, 1);
+	              WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 3, 1, 2);
+    		}
+		else{
+	             WRITE_MPEG_REG(AIU_958_DCU_FF_CTRL, 0);
+	             WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 1, 2);			
+		}	
     }
 }
 

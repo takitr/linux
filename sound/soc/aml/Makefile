@@ -6,6 +6,7 @@ snd-soc-aml-hw-objs  := aml_audio_hw.o
 snd-soc-aml-hw-pcm2bt-objs  := aml_audio_hw_pcm2bt.o
 snd-soc-aml-platform-objs := aml_platform.o
 
+snd-soc-aml-spdif-dai-objs  := aml_spdif_dai.o
 obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-pcm.o
 obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-dai.o
 obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-hw.o
@@ -14,6 +15,7 @@ obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-platform.o
 obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-platform-pcm2bt.o
 obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-hw-pcm2bt.o
 
+obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-spdif-dai.o
 #AML M1 Machine support
 
 snd-soc-aml-m1-objs := aml_m1.o
@@ -75,6 +77,10 @@ snd-soc-aml-syno9629-codec-objs := aml_syno9629_codec.o
 obj-$(CONFIG_SND_AML_M6TV_AUDIO_CODEC) += snd-soc-aml-m6tv-audio.o
 obj-$(CONFIG_SND_AML_M6TV_SYNOPSYS9629_CODEC) += snd-soc-aml-syno9629-codec.o
 
+#AML spdif codec support
+snd-soc-aml-spdif-codec-objs := aml_spdif_codec.o
+#obj-$(CONFIG_SND_SOC_AML_SPDIF_CODEC) += snd-soc-aml-spdif-codec.o
+obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-spdif-codec.o
 #AML M8 Machine support
 snd-soc-aml-m8-objs := aml_m8.o
 obj-$(CONFIG_SND_AML_M8) += snd-soc-aml-m8.o
