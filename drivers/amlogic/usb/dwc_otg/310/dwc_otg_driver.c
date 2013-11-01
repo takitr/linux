@@ -616,6 +616,11 @@ int dwc_otg_power_unregister_notifier(struct notifier_block *nb)
 }
 EXPORT_SYMBOL(dwc_otg_power_unregister_notifier);
 
+void dwc_otg_power_notifier_call(char is_power_on)
+{
+	blocking_notifier_call_chain(&dwc_otg_power_notifier_list,is_power_on, NULL);
+}
+
 static BLOCKING_NOTIFIER_HEAD(dwc_otg_charger_detect_notifier_list);
 
 int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb)
@@ -679,11 +684,11 @@ void set_usb_vbus_power(int pin,char is_power_on)
     if(is_power_on){
         printk( "set usb port power on (board gpio %d)!\n",pin);
         amlogic_gpio_direction_output(pin,is_power_on,VBUS_POWER_GPIO_OWNER);		//set vbus on by gpio	 
-	    blocking_notifier_call_chain(&dwc_otg_power_notifier_list,is_power_on, NULL);		//notify pmu off vbus first
+	    dwc_otg_power_notifier_call(is_power_on);		//notify pmu off vbus first
     }
     else    {
         printk("set usb port power off (board gpio %d)!\n",pin);
-        blocking_notifier_call_chain(&dwc_otg_power_notifier_list,is_power_on, NULL);		//notify pmu on vbus
+        dwc_otg_power_notifier_call(is_power_on);		//notify pmu on vbus
 	    amlogic_gpio_direction_output(pin,is_power_on,VBUS_POWER_GPIO_OWNER);		//set vbus off by gpio first
     }
 }
