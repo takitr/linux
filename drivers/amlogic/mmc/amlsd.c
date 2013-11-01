@@ -823,9 +823,11 @@ void aml_cs_high (struct amlsd_platform * pdata) // chip select high
 
         ret = amlogic_gpio_request_one(pdata->gpio_dat3, GPIOF_OUT_INIT_HIGH, MODULE_NAME);
         CHECK_RET(ret);
-        ret = amlogic_gpio_direction_output(pdata->gpio_dat3, 1, MODULE_NAME); // output high
-        CHECK_RET(ret);
-        // print_tmp("emmc gpio_dat3=%d\n", amlogic_get_value(pdata->gpio_dat3, MODULE_NAME));
+        if (ret == 0) {
+            ret = amlogic_gpio_direction_output(pdata->gpio_dat3, 1, MODULE_NAME); // output high
+            CHECK_RET(ret);
+            // print_tmp("emmc gpio_dat3=%d\n", amlogic_get_value(pdata->gpio_dat3, MODULE_NAME));
+        }
     }
 }
 
