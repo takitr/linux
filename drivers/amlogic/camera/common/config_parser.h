@@ -6,7 +6,7 @@
 #include <linux/mm.h>
 #include <linux/i2c.h>
 #include <linux/string.h>
-#include <linux/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 
 #define EFFECT_MAX 16
 #define AET_MAX 16
@@ -14,7 +14,6 @@
 #define WB_MAX 9
 #define CAPTURE_MAX 5
 #define GAMMA_MAX 257
-#define SCENE_MAX 202
 #define BUFFER_SIZE 1024
 
 enum error_code {
@@ -69,7 +68,7 @@ typedef struct{
 typedef struct{
     int num;
     char name[40];
-    int export[SCENE_MAX];
+    int export[194];
 }scene_type;
 
 typedef struct{
