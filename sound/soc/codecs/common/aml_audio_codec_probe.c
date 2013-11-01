@@ -4,7 +4,7 @@
  *
  *  Description:
  *
- *  Author: Amlogic Software  
+ *  Author: Amlogic Software
  *
  *******************************************************************/
 #include <linux/i2c.h>
@@ -19,12 +19,12 @@
 #include <mach/am_regs.h>
 #include <linux/delay.h>
 #include <mach/gpio.h>
-#include <sound/aml_audio_codec_probe.h>
+#include <linux/amlogic/aml_audio_codec_probe.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 
 
 
-extern struct i2c_client * i2c_new_device(struct i2c_adapter *adap, 
+extern struct i2c_client * i2c_new_device(struct i2c_adapter *adap,
 			struct i2c_board_info const *info);
 
 
@@ -67,19 +67,19 @@ static int get_audio_codec_i2c_info(struct device_node* p_node, aml_audio_codec_
 		printk("get audio codec name failed!\n");
 		goto err_out;
 	}
-    
+
     ret = of_property_match_string(p_node,"status","okay");
     if(ret){
         printk("%s:this audio codec is disabled!\n",audio_codec_dev->name);
         goto err_out;
     }
     printk("use audio codec %s\n",audio_codec_dev->name);
-	
+
 	ret = of_property_read_u32(p_node,"capless",&audio_codec_dev->capless);
     if(ret){
         printk("don't find audio codec capless mode!\n");
     }
-    
+
 	ret = of_property_read_string(p_node, "i2c_bus", &str);
 	if (ret) {
 		printk("%s: faild to get i2c_bus str,use default i2c bus!\n", audio_codec_dev->name);
@@ -92,9 +92,9 @@ static int get_audio_codec_i2c_info(struct device_node* p_node, aml_audio_codec_
 		else if (!strncmp(str, "i2c_bus_ao", 10))
 			audio_codec_dev->i2c_bus_type = AML_I2C_BUS_AO;
 		else
-			audio_codec_dev->i2c_bus_type = AML_I2C_BUS_B; 
+			audio_codec_dev->i2c_bus_type = AML_I2C_BUS_B;
 	}
-	
+
 	ret = of_property_read_u32(p_node,"i2c_addr",&i2c_addr);
     if(ret){
         printk("don't find i2c adress capless,use default!\n");
@@ -104,7 +104,7 @@ static int get_audio_codec_i2c_info(struct device_node* p_node, aml_audio_codec_
     }
 	printk("audio codec addr: 0x%x\n", audio_codec_dev->i2c_addr);
 	printk("audio codec i2c bus: %d\n", audio_codec_dev->i2c_bus_type);
-	
+
 	/* test if the camera is exist */
 	adapter = i2c_get_adapter(audio_codec_dev->i2c_bus_type);
 	if (!adapter) {
@@ -113,9 +113,9 @@ static int get_audio_codec_i2c_info(struct device_node* p_node, aml_audio_codec_
 		goto err_out;
 	}
 	ret = 0;
-	
+
 err_out:
-	return ret;	
+	return ret;
 }
 
 
@@ -130,7 +130,7 @@ static int aml_audio_codec_probe(struct platform_device *pdev)
     is_rt5631 = false;
     is_wm8960 = false;
 	for_each_child_of_node(audio_codec_node, child) {
-		
+
 		memset(&temp_audio_codec, 0, sizeof(aml_audio_codec_info_t));
 		regist_codec_info(child,&temp_audio_codec);
 		if (get_audio_codec_i2c_info(child, &temp_audio_codec)) {
@@ -143,7 +143,7 @@ static int aml_audio_codec_probe(struct platform_device *pdev)
 		board_info.addr = temp_audio_codec.i2c_addr;
 		board_info.platform_data = &temp_audio_codec;
         //printk("***********i2c_new_device*******adapter=%d*****\n",adapter);
-		i2c_new_device(adapter, &board_info);	
+		i2c_new_device(adapter, &board_info);
 	}
 	return 0;
 }
@@ -157,7 +157,7 @@ static int aml_audio_codec_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id aml_audio_codec_probe_dt_match[]={
-	{	
+	{
 		.compatible = "amlogic,audio_codec",
 	},
 	{},
