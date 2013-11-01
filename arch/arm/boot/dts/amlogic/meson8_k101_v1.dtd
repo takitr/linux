@@ -65,6 +65,8 @@ void root_func(){
           prefetch-double_line_fill;
           prefetch-prefetch_drop;
           prefetch-prefetch_offset = <7>;
+	  power-dynamic_clk_gating;
+	  power-standby_mode;
     };
 
 /// ***************************************************************************************
