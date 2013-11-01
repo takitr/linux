@@ -783,7 +783,7 @@ int parse_scene(buffer_para_t *buf_para,int *remained,int *offset){
 
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<194;i++){
+        for(i=0;i<SCENE_MAX;i++){
             sscanf(iter,"%x",&(cf->scene.scene[check].export[i]));
             //printk("scene:%x\n",(cf->scene.scene[check].export[i]));
             iter = strstr(iter,",");
@@ -1131,9 +1131,9 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         scene = para->xml_scenes;
-        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,93*sizeof(unsigned int));
-        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 93,100*sizeof(unsigned int));
-        memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 193,1*sizeof(unsigned int));
+        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
+        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 97,104*sizeof(unsigned int));
+        memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
     }else{
         para->xml_scenes = NULL;
     }
