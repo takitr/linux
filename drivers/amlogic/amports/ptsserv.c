@@ -31,6 +31,7 @@ typedef struct pts_rec_s {
     struct list_head list;
     u32 offset;
     u32 val;
+    u64 pts_uS64;
 } pts_rec_t;
 
 typedef struct pts_table_s {
@@ -204,7 +205,7 @@ EXPORT_SYMBOL(calculation_stream_delayed_ms);
 
 #endif
 
-int pts_checkin_offset(u8 type, u32 offset, u32 val)
+static int pts_checkin_offset_inline(u8 type, u32 offset, u32 val,u64 uS64)
 {
     ulong flags;
     pts_table_t *pTable;
@@ -252,7 +253,8 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
 
         rec->offset = offset;
         rec->val = val;
-
+        rec->pts_uS64 = uS64;
+		
 #ifdef CALC_CACHED_TIME
 	{
 		s32 diff = offset-pTable->last_checkin_offset;
@@ -295,7 +297,7 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
                 printk("init apts[%d] at 0x%x\n", type, val);
             }
 
-            if (type == PTS_TYPE_VIDEO) {
+            if (type == PTS_TYPE_VIDEO) {	
                 WRITE_MPEG_REG(VIDEO_PTS, val);
             } else if (type == PTS_TYPE_AUDIO) {
                 WRITE_MPEG_REG(AUDIO_PTS, val);
@@ -312,8 +314,19 @@ int pts_checkin_offset(u8 type, u32 offset, u32 val)
         return -EINVAL;
     }
 }
+int pts_checkin_offset(u8 type, u32 offset, u32 val){
+    u64 us;
+    us = div64_u64(val*100,9);
+    return pts_checkin_offset_inline(type,offset,val,us);
+}
+int pts_checkin_offset_us64(u8 type, u32 offset, u64 us){
+    u64 pts_val;
+    pts_val = div64_u64(us*9,100);
+    return pts_checkin_offset_inline(type,offset,(u32)pts_val,us);
+}
 
 EXPORT_SYMBOL(pts_checkin_offset);
+EXPORT_SYMBOL(pts_checkin_offset_us64);
 
 /* This type of PTS could happen in the past,
  * e.g. from TS demux when the real time (wr_page, wr_ptr)
@@ -433,8 +446,8 @@ int pts_lookup(u8 type, u32 *val, u32 pts_margin)
 }
 
 EXPORT_SYMBOL(pts_lookup);
-
-int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
+static int pts_lookup_offset_inline(
+    u8 type, u32 offset, u32 *val, u32 pts_margin, u64 *uS64)
 {
     ulong flags;
     pts_table_t *pTable;
@@ -537,6 +550,7 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
                 }
             }
             *val = p2->val;
+            *uS64 = p2->pts_uS64;
 
 #ifdef CALC_CACHED_TIME
 	    pTable->last_checkout_pts = p2->val;
@@ -609,8 +623,16 @@ int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin)
 
     return -1;
 }
+int pts_lookup_offset(u8 type, u32 offset, u32 *val, u32 pts_margin){
+	u64 pts_us;
+	return pts_lookup_offset_inline(type,offset,val,pts_margin,&pts_us);
+}
+int pts_lookup_offset_us64(u8 type, u32 offset, u32 *val ,u32 pts_margin, u64 *uS64){
+	return pts_lookup_offset_inline(type,offset,val,pts_margin,uS64);
+}
 
 EXPORT_SYMBOL(pts_lookup_offset);
+EXPORT_SYMBOL(pts_lookup_offset_us64);
 
 int pts_set_resolution(u8 type, u32 level)
 {

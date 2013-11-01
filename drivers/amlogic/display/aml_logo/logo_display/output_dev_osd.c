@@ -6,7 +6,7 @@
 #include <linux/wait.h>
 #include	"amlogo_log.h" 
 #include <linux/amlogic/amlog.h>
-#include <linux/vout/vinfo.h>
+#include <linux/amlogic/vout/vinfo.h>
 
 #define DisableVideoLayer() \
     do { aml_clr_reg32_mask(P_VPP_MISC, \

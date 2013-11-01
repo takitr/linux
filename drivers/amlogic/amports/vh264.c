@@ -796,6 +796,7 @@ static void vh264_isr(void)
     vframe_t *vf;
     unsigned int cpu_cmd;
     unsigned int pts, pts_valid = 0, pts_duration = 0;
+	u64 pts_us64;
     bool force_interlaced_frame = false;
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
@@ -908,7 +909,8 @@ static void vh264_isr(void)
                 break;
             }
 
-            if (pts_lookup_offset(PTS_TYPE_VIDEO, b_offset, &pts, 0) == 0) {
+            // add 64bit pts us ;
+            if (pts_lookup_offset_us64(PTS_TYPE_VIDEO, b_offset, &pts, 0,&pts_us64) == 0){
                 pts_valid = 1;
 #ifdef DEBUG_PTS
                 pts_hit++;
@@ -919,7 +921,6 @@ static void vh264_isr(void)
                 pts_missed++;
 #endif
             }
-
             if (sync_outside == 0) {
                 if (h264_first_pts_ready == 0) {
                     if (pts_valid == 0) {
@@ -1013,7 +1014,7 @@ static void vh264_isr(void)
                 vf->duration_pulldown = 0;
                 vf->index = buffer_index;
                 vf->pts = (pts_valid) ? pts : 0;
-
+                vf->pts_us64= (pts_valid) ? pts_us64 : 0;
                 vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[buffer_index]);
                 vfbuf_use[buffer_index]++;
 
@@ -1039,7 +1040,7 @@ static void vh264_isr(void)
                 vf->duration_pulldown = 0;
                 vf->index = buffer_index;
                 vf->pts = (pts_valid) ? pts : 0;
-
+                vf->pts_us64= (pts_valid) ? pts_us64 : 0;
                 vf->canvas0Addr = vf->canvas1Addr = spec2canvas(&buffer_spec[buffer_index]);
                 vfbuf_use[buffer_index]++;
 

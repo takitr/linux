@@ -751,7 +751,8 @@ static ssize_t digital_raw_show(struct class*cla, struct class_attribute* attr, 
     "2 - RAW w/  over clock",
   };
   char* pbuf = buf;
-  pbuf += sprintf(pbuf, "Digital output mode: %s\n", digital_format[IEC958_mode_raw]);
+  printk("Digital output mode: %s\n", digital_format[IEC958_mode_raw]);
+  pbuf += sprintf(pbuf, "%d\n",IEC958_mode_raw);
   return (pbuf-buf);
 }
 static ssize_t digital_raw_store(struct class* class, struct class_attribute* attr,
@@ -766,6 +767,39 @@ static ssize_t digital_raw_store(struct class* class, struct class_attribute* at
     IEC958_mode_raw = 2;	// RAW with over clock
   }
   printk("IEC958_mode_raw=%d\n", IEC958_mode_raw);
+  return count;
+}
+static ssize_t digital_codec_show(struct class*cla, struct class_attribute* attr, char* buf)
+{
+  static char* codec_format[] = {
+	"0-pcm",
+    "1-old_dts",
+    "2-dd",
+    "3-dtshd",
+    "4-dd+",
+  };
+  char* pbuf = buf;
+
+  printk("IEC958_mode_codec/%d Digital codec type: %s\n",IEC958_mode_codec, codec_format[IEC958_mode_codec]);
+  pbuf += sprintf(pbuf, "%d\n",IEC958_mode_codec);
+  return (pbuf-buf);
+}
+static ssize_t digital_codec_store(struct class* class, struct class_attribute* attr,
+   const char* buf, size_t count )
+{
+  printk("buf=%s\n", buf);
+  if(buf[0] == '0'){
+      IEC958_mode_codec = 0;  //pcm
+  }else if(buf[0] == '1'){
+      IEC958_mode_codec = 1;  //dts
+  }else if(buf[0] == '2'){
+      IEC958_mode_codec = 2;  // dd
+  }else if(buf[0] == '3'){
+      IEC958_mode_codec= 3;   //dts
+  }else if(buf[0] == '4'){    
+      IEC958_mode_codec=4;   //dd+
+  }
+  printk("IEC958_mode_codec=%d\n", IEC958_mode_codec);
   return count;
 }
 static ssize_t print_flag_show(struct class*cla, struct class_attribute* attr, char* buf)
@@ -969,6 +1003,7 @@ static struct class_attribute audiodsp_attrs[]={
     __ATTR_RO(swap_buf_ptr),
     __ATTR_RO(dsp_working_status),
     __ATTR(digital_raw, S_IRUGO | S_IWUSR, digital_raw_show, digital_raw_store),
+     __ATTR(digital_codec, S_IRUGO | S_IWUSR, digital_codec_show, digital_codec_store),
     __ATTR(dec_option, S_IRUGO | S_IWUSR, dec_option_show, dec_option_store),
     __ATTR(print_flag, S_IRUGO | S_IWUSR, print_flag_show, print_flag_store),
     __ATTR(ac3_drc_control, S_IRUGO | S_IWUSR, ac3_drc_control_show, ac3_drc_control_store),

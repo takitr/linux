@@ -482,14 +482,21 @@ static int freerun_dqbuf(struct v4l2_buffer *p) {
     }
     mutex_lock(&vfpMutex);
     ppmgrvf = vf_get(RECEIVER_NAME);
+
     if (!ppmgrvf) {
         mutex_unlock(&vfpMutex);
         return -EAGAIN;
     }
     if (ppmgrvf->pts != 0) {
         timestamp_vpts_set(ppmgrvf->pts);
-    } else
+    } else{
         timestamp_vpts_inc(DUR2PTS(ppmgrvf->duration));
+		ppmgrvf->pts=timestamp_vpts_get();
+    }
+
+	if(!ppmgrvf->pts)
+        ppmgrvf->pts_us64=ppmgrvf->pts*100/9;
+	
     if (unregFlag || startFlag) {
         if (ppmgrvf->pts == 0)
             timestamp_vpts_set(timestamp_pcrscr_get());
@@ -502,7 +509,7 @@ static int freerun_dqbuf(struct v4l2_buffer *p) {
     }
     p->index = ppmgrvf->canvas0Addr&0xff - PPMGR_CANVAS_INDEX;
     p->timestamp.tv_sec = 0;
-    p->timestamp.tv_usec = timestamp_vpts_get();
+    p->timestamp.tv_usec = ppmgrvf->pts_us64;
     return ret;
 }
 
