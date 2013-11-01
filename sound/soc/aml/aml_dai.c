@@ -15,7 +15,7 @@
 
 #include "aml_dai.h"
 #include "aml_pcm.h"
-#include <aml_audio_hw.h>
+#include "aml_audio_hw.h"
 #include <linux/of.h>
 
 static aml_dai_info_t dai_info[3] = {{0}};
