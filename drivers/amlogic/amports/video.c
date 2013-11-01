@@ -2401,7 +2401,12 @@ unsigned int vf_keep_current(void)
     }
 
     if ((cur_dispbuf->type & VIDTYPE_VIU_422) == VIDTYPE_VIU_422) {
-	 canvas_read(y_index,&cd);
+        canvas_read(y_index,&cd);
+        if ((Y_BUFFER_SIZE < (cd.width *cd.height))) {
+            printk("## [%s::%d] error: yuv data size larger than buf size: %x,%x,%x, %x,%x\n", __FUNCTION__,__LINE__,
+            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cd.width,cd.height);
+            return -1;
+        }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))) {
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
@@ -2410,10 +2415,12 @@ unsigned int vf_keep_current(void)
             }
         }
     } else if ((cur_dispbuf->type & VIDTYPE_VIU_444) == VIDTYPE_VIU_444) {
-    	 canvas_read(y_index,&cd);
-	if((cd.width*cd.height) > Y_BUFFER_SIZE ){
-	return -1;
-	}
+        canvas_read(y_index,&cd);
+        if ((Y_BUFFER_SIZE < (cd.width *cd.height))) {
+            printk("## [%s::%d] error: yuv data size larger than buf size: %x,%x,%x, %x,%x\n", __FUNCTION__,__LINE__,
+            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cd.width,cd.height);
+            return -1;
+        }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))){
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
@@ -2424,6 +2431,11 @@ unsigned int vf_keep_current(void)
     } else if((cur_dispbuf->type & VIDTYPE_VIU_NV21) == VIDTYPE_VIU_NV21){
         canvas_read(y_index,&cs0);
         canvas_read(u_index,&cs1);
+        if ((Y_BUFFER_SIZE < (cs0.width *cs0.height)) || (U_BUFFER_SIZE < (cs1.width *cs1.height))) {
+            printk("## [%s::%d] error: yuv data size larger than buf size: %x,%x,%x, %x,%x, %x,%x\n", __FUNCTION__,__LINE__,
+            Y_BUFFER_SIZE,U_BUFFER_SIZE, V_BUFFER_SIZE, cs0.width,cs0.height,cs1.width,cs1.height);
+            return -1;
+        }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height))){
