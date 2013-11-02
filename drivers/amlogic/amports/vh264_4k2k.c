@@ -36,6 +36,7 @@
 #include <linux/dma-mapping.h>
 
 #include <mach/am_regs.h>
+#include <mach/vpu.h>
 #include "vdec_reg.h"
 
 #include "vdec.h"
@@ -1296,6 +1297,8 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
         return -ENODEV;
     }
 
+    request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
+
     return 0;
 }
 
@@ -1310,6 +1313,8 @@ static int amvdec_h264_4k2k_remove(struct platform_device *pdev)
     printk("pts missed %ld, pts hit %ld, duration %d\n",
            pts_missed, pts_hit, frame_dur);
 #endif
+
+    release_vpu_clk_vmod(VPU_VIU_VD1);
 
     return 0;
 }
