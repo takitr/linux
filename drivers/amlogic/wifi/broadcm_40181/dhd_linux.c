@@ -378,6 +378,7 @@ module_param(iw_msg_level, int, 0);
 module_param(wl_dbg_level, int, 0);
 #endif
 module_param(android_msg_level, int, 0);
+module_param(config_msg_level, int, 0);
 
 #ifdef ARP_OFFLOAD_SUPPORT
 /* ARP offload enable */
@@ -575,8 +576,6 @@ static int dhd_sleep_pm_callback(struct notifier_block *nfb, unsigned long actio
 {
 	int ret = NOTIFY_DONE;
 
-// terence 20130711: Enable dhd_mmc_suspend to prevent driver sending command to mmc if mmc is not ready to read/write
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(2, 6, 39))
 
 	switch (action) {
 	case PM_HIBERNATION_PREPARE:
@@ -591,7 +590,7 @@ static int dhd_sleep_pm_callback(struct notifier_block *nfb, unsigned long actio
 		break;
 	}
 	smp_mb();
-#endif
+
 	return ret;
 }
 

@@ -46,6 +46,7 @@
 #include <wl_cfg80211.h>
 #include <wl_cfgp2p.h>
 #include <wl_android.h>
+#include <dhd_config.h>
 
 #ifdef PROP_TXSTATUS
 #include <dhd_wlfc.h>
@@ -1538,8 +1539,8 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
 			chspec = wl_cfg80211_get_shared_freq(wiphy);
 
 			wlif_type = WL_P2P_IF_GO;
-			WL_ERR(("%s : ap (%d), infra (%d), iftype: (%d)\n",
-				ndev->name, ap, infra, type));
+			printk("%s : ap (%d), infra (%d), iftype: (%d)\n",
+				ndev->name, ap, infra, type);
 			wl_set_p2p_status(wl, IF_CHANGING);
 			wl_clr_p2p_status(wl, IF_CHANGED);
 			wl_cfgp2p_ifchange(wl, &wl->p2p->int_addr, htod32(wlif_type), chspec);
@@ -2855,7 +2856,7 @@ wl_cfg80211_join_ibss(struct wiphy *wiphy, struct net_device *dev,
 	} else {
 		wl->ibss_starter = true;
 	}
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 10, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0))
 	chan = params->chandef.chan;
 #else
 	chan = params->channel;
@@ -5616,8 +5617,8 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
 
 	dev = ndev_to_wlc_ndev(dev, wl);
 	_chan = ieee80211_frequency_to_channel(chan->center_freq);
-	WL_ERR(("netdev_ifidx(%d), chan_type(%d) target channel(%d) \n",
-		dev->ifindex, channel_type, _chan));
+	printk("netdev_ifidx(%d), chan_type(%d) target channel(%d) \n",
+		dev->ifindex, channel_type, _chan);
 
 
 	if (chan->band == IEEE80211_BAND_5GHZ) {
@@ -6466,9 +6467,9 @@ wl_cfg80211_del_station(
 		sizeof(scb_val_t), true);
 	if (err < 0)
 		WL_ERR(("WLC_SCB_DEAUTHENTICATE_FOR_REASON err %d\n", err));
-	WL_ERR(("Disconnect STA : %s scb_val.val %d\n",
+	printk("Disconnect STA : %s scb_val.val %d\n",
 		bcm_ether_ntoa((const struct ether_addr *)mac_addr, eabuf),
-		scb_val.val));
+		scb_val.val);
 
 	if (num_associated > 0 && ETHER_ISBCAST(mac_addr))
 		wl_delay(400);
@@ -7337,7 +7338,8 @@ static s32 wl_inform_single_bss(struct wl_priv *wl, struct wl_bss_info *bi)
 	}
 	channel = ieee80211_get_channel(wiphy, freq);
 	if (unlikely(!channel)) {
-		WL_ERR(("ieee80211_get_channel error\n"));
+		WL_ERR(("ieee80211_get_channel error, freq=%d, channel=%d\n",
+			freq, notif_bss_info->channel));
 		kfree(notif_bss_info);
 		return -EINVAL;
 	}
@@ -7593,10 +7595,13 @@ exit:
 		}
 		sinfo.assoc_req_ies = data;
 		sinfo.assoc_req_ies_len = len;
+		printk("%s: connected device "MACDBG"\n", __FUNCTION__, MAC2STRDBG(e->addr.octet));
 		cfg80211_new_sta(ndev, e->addr.octet, &sinfo, GFP_ATOMIC);
 	} else if (event == WLC_E_DISASSOC_IND) {
+		printk("%s: disassociated device "MACDBG"\n", __FUNCTION__, MAC2STRDBG(e->addr.octet));
 		cfg80211_del_sta(ndev, e->addr.octet, GFP_ATOMIC);
 	} else if ((event == WLC_E_DEAUTH_IND) || (event == WLC_E_DEAUTH)) {
+		printk("%s: deauthenticated device "MACDBG"\n", __FUNCTION__, MAC2STRDBG(e->addr.octet));
 		cfg80211_del_sta(ndev, e->addr.octet, GFP_ATOMIC);
 	}
 #endif /* LINUX_VERSION < VERSION(3,2,0) && !WL_CFG80211_STA_EVENT && !WL_COMPAT_WIRELESS */
@@ -9352,6 +9357,8 @@ static s32 wl_escan_handler(struct wl_priv *wl, bcm_struct_cfgdev *cfgdev,
 			WL_ERR(("No valid band\n"));
 			goto exit;
 		}
+		if (!dhd_conf_match_channel(bcmsdh_get_drvdata(), channel))
+			goto exit;
 		/* ----- terence 20130524: skip invalid bss */
 
 		if (wl_escan_check_sync_id(status, escan_result->sync_id,
@@ -9669,7 +9676,7 @@ static void wl_cfg80211_determine_vsdb_mode(struct wl_priv *wl)
 			}
 		}
 	}
-	WL_ERR(("%s concurrency is enabled\n", wl->vsdb_mode ? "Multi Channel" : "Same Channel"));
+	printk("%s concurrency is enabled\n", wl->vsdb_mode ? "Multi Channel" : "Same Channel");
 	return;
 }
 
@@ -10491,6 +10498,8 @@ static int wl_construct_reginfo(struct wl_priv *wl, s32 bw_cap)
 		c = (chanspec_t)dtoh32(list->element[i]);
 		c = wl_chspec_driver_to_host(c);
 		channel = CHSPEC_CHANNEL(c);
+		if (!dhd_conf_match_channel(bcmsdh_get_drvdata(), channel))
+			continue;
 		if (CHSPEC_IS40(c)) {
 			if (CHSPEC_SB_UPPER(c))
 				channel += CH_10MHZ_APART;
@@ -13026,3 +13035,76 @@ wl_get_public_action(void *frame, u32 frame_len, u8 *ret_action)
 	WL_INFO(("Public Action : %d\n", *ret_action));
 	return BCME_OK;
 }
+
+#ifdef POWER_OFF_IN_SUSPEND
+static void wl_scan_complete(struct wl_priv *wl)
+{
+	wl_event_msg_t msg;
+	WL_TRACE(("In\n"));
+
+	if (!(wl->scan_request)) {
+		WL_ERR(("timer expired but no scan request\n"));
+		return;
+	}
+	bzero(&msg, sizeof(wl_event_msg_t));
+	if (wl->escan_on && wl->escan_info.escan_state == WL_ESCAN_STATE_SCANING) {
+		msg.event_type = hton32(WLC_E_ESCAN_RESULT);
+		msg.status = hton32(WLC_E_STATUS_SUCCESS);
+		msg.reason = 0;
+		wl_cfg80211_event(wl_to_prmry_ndev(wl), &msg, NULL);
+	}
+}
+
+void wl_cfg80211_stop(void)
+{
+	struct wl_priv *wl;
+
+	wl = wlcfg_drv_priv;
+
+	WL_TRACE(("In\n"));
+
+	wl_scan_complete(wl);
+
+	if (wl->btcoex_info && wl->btcoex_info->timer_on) {
+		wl->btcoex_info->timer_on = 0;
+		del_timer_sync(&wl->btcoex_info->timer);
+	}
+
+	if (wl->p2p_supported) {
+		if (timer_pending(&wl->p2p->listen_timer))
+			del_timer_sync(&wl->p2p->listen_timer);
+	}
+
+	del_timer_sync(&wl->scan_timeout);
+
+#if defined(RSSIAVG)
+	wl_free_rssi_cache(&g_rssi_cache_ctrl);
+	wl_free_rssi_cache(&g_rssi2_cache_ctrl);
+#endif
+#if defined(BSSCACHE)
+	wl_free_bss_cache(&g_bss_cache_ctrl);
+	wl_run_bss_cache_timer(&g_bss_cache_ctrl, 0);
+#endif
+}
+
+void wl_cfg80211_send_disconnect(void)
+{
+	struct wl_priv *wl;
+
+	wl = wlcfg_drv_priv;
+
+	WL_TRACE(("In\n"));
+	cfg80211_disconnected(wl_to_prmry_ndev(wl), 0, NULL, 0, GFP_KERNEL);
+}
+
+void wl_cfg80211_user_sync(bool lock)
+{
+	struct wl_priv *wl;
+
+	wl = wlcfg_drv_priv;
+	if (lock)
+		mutex_lock(&wl->usr_sync);
+	else
+		mutex_unlock(&wl->usr_sync);
+}
+#endif

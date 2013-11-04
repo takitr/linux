@@ -223,39 +223,6 @@ dhd_conf_set_nv_path(dhd_pub_t *dhd, char *nv_path)
 }
 
 int
-dhd_conf_set_country(dhd_pub_t *dhd)
-{
-	int bcmerror = -1;
-	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
-	
-	printf("Set country %s, revision %d\n", dhd->conf->cspec.ccode, dhd->conf->cspec.rev);
-	bcm_mkiovar("country", (char *)&dhd->dhd_cspec,
-		sizeof(wl_country_t), iovbuf, sizeof(iovbuf));
-	if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
-		printf("%s: country code setting failed %d\n", __FUNCTION__, bcmerror);
-
-	memcpy(&dhd->dhd_cspec, &dhd->conf->cspec, sizeof(wl_country_t));
-
-	return bcmerror;
-}
-
-int
-dhd_conf_get_country(dhd_pub_t *dhd)
-{
-	int bcmerror = -1;
-	wl_country_t *cspec = &dhd->dhd_cspec;
-
-	memset(cspec, 0, sizeof(wl_country_t));
-	bcm_mkiovar("country", NULL, 0, (char*)cspec, sizeof(wl_country_t));
-	if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, cspec, sizeof(wl_country_t), FALSE, 0)) < 0)
-		printf("%s: country code getting failed %d\n", __FUNCTION__, bcmerror);
-	else
-		printf("Country code: %s (%s/%d)\n", cspec->country_abbrev, cspec->ccode, cspec->rev);
-
-	return bcmerror;
-}
-
-int
 dhd_conf_set_band(dhd_pub_t *dhd)
 {
 	int bcmerror = -1;
@@ -271,6 +238,55 @@ uint
 dhd_conf_get_band(dhd_pub_t *dhd)
 {
 	return dhd->conf->band;
+}
+
+int
+dhd_conf_set_country(dhd_pub_t *dhd)
+{
+	int bcmerror = -1;
+	char iovbuf[WL_EVENTING_MASK_LEN + 12];	/*  Room for "event_msgs" + '\0' + bitvec  */
+	
+	memset(&dhd->dhd_cspec, 0, sizeof(wl_country_t));
+	printf("%s: Set country %s, revision %d\n", __FUNCTION__,
+		dhd->conf->cspec.ccode, dhd->conf->cspec.rev);
+	bcm_mkiovar("country", (char *)&dhd->conf->cspec,
+		sizeof(wl_country_t), iovbuf, sizeof(iovbuf));
+	if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0)) < 0)
+		printf("%s: country code setting failed %d\n", __FUNCTION__, bcmerror);
+
+	return bcmerror;
+}
+
+int
+dhd_conf_get_country(dhd_pub_t *dhd)
+{
+	int bcmerror = -1;
+	wl_country_t cspec;
+
+	memset(&cspec, 0, sizeof(wl_country_t));
+	bcm_mkiovar("country", NULL, 0, (char*)&cspec, sizeof(wl_country_t));
+	if ((bcmerror = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, &cspec, sizeof(wl_country_t), FALSE, 0)) < 0)
+		printf("%s: country code getting failed %d\n", __FUNCTION__, bcmerror);
+	else
+		printf("Country code: %s (%s/%d)\n", cspec.country_abbrev, cspec.ccode, cspec.rev);
+
+	return bcmerror;
+}
+
+bool
+dhd_conf_match_channel(dhd_pub_t *dhd, uint32 channel)
+{
+	int i;
+
+	if (dhd->conf->channels.count== 0)
+		return true;
+	for (i=0; i<dhd->conf->channels.count; i++) {
+		if (channel == dhd->conf->channels.channel[i]) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 int
@@ -376,11 +392,11 @@ process_config_vars(char *varbuf, unsigned int len, char *pickbuf, char *param)
 int
 dhd_conf_download_config(dhd_pub_t *dhd)
 {
-	int bcmerror = -1;
+	int bcmerror = -1, i;
 	uint len, len_val;
 	void * image = NULL;
 	char * memblock = NULL;
-	char *bufp, pick[MAXSZ_BUF];
+	char *bufp, pick[MAXSZ_BUF], *pch, *pick_tmp;
 	char *pconf_path;
 	bool conf_file_exists;
 
@@ -429,18 +445,6 @@ dhd_conf_download_config(dhd_pub_t *dhd)
 			printf("%s: nv_path = %s\n", __FUNCTION__, dhd->conf->nv_path);
 		}
 
-		/* Process country code */
-		memset(pick, 0, MAXSZ_BUF);
-		len_val = process_config_vars(bufp, len, pick, "ccode=");
-		if (len_val) {
-			memcpy(dhd->dhd_cspec.country_abbrev, pick, len_val);
-			memcpy(dhd->dhd_cspec.ccode, pick, len_val);
-			memset(pick, 0, MAXSZ_BUF);
-			len_val = process_config_vars(bufp, len, pick, "regrev=");
-			if (len_val)
-				dhd->dhd_cspec.rev = (int32)simple_strtol(pick, NULL, 10);
-		}
-
 		/* Process band */
 		memset(pick, 0, MAXSZ_BUF);
 		len_val = process_config_vars(bufp, len, pick, "band=");
@@ -448,6 +452,38 @@ dhd_conf_download_config(dhd_pub_t *dhd)
 			if (!strncmp(pick, "b", len_val))
 				dhd->conf->band = WLC_BAND_2G;
 			printf("%s: band = %d\n", __FUNCTION__, dhd->conf->band);
+		}
+
+		/* Process country code */
+		memset(pick, 0, MAXSZ_BUF);
+		len_val = process_config_vars(bufp, len, pick, "ccode=");
+		if (len_val) {
+			memset(&dhd->conf->cspec, 0, sizeof(wl_country_t));
+			memcpy(dhd->conf->cspec.country_abbrev, pick, len_val);
+			memcpy(dhd->conf->cspec.ccode, pick, len_val);
+			memset(pick, 0, MAXSZ_BUF);
+			len_val = process_config_vars(bufp, len, pick, "regrev=");
+			if (len_val)
+				dhd->conf->cspec.rev = (int32)simple_strtol(pick, NULL, 10);
+		}
+
+		/* Process channels */
+		memset(pick, 0, MAXSZ_BUF);
+		len_val = process_config_vars(bufp, len, pick, "channels=");
+		pick_tmp = pick;
+		if (len_val) {
+			pch = bcmstrtok(&pick_tmp, " ,.-", 0);
+			i=0;
+			while (pch != NULL && i<WL_NUMCHANNELS) {
+				dhd->conf->channels.channel[i] = (uint32)simple_strtol(pch, NULL, 10);
+				pch = bcmstrtok(&pick_tmp, " ,.-", 0);
+				i++;
+			}
+			dhd->conf->channels.count = i;
+			printf("%s: channels = ", __FUNCTION__);
+			for (i=0; i<dhd->conf->channels.count; i++)
+				printf("%d ", dhd->conf->channels.channel[i]);
+			printf("\n");
 		}
 
 		/* Process roam */
@@ -516,10 +552,11 @@ dhd_conf_download_config(dhd_pub_t *dhd)
 		/* Process keep alive period */
 		memset(pick, 0, MAXSZ_BUF);
 		len_val = process_config_vars(bufp, len, pick, "keep_alive_period=");
-		if (len_val)
+		if (len_val) {
 			dhd->conf->keep_alive_period = (int)simple_strtol(pick, NULL, 10);
-		printf("%s: keep_alive_period = %d\n", __FUNCTION__,
-			dhd->conf->keep_alive_period);
+			printf("%s: keep_alive_period = %d\n", __FUNCTION__,
+				dhd->conf->keep_alive_period);
+		}
 
 		bcmerror = 0;
 	} else {
@@ -542,10 +579,11 @@ dhd_conf_preinit(dhd_pub_t *dhd)
 {
 	memset(dhd->conf, 0, sizeof(dhd_conf_t));
 
+	dhd->conf->band = WLC_BAND_AUTO;
 	strcpy(dhd->conf->cspec.country_abbrev, "ALL");
 	dhd->conf->cspec.rev = 0;
 	strcpy(dhd->conf->cspec.ccode, "ALL");
-	dhd->conf->band = WLC_BAND_AUTO;
+	memset(&dhd->conf->channels, 0, sizeof(wl_channel_list_t));
 	dhd->conf->roam_off = 1;
 	dhd->conf->roam_off_suspend = 1;
 #ifdef CUSTOM_ROAM_TRIGGER_SETTING
@@ -600,7 +638,6 @@ fail:
 	return BCME_NOMEM;
 }
 
-/* ~NOTE~ What if another thread is waiting on the semaphore?  Holding it? */
 void
 dhd_conf_detach(dhd_pub_t *dhd)
 {
@@ -608,4 +645,125 @@ dhd_conf_detach(dhd_pub_t *dhd)
 		MFREE(dhd->osh, dhd->conf, sizeof(dhd_conf_t));
 	dhd->conf = NULL;
 }
+
+#ifdef POWER_OFF_IN_SUSPEND
+struct net_device *g_netdev;
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+#include <linux/earlysuspend.h>
+struct sdio_early_suspend_info {
+	struct sdio_func *func;
+	struct early_suspend sdio_early_suspend;
+	struct work_struct	tqueue;
+	int do_late_resume;
+};
+struct sdio_early_suspend_info sdioinfo[4];
+
+void
+dhd_conf_wifi_stop(struct net_device *dev)
+{
+	if (!dev) {
+		CONFIG_ERROR(("%s: dev is null\n", __FUNCTION__));
+		return;
+	}
+
+	printk("%s in 1\n", __FUNCTION__);
+	dhd_net_if_lock(dev);
+	printk("%s in 2: g_wifi_on=%d, name=%s\n", __FUNCTION__, g_wifi_on, dev->name);
+	if (g_wifi_on) {
+		wl_cfg80211_user_sync(true);
+		wl_cfg80211_stop();
+		dhd_bus_devreset(bcmsdh_get_drvdata(), true);
+		sdioh_stop(NULL);
+		dhd_customer_gpio_wlan_ctrl(WLAN_RESET_OFF);
+		g_wifi_on = FALSE;
+		wl_cfg80211_user_sync(false);
+	}
+	printk("%s out\n", __FUNCTION__);
+	dhd_net_if_unlock(dev);
+
+}
+
+void
+dhd_conf_wifi_power(bool on)
+{
+	printk("%s: Enter %d\n", __FUNCTION__, on);
+	if (on) {
+		wl_cfg80211_user_sync(true);
+		wl_android_wifi_on(g_netdev);
+		wl_cfg80211_send_disconnect();
+		wl_cfg80211_user_sync(false);
+	} else {
+		dhd_conf_wifi_stop(g_netdev);
+	}
+}
+
+void
+dhd_conf_probe_workqueue(struct work_struct *work)
+{
+    dhd_conf_wifi_power(true);
+}
+
+void
+dhd_conf_early_suspend(struct early_suspend *h)
+{
+	struct sdio_early_suspend_info *sdioinfo = container_of(h, struct sdio_early_suspend_info, sdio_early_suspend);
+
+	printk("%s: Enter\n", __FUNCTION__);
+	if(sdioinfo->func->num == 2)
+		sdioinfo->do_late_resume = 0;
+}
+
+void
+dhd_conf_late_resume(struct early_suspend *h)
+{
+	struct sdio_early_suspend_info *sdioinfo = container_of(h, struct sdio_early_suspend_info, sdio_early_suspend);
+
+	printk("%s: Enter\n", __FUNCTION__);
+	if(sdioinfo->func->num == 2 && sdioinfo->do_late_resume ){
+		sdioinfo->do_late_resume = 0;
+		schedule_work(&sdioinfo->tqueue);
+	}
+}
+#endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
+
+void
+dhd_conf_wifi_suspend(struct sdio_func *func)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (!sdioinfo[func->num].do_late_resume) {
+		dhd_conf_wifi_power(false);
+		sdioinfo[func->num].do_late_resume = 1;
+	}
+#endif
+}
+
+void
+dhd_conf_register_wifi_suspend(struct sdio_func *func)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (func->num == 2) {
+		sdioinfo[func->num].func = func;
+		sdioinfo[func->num].do_late_resume = 0;
+		sdioinfo[func->num].sdio_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 30;
+		sdioinfo[func->num].sdio_early_suspend.suspend = dhd_conf_early_suspend;
+		sdioinfo[func->num].sdio_early_suspend.resume = dhd_conf_late_resume;
+		register_early_suspend(&sdioinfo[func->num].sdio_early_suspend);
+		INIT_WORK(&sdioinfo[func->num].tqueue, dhd_conf_probe_workqueue);
+	}
+#endif
+}
+
+void
+dhd_conf_unregister_wifi_suspend(struct sdio_func *func)
+{
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	if (func->num == 2) {
+		if (sdioinfo[func->num].sdio_early_suspend.suspend) {
+			unregister_early_suspend(&sdioinfo[func->num].sdio_early_suspend);
+			sdioinfo[func->num].sdio_early_suspend.suspend = NULL;
+		}
+	}
+#endif
+}
+#endif
 

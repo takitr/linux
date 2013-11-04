@@ -19,6 +19,7 @@
 #include <dhd_dbg.h>
 #include <dngl_stats.h>
 #include <dhd.h>
+#include <dhd_config.h>
 #ifdef PNO_SUPPORT
 #include <dhd_pno.h>
 #endif
@@ -265,7 +266,7 @@ extern char iface_name[IFNAMSIZ];
  * time (only) in dhd_open, subsequential wifi on will be handled by
  * wl_android_wifi_on
  */
-static int g_wifi_on = TRUE;
+int g_wifi_on = TRUE;
 
 /**
  * Local (static) function definitions
@@ -821,6 +822,9 @@ int wl_android_wifi_on(struct net_device *dev)
 	dhd_net_if_lock(dev);
 	printk("%s in 2: g_wifi_on=%d\n", __FUNCTION__, g_wifi_on);
 	if (!g_wifi_on) {
+#ifdef POWER_OFF_IN_SUSPEND
+		g_netdev = dev;
+#endif
 		do {
 			dhd_customer_gpio_wlan_ctrl(WLAN_RESET_ON);
 			ret = sdioh_start(NULL, 0);
@@ -2092,13 +2096,14 @@ wl_delete_dirty_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl)
 #else
 	int max = RSSICACHE_LEN;
 #endif
+	max = min(max, RSSICACHE_LEN);
 
 	rssi_head = &rssi_cache_ctrl->m_cache_head;
 	node = *rssi_head;
 	prev = node;
 	for (;node;) {
 		i++;
-		if (node->dirty >= max || node->dirty >= RSSICACHE_LEN) {
+		if (node->dirty >= max) {
 			if (node == *rssi_head) {
 				tmp = 1;
 				*rssi_head = node->next;
@@ -2179,6 +2184,9 @@ wl_update_connected_rssi_cache(struct net_device *net, wl_rssi_cache_ctrl_t *rss
 	int j, k=0;
 	int rssi, error=0;
 	struct ether_addr bssid;
+
+	if (!g_wifi_on)
+		return 0;
 
 	error = wldev_ioctl(net, WLC_GET_BSSID, &bssid, sizeof(bssid), false);
 	if (error == BCME_NOTASSOCIATED) {
@@ -2334,6 +2342,9 @@ wl_update_rssi_offset(int rssi)
 {
 	uint chip, chiprev;
 
+	if (!g_wifi_on)
+		return rssi;
+
 	chip = dhd_bus_chip_id(bcmsdh_get_drvdata());
 	chiprev = dhd_bus_chiprev_id(bcmsdh_get_drvdata());
 	if (chip == BCM4330_CHIP_ID && chiprev == BCM4330B2_CHIP_REV) {
@@ -2390,7 +2401,7 @@ wl_delete_dirty_bss_cache(wl_bss_cache_ctrl_t *bss_cache_ctrl)
 	prev = node;
 	for (;node;) {
 		i++;
-		if (node->dirty >= BSSCACHE_LEN*REPEATED_SCAN_RESULT_CNT) {
+		if (node->dirty >= BSSCACHE_LEN) {
 			if (node == *bss_head) {
 				tmp = 1;
 				*bss_head = node->next;

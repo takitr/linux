@@ -75,6 +75,7 @@ enum {
 #define DHD_ANDROID_VAL	0x10000
 #define DHD_IW_VAL	0x20000
 #define DHD_CFG_VAL	0x40000
+#define DHD_CONFIG_VAL	0x80000
 
 #ifdef SDTEST
 /* For pktgen iovar */

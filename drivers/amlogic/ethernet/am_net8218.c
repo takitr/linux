@@ -1167,7 +1167,6 @@ static int netdev_close(struct net_device *dev)
 		printk(KERN_INFO "NET DMA is stoped, ETH_DMA_Status=%lx!\n", val);
 	}
 	disable_irq(dev->irq);
-	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
 	netif_carrier_off(dev);
 	netif_stop_queue(dev);
 	free_ringdesc(dev);
@@ -1375,10 +1374,8 @@ static void tx_timeout(struct net_device *dev)
 	spin_unlock_irq(&np->lock);
 	if (!(val & (BMSR_LSTATUS))) {	//unlink .....
 		netif_stop_queue(dev);
-	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
 		netif_carrier_off(dev);
 	} else {
-	printk("XYMA FILE:%s %s:%d on.\n", __FILE__, __func__, __LINE__);
 		netif_carrier_on(dev);
 		netif_wake_queue(dev);
 		dev->trans_start = jiffies;
@@ -1673,7 +1670,6 @@ static int probe_init(struct net_device *ndev)
 		goto error0;
 	}
 
-	printk("XYMA FILE:%s %s:%d off.\n", __FILE__, __func__, __LINE__);
 	netif_carrier_off(ndev);
 
 	res = register_netdev(ndev);

@@ -80,6 +80,9 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 {
 	unsigned long auto_wr_is_enabled = 0;
 
+	//set efuse PD=0
+	aml_set_reg32_bits( P_EFUSE_CNTL1, 0, 27, 1);
+
 	if (aml_read_reg32( P_EFUSE_CNTL1) & (1 << CNTL1_AUTO_WR_ENABLE_BIT)) {                                                                                
 		auto_wr_is_enabled = 1;
 	} else {                                                                                
@@ -88,9 +91,23 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 		CNTL1_AUTO_WR_ENABLE_BIT, CNTL1_AUTO_WR_ENABLE_SIZE );
 	}
 
+#ifdef CONFIG_ARCH_MESON8
+	unsigned int byte_sel = addr % 4;
+	addr = addr / 4;
+
 	/* write the address */
 	aml_set_reg32_bits( P_EFUSE_CNTL1, addr,
 			CNTL1_BYTE_ADDR_BIT, CNTL1_BYTE_ADDR_SIZE );
+
+	//auto write byte select (0-3), for m8
+	aml_set_reg32_bits( P_EFUSE_CNTL3, byte_sel,
+        CNTL1_AUTO_WR_START_BIT, 2 );
+#else
+	/* write the address */
+    aml_set_reg32_bits( P_EFUSE_CNTL1, addr,
+        CNTL1_BYTE_ADDR_BIT, CNTL1_BYTE_ADDR_SIZE );
+#endif
+
 	/* set starting byte address */
 	aml_set_reg32_bits( P_EFUSE_CNTL1, CNTL1_BYTE_ADDR_SET_ON,
 			CNTL1_BYTE_ADDR_SET_BIT, CNTL1_BYTE_ADDR_SET_SIZE );
@@ -118,6 +135,8 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 				CNTL1_AUTO_WR_ENABLE_BIT, CNTL1_AUTO_WR_ENABLE_SIZE );
 	}
 
+	//set efuse PD=1
+	aml_set_reg32_bits( P_EFUSE_CNTL1, 1, 27, 1);
 	//printk(KERN_INFO "__efuse_write_byte: addr=%ld, data=0x%ld\n", addr, data);
 }
 
@@ -133,6 +152,13 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 	//aml_set_reg32_bits( P_EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
 	//	CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 	//}
+
+	//set efuse PD=0
+	aml_set_reg32_bits( P_EFUSE_CNTL1, 0, 27, 1);
+
+#ifdef CONFIG_ARCH_MESON8
+	addr = addr / 4;	//each address have 4 bytes in m8
+#endif
 
 	/* write the address */
 	aml_set_reg32_bits( P_EFUSE_CNTL1, addr,
@@ -157,6 +183,8 @@ static void __efuse_read_dword( unsigned long addr, unsigned long *data )
 	/* read the 32-bits value */
 	( *data ) = aml_read_reg32( P_EFUSE_CNTL2 );
 
+	//set efuse PD=1
+	aml_set_reg32_bits( P_EFUSE_CNTL1, 1, 27, 1);
 	/* if auto read wasn't enabled and we enabled it, then disable it upon exit */
 	//if ( auto_rd_is_enabled == 0 ){                                                                               
 		//aml_set_reg32_bits( P_EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,

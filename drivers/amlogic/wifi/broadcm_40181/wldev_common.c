@@ -28,7 +28,6 @@
 		printk args;							\
 	} while (0)
 
-extern void *bcmsdh_get_drvdata(void);
 extern int dhd_ioctl_entry_local(struct net_device *net, wl_ioctl_t *ioc, int cmd);
 
 s32 wldev_ioctl(

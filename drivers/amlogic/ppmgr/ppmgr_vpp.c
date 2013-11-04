@@ -312,7 +312,7 @@ static int ppmgr_event_cb(int type, void *data, void *private_data)
     }
 #endif
     if(type & VFRAME_EVENT_RECEIVER_FRAME_WAIT){
-        if(task_running){
+        if(task_running && !ppmgr_device.use_prot){
             if(get_property_change()){
                 //printk("--ppmgr: get angle changed msg.\n");
                 set_property_change(0);
@@ -465,6 +465,7 @@ const vframe_receiver_op_t* vf_ppmgr_reg_provider(void)
     if (start_ppmgr_task() == 0) {
         r = &ppmgr_vf_receiver;
     }
+    ppmgr_device.started = 1;
 
     mutex_unlock(&ppmgr_mutex);
 
@@ -480,6 +481,9 @@ void vf_ppmgr_unreg_provider(void)
     vf_unreg_provider(&ppmgr_vf_prov);
 
     dec_vfp = NULL;
+
+    ppmgr_device.started = 0;
+    ppmgr_device.use_prot = 0;
 
     mutex_unlock(&ppmgr_mutex);
 }
@@ -1760,7 +1764,7 @@ static void process_vf_change(vframe_t *vf, ge2d_context_t *context, config_para
     temp_vf.duration = vf->duration;
     temp_vf.duration_pulldown = vf->duration_pulldown;
     temp_vf.pts = vf->pts;
-    temp_vf.pts_us64= vf->pts_us64;
+    temp_vf.pts_us64 = vf->pts_us64;
     temp_vf.type = VIDTYPE_VIU_444 | VIDTYPE_VIU_SINGLE_PLANE | VIDTYPE_VIU_FIELD;
     temp_vf.canvas0Addr = temp_vf.canvas1Addr = ass_index;
     cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
@@ -2257,6 +2261,9 @@ static struct task_struct *task=NULL;
 extern int video_property_notify(int flag);
 extern vframe_t* get_cur_dispbuf(void);
 extern platform_type_t get_platform_type();
+extern void set_video_angle(u32 s_value);
+extern ssize_t _ppmgr_angle_write(unsigned long val);
+
 static int ppmgr_task(void *data)
 {
     struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
@@ -2336,6 +2343,18 @@ static int ppmgr_task(void *data)
             int process_type = TYPE_NONE;
             platform_type_t plarform_type;
             vf = ppmgr_vf_get_dec();
+            if (ppmgr_device.started) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE)) {
+                    ppmgr_device.use_prot = 0;
+                    set_video_angle(0);
+                    _ppmgr_angle_write(ppmgr_device.global_angle);
+                } else {
+                    ppmgr_device.use_prot = 1;
+                    set_video_angle(ppmgr_device.global_angle);
+                    _ppmgr_angle_write(0);
+                }
+                ppmgr_device.started = 0;
+            }
             plarform_type = get_platform_type();
             if( plarform_type == PLATFORM_TV){
             	process_type = get_tv_process_type(vf);
@@ -2358,6 +2377,18 @@ static int ppmgr_task(void *data)
 #else
             int ret = 0;
             vf = ppmgr_vf_get_dec();
+            if (ppmgr_device.started) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE)) {
+                    ppmgr_device.use_prot = 0;
+                    set_video_angle(0);
+                    _ppmgr_angle_write(ppmgr_device.global_angle);
+                } else {
+                    ppmgr_device.use_prot = 1;
+                    set_video_angle(ppmgr_device.global_angle);
+                    _ppmgr_angle_write(0);
+                }
+                ppmgr_device.started = 0;
+            }
             ret = process_vf_deinterlace(vf, context, &ge2d_config);
             process_vf_rotate(vf, context, &ge2d_config,(ret>0)?ret:0);
 #endif
@@ -2509,11 +2540,21 @@ int ppmgr_buffer_init(int vout_mode)
     if(vout_mode == 0){
 	    ppmgr_device.vinfo = get_current_vinfo();
 
-	    if (ppmgr_device.disp_width == 0)
-	        ppmgr_device.disp_width = ppmgr_device.vinfo->width;
+	    if (ppmgr_device.disp_width == 0) {
+	        if (ppmgr_device.vinfo->width <= 1280) {
+	            ppmgr_device.disp_width = ppmgr_device.vinfo->width;
+	        } else {
+	            ppmgr_device.disp_width = 1280;
+	        }
+	    }
 
-	    if (ppmgr_device.disp_height == 0)
-	        ppmgr_device.disp_height = ppmgr_device.vinfo->height;
+	    if (ppmgr_device.disp_height == 0) {
+	        if (ppmgr_device.vinfo->height <= 736) {
+	            ppmgr_device.disp_height = ppmgr_device.vinfo->height;
+	        } else {
+	            ppmgr_device.disp_height = 736;
+	        }
+	    }
             if (get_platform_type() == PLATFORM_MID_VERTICAL) {
                 int DISP_SIZE = ppmgr_device.disp_width > ppmgr_device.disp_height ?
                         ppmgr_device.disp_width : ppmgr_device.disp_height;

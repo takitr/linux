@@ -6048,7 +6048,7 @@ dhdsdio_dpc(dhd_bus_t *bus)
 
 	// terence 20131025: fix kernel panic issue if user is enabling and disabling Wi-Fi
 	if (bus->dhd->busstate == DHD_BUS_DOWN) {
-		DHD_ERROR(("%s: Bus down, ret\n", __FUNCTION__));
+		DHD_ERROR(("%s: Bus down 2, ret\n", __FUNCTION__));
 		bus->intstatus = 0;
 		dhd_os_sdunlock(bus->dhd);
 		return 0;

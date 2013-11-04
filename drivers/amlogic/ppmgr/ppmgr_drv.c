@@ -38,7 +38,7 @@ static int ppmgr_flag_change = 0;
 static int property_change = 0;
 static int buff_change = 0;
 
-static platform_type_t platform_type = PLATFORM_MID; 
+static platform_type_t platform_type = PLATFORM_MID;
 ppmgr_device_t  ppmgr_device;
 #ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
 extern void Reset3Dclear(void);
@@ -59,30 +59,30 @@ int get_bypass_mode(void)
 
 int get_property_change(void)
 {
-    return property_change;	
+    return property_change;
 }
 void set_property_change(int flag)
 {
-    property_change = flag;	
+    property_change = flag;
 }
 
 int get_buff_change(void)
 {
-    return buff_change;	
+    return buff_change;
 }
 void set_buff_change(int flag)
 {
-    buff_change = flag;	
+    buff_change = flag;
 }
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
 bool get_scaler_pos_reset(void)
 {
-    return scaler_pos_reset;	
+    return scaler_pos_reset;
 }
 void set_scaler_pos_reset(bool flag)
 {
-    scaler_pos_reset = flag;	
+    scaler_pos_reset = flag;
 }
 #endif
 
@@ -170,7 +170,7 @@ void set_ppmgr_direction3d(unsigned angle)
 * Utilities.
 *
 ************************************************************************/
-static ssize_t _ppmgr_angle_write(unsigned long val)
+ssize_t _ppmgr_angle_write(unsigned long val)
 {
     unsigned long angle = val;
 
@@ -187,7 +187,7 @@ static ssize_t _ppmgr_angle_write(unsigned long val)
         }
     }
 
-    if(angle != ppmgr_device.angle ){		
+    if(angle != ppmgr_device.angle ){
         property_change = 1;
     }
 
@@ -249,9 +249,12 @@ static ssize_t show_ppmgr_info(struct class *cla,struct class_attribute *attr,ch
     return snprintf(buf,80,"buffer:\n start:%x.\tsize:%d\n",(unsigned int)bstart,bsize/(1024*1024));
 }
 
+extern void set_video_angle(u32 s_value);
+
 static ssize_t angle_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
-    return snprintf(buf,80,"current angel is %d\n",ppmgr_device.angle);
+    return snprintf(buf,80,"current angel is %d\n",ppmgr_device.global_angle);
+
 }
 
 static ssize_t angle_write(struct class *cla,
@@ -263,11 +266,20 @@ static ssize_t angle_write(struct class *cla,
     unsigned long angle  =  simple_strtoul(buf, &endp, 0);
     printk("==%ld==\n",angle);
 
-    if (_ppmgr_angle_write(angle) < 0) {
-        return -EINVAL;
+    if (angle > 3 || angle < 0) {
+        size = endp - buf;
+        return count;
     }
-/*	
-    if(angle != ppmgr_device.angle ){		
+    ppmgr_device.global_angle = angle;
+    if (!ppmgr_device.use_prot) {
+        if (_ppmgr_angle_write(angle) < 0) {
+            return -EINVAL;
+        }
+    } else {
+       set_video_angle(angle);
+    }
+/*
+    if(angle != ppmgr_device.angle ){
         property_change = 1;
     }
     ppmgr_device.angle = angle;
@@ -279,6 +291,25 @@ static ssize_t angle_write(struct class *cla,
     return count;
 }
 
+int get_use_prot() {
+    return ppmgr_device.use_prot;
+}
+#ifdef USE_PROT_CONTROL
+static ssize_t use_prot_show(struct class *cla, struct class_attribute *attr, char *buf) {
+    return snprintf(buf, 40, "%d\n", ppmgr_device.use_prot);
+}
+
+static ssize_t use_prot_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count) {
+    size_t r;
+    u32 s_value;
+    r = sscanf(buf, "%d", &s_value);
+    if (s_value != 0 && s_value != 1) {
+        return -EINVAL;
+    }
+    ppmgr_device.use_prot = s_value;
+    return strnlen(buf, count);
+}
+#endif
 static ssize_t orientation_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
     //ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
@@ -350,7 +381,7 @@ static ssize_t rect_write(struct class *cla,struct class_attribute *attr,const c
     int i;
     buflen=strlen(buf);
     value_array[0]=value_array[1]=value_array[2]=value_array[3]= -1;
-	
+
     for(i=0;i<4;i++) {
         if(buflen==0) {
             printk(errstr);
@@ -364,10 +395,10 @@ static ssize_t rect_write(struct class *cla,struct class_attribute *attr,const c
             *tokenlen=',';
             strp= tokenlen+1;
             buflen=strlen(strp);
-        }  else 
+        }  else
             break;
     }
-	
+
     if(value_array[0]>=0) ppmgr_device.left= value_array[0];
     if(value_array[1]>=0) ppmgr_device.left= value_array[1];
     if(value_array[2]>0) ppmgr_device.left= value_array[2];
@@ -377,7 +408,7 @@ static ssize_t rect_write(struct class *cla,struct class_attribute *attr,const c
 }
 
 static ssize_t disp_read(struct class *cla,struct class_attribute *attr,char *buf)
-{	
+{
     return snprintf(buf,80,"disp width is %d ; disp height is %d \n",ppmgr_device.disp_width, ppmgr_device.disp_height);
 }
 static void set_disp_para(const char *para)
@@ -469,7 +500,7 @@ static ssize_t receiver_read(struct class *cla,struct class_attribute *attr,char
 {
 	if(ppmgr_device.receiver==1)
 		return snprintf(buf,80,"video stream out to video4linux\n");
-	else 
+	else
 		return snprintf(buf,80,"video stream out to vlayer\n");
 }
 
@@ -499,7 +530,7 @@ static ssize_t platform_type_read(struct class *cla,struct class_attribute *attr
 		return snprintf(buf,80,"current platform is MID\n");
 	}else if(platform_type ==PLATFORM_MID_VERTICAL){
         	return snprintf(buf,80,"current platform is vertical MID\n");
-	}else{ 
+	}else{
 		return snprintf(buf,80,"current platform is MBX\n");
 	}
 }
@@ -602,7 +633,7 @@ static ssize_t direction_3d_read(struct class *cla,struct class_attribute *attr,
 {
     const char *direction_str[] = {"0 degree", "90 degree", "180 degree","270 degree"};
     //unsigned mode = get_ppmgr_3dmode();
-    //mode = ((mode & PPMGR_3D_PROCESS_3D_ROTATE_DIRECTION_MASK)>>PPMGR_3D_PROCESS_3D_ROTATE_DIRECTION_VAULE_SHIFT);    
+    //mode = ((mode & PPMGR_3D_PROCESS_3D_ROTATE_DIRECTION_MASK)>>PPMGR_3D_PROCESS_3D_ROTATE_DIRECTION_VAULE_SHIFT);
     //return snprintf(buf,80,"current 3d direction is %d:%s\n",mode,direction_str[mode]);
     unsigned angle = get_ppmgr_direction3d();
     return snprintf(buf,80,"current 3d direction is %d:%s\n",angle,direction_str[angle]);
@@ -755,7 +786,7 @@ static void set_cut_window(const char *para)
 	      ppmgr_cutwin_left = left ;
      }
  }
- 
+
 static ssize_t cut_win_show(struct class *cla, struct class_attribute *attr, char *buf)
 {
     return snprintf(buf, 80, "cut win top is %d ; cut win left is %d \n", ppmgr_cutwin_top,ppmgr_cutwin_left);
@@ -831,26 +862,26 @@ static struct class_attribute ppmgr_class_attrs[] = {
     __ATTR(bypass,
            S_IRUGO | S_IWUSR,
            bypass_read,
-           bypass_write),   
-           
+           bypass_write),
+
     __ATTR(disp,
            S_IRUGO | S_IWUSR,
            disp_read,
-           disp_write),          
+           disp_write),
 
     __ATTR(orientation,
            S_IRUGO | S_IWUSR,
            orientation_read,
-           orientation_write),           
+           orientation_write),
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
     __ATTR(ppscaler,
            S_IRUGO | S_IWUSR,
            ppscaler_read,
-           ppscaler_write),       
+           ppscaler_write),
     __ATTR(ppscaler_rect,
            S_IRUGO | S_IWUSR,
            ppscaler_rect_read,
-           ppscaler_rect_write),   
+           ppscaler_rect_write),
 #endif
        __ATTR(vtarget,
            S_IRUGO | S_IWUSR,
@@ -860,27 +891,27 @@ static struct class_attribute ppmgr_class_attrs[] = {
     __ATTR(ppmgr_3d_mode,
            S_IRUGO | S_IWUSR,
            _3dmode_read,
-           _3dmode_write),      
+           _3dmode_write),
     __ATTR(viewmode,
            S_IRUGO | S_IWUSR,
            viewmode_read,
-           viewmode_write), 
+           viewmode_write),
     __ATTR(doublemode,
            S_IRUGO | S_IWUSR,
            doublemode_read,
-           doublemode_write), 
+           doublemode_write),
     __ATTR(switchmode,
            S_IRUGO | S_IWUSR,
            switchmode_read,
-           switchmode_write), 
+           switchmode_write),
     __ATTR(direction_3d,
            S_IRUGO | S_IWUSR,
            direction_3d_read,
-           direction_3d_write), 
+           direction_3d_write),
     __ATTR(scale_down,
            S_IRUGO | S_IWUSR,
            scale_down_read,
-           scale_down_write), 
+           scale_down_write),
     __ATTR(depth,
 			S_IRUGO | S_IWUSR,
 			read_depth,
@@ -888,19 +919,19 @@ static struct class_attribute ppmgr_class_attrs[] = {
     __ATTR(view_mode,
 			S_IRUGO | S_IWUSR,
 			read_view_mode,
-			write_view_mode),		
+			write_view_mode),
     __ATTR(vertical_sample,
 			S_IRUGO | S_IWUSR,
 			read_vertical_sample,
-			write_vertical_sample),	
+			write_vertical_sample),
     __ATTR(scale_width,
 			S_IRUGO | S_IWUSR,
 			read_scale_width,
-			write_scale_width),								
+			write_scale_width),
     __ATTR(axis,
     		S_IRUGO | S_IWUSR,
 		    cut_win_show,
-		    cut_win_store),	
+		    cut_win_store),
 #endif
 
     __ATTR(platform_type,
@@ -913,6 +944,12 @@ static struct class_attribute ppmgr_class_attrs[] = {
            mirror_read,
            mirror_write),
     __ATTR_RO(ppmgr_vframe_states),
+#ifdef USE_PROT_CONTROL
+    __ATTR(use_prot,
+           S_IRUGO | S_IWUSR,
+           use_prot_show,
+           use_prot_store),
+#endif
     __ATTR_NULL
 };
 
@@ -948,7 +985,7 @@ void get_ppmgr_buf_info(char** start,unsigned int* size) {
     *size=ppmgr_device.buffer_size;
 }
 
-static int ppmgr_open(struct inode *inode, struct file *file) 
+static int ppmgr_open(struct inode *inode, struct file *file)
 {
     ppmgr_device.open_count++;
     return 0;
@@ -961,9 +998,9 @@ static long ppmgr_ioctl(struct file *file,
     int ret = 0;
 #if 0
     ge2d_context_t *context=(ge2d_context_t *)filp->private_data;
-    config_para_t     ge2d_config;	
+    config_para_t     ge2d_config;
     ge2d_para_t  para ;
-    int flag;    	
+    int flag;
     frame_info_t frame_info;
 #endif
 #ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
@@ -985,12 +1022,12 @@ static long ppmgr_ioctl(struct file *file,
             break;
 #ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
         case PPMGR_IOC_ENABLE_PP:
-            mode=(int)argp;    
+            mode=(int)argp;
             platform_type_t plarform_type;
             plarform_type = get_platform_type();
             if( plarform_type == PLATFORM_TV){
-            	set_ppmgr_status(mode);            
-            }else{            
+            	set_ppmgr_status(mode);
+            }else{
           	  set_ppmgr_3dmode(mode);
          	}
             break;
@@ -1027,7 +1064,7 @@ static long ppmgr_ioctl(struct file *file,
 #endif
         default :
             return -ENOIOCTLCMD;
-		
+
     }
     return ret;
 }
@@ -1036,7 +1073,7 @@ static int ppmgr_release(struct inode *inode, struct file *file)
 {
 #ifdef CONFIG_ARCH_MESON
     ge2d_context_t *context=(ge2d_context_t *)file->private_data;
-	
+
     if(context && (0==destroy_ge2d_work_queue(context)))
     {
         ppmgr_device.open_count--;
@@ -1057,9 +1094,9 @@ static int ppmgr_release(struct inode *inode, struct file *file)
 
 static const struct file_operations ppmgr_fops = {
     .owner   = THIS_MODULE,
-    .open    = ppmgr_open,  
+    .open    = ppmgr_open,
     .unlocked_ioctl  = ppmgr_ioctl,
-    .release = ppmgr_release, 	
+    .release = ppmgr_release,
 };
 
 int  init_ppmgr_device(void)
@@ -1068,14 +1105,14 @@ int  init_ppmgr_device(void)
 
     strcpy(ppmgr_device.name,"ppmgr");
     ret=register_chrdev(0,ppmgr_device.name,&ppmgr_fops);
-    if(ret <=0) 
+    if(ret <=0)
     {
         amlog_level(LOG_LEVEL_HIGH,"register ppmgr device error\r\n");
         return  ret ;
     }
     ppmgr_device.major=ret;
     ppmgr_device.dbg_enable=0;
-	
+
     ppmgr_device.angle=0;
     ppmgr_device.bypass =0 ;
     ppmgr_device.videoangle=0;
@@ -1100,7 +1137,7 @@ int  init_ppmgr_device(void)
     ppmgr_device.mirror_flag  = 0;
     ppmgr_device.canvas_width = ppmgr_device.canvas_height = 0;
     amlog_level(LOG_LEVEL_LOW,"ppmgr_dev major:%d\r\n",ret);
-    
+
     if((ppmgr_device.cla = init_ppmgr_cls())==NULL) return -1;
     ppmgr_device.dev=device_create(ppmgr_device.cla,NULL,MKDEV(ppmgr_device.major,0),NULL,ppmgr_device.name);
     if (IS_ERR(ppmgr_device.dev)) {
@@ -1108,12 +1145,14 @@ int  init_ppmgr_device(void)
         goto unregister_dev;
     }
     buff_change = 0;
-    ppmgr_register();  
+    ppmgr_register();
     if(ppmgr_buffer_init(0) < 0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
-    
+    ppmgr_device.use_prot = 1;
+    ppmgr_device.global_angle = 0;
+    ppmgr_device.started = 0;
     return 0;
-	
+
 unregister_dev:
     class_unregister(ppmgr_device.cla);
     return -1;
@@ -1122,22 +1161,22 @@ unregister_dev:
 int uninit_ppmgr_device(void)
 {
     stop_ppmgr_task();
-    
+
     if(ppmgr_device.cla)
     {
         if(ppmgr_device.dev)
             device_destroy(ppmgr_device.cla, MKDEV(ppmgr_device.major, 0));
         class_unregister(ppmgr_device.cla);
     }
-    
+
     unregister_chrdev(ppmgr_device.major, ppmgr_device.name);
     return  0;
 }
 
 /*******************************************************************
- * 
+ *
  * interface for Linux driver
- * 
+ *
  * ******************************************************************/
 
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
@@ -1205,7 +1244,7 @@ ppmgr_init_module(void)
     }
 
     return err;
-	
+
 }
 
 static void __exit

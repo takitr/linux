@@ -10,11 +10,11 @@ typedef  struct {
 	unsigned  int 		dbg_enable;
 	char* buffer_start;
 	unsigned int buffer_size;
-	
+
 	unsigned angle;
 	unsigned orientation;
-	unsigned videoangle; 
-	
+	unsigned videoangle;
+
 	int bypass;
 	int disp_width;
 	int disp_height;
@@ -42,6 +42,9 @@ typedef  struct {
 	int receiver_format;
 	int display_mode;
 	int mirror_flag;
+	int use_prot;
+	int started;
+	int global_angle;
 }ppmgr_device_t;
 
 typedef struct ppframe_s {

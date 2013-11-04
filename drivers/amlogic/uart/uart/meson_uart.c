@@ -503,17 +503,17 @@ static void meson_BH_receive_chars(struct meson_uart_port *mup)
 		goto clear_and_exit;
 	}
 	
-//	tty->low_latency = 1;	// Originally added by Sameer, serial I/O slow without this
+	tport->low_latency = 1;	// Originally added by Sameer, serial I/O slow without this
 	flag = TTY_NORMAL;
 	status = mup->rx_error;
 	if (status & UART_OVERFLOW_ERR) {
-		printk(KERN_ERR"Uart  Driver: Overflow Error while receiving a character\n");
+		printk(KERN_ERR"Uart %d Driver: Overflow Error while receiving a character\n", mup->line);
 		flag = TTY_OVERRUN;
 	} else if (status & UART_FRAME_ERR) {
-		printk(KERN_ERR"Uart  Driver: Framing Error while receiving a character\n");
+		printk(KERN_ERR"Uart %d Driver: Framing Error while receiving a character\n", mup->line);
 		flag = TTY_FRAME;
 	} else if (status & UART_PARITY_ERR) {
-		printk(KERN_ERR"Uart  Driver: Parity Error while receiving a character\n");
+		printk(KERN_ERR"Uart %d Driver: Parity Error while receiving a character\n", mup->line);
 		flag = TTY_PARITY;
 	}
 	
