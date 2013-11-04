@@ -11,6 +11,9 @@ BEGIN{
 /^\/\/ Secure APB3 Slot 2 Registers/{
     sec_bus="SECBUS2_REG_ADDR"
 }
+/^\/\/ Secure APB3 Slot 3 registers/{
+    sec_bus="SECBUS3_REG_ADDR"
+}
 
 /^#define/ && $2 ~/VDIN0_OFFSET/{
 	VDIN0_OFFSET = $3
