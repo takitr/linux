@@ -347,6 +347,7 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 
 	case IOV_GVAL(IOV_WLMSGLEVEL):
 		printk("android_msg_level=0x%x\n", android_msg_level);
+		printk("config_msg_level=0x%x\n", config_msg_level);
 #if defined(WL_WIRELESS_EXT)
 		int_val = (int32)iw_msg_level;
 		bcopy(&int_val, arg, val_size);
@@ -363,6 +364,10 @@ dhd_doiovar(dhd_pub_t *dhd_pub, const bcm_iovar_t *vi, uint32 actionid, const ch
 		if (int_val & DHD_ANDROID_VAL) {
 			android_msg_level = (uint)(int_val & 0xFFFF);
 			printk("android_msg_level=0x%x\n", android_msg_level);
+		}
+		if (int_val & DHD_CONFIG_VAL) {
+			config_msg_level = (uint)(int_val & 0xFFFF);
+			printk("config_msg_level=0x%x\n", config_msg_level);
 		}
 #if defined(WL_WIRELESS_EXT)
 		if (int_val & DHD_IW_VAL) {

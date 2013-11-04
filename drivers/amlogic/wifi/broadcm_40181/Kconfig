@@ -28,6 +28,13 @@ config BCMDHD_CONFIG_PATH
 	---help---
 	  Path to the driver configuration file.
 
+config BCMDHD_POWER_OFF_IN_SUSPEND
+	depends on SDIO_DHD_CDC_WIFI_40181_MODULE
+    bool "Power off in suspend"
+	default n
+    ---help---
+	  Shut down Wi-Fi power in suspend.
+
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
 	depends on SDIO_DHD_CDC_WIFI_40181_MODULE && CFG80211 = n

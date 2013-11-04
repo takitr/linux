@@ -36,6 +36,7 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
+#include <dhd_config.h>
 
 #if !defined(SDIO_VENDOR_ID_BROADCOM)
 #define SDIO_VENDOR_ID_BROADCOM		0x02d0
@@ -145,6 +146,9 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	} else {
 		ret = -ENODEV;
 	}
+#ifdef POWER_OFF_IN_SUSPEND
+	dhd_conf_register_wifi_suspend(func);
+#endif
 
 	return ret;
 }
@@ -158,6 +162,9 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 		sd_info(("sdio_device: 0x%04x\n", func->device));
 		sd_info(("Function#: 0x%04x\n", func->num));
 
+#ifdef POWER_OFF_IN_SUSPEND
+		dhd_conf_unregister_wifi_suspend(func);
+#endif
 		if (gInstance->func[2]) {
 			sd_trace(("F2 found, calling bcmsdh_remove...\n"));
 			bcmsdh_remove(&func->dev);
@@ -193,8 +200,10 @@ MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
 {
 	struct sdio_func *func = dev_to_sdio_func(pdev);
+#ifndef POWER_OFF_IN_SUSPEND
 	mmc_pm_flag_t sdio_flags;
 	int ret;
+#endif
 
 	if (func->num != 2)
 		return 0;
@@ -202,6 +211,10 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	sd_trace(("%s Enter\n", __FUNCTION__));
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
+
+#ifdef POWER_OFF_IN_SUSPEND
+	dhd_conf_wifi_suspend(func);
+#else
 	sdio_flags = sdio_get_host_pm_caps(func);
 
 	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -217,7 +230,8 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	}
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
-#endif 
+#endif
+#endif
 	dhd_mmc_suspend = TRUE;
 	smp_mb();
 
@@ -226,16 +240,20 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
-#if defined(OOB_INTR_ONLY)
+#if defined(OOB_INTR_ONLY) || defined(POWER_OFF_IN_SUSPEND)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-#endif 
+#endif
 	sd_trace(("%s Enter\n", __FUNCTION__));
 	dhd_mmc_suspend = FALSE;
+	
+#ifdef POWER_OFF_IN_SUSPEND
+	gInstance->func[func->num] = func;
+#else
 #if defined(OOB_INTR_ONLY)
 	if ((func->num == 2) && dhd_os_check_if_up(bcmsdh_get_drvdata()))
 		bcmsdh_oob_intr_set(1);
 #endif 
-
+#endif
 	smp_mb();
 	return 0;
 }
