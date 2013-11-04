@@ -500,12 +500,15 @@ extern void dwc_otg_power_notifier_call(char is_power_on);
 int dwc_otg_hcd_resume(dwc_otg_hcd_t *hcd)
 {
 	usb_dbg_uart_data_t uart = {.d32 = 0 };
-
+	
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD RESUME\n");
 
 	hcd->ssplit_lock = 0;
 	if (hcd->core_if->vbus_power_pin!=-1)
-		dwc_otg_power_notifier_call(1);
+	{
+		if(dwc_otg_is_host_mode(hcd->core_if))
+			dwc_otg_power_notifier_call(1);
+	}
 	uart.d32 = DWC_READ_REG32(&hcd->core_if->usb_peri_reg->dbg_uart);
 	uart.b.set_iddq = 0;
 	DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
