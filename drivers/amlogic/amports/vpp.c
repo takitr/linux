@@ -26,6 +26,7 @@
 #include <linux/amlogic/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
+#include "video_prot.h"
 
 #include <linux/amlogic/amports/vframe_provider.h>
 
@@ -162,6 +163,7 @@ static u32 video_source_crop_top, video_source_crop_left, video_source_crop_bott
 static s32 video_layer_global_offset_x, video_layer_global_offset_y;
 static s32 osd_layer_top,osd_layer_left,osd_layer_width,osd_layer_height;
 static u32 video_speed_check_width=1800, video_speed_check_height=1400;
+extern int get_prot_on();
 
 #define ZOOM_BITS       18
 #define PHASE_BITS      8
@@ -280,7 +282,7 @@ vpp_process_speed_check(u32 width_in,
     // output screen hight (height_out) vs. screen height (height_screen) ratio, output frame rate
 
     // if (((height_in/1296) * (height_screen / height_out) * ((vinfo->sync_duration_num/vinfo->sync_duration_den)/60)) > 1) {
-    if ((height_in * height_screen * vinfo->sync_duration_num) > (VPP_SPEED_FACTOR * height_out * vinfo->sync_duration_den * 60)) {
+    if (!get_prot_on() && ((height_in * height_screen * vinfo->sync_duration_num) > (VPP_SPEED_FACTOR * height_out * vinfo->sync_duration_den * 60))) {
         // @60hz output, vpp can process 1296 lines when output window fully running, it's a measured result and can be adjustable
         return 1;
     }
@@ -293,7 +295,7 @@ vpp_process_speed_check(u32 width_in,
    if((height_in > 1080)&&(next_frame_par->vscale_skip_count== 0 )){
    		return 1;
    }
-   
+
     if (video_speed_check_width * video_speed_check_height * height_out > height_screen * width_in * height_in) {
         return 0;
     }
@@ -379,7 +381,7 @@ RESTART:
     } else {
         aspect_factor = div_u64((unsigned long long)w_in * height_out * (aspect_factor << 8), width_out * h_in * aspect_ratio_out);
     }
-    
+
     if(osd_layer_preblend)
     aspect_factor=0x100;
 
@@ -678,7 +680,7 @@ vpp_set_filters(u32 wide_mode,
                 wide_mode = VIDEO_WIDEOPTION_FULL_STRETCH;
             }
         }
-        if (vf->ratio_control & DISP_RATIO_FORCE_NORMALWIDE) 
+        if (vf->ratio_control & DISP_RATIO_FORCE_NORMALWIDE)
             wide_mode = VIDEO_WIDEOPTION_NORMAL;
         else if (vf->ratio_control & DISP_RATIO_FORCE_FULL_STRETCH)
             wide_mode = VIDEO_WIDEOPTION_FULL_STRETCH;
@@ -727,7 +729,7 @@ void vpp_set_osd_layer_position(s32  *para)
 	{
 		printk("para[3] is null\n");
 		return ;
-	}	
+	}
 	if(para[2] < 2 || para[3] < 2) return ;
 
 	osd_layer_left=para[0];
