@@ -143,6 +143,7 @@ typedef  struct {
 	u32			osd_reverse[HW_OSD_COUNT];
 	osd_rotate_t		rotate[HW_OSD_COUNT];
 	pandata_t	rotation_pandata[HW_OSD_COUNT];
+	u32			field_out_en;
 }hw_para_t;
 
 /************************************************************************
@@ -224,6 +225,22 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	},
 };
 
+#ifdef CONFIG_VSYNC_RDMA
+#ifdef FIQ_VSYNC
+#define add_to_update_list(osd_idx,cmd_idx) \
+	spin_lock_irqsave(&osd_lock, lock_flags); \
+	raw_local_save_flags(fiq_flag); \
+	local_fiq_disable(); \
+	osd_hw.reg[osd_idx][cmd_idx].update_func(); \
+	raw_local_irq_restore(fiq_flag); \
+	spin_unlock_irqrestore(&osd_lock, lock_flags);
+#else
+#define add_to_update_list(osd_idx,cmd_idx) \
+	spin_lock_irqsave(&osd_lock, lock_flags); \
+	osd_hw.reg[osd_idx][cmd_idx].update_func(); \
+	spin_unlock_irqrestore(&osd_lock, lock_flags);
+#endif
+#else
 #ifdef FIQ_VSYNC
 #define add_to_update_list(osd_idx,cmd_idx) \
 	spin_lock_irqsave(&osd_lock, lock_flags); \
@@ -238,10 +255,13 @@ static update_func_t     hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX]={
 	osd_hw.updated[osd_idx]|=(1<<cmd_idx); \
 	spin_unlock_irqrestore(&osd_lock, lock_flags); 
 #endif
+#endif
 
-
-
-
+#ifdef CONFIG_VSYNC_RDMA
 #define remove_from_update_list(osd_idx,cmd_idx) \
 	osd_hw.updated[osd_idx]&=~(1<<cmd_idx);
+#else
+#define remove_from_update_list(osd_idx,cmd_idx)
+#endif
+
 #endif

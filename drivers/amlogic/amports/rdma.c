@@ -89,8 +89,8 @@ static int post_line_start = 0;
 static bool rdma_start = false;
 static bool vsync_rdma_config_delay_flag = false;
 // burst size 0=16; 1=24; 2=32; 3=48.
-static int ctrl_ahb_rd_burst_size = 0;
-static int ctrl_ahb_wr_burst_size = 0;
+static int ctrl_ahb_rd_burst_size = 3;
+static int ctrl_ahb_wr_burst_size = 3;
 
 static int rdma_isr_cfg_count=0;
 static int vsync_cfg_count=0;
@@ -198,16 +198,17 @@ static int rdma_config(unsigned char type)
         Wr(RDMA_AHB_START_ADDR_1, rmda_table_phy_addr);
         Wr(RDMA_AHB_END_ADDR_1,   rmda_table_phy_addr + rmda_item_count*8 - 1);
 
-        if(rmda_item_count > 0){
-            data32  = 0;
-            data32 |= 0x1                       << 8;   // [15: 8] interrupt inputs enable mask for auto-start 1: vsync int bit 0
-            data32 |= 1                         << 5;   // [    5] ctrl_cbus_write_1. 1=Register write; 0=Register read.
-            data32 |= 0                         << 1;   // [    1] ctrl_cbus_addr_incr_1. 1=Incremental register access; 0=Non-incremental.
-            Wr(RDMA_ACCESS_AUTO, data32);
-        }
-        else{
-            Wr(RDMA_ACCESS_AUTO, 0);
-        }
+	data32 = Rd(RDMA_ACCESS_AUTO);
+	if(rmda_item_count > 0){
+		data32 |= 0x1                       << 8;   // [15: 8] interrupt inputs enable mask for auto-start 1: vsync int bit 0
+		data32 |= 1                         << 5;   // [    5] ctrl_cbus_write_1. 1=Register write; 0=Register read.
+		data32 |= 0                         << 1;   // [    1] ctrl_cbus_addr_incr_1. 1=Incremental register access; 0=Non-incremental.
+		Wr(RDMA_ACCESS_AUTO, data32);
+	}
+	else{
+		data32 &= 0xffffedd;
+		Wr(RDMA_ACCESS_AUTO, data32);
+	}
     }
     else if(type == 2){
         int i,j;
@@ -232,13 +233,16 @@ static int rdma_config(unsigned char type)
 
 void vsync_rdma_config(void)
 {
+    u32 data32;
     int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
 
 
     if(pre_enable_ != enable_){
         if(((enable_mask>>17)&0x1)==0){
+            data32  = Rd(RDMA_ACCESS_AUTO);
+            data32 &= 0xffffedd;
             Wr(RDMA_ACCESS_MAN, 0);
-            Wr(RDMA_ACCESS_AUTO, 0);
+            Wr(RDMA_ACCESS_AUTO, data32);
         }
         vsync_rdma_config_delay_flag = false;
     }

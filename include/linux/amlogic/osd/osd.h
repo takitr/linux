@@ -143,7 +143,18 @@ typedef struct reg_val_pair{
     uint reg;
     uint val;
 } reg_val_pair_t;	
-	
 
-
+#ifdef CONFIG_VSYNC_RDMA
+int VSYNCOSD_WR_MPEG_REG(unsigned long adr, unsigned long val);
+int VSYNCOSD_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long start, unsigned long len);
+u32  VSYNCOSD_RD_MPEG_REG(unsigned long addr);
+int VSYNCOSD_SET_MPEG_REG_MASK(unsigned long adr, unsigned long _mask);
+int VSYNCOSD_CLR_MPEG_REG_MASK(unsigned long adr, unsigned long _mask);
+#else
+#define VSYNCOSD_WR_MPEG_REG(adr,val) aml_write_reg32(P_##adr, val);
+#define VSYNCOSD_WR_MPEG_REG_BITS(adr, val, start, len)  aml_set_reg32_bits(P_##adr, val, start, len);
+#define VSYNCOSD_RD_MPEG_REG(adr) aml_read_reg32(P_##adr);
+#define VSYNCOSD_SET_MPEG_REG_MASK(adr, _mask) aml_set_reg32_mask(P_##adr, _mask);
+#define VSYNCOSD_CLR_MPEG_REG_MASK(adr,  _mask) aml_clr_reg32_mask(P_##adr, _mask);
+#endif
 #endif /* OSD1_H */

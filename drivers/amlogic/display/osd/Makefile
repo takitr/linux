@@ -13,6 +13,8 @@ else
 fb-objs += osd_prot_dummy.o
 endif
 
+obj-$(CONFIG_VSYNC_RDMA) += osd_rdma.o
+
 EXTRA_CFLAGS += -Iinclude/linux/osd/
 
 

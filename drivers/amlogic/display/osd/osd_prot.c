@@ -64,51 +64,51 @@ int osd_set_prot(unsigned char   x_rev,
 {
 	unsigned long   data32;
 	if(!on){
-		aml_clr_reg32_mask(P_VPU_PROT1_MMC_CTRL,0xf<<12);  //no one use prot1.
-		aml_clr_reg32_mask(P_VPU_PROT1_CLK_GATE, 1<<0);
+		VSYNCOSD_CLR_MPEG_REG_MASK(VPU_PROT1_MMC_CTRL,0xf<<12);  //no one use prot1.
+		VSYNCOSD_CLR_MPEG_REG_MASK(VPU_PROT1_CLK_GATE, 1<<0);
 		if(osd_index==OSD1){
-			aml_set_reg32_bits (P_VIU_OSD1_BLK0_CFG_W0, 1, 15, 1);//switch back to little endian
-			aml_write_reg32(P_VIU_OSD1_PROT_CTRL,0);
+			VSYNCOSD_WR_MPEG_REG_BITS (VIU_OSD1_BLK0_CFG_W0, 1, 15, 1);//switch back to little endian
+			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_PROT_CTRL,0);
 		}else if(osd_index==OSD2){
-			aml_set_reg32_bits (P_VIU_OSD2_BLK0_CFG_W0, 1, 15, 1);//switch back to little endian
-			aml_write_reg32(P_VIU_OSD2_PROT_CTRL,0);
+			VSYNCOSD_WR_MPEG_REG_BITS (VIU_OSD2_BLK0_CFG_W0, 1, 15, 1);//switch back to little endian
+			VSYNCOSD_WR_MPEG_REG(VIU_OSD2_PROT_CTRL,0);
 		}
 		
 		return 0;
 	}
 	if(osd_index==OSD1){
-		aml_set_reg32_bits (P_VPU_PROT1_MMC_CTRL, 1, 12, 4);//bit[12..15] OSD1 OSD2 OSD3 OSD4
-		aml_write_reg32(P_VIU_OSD1_PROT_CTRL,1<<15|y_len_m1);
-		aml_clr_reg32_mask(P_VIU_OSD1_BLK0_CFG_W0, 1<<15); //before rotate set big endian
+		VSYNCOSD_WR_MPEG_REG_BITS (VPU_PROT1_MMC_CTRL, 1, 12, 4);//bit[12..15] OSD1 OSD2 OSD3 OSD4
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_PROT_CTRL,1<<15|y_len_m1);
+		VSYNCOSD_CLR_MPEG_REG_MASK(VIU_OSD1_BLK0_CFG_W0, 1<<15); //before rotate set big endian
 	}else if(osd_index==OSD2){
-		aml_set_reg32_bits (P_VPU_PROT1_MMC_CTRL, 2, 12, 4);//bit[12..15] OSD1 OSD2 OSD3 OSD4
-		aml_write_reg32(P_VIU_OSD2_PROT_CTRL,1<<15|y_len_m1);
-		aml_clr_reg32_mask(P_VIU_OSD2_BLK0_CFG_W0, 1<<15); //before rotate set big endian
+		VSYNCOSD_WR_MPEG_REG_BITS (VPU_PROT1_MMC_CTRL, 2, 12, 4);//bit[12..15] OSD1 OSD2 OSD3 OSD4
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD2_PROT_CTRL,1<<15|y_len_m1);
+		VSYNCOSD_CLR_MPEG_REG_MASK(VIU_OSD2_BLK0_CFG_W0, 1<<15); //before rotate set big endian
 	}
 
     data32  = (x_end    << 16)  |
               (x_start  << 0);
-    aml_write_reg32(P_VPU_PROT1_X_START_END,  data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_X_START_END,  data32);
 
     data32  = (y_end    << 16)  |
               (y_start  << 0);
-    aml_write_reg32(P_VPU_PROT1_Y_START_END,  data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END,  data32);
 
     data32  = (y_step   << 16)  |
               (y_len_m1 << 0);
-    aml_write_reg32(P_VPU_PROT1_Y_LEN_STEP,   data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_LEN_STEP,   data32);
 
     data32  = (pat_start_ptr    << 4)   |
               (pat_end_ptr      << 0);
-    aml_write_reg32(P_VPU_PROT1_RPT_LOOP,     data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_RPT_LOOP,     data32);
 
-    aml_write_reg32(P_VPU_PROT1_RPT_PAT,      pat_val);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_RPT_PAT,      pat_val);
 
     data32  = (cugt         << 20)  |
               (cid_mode     << 16)  |
               (cid_val      << 8)   |
               (canv_addr    << 0);
-    aml_write_reg32(P_VPU_PROT1_DDR,          data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_DDR,          data32);
 
     data32  = (hold_lines       << 8)   |
               (little_endian    << 7)   |
@@ -117,13 +117,13 @@ int osd_set_prot(unsigned char   x_rev,
               (y_rev            << 3)   |
               (x_rev            << 2)   |
               (1                << 0);      // [1:0] req_en: 0=Idle; 1=Rotate mode; 2=FIFO mode.
-    aml_write_reg32(P_VPU_PROT1_GEN_CNTL,     data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_GEN_CNTL,     data32);
 
     data32  = (req_onoff_en << 31)  |
               (req_off_min  << 16)  |
               (req_on_max   << 0);
-    aml_write_reg32(P_VPU_PROT1_REQ_ONOFF,    data32);
-    aml_write_reg32(P_VPU_PROT1_CLK_GATE, 1); // Enable clock
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_REQ_ONOFF,    data32);
+    VSYNCOSD_WR_MPEG_REG(VPU_PROT1_CLK_GATE, 1); // Enable clock
     return 0;
 }   
 

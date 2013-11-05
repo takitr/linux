@@ -1481,6 +1481,7 @@ osd_probe(struct platform_device *pdev)
 	myfb_dev_t 	*fbdev = NULL;
 	const void *prop;
 	int vmode,prop_idx=0;
+	int rotation = 0;
 	
 	vout_register_client(&osd_notifier_nb);
 
@@ -1604,6 +1605,15 @@ osd_probe(struct platform_device *pdev)
 			amlog_level(LOG_LEVEL_HIGH,"---------------clear framebuffer%d memory  \r\n",index);
 			memset((char*)fbdev->fb_mem_vaddr, 0x80, fbdev->fb_len);
 		}
+
+		if (index == OSD0){
+			prop = of_get_property(pdev->dev.of_node, "rotation", NULL);
+			if(prop)
+				prop_idx = of_read_ulong(prop,1);
+
+			rotation = prop_idx;
+
+		}
 		_fbdev_set_default(fbdev,index);
 		if(NULL==fbdev->color)
 		{
@@ -1638,6 +1648,9 @@ osd_probe(struct platform_device *pdev)
 		{
 			osddev_set(fbdev);
 		}
+		if(index == OSD0 && (rotation == 90 || rotation == 270)){
+			osddev_set(fbdev);
+		}
 		for(i=0;i<ARRAY_SIZE(osd_attrs);i++)
 		r=device_create_file(fbi->dev, &osd_attrs[i]);
 		
@@ -1651,6 +1664,14 @@ osd_probe(struct platform_device *pdev)
     early_suspend.resume = osd_late_resume;
     register_early_suspend(&early_suspend);
 #endif
+	if (rotation == 90 || rotation == 270){
+		osddev_set_prot_canvas(0, 0,0,var_screeninfo[0]-1,var_screeninfo[1]-1);
+		if(rotation == 90)
+		osddev_set_osd_rotate_angle(0, 1);
+		else
+		osddev_set_osd_rotate_angle(0, 2);
+		osddev_set_osd_rotate_on(0, 1);
+	}
 	if (osd_info.index == DEV_ALL){
 		osddev_set_osd_reverse(0, osd_info.osd_reverse);
 		osddev_set_osd_reverse(1, osd_info.osd_reverse);
