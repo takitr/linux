@@ -183,6 +183,18 @@ int aml_dvfs_freq_change(unsigned int id, unsigned int new_freq, unsigned int ol
 }
 EXPORT_SYMBOL_GPL(aml_dvfs_freq_change);
 
+static int aml_dummy_set_voltage(uint32_t id, uint32_t min_uV, uint32_t max_uV)
+{
+    return 0;
+}
+
+struct aml_dvfs_driver aml_dummy_dvfs_driver = {
+    .name        = "aml-dumy-dvfs",
+    .id_mask     = 0, 
+    .set_voltage = aml_dummy_set_voltage, 
+    .get_voltage = NULL,
+};
+
 struct cpufreq_frequency_table *aml_dvfs_get_freq_table(unsigned int id)
 {
     struct aml_dvfs_master  *master;
@@ -278,6 +290,11 @@ static int aml_dvfs_probe(struct platform_device *pdev)
         list_add_tail(&master->list, &__aml_dvfs_list);
         if (aml_dvfs_init_for_master(master)) {
             return -EINVAL;    
+        }
+        err = of_property_read_bool(child, "change-frequent-only");
+        if (err) {
+            aml_dummy_dvfs_driver.id_mask = id;
+            aml_dvfs_register_driver(&aml_dummy_dvfs_driver); 
         }
     }
 

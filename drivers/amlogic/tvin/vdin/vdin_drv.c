@@ -87,7 +87,7 @@ static int callmaster_status = 0;
  * 1: start cofig
  * 2: auto config
  */
-static int canvas_config_mode = 1;
+static int canvas_config_mode = 2;
 module_param(canvas_config_mode, int, 0664);
 MODULE_PARM_DESC(canvas_config_mode, "canvas configure mode");
 
@@ -107,7 +107,7 @@ static int ignore_frames = 0;
 module_param(ignore_frames, int, 0664);
 MODULE_PARM_DESC(ignore_frames, "ignore first <n> frames");
 
-static int start_provider_delay = 100;
+static int start_provider_delay = 0;
 module_param(start_provider_delay, int, 0664);
 MODULE_PARM_DESC(start_provider_delay, "ignore first <n> frames");
 static bool vdin_dbg_en = 0;
@@ -543,13 +543,15 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	else if (canvas_config_mode == 2){
 		vdin_canvas_auto_config(devp);
 	}
+#if 0
+	if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21)){
+		devp->vfp->size = devp->canvas_max_num;
+	} else {
+		devp->vfp->size = devp->canvas_max_num;
+	}
+#endif
 
-        if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
-        {
-                devp->vfp->size = devp->canvas_max_num>>1;
-       	} else {
-       		devp->vfp->size = devp->canvas_max_num;
-       	}
+	devp->vfp->size = devp->canvas_max_num;
 	vf_pool_init(devp->vfp, devp->vfp->size);
 	vdin_vf_init(devp);
 
@@ -1287,14 +1289,14 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 		goto irq_handled;
 	}
 	/*check vs is valid base on the time during continuous vs*/
-	//if(vdin_check_cycle(devp)){
-		//goto irq_handled;
-	//}
+        vdin_check_cycle(devp);
         /*check the skip frame*/
         if(devp->frontend && devp->frontend->sm_ops){
-                sm_ops = devp->frontend->sm_ops;
-                if(sm_ops->check_frame_skip)
-                        sm_ops->check_frame_skip(devp->frontend);
+    	        sm_ops = devp->frontend->sm_ops;
+                if(sm_ops->check_frame_skip && 
+        	        sm_ops->check_frame_skip(devp->frontend)) {
+            	        goto irq_handled;
+                }
         }
 
 	if (devp->flags & VDIN_FLAG_DEC_STOP_ISR){
@@ -1959,7 +1961,7 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
 	}else if(!strncmp(parm[0], "fps", 3)){
 		if(devp->cycle)
 			fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
-                pr_info("%u\n",fps);
+                pr_info("%u f/s\n",fps);
         }
         else if(!strcmp(parm[0],"capture")){
 		if(parm[3] != NULL){
@@ -2391,6 +2393,128 @@ static ssize_t memp_store(struct class *class,
 
 static CLASS_ATTR(memp, 0644, memp_show, memp_store);
 
+static ssize_t vdin_cm2_show(struct device *dev, 
+             struct device_attribute *attr,
+			                     char *buf)
+{
+    struct vdin_dev_s *devp;
+	unsigned int addr_port = VDIN_CHROMA_ADDR_PORT;
+	unsigned int data_port = VDIN_CHROMA_DATA_PORT;
+	
+    devp = dev_get_drvdata(dev);
+    if (devp->addr_offset != 0)     {
+        addr_port = VDIN_CHROMA_ADDR_PORT + devp->addr_offset;
+	    data_port = VDIN_CHROMA_DATA_PORT + devp->addr_offset;	    
+    }
+    pr_info("addr_port: [0x%x] data_port: : [0x%x]\n",addr_port, data_port);
+    
+	pr_info("Usage:");
+	pr_info("	echo wm addr data0 data1 data2 data3 data4 > /sys/class/vdin/vdin0/cm2 \n");
+	pr_info("	echo rm addr > /sys/class/vdin/vdin0/cm2 \n");
+	pr_info("	echo wm addr data0 data1 data2 data3 data4 > /sys/class/vdin/vdin1/cm2 \n");
+	pr_info("	echo rm addr > /sys/class/vdin/vdin1/cm2 \n");
+	return 0;
+}
+
+static ssize_t vdin_cm2_store(struct device *dev, 
+              struct device_attribute *attr,
+		   const char *buffer, size_t count)
+{
+    struct vdin_dev_s *devp;	        
+	int n = 0;
+	char *buf_orig, *ps, *token;
+	char *parm[7];
+	u32 addr, val, bit;
+	int data[5] = {0};
+	unsigned int addr_port = VDIN_CHROMA_ADDR_PORT;
+	unsigned int data_port = VDIN_CHROMA_DATA_PORT;
+	
+    devp = dev_get_drvdata(dev);
+    if (devp->addr_offset != 0)     {
+        addr_port = VDIN_CHROMA_ADDR_PORT + devp->addr_offset;
+	    data_port = VDIN_CHROMA_DATA_PORT + devp->addr_offset;	    
+    }
+	buf_orig = kstrdup(buffer, GFP_KERNEL);
+	ps = buf_orig;
+	while (1) {
+		token = strsep(&ps, " \n");
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+	}
+
+	if ((parm[0][0] == 'w') && parm[0][1] == 'm' ) {
+		if (n != 7) {
+			pr_info("read: invalid parameter\n");
+			pr_info("please: cat /sys/class/vdin/vdin0/cm2 \n");
+			kfree(buf_orig);
+			return count;
+		}
+		addr = simple_strtol(parm[1], NULL, 16);
+		addr = addr - addr%8;
+		data[0] = simple_strtol(parm[2], NULL, 16);
+		data[1] = simple_strtol(parm[3], NULL, 16);
+		data[2] = simple_strtol(parm[4], NULL, 16);
+		data[3] = simple_strtol(parm[5], NULL, 16);
+		data[4] = simple_strtol(parm[6], NULL, 16);
+
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr);
+		aml_write_reg32(VCBUS_REG_ADDR(data_port), data[0]);
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr + 1);
+		aml_write_reg32(VCBUS_REG_ADDR(data_port), data[1]);
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr + 2);
+		aml_write_reg32(VCBUS_REG_ADDR(data_port), data[2]);
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr + 3);
+		aml_write_reg32(VCBUS_REG_ADDR(data_port), data[3]);
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr + 4);
+		aml_write_reg32(VCBUS_REG_ADDR(data_port), data[4]);
+
+		pr_info("wm: [0x%x] <-- 0x0 \n",addr);
+	}
+	else if ((parm[0][0] == 'r') && parm[0][1] == 'm' ) {
+		if (n != 2) {
+			pr_info("read: invalid parameter\n");
+			pr_info("please: cat /sys/class/vdin/vdin0/cm2 \n");
+			kfree(buf_orig);
+			return count;
+		}
+		addr = simple_strtol(parm[1], NULL, 16);
+		addr = addr - addr%8;
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr);
+		data[0] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[0] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[0] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr+1);
+		data[1] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[1] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[1] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr+2);
+		data[2] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[2] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[2] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr+3);
+		data[3] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[3] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[3] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		aml_write_reg32(VCBUS_REG_ADDR(addr_port), addr+4);
+		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
+
+		pr_info("rm:[0x%x]-->[0x%x][0x%x][0x%x][0x%x][0x%x] \n",addr, data[0],data[1],data[2],data[3],data[4]);
+	}
+	else {
+		pr_info("invalid command\n");
+		pr_info("please: cat /sys/class/vdin/vdin0/bit");
+	}
+	kfree(buf_orig);
+	return count;
+
+}
+
+static DEVICE_ATTR(cm2, S_IWUSR | S_IRUGO, vdin_cm2_show, vdin_cm2_store);
 
 
 static int vdin_add_cdev(struct cdev *cdevp, struct file_operations *fops,
@@ -2464,6 +2588,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
         ret = device_create_file(vdevp->dev,&dev_attr_isr_log);
         #endif
         ret = device_create_file(vdevp->dev,&dev_attr_attr);
+	    ret = device_create_file(vdevp->dev,&dev_attr_cm2);
 
 	if(ret < 0) {
 		pr_err("%s: fail to create vdin attribute files.\n", __func__);
@@ -2569,6 +2694,7 @@ static int vdin_drv_remove(struct platform_device *pdev)
         device_remove_file(vdevp->dev,&dev_attr_isr_log);
         #endif
         device_remove_file(vdevp->dev,&dev_attr_attr);
+		device_remove_file(vdevp->dev,&dev_attr_cm2);
 	device_remove_file(vdevp->dev,&dev_attr_sig_det);
 
 	vdin_delete_device(vdevp->index);

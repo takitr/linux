@@ -26,6 +26,10 @@
 
 #endif
 
+#define GAMMA_R				0x00000000
+#define GAMMA_G				0x00000200
+#define GAMMA_B				0x00000400
+
 typedef struct awb_rgb_stat_s {
 	unsigned int rgb_count;
 	unsigned int rgb_sum[3];// r g b
@@ -96,8 +100,8 @@ extern void isp_get_awb_stat(isp_awb_stat_t *awb_stat);
 extern void isp_get_ae_stat(isp_ae_stat_t *ae_stat);
 extern void isp_get_af_stat(isp_af_stat_t *af_stat);
 extern void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat);
-extern void isp_set_ae_win(unsigned int width, unsigned int height);
-extern void isp_set_awb_win(unsigned int width, unsigned int height);
+extern void isp_set_ae_win(unsigned int left, unsigned int right, unsigned int top, unsigned int bottom);
+extern void isp_set_awb_win(unsigned int left, unsigned int right, unsigned int top, unsigned int bottom);
 extern void isp_set_ae_thrlpf(unsigned char thr_r, unsigned char thr_g, unsigned char thr_b, unsigned char lpf);
 extern void isp_set_awb_yuv_thr(unsigned char yh, unsigned char yl, unsigned char u, unsigned char v);
 extern void isp_set_awb_rgb_thr(unsigned char gb, unsigned char gr, unsigned br);
@@ -107,5 +111,7 @@ extern void wave_power_manage(bool enable);
 extern void isp_hw_reset(void);
 extern void isp_awb_set_gain(unsigned int r, unsigned int g, unsigned int b);
 extern void isp_awb_get_gain(isp_awb_gain_t *awb_gain);
+extern void set_isp_gamma_table(unsigned short *gamma,unsigned int type);
+extern void get_isp_gamma_table(unsigned short *gamma,unsigned int type);
 #endif
 

@@ -91,6 +91,7 @@ MODULE_PARM_DESC(use_frame_rate,"use frame rate to cal duraton");
 #define MEAS_MUX_HDMI                   4
 #define MEAS_MUX_DVIN                   5
 #define MEAS_MUX_DTV                    6
+#define MEAS_MUX_ISP                    8
 
 #define MEAS_MUX_VIU                    6
 
@@ -393,8 +394,11 @@ void vdin_set_meas_mux(unsigned int offset, enum tvin_port_e port_)
 		case 0xc0://viu
 			meas_mux = MEAS_MUX_VIU;
 			break;
-		case 0x100://dtv
+		case 0x100://dtv mipi
 			meas_mux = MEAS_MUX_DTV;
+			break;
+		case 0x200://isp
+			meas_mux = MEAS_MUX_ISP;
 			break;
 		default:
 			meas_mux = MEAS_MUX_NULL;
@@ -1631,14 +1635,14 @@ void vdin_enable_module(unsigned int offset, bool enable)
 	if (enable)
 	{
 		//set VDIN_MEAS_CLK_CNTL, select XTAL clock
-		WR(HHI_VDIN_MEAS_CLK_CNTL, 0x00000100);
+		WRITE_CBUS_REG(HHI_VDIN_MEAS_CLK_CNTL, 0x00000100);
 		//vdin_hw_enable(offset);
 		//todo: check them
 	}
 	else
 	{
 		//set VDIN_MEAS_CLK_CNTL, select XTAL clock
-		WR(HHI_VDIN_MEAS_CLK_CNTL, 0x00000000);
+		WRITE_CBUS_REG(HHI_VDIN_MEAS_CLK_CNTL, 0x00000000);
 		vdin_hw_disable(offset);
 	}
 }
@@ -1903,7 +1907,9 @@ inline void vdin_set_hvscale(struct vdin_dev_s *devp)
         unsigned int offset = devp->addr_offset;
     
         if (((devp->scaler4w < devp->h_active) && (devp->scaler4w != 0)) ||
-                (devp->h_active > TVIN_MAX_HACTIVE)){
+                (devp->h_active > TVIN_MAX_HACTIVE)	&&
+                ((devp->parm.port >= TVIN_PORT_HDMI0)&&(devp->parm.port <= TVIN_PORT_HDMI7))
+           ){
             if ((devp->h_active > TVIN_MAX_HACTIVE)&&(devp->scaler4w == 0)) {
                 vdin_set_hscale(offset, devp->h_active, TVIN_MAX_HACTIVE);
                 devp->h_active = TVIN_MAX_HACTIVE;
@@ -1918,7 +1924,7 @@ inline void vdin_set_hvscale(struct vdin_dev_s *devp)
         if ((devp->scaler4h < devp->v_active) && (devp->scaler4h != 0)) {
                 vdin_set_vscale(offset, devp->v_active, devp->scaler4h);
                 devp->v_active = devp->scaler4h;
-                pr_info("[vdin.%d] dst vactive:%u.\n",devp->index, devp->scaler4h);
+                pr_info("[vdin.%d] dst vactive:%u.\n",devp->index, devp->v_active);
         } //else
         //  pr_err("[vdin%x..] dst vactive:0x%x not valid.\n",devp->addr_offset, dst_h);
 #endif

@@ -45,7 +45,7 @@
 #define ISP_FLAG_MWB			        0x00000200
 #define ISP_FLAG_BLNR				0x00000400
 #define ISP_FLAG_SET_COMB4			0x00000800
-
+#define ISP_TEST_FOR_AF_WIN			0x00001000	
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	unsigned int h_active;
@@ -66,14 +66,57 @@ typedef struct flash_property_s {
 
 /*for af debug*/
 typedef struct af_debug_s {
-	bool            flag;
-	unsigned int    control;
+	bool            dir;
+	//unsigned int    control;
 	unsigned int    state;
 	unsigned int    step;
-	unsigned int 	max_step;
+	unsigned int 	min_step;
+		 int 	max_step;
 	unsigned int    delay;
+		 int 	cur_step;
+	unsigned int    pre_step;
+	unsigned int	mid_step;
+	unsigned int	post_step;
+	unsigned int	pre_threshold;
+	unsigned int	post_threshold;
 	isp_blnr_stat_t data[1024];	
 } af_debug_t;
+
+typedef struct isp_af_info_s {
+	unsigned int great_step;
+	unsigned int cur_step;
+	unsigned int cur_index;
+	unsigned long long last_h_fv;
+	unsigned long long last_v_fv;
+	unsigned int last_ave_ac;
+	unsigned int last_ave_dc;
+	isp_blnr_stat_t *f;
+	isp_blnr_stat_t *af_detect;
+	isp_blnr_stat_t af_data[FOCUS_GRIDS];
+	isp_af_stat_t af_wind[FOCUS_GRIDS];
+	//unsigned char af_delay;
+	atomic_t writeable;
+}isp_af_info_t;
+
+typedef struct xml_algorithm_t_af_s {
+    /*for climbing algorithm*/
+	unsigned int step[FOCUS_GRIDS];
+	unsigned int		   step_min;
+	unsigned int		   step_max;
+	unsigned int           f_thr_p;
+	unsigned int 		   f_thr_n;
+	unsigned int 	       step_coarse;
+	unsigned int	       step_fine;
+	unsigned int 		   jump_offset;
+	unsigned int		   field_delay;
+	unsigned int		   detect_step;
+	unsigned int           deta_ave_ratio;//10bits/1024
+	unsigned int		   deta_last_ave;//10bits/1024
+	unsigned int		   window_l_ratio;//10bits/1024
+	unsigned int		   window_r_ratio;//10bits/1024
+	unsigned int		   window_t_ratio;//10bits/1024
+	unsigned int		   window_b_ratio;//10bits/1024
+} xml_algorithm_t_af_t;
 
 /*for debug cmd*/
 typedef struct debug_s {
@@ -99,16 +142,21 @@ typedef struct isp_dev_s{
 	struct isp_ae_stat_s isp_ae;
 	struct isp_awb_stat_s isp_awb;
 	struct isp_af_stat_s isp_af;
+	struct isp_af_info_s af_info;
 	struct isp_blnr_stat_s blnr_stat;
 	cam_parameter_t *cam_param;
 	xml_algorithm_ae_t *isp_ae_parm;
 	xml_algorithm_awb_t *isp_awb_parm;
-	xml_algorithm_af_t *isp_af_parm;
+	xml_algorithm_t_af_t *isp_af_parm;
 	xml_capture_t *capture_parm;
 	wave_t        *wave;
 	flash_property_t flash;
 	af_debug_t      *af_dbg;
 	debug_t         debug;
+	/*test for af win*/
+	unsigned int cnt;
+	unsigned int max;
+	struct isp_af_stat_s *af_win;
 }isp_dev_t;
 
 typedef enum data_type_e{
@@ -130,5 +178,6 @@ extern void set_awb_parm(xml_algorithm_awb_t * awb_sw,char * * parm);
 extern void set_af_parm(xml_algorithm_af_t * af_sw,char * * parm);
 extern void set_cap_parm(struct xml_capture_s * cap_sw,char * * parm);
 extern void set_wave_parm(struct wave_s * wave,char * * parm);
+extern bool set_gamma_table_with_curve_ratio(unsigned int r,unsigned int g,unsigned int b);
 #endif
 

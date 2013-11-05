@@ -88,6 +88,8 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 	parse_param(buf,&parm);
 	if(!strcmp(parm[0],"r")){
 		addr = simple_strtol(parm[1],NULL,16);
+		data = isp_rd(addr);
+		pr_info("r:0x%x = 0x%x.\n",addr,data);
 	}else if(!strcmp(parm[0],"w")){
 		addr = simple_strtol(parm[1],NULL,16);
 		data = simple_strtol(parm[2],NULL,16);
@@ -98,9 +100,15 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 	}else if(!strcmp(parm[0],"flag")){
 		data = simple_strtol(parm[1],NULL,16);
 		devp->flag = data;
-	}else if(!strcmp(parm[0],"comb4.mode")){
+		isp_sm_init(devp);
+	}else if(!strcmp(parm[0],"lenc-mode")){
 		devp->debug.comb4_mode = simple_strtol(parm[1],NULL,10);
 		devp->flag |= ISP_FLAG_SET_COMB4;
+	}else if(!strcmp(parm[0],"test_pattern")){
+		unsigned int width,height;
+		width = simple_strtol(parm[1],NULL,10);
+		height = simple_strtol(parm[2],NULL,10);
+		isp_set_init(width,height,width+26,height+16);
 	}
 	return len;
 }
@@ -115,11 +123,12 @@ static ssize_t debug_show(struct device *dev,struct device_attribute *attr, char
 	return len;
 }
 static DEVICE_ATTR(debug, 0664, debug_show, debug_store);
+
 static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
 {
 	isp_dev_t *devp;
-	unsigned int data=0,data1=0,data2=0,data3=0;
-	char *parm[5]={NULL};
+	int data[10];
+	char *parm[11]={NULL};
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	af_debug_t *af = NULL;
 	if(IS_ERR_OR_NULL(buf)){
@@ -129,9 +138,10 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
 	if(!strcmp(parm[0],"jump")){
-		data = simple_strtol(parm[1],NULL,16);
-		pr_info("%s to 0x%x.\n",parm[0],data);
-		devp->cam_param->cam_function.set_af_new_step(data);
+		data[0] = simple_strtol(parm[1],NULL,16);
+		pr_info("%s to 0x%x.\n",parm[0],data[0]);
+		devp->cam_param->cam_function.set_af_new_step(data[0]);
+	//echo start control min max dir delay step >af_debug
 	}else if(!strcmp(parm[0],"start")){
 		af = kmalloc(sizeof(af_debug_t),GFP_KERNEL);
 		if(IS_ERR_OR_NULL(af)){
@@ -140,36 +150,70 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		}
 		memset(af,0,sizeof(af_debug_t));
 		if(parm[1]&&parm[2]&&parm[3]&&parm[4]){
-			data = simple_strtol(parm[1],NULL,16);
-			data1 = simple_strtol(parm[2],NULL,10);
-			data2 = simple_strtol(parm[3],NULL,10);
-			data3 = simple_strtol(parm[4],NULL,10);
+			//data[0] = simple_strtol(parm[1],NULL,16);//control
+			data[1] = simple_strtol(parm[2],NULL,10);//min step
+			data[2] = simple_strtol(parm[3],NULL,10);//max step
+			data[3] = simple_strtol(parm[4],NULL,10);//dir
+			data[4] = simple_strtol(parm[5],NULL,10);//delay
+			data[5] = simple_strtol(parm[6],NULL,10);//pre step
+			data[6] = simple_strtol(parm[7],NULL,10);//mid step
+			data[7] = simple_strtol(parm[8],NULL,10);//post step
+			data[8] = simple_strtol(parm[9],NULL,10);//pre threshold
+			data[9] = simple_strtol(parm[10],NULL,10);//post threshold
 		}
-		af->flag = true;
-		af->control = data;
+		//af->control = data[0];
+		af->min_step = data[1];
+		af->cur_step = af->min_step;
+		af->max_step = data[2];
+		af->dir = data[3]>0?true:false;
+		af->delay = data[4];
+		af->pre_step = data[5];
+		af->mid_step = data[6];
+		af->post_step = data[7];
+		af->pre_threshold = data[8];
+		af->post_threshold = data[9];
+		
 		af->state = 0;
-		af->step = data1;
-		af->max_step = data2;
-		af->delay = data3;
+		af->step = af->pre_step;
 		if(devp->af_dbg)
 			kfree(devp->af_dbg);
 		devp->af_dbg = af;
 		devp->flag |= ISP_FLAG_AF_DBG;
-		pr_info("%s:full scan from %u to %u.\n",__func__,data1,data2);
+		pr_info("%s:full scan from %u-%u-%u-%u.\n",__func__,af->min_step,
+				af->pre_threshold,af->post_threshold,af->max_step);
 	}else if(!strcmp(parm[0],"print")){	
-		unsigned int i = 0;
+		unsigned int i=0,cursor=0;
 		af = devp->af_dbg;
 		if(IS_ERR_OR_NULL(af))
 			return len;		
 		devp->flag &=(~ISP_FLAG_AF_DBG);
 		pr_info("ac[0]   ac[1]    ac[2]   ac[3]   dc[0]   dc[1]   dc[2]   dc[3]\n");
-		for (i = 0; i < af->max_step; i++){
-			pr_info("step[%4u]: %u %u %u %u %u %u %u %u\n",
-					i,af->data[i].ac[0],af->data[i].ac[1],
-					af->data[i].ac[2],af->data[i].ac[3],
-					af->data[i].dc[0],af->data[i].dc[1],
-					af->data[i].dc[2],af->data[i].dc[3]);	
-			msleep(10);
+		if(af->dir){
+			for (i=af->min_step; i <= af->max_step;i+=af->mid_step){
+				cursor = i;
+				while((af->data[cursor].ac[0]==0)&&(cursor!=0)){
+					cursor--;
+				}
+				pr_info("step[%4u]:%u %u %u %u %u %u %u %u\n",
+					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
+					af->data[cursor].ac[2],af->data[cursor].ac[3],
+					af->data[cursor].dc[0],af->data[cursor].dc[1],
+					af->data[cursor].dc[2],af->data[cursor].dc[3]);	
+				msleep(10);
+			}
+		}else{
+			for (i=af->max_step; i <= af->min_step;i+=af->mid_step){
+				cursor = i;
+				while((af->data[cursor].ac[0]==0)&&(cursor!=0)){
+					cursor--;
+				}
+				pr_info("step[%4u]:%u %u %u %u %u %u %u %u\n",
+					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
+					af->data[cursor].ac[2],af->data[cursor].ac[3],
+					af->data[cursor].dc[0],af->data[cursor].dc[1],
+					af->data[cursor].dc[2],af->data[cursor].dc[3]);	
+				msleep(10);
+			}
 		}
 		pr_info("%s:full scan end.\n",__func__);
 		kfree(af);
@@ -193,7 +237,11 @@ static ssize_t af_debug_show(struct device *dev,struct device_attribute *attr, c
 	
 	isp_dev_t *devp = dev_get_drvdata(dev);
 	unsigned int pix_sum = ((devp->info.h_active)*(devp->info.v_active))>>2;
-	len += sprintf(buf+len,"dc/4:0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.dc[0]/pix_sum,
+	len += sprintf(buf+len,"ac:  0x%x 0x%x 0x%x 0x%x.\nac/4:0x%x 0x%x 0x%x 0x%x.\ndc:  0x%x 0x%x 0x%x 0x%x.\n"
+				"dc/4:0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.ac[0],devp->blnr_stat.ac[1],devp->blnr_stat.ac[2],
+				devp->blnr_stat.ac[3],devp->blnr_stat.ac[0]/pix_sum,devp->blnr_stat.ac[1]/pix_sum,
+				devp->blnr_stat.ac[2]/pix_sum,devp->blnr_stat.ac[3]/pix_sum,devp->blnr_stat.dc[0],
+				devp->blnr_stat.dc[1],devp->blnr_stat.dc[2],devp->blnr_stat.dc[3],devp->blnr_stat.dc[0]/pix_sum,
 				devp->blnr_stat.dc[1]/pix_sum,devp->blnr_stat.dc[2]/pix_sum,devp->blnr_stat.dc[3]/pix_sum);
 	return len;
 }
@@ -201,19 +249,38 @@ static ssize_t af_debug_show(struct device *dev,struct device_attribute *attr, c
 static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 {
 	if (af->state == 0) {
-		af->control = (af->control&0x0000c00f)|((af->step&0x3ff)<<4);
 		if(ops&&ops->set_af_new_step)
-			ops->set_af_new_step(af->control);
+			ops->set_af_new_step(af->cur_step);
 		af->state = 1;
 		if(af_pr)
-			pr_info("set step %u.\n",af->step);
+			pr_info("set step %u.\n",af->cur_step);
 	}else if(af->state == af->delay) {
 		af->state = 0;
-		if (af->step++ >= af->max_step){
-			af->step = 0;
-			/*stop*/
-			af->state = 0xffffffff;
-			pr_info("%s get statics ok.\n",__func__);
+		if(af->cur_step >= af->post_threshold)
+			af->step = af->post_step;
+		else if(af->cur_step >= af->pre_threshold)
+			af->step = af->mid_step;
+		else 
+			af->step = af->post_step;
+		
+		if(af->dir){
+			af->cur_step += af->step;
+			if (af->cur_step > af->max_step){
+				af->cur_step = 0;
+				/*stop*/
+				af->state = 0xffffffff;
+				ops->set_af_new_step(0);
+				pr_info("%s get statics ok.\n",__func__);
+			}
+		}else{
+			af->cur_step -= af->step;
+			if (af->cur_step <= af->max_step){
+				af->cur_step = 0;
+				/*stop*/
+				af->state = 0xffffffff;
+				ops->set_af_new_step(0);
+				pr_info("%s get statics ok.\n",__func__);
+			}
 		}
 	}
         return;
@@ -390,6 +457,133 @@ static ssize_t wave_param_show(struct device *dev,struct device_attribute *attr,
 	set_wave_parm(devp->wave,&buff);
 	return len;
 }
+static DEVICE_ATTR(wave_param, 0664, wave_param_show, wave_param_store);
+
+static ssize_t gamma_debug_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
+{
+	unsigned int curve_ratio,r,g,b;
+	if(buf){
+		curve_ratio = simple_strtol(buf,NULL,16);
+    	        r = (curve_ratio >> 8) & 15;
+		g = (curve_ratio >> 4) & 15;
+		b = (curve_ratio >> 0) & 15;
+		pr_info("curve ratio r:%u,g:%u,b:%u.\n",r,g,b);
+		if(!set_gamma_table_with_curve_ratio(r,g,b))
+			pr_info("%s:set gamma error.\n",__func__);
+	}else{
+		pr_info("%s:null pointer error.\n",__func__);
+	}
+	return len;
+}
+static ssize_t gamma_debug_show(struct class *cls,struct class_attribute *attr,char *buf)
+{
+	unsigned short *gammaR, *gammaG, *gammaB, i;
+	gammaR = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+	gammaG = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+	gammaB = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+	get_isp_gamma_table(gammaR,GAMMA_R);
+	get_isp_gamma_table(gammaG,GAMMA_G);
+	get_isp_gamma_table(gammaB,GAMMA_B);
+	pr_info("  r        g         b.\n");
+	for(i=0;i<257;i++){
+		pr_info("0x%3x    0x%3x    0x%3x\n",
+                        gammaR[i],gammaG[i],gammaB[i]);
+		msleep(1);
+	}
+	kfree(gammaR);
+	kfree(gammaG);
+	kfree(gammaB);
+	return 0;
+}
+
+static DEVICE_ATTR(gamma_debug, 0664, gamma_debug_show, gamma_debug_store);
+
+static ssize_t gamma_show(struct class *cls,struct class_attribute *attr,char *buf)
+{
+	pr_info("Usage:");
+	pr_info("	echo sgr|sgg|sgb xxx...xx > /sys/class/register/gamma\n");
+	pr_info("Notes:");
+	pr_info("	if the string xxx......xx is less than 257*3,");
+	pr_info("	then the remaining will be set value 0\n");
+	pr_info("	if the string xxx......xx is more than 257*3, ");
+	pr_info("	then the remaining will be ignored\n");
+	return 0;
+}
+
+static ssize_t gamma_store(struct class *cls,
+			 struct class_attribute *attr,
+			 const char *buffer, size_t count)
+{
+
+	int n = 0;
+	char *buf_orig, *ps, *token;
+	char *parm[4];
+	unsigned short *gammaR, *gammaG, *gammaB;
+	unsigned int gamma_count;
+	char gamma[4];
+	int i = 0;
+
+	/* to avoid the bellow warning message while compiling:
+	 * warning: the frame size of 1576 bytes is larger than 1024 bytes
+	 */
+	gammaR = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+	gammaG = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+	gammaB = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
+
+	buf_orig = kstrdup(buffer, GFP_KERNEL);
+	ps = buf_orig;
+	while (1) {
+		token = strsep(&ps, " \n");
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+	}
+
+	if ((parm[0][0] == 's') && (parm[0][1] == 'g')) {
+		memset(gammaR, 0, 257 * sizeof(unsigned short));
+		gamma_count = (strlen(parm[1]) + 2) / 3;
+		if (gamma_count > 257)
+			gamma_count = 257;
+
+		for (i = 0; i < gamma_count; ++i) {
+			gamma[0] = parm[1][3 * i + 0];
+			gamma[1] = parm[1][3 * i + 1];
+			gamma[2] = parm[1][3 * i + 2];
+			gamma[3] = '\0';
+			gammaR[i] = simple_strtol(gamma, NULL, 16);
+		}
+
+		switch (parm[0][2]) {
+		case 'r':
+			set_isp_gamma_table(gammaR, GAMMA_R);
+			break;
+
+		case 'g':
+			set_isp_gamma_table(gammaR, GAMMA_G);
+			break;
+
+		case 'b':
+			set_isp_gamma_table(gammaR, GAMMA_B);
+			break;
+		default:
+			break;
+		}
+	} else {
+		pr_info("invalid command\n");
+		pr_info("please: cat /sys/class/isp/isp0/gamma");
+
+	}
+	kfree(buf_orig);
+	kfree(gammaR);
+	kfree(gammaG);
+	kfree(gammaB);
+	return count;
+}
+
+static DEVICE_ATTR(gamma, 0664, gamma_show, gamma_store);
+
 
 static int isp_thread(isp_dev_t *devp) {
 	struct cam_function_s *func = &devp->cam_param->cam_function;
@@ -414,12 +608,16 @@ static int isp_thread(isp_dev_t *devp) {
 	if(devp->flag&ISP_FLAG_AF_DBG){
 		af_stat(devp->af_dbg,func);
 	}
+	if(devp->flag&ISP_FLAG_AF) {
+		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
+			atomic_set(&devp->af_info.writeable,0);
+			func->set_af_new_step(devp->af_info.cur_step);
+		}
+	}
     if(kthread_should_stop())
         break;
 	}
 }
-
-static DEVICE_ATTR(wave_param, 0664, wave_param_show, wave_param_store);
 
 static int start_isp_thread(isp_dev_t *devp) {	
 	if(!devp->kthread) {
@@ -475,10 +673,32 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	} else {
 		devp->isp_ae_parm = &devp->cam_param->xml_scenes->ae;
 		devp->isp_awb_parm = &devp->cam_param->xml_scenes->awb;
-		devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
+		//devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
+		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_t_af_t),GFP_KERNEL);
+		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
+		devp->isp_af_parm->detect_step = 16;
+		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step,GFP_KERNEL);
+		devp->isp_af_parm->step[0] = 100;
+		devp->isp_af_parm->step[1] = 150;
+		devp->isp_af_parm->step[2] = 200;
+		devp->isp_af_parm->step[3] = 250;
+		devp->isp_af_parm->step[4] = 290;
+		devp->isp_af_parm->step[5] = 330;
+		devp->isp_af_parm->step[6] = 370;
+		devp->isp_af_parm->step[7] = 400;		
+		devp->isp_af_parm->step[8] = 430;		
+		devp->isp_af_parm->step[9] = 460;
+		devp->isp_af_parm->step[10] = 480;		
+		devp->isp_af_parm->step[11] = 500;
+                devp->isp_af_parm->step[12] = 520;
+                devp->isp_af_parm->step[13] = 530;
+                devp->isp_af_parm->step[14] = 540;
+		devp->isp_af_parm->step[15] = 0;
+		devp->isp_af_parm->jump_offset = 100;
+		devp->isp_af_parm->field_delay = 1;
 	}
         return 0;
 }
@@ -624,6 +844,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	xml_wb_manual_t *wb;
 	af_debug_t *af;
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+	struct isp_af_info_s *af_info = &devp->af_info;
 	int ret = 0;
 	if(IS_ERR_OR_NULL(devp->cam_param)){
 		pr_info("%s:null pointer error.\n",__func__);
@@ -637,7 +858,8 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(af_enable){
 	if(devp->flag & ISP_FLAG_AF)
-	        isp_get_af_stat(&devp->isp_af);
+	        isp_get_blnr_stat(&af_info->f[af_info->cur_index]);
+			isp_get_af_stat(&af_info->af_wind[af_info->cur_index]);
 	}
 	if(devp->flag & ISP_FLAG_SET_EFFECT){
 		csc = &(devp->cam_param->xml_effect_manual->csc);
@@ -655,8 +877,15 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	if(devp->flag & ISP_FLAG_AF_DBG){
 		af = devp->af_dbg;
 		if((af->state >= 1)&&(af->state <= af->delay)){
-			isp_get_blnr_stat(&af->data[af->step]);
+			isp_get_blnr_stat(&af->data[af->cur_step]);
 			af->state++;
+		}
+	}
+	if(devp->flag & ISP_TEST_FOR_AF_WIN){
+		isp_get_af_stat(&devp->af_win[devp->cnt]);
+		if(devp->cnt++ > devp->max){
+			devp->flag &=(~ISP_TEST_FOR_AF_WIN);
+			pr_info("get af win info end.\n");
 		}
 	}
 	if(devp->flag&ISP_FLAG_MWB){
@@ -691,7 +920,7 @@ static void isp_tasklet(unsigned long arg)
 	}
 	if(af_enable){
 	if(devp->flag & ISP_FLAG_AF)
-		isp_af_sm(devp);
+		isp_af_detect(devp);
 	}
 }
 static struct tvin_decoder_ops_s isp_dec_ops ={
@@ -793,6 +1022,8 @@ static int isp_probe(struct platform_device *pdev)
 	ret = device_create_file(devp->dev,&dev_attr_af_debug);
 	ret = device_create_file(devp->dev,&dev_attr_cap_param);
 	ret = device_create_file(devp->dev,&dev_attr_wave_param);
+	ret = device_create_file(devp->dev,&dev_attr_gamma_debug);
+	ret = device_create_file(devp->dev,&dev_attr_gamma);
 	if(ret < 0)
 		goto err;
 	
