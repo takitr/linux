@@ -491,7 +491,6 @@ static void cpu_hotplug_thread(int *hotplug_flag)
 	while(1){
 		if (kthread_should_stop())
 			break;
-
 		mutex_lock(&dbs_info->cdbs.timer_mutex);
 		if(*hotplug_flag == CPU_HOTPLUG_PLUG){
 			*hotplug_flag = CPU_HOTPLUG_NONE;
@@ -677,9 +676,9 @@ static void hg_dbs_timer(struct work_struct *work)
 {
 	struct hg_cpu_dbs_info_s *dbs_info =
 		container_of(work, struct hg_cpu_dbs_info_s, cdbs.work.work);
-	unsigned int cpu = dbs_info->cdbs.cpu;
 	unsigned long flags;
 	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
+	unsigned int cpu = policy->cpu;
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
 
