@@ -1696,7 +1696,10 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     //tmp_add_data[6] = 1'b0;      // Force Video Scan, only if [7]is set
     //tmp_add_data[5] = 1'b0 ;     // Force Video field, only if [7]is set
     //tmp_add_data[4:0] = 5'b00 ;  // Rsrv
-    tmp_add_data = 0;
+    if(hdmitx_device->cur_VIC == 39)
+        tmp_add_data = 0;
+    else
+        tmp_add_data = (1<<4);
     hdmi_wr_reg(TX_VIDEO_DTV_TIMING, tmp_add_data);
     
     tmp_add_data  = 0;
