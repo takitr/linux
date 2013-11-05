@@ -56,7 +56,7 @@ extern u16 total_len;
 #define GTP_AUTO_UPDATE       0
 #define GTP_CHANGE_X2Y        0
 #define GTP_ESD_PROTECT       0
-#define GTP_CREATE_WR_NODE    0
+#define GTP_CREATE_WR_NODE    1
 #define GTP_ICS_SLOT_REPORT   1
 
 #define GUP_USE_HEADER_FILE   0
@@ -192,7 +192,7 @@ a sample config, send this config should cause the chip cannot work normally*/
 
 //*****************************End of Part III********************************
 extern struct touch_pdata *ts_com;
-u8 *config_info = NULL;
+extern u8 *config_info;
 #define READ_COUNT  5
 static int goodix_get_config(void)
 {

@@ -96,7 +96,7 @@ int meson_power_suspend(void)
 	DISABLE_SUSPEND_WATCHDOG;
 #endif
 	printk("power down cpu --\n");
-	pwrtest_entry(APPF_POWER_DOWN_CPU,0,0,APPF_SAVE_PMU|APPF_SAVE_VFP|APPF_SAVE_L2 | IO_PL310_BASE & 0xffff0000);
+	pwrtest_entry(APPF_POWER_DOWN_CPU,0,0,APPF_SAVE_PMU|APPF_SAVE_VFP|APPF_SAVE_L2 |( IO_PL310_BASE & 0xffff0000));
 #ifdef CONFIG_SUSPEND_WATCHDOG
 	ENABLE_SUSPEND_WATCHDOG;
 #endif

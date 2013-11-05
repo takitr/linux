@@ -16,14 +16,21 @@
 #include <asm/mach-types.h>
 #include <asm/cp15.h>
 
+extern void meson_cleanup(void);
+
 int meson_cpu_kill(unsigned int cpu)
 {
-	//meson_set_cpu_ctrl_reg(cpu, 0);
-	//meson_set_cpu_power_ctrl(cpu, 0);
+	unsigned int value;
+	unsigned int offset=(cpu<<3);
+	do{
+		udelay(10);
+		value=aml_read_reg32(MESON_CPU_POWER_CTRL_REG);
+	}while((value&(3<<offset)) != (3<<offset));
 
+	udelay(10);
+	meson_set_cpu_power_ctrl(cpu, 0);
 	return 1;
 }
-
 
 
 void meson_cpu_die(unsigned int cpu)
@@ -32,18 +39,14 @@ void meson_cpu_die(unsigned int cpu)
 	flush_cache_all();
 	dsb();
 	dmb();	
-	for (;;) {
-	    
-	    __asm__ __volatile__ ("wfi" : : : "memory");
-	
-		if (smp_processor_id() == cpu) {	
-			if(((aml_read_reg32(MESON_CPU_CONTROL_REG)&0xf) & ((1 << cpu) | 1)) == ((1<<cpu) | 1))
-			{
-				break;
-			}
-		}	
-	}
 
+	meson_cleanup();
+	aml_set_reg32_bits(MESON_CPU_POWER_CTRL_REG,0x3,(cpu << 3),2);
+	asm volatile(
+		"dsb\n"
+		"wfi\n"
+	);
+	BUG();
 }
 
 int meson_cpu_disable(unsigned int cpu)

@@ -143,6 +143,7 @@
 #define AMSTREAM_IOC_SET_VSYNC_UPINT   _IOW(AMSTREAM_IOC_MAGIC, 0x89, unsigned long)
 #define AMSTREAM_IOC_SET_DEMUX  _IOW(AMSTREAM_IOC_MAGIC, 0x90, unsigned long)
 #define AMSTREAM_IOC_SET_DRMMODE _IOW(AMSTREAM_IOC_MAGIC, 0x91, unsigned long)
+#define AMSTREAM_IOC_TSTAMP_uS64 _IOW(AMSTREAM_IOC_MAGIC, 0x95, unsigned long)
 
 #define AMSTREAM_IOC_SET_VIDEO_DELAY_LIMIT_MS _IOW(AMSTREAM_IOC_MAGIC, 0xa0, unsigned long)
 #define AMSTREAM_IOC_GET_VIDEO_DELAY_LIMIT_MS _IOR(AMSTREAM_IOC_MAGIC, 0xa1, unsigned long)
@@ -265,6 +266,7 @@ struct codec_profile_t
 	char *name;		// video codec short name 
 	char *profile;	// Attributes,seperated by commas 
 };
+
 #define SUPPORT_VDEC_NUM	(8)
 
 int vcodec_profile_register(const struct codec_profile_t *vdec_profile);

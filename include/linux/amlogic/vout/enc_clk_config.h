@@ -18,6 +18,9 @@ typedef struct enc_clk_val{
     vmode_t mode;
     unsigned hpll_clk_out;
     unsigned hpll_hdmi_od;
+#ifdef CONFIG_ARCH_MESON8
+    unsigned hpll_lvds_od;
+#endif
     unsigned viu_path;
     viu_type_e viu_type;
     unsigned vid_pll_div;

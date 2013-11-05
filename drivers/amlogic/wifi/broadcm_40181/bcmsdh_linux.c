@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: bcmsdh_linux.c 384887 2013-02-13 13:23:52Z $
+ * $Id: bcmsdh_linux.c 414953 2013-07-26 17:36:27Z $
  */
 
 /**
@@ -561,7 +561,7 @@ bcmsdh_unregister(void)
 
 int bcmsdh_set_drvdata(void * dhdp)
 {
-	SDLX_MSG(("%s: Enter \n", __FUNCTION__));
+	SDLX_MSG(("%s: Enter\n", __FUNCTION__));
 
 	dev_set_drvdata(sdhcinfo->dev, dhdp);
 
@@ -622,10 +622,17 @@ int bcmsdh_register_oob_intr(void * dhdp)
 			"bcmsdh_sdmmc", NULL);
 		if (error)
 			return -ENODEV;
-
-			//error = enable_irq_wake(sdhcinfo->oob_irq);
-	//	if (error)
-		//	SDLX_MSG(("%s: enable_irq_wake error=%d \n", __FUNCTION__, error));
+#if 0
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+		if (device_may_wakeup(sdhcinfo->dev)) {
+#endif
+			error = enable_irq_wake(sdhcinfo->oob_irq);
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+		}
+#endif
+		if (error)
+			SDLX_MSG(("%s: enable_irq_wake error=%d \n", __FUNCTION__, error));
+#endif
 		sdhcinfo->oob_irq_registered = TRUE;
 		sdhcinfo->oob_irq_enable_flag = TRUE;
 	}
@@ -640,9 +647,16 @@ void bcmsdh_set_irq(int flag)
 		sdhcinfo->oob_irq_enable_flag = flag;
 		if (flag) {
 			enable_irq(sdhcinfo->oob_irq);
-				//enable_irq_wake(sdhcinfo->oob_irq);
+
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+	//		if (device_may_wakeup(sdhcinfo->dev))
+#endif
+	//			enable_irq_wake(sdhcinfo->oob_irq);
 		} else {
-			//	disable_irq_wake(sdhcinfo->oob_irq);
+#if defined(CONFIG_ARCH_RHEA) || defined(CONFIG_ARCH_CAPRI)
+	//		if (device_may_wakeup(sdhcinfo->dev))
+#endif
+	//			disable_irq_wake(sdhcinfo->oob_irq);
 			disable_irq(sdhcinfo->oob_irq);
 		}
 	}
@@ -657,6 +671,14 @@ void bcmsdh_unregister_oob_intr(void)
 		free_irq(sdhcinfo->oob_irq, NULL);
 		sdhcinfo->oob_irq_registered = FALSE;
 	}
+}
+
+bool bcmsdh_is_oob_intr_registered(void)
+{
+	if (sdhcinfo)
+		return sdhcinfo->oob_irq_registered;
+	else
+		return FALSE;
 }
 #endif 
 

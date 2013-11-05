@@ -3,7 +3,7 @@
  * Base files are ../ucode/register.h ../ucode/dos_register.h 
  *   ../ucode/c_always_on_pointer.h ../ucode/m6tv_mmc.h 
  *   ../ucode/c_stb_define.h ../ucode/secure_apb.h from VLSI team
- * Wed Sep 11 10:36:15 CST 2013 
+ * Tue Oct 22 15:28:48 CST 2013 
  */
 #ifndef __MACH_MESON8_REG_ADDR_H_
 #define __MACH_MESON8_REG_ADDR_H_
@@ -12372,35 +12372,35 @@
 #define AO_SECURE_REG2 0x02 	///../ucode/secure_apb.h:21
 #define P_AO_SECURE_REG2 		SECBUS2_REG_ADDR(AO_SECURE_REG2)
 #define SEC_BLKMV_AES_REG0 0x00 	///../ucode/secure_apb.h:34
-#define P_SEC_BLKMV_AES_REG0 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_REG0)
+#define P_SEC_BLKMV_AES_REG0 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_REG0)
 #define SEC_BLKMV_AES_W0 0x01 	///../ucode/secure_apb.h:35
-#define P_SEC_BLKMV_AES_W0 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_W0)
+#define P_SEC_BLKMV_AES_W0 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_W0)
 #define SEC_BLKMV_AES_W1 0x02 	///../ucode/secure_apb.h:36
-#define P_SEC_BLKMV_AES_W1 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_W1)
+#define P_SEC_BLKMV_AES_W1 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_W1)
 #define SEC_BLKMV_AES_W2 0x03 	///../ucode/secure_apb.h:37
-#define P_SEC_BLKMV_AES_W2 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_W2)
+#define P_SEC_BLKMV_AES_W2 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_W2)
 #define SEC_BLKMV_AES_W3 0x04 	///../ucode/secure_apb.h:38
-#define P_SEC_BLKMV_AES_W3 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_W3)
+#define P_SEC_BLKMV_AES_W3 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_W3)
 #define SEC_BLKMV_AES_R0 0x05 	///../ucode/secure_apb.h:39
-#define P_SEC_BLKMV_AES_R0 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_R0)
+#define P_SEC_BLKMV_AES_R0 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_R0)
 #define SEC_BLKMV_AES_R1 0x06 	///../ucode/secure_apb.h:40
-#define P_SEC_BLKMV_AES_R1 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_R1)
+#define P_SEC_BLKMV_AES_R1 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_R1)
 #define SEC_BLKMV_AES_R2 0x07 	///../ucode/secure_apb.h:41
-#define P_SEC_BLKMV_AES_R2 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_R2)
+#define P_SEC_BLKMV_AES_R2 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_R2)
 #define SEC_BLKMV_AES_R3 0x08 	///../ucode/secure_apb.h:42
-#define P_SEC_BLKMV_AES_R3 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_R3)
+#define P_SEC_BLKMV_AES_R3 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_R3)
 #define SEC_BLKMV_TDES_LAST_IV_LO 0x09 	///../ucode/secure_apb.h:43
-#define P_SEC_BLKMV_TDES_LAST_IV_LO 		SECBUS2_REG_ADDR(SEC_BLKMV_TDES_LAST_IV_LO)
+#define P_SEC_BLKMV_TDES_LAST_IV_LO 		SECBUS3_REG_ADDR(SEC_BLKMV_TDES_LAST_IV_LO)
 #define SEC_BLKMV_TDES_LAST_IV_HI 0x0a 	///../ucode/secure_apb.h:44
-#define P_SEC_BLKMV_TDES_LAST_IV_HI 		SECBUS2_REG_ADDR(SEC_BLKMV_TDES_LAST_IV_HI)
+#define P_SEC_BLKMV_TDES_LAST_IV_HI 		SECBUS3_REG_ADDR(SEC_BLKMV_TDES_LAST_IV_HI)
 #define SEC_BLKMV_AES_IV_0 0x0b 	///../ucode/secure_apb.h:45
-#define P_SEC_BLKMV_AES_IV_0 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_IV_0)
+#define P_SEC_BLKMV_AES_IV_0 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_IV_0)
 #define SEC_BLKMV_AES_IV_1 0x0c 	///../ucode/secure_apb.h:46
-#define P_SEC_BLKMV_AES_IV_1 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_IV_1)
+#define P_SEC_BLKMV_AES_IV_1 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_IV_1)
 #define SEC_BLKMV_AES_IV_2 0x0d 	///../ucode/secure_apb.h:47
-#define P_SEC_BLKMV_AES_IV_2 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_IV_2)
+#define P_SEC_BLKMV_AES_IV_2 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_IV_2)
 #define SEC_BLKMV_AES_IV_3 0x0e 	///../ucode/secure_apb.h:48
-#define P_SEC_BLKMV_AES_IV_3 		SECBUS2_REG_ADDR(SEC_BLKMV_AES_IV_3)
+#define P_SEC_BLKMV_AES_IV_3 		SECBUS3_REG_ADDR(SEC_BLKMV_AES_IV_3)
 #define HDMI_ADDR_PORT 0x42000 	///../ucode/hdmi.h:4
 #define P_HDMI_ADDR_PORT 		APB_REG_ADDR(HDMI_ADDR_PORT)
 #define HDMI_DATA_PORT 0x42004 	///../ucode/hdmi.h:5

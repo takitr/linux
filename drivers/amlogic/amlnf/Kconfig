@@ -10,19 +10,9 @@ config AML_NEXT_GEN_NAND
 	help
 	  Support for NAND flash on Amlogic Meson platforms for Next gen driver
 
-
-config AML_NAND_ENV
-	bool "Meson NAND environment variable device (dev/nand_env) support"
-	depends on AM_NAND
-	depends on ARCH_MESON3 || ARCH_MESON6
-	default y
-	help
-	  Support NAND environment variable device
-
 config AML_NAND_KEY
 	bool "Meson key data store in nand device(dev/nand_key) support"
 	depends on AML_NEXT_GEN_NAND
-	depends on ARCH_MESON3 || ARCH_MESON6
 	default n
 	help
 	  Support   key variable store in NAND device
@@ -30,7 +20,6 @@ config AML_NAND_KEY
 config SECURE_NAND
 	bool "Meson secure data store in nand device support"
 	depends on AML_NEXT_GEN_NAND
-	depends on ARCH_MESON3 || ARCH_MESON6
 	default n
 	help
 	  Support  secure storage in NAND device

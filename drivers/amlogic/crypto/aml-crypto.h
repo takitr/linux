@@ -15,6 +15,7 @@
 
 #define MODE_ECB 0
 #define MODE_CBC 1
+#define MODE_CTR 1
 
 #define DIR_ENCRYPT 0
 #define DIR_DECRYPT 1
@@ -60,6 +61,7 @@
 #define NDMA_AES_IV_1                              0x2299
 #define NDMA_AES_IV_2                              0x229a
 #define NDMA_AES_IV_3                              0x229b
+#define NDMA_AES_REG0                             0x229c
 
 struct aml_crypto_ctx {
     unsigned long key[8];

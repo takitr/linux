@@ -11,6 +11,7 @@
  */
 #include <mach/am_regs.h>
 #include <linux/kernel.h>
+#include <linux/err.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include "isp_regs.h"
 #include "isp_hw.h"
@@ -229,13 +230,31 @@ void isp_set_ae_stat(xml_ae_t *aes,unsigned int w,unsigned int h)
 */
 void isp_set_af_stat(xml_af_t *afs,unsigned int w,unsigned int h)
 {
-	int i = 0;
+	unsigned int i=0,tmp_w=0,tmp_h=0;
 	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(afs){
 		for(i=0;i<XML_AF;i++)
 			WR(ISP_AFC_FILTER_SEL+i, afs->reg_map[i]);
 	}
-        /*config win0~win8 according to hv size*/
+	WR(ISP_AFC_FILTER_SEL,0x17722);
+    /*config win0~win8 according to hv size*/
+	tmp_w = w/12;
+	tmp_h = h/12;
+	/* wind0 h:2-5  v:2-5*/
+	WR(ISP_AFC_WIND0_LR,(tmp_w<<1)<<16|tmp_w*5);
+	WR(ISP_AFC_WIND0_TB,(tmp_h<<1)<<16|tmp_h*5);
+	/* wind1 h:5-8  v:5-8*/
+	WR(ISP_AFC_WIND1_LR,(tmp_w*5)<<16|tmp_w<<3);
+	WR(ISP_AFC_WIND1_TB,(tmp_h*5)<<16|tmp_h<<3);
+	/* wind2 h:8-11 v:2-5*/
+	WR(ISP_AFC_WIND2_LR,(tmp_w<<3)<<16|tmp_w*11);
+	WR(ISP_AFC_WIND2_TB,(tmp_h<<1)<<16|tmp_h*5);
+	/* wind3 h:2-5  v:8-11*/
+	WR(ISP_AFC_WIND3_LR,(tmp_w<<1)<<16|tmp_w*5);
+	WR(ISP_AFC_WIND3_TB,(tmp_h<<3)<<16|tmp_h*11);
+	/*wind4 h:8-11 v:8-11*/
+	WR(ISP_AFC_WIND4_LR,(tmp_w<<3)<<16|tmp_w*11);
+	WR(ISP_AFC_WIND4_TB,(tmp_h<<3)<<16|tmp_h*11);	
 }
 /*
 *reg 0xac~0xae
@@ -256,7 +275,7 @@ void isp_set_blenr_stat(unsigned int w,unsigned int h)
 	else
 		WR_BITS(ISP_BLNR_CTRL,1,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
 	/*set ac adaptive*/
-	WR_BITS(ISP_BLNR_CTRL,0,BLNR_AC_ADAPTIVE_BIT,BLNR_AC_ADAPTIVE_WID);
+	WR_BITS(ISP_BLNR_CTRL,1,BLNR_AC_ADAPTIVE_BIT,BLNR_AC_ADAPTIVE_WID);
 	WR(ISP_BLNR_WIND_LR, w-1);
 	WR(ISP_BLNR_WIND_TB, h-1);
 	WR_BITS(ISP_BLNR_CTRL,1,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
@@ -288,7 +307,16 @@ void isp_set_lnsd_mode(unsigned int mode)
 {
 	WR_BITS(ISP_LNS_CTRL,mode,LNS_MESH_MODE_BIT,LNS_MESH_MODE_WID);
 }
-
+static void isp_set_gamma_table(struct xml_lut_gc_s *gt)
+{
+	if(gt){
+		set_isp_gamma_table(gt->gamma_r,GAMMA_R);
+		set_isp_gamma_table(gt->gamma_g,GAMMA_G);
+		set_isp_gamma_table(gt->gamma_b,GAMMA_B);
+	}else{
+		pr_info("%s:null pointer error.\n",__func__);
+	}
+}
 /*
 *
 */
@@ -308,21 +336,22 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	}
 	WR_BITS(VPU_MISC_CTRL,mux,ISP_IN_SEL_BIT,ISP_IN_SEL_WID);
 	isp_top_init(&regs->top,w,h);
-	//isp_set_test_pattern(&regs->tp);
-	//isp_set_clamp_gain(&regs->cg);
-	//isp_set_lens_shading(&regs->ls);
-	//isp_set_gamma_correction(&regs->gc);
-	//isp_set_defect_pixel_correction(&regs->dp);
+	isp_set_test_pattern(&regs->tp);
+	isp_set_clamp_gain(&regs->cg);
+	isp_set_lens_shading(&regs->ls);
+	isp_set_gamma_correction(&regs->gc);
+	isp_set_defect_pixel_correction(&regs->dp);
 	isp_set_demosaicing(&regs->dm);
 	isp_set_matrix(NULL,h);
-	//isp_set_sharpness(&regs->sharp);
-	//isp_set_nr(&regs->nr);
+	isp_set_sharpness(&regs->sharp);
+	isp_set_nr(&regs->nr);
 	isp_set_blenr_stat(w,h);
-	//isp_set_awb_stat(&regs->awb_reg,w,h);
+	isp_set_awb_stat(&regs->awb_reg,w,h);
 	isp_set_ae_stat(&regs->ae_reg,w,h);
-	//isp_set_af_stat(&regs->af_reg,w,h);
+	isp_set_af_stat(&regs->af_reg,w,h);
 	//isp_set_dbg(&regs->dbg);
 	isp_set_lnsd(&regs->lnsd);
+	isp_set_gamma_table(&regs->lut_gc);
 	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 }
 /*
@@ -330,28 +359,8 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 */
 void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal)
 {
-	
-	WRITE_CBUS_REG_BITS(VPU_MISC_CTRL,1,1,2); //isp_in_sel = 1;
-        // image size
-        WRITE_VCBUS_REG_BITS(ISP_HV_SIZE,  hsize,16,13);
-        WRITE_VCBUS_REG_BITS(ISP_HV_SIZE,  vsize, 0,13);
-
-        // general config
-        WRITE_VCBUS_REG(ISP_HBLANK, (hsize<<16)|10); //reg_hblank = 10  should set
-        WRITE_VCBUS_REG(ISP_TIMING_MODE,0x0 );
-        WRITE_VCBUS_REG(ISP_RST_DLY_NUM,0x0 );
-        WRITE_VCBUS_REG(ISP_OUTVS_DLY_NUM,0x0 );
-        WRITE_VCBUS_REG(ISP_DIN_WIND_OFST,0x0 );
-        WRITE_VCBUS_REG(ISP_FRM_SOFT_RST, 0x0 );
-        WRITE_VCBUS_REG(ISP_RST_SYN_SEL,  0x0 );
-
-        WRITE_VCBUS_REG(ISP_RST_DLY_NUM,htotal*5);  //5 hold line between vsync and isp soft_rst, soft_rst should be set after register is ready.
-        WRITE_VCBUS_REG_BITS(ISP_FRM_DONE_PARA,1,16,1);  //TBD: select frame_done for ISP interrupt
-        WRITE_VCBUS_REG_BITS(ISP_FRM_DONE_PARA,2,0,16);  //TBD: reg_frm_done_dlynum = 2;
-        WRITE_VCBUS_REG(ISP_OUTHS_PARA, (10<<16) | 8);       //more hsync at the beginning for VDIN: reg_ouths_pre_dist=10, reg_ouths_pre_num=8
-
         // pat gen
-        WRITE_VCBUS_REG(ISP_PAT_GEN_CTRL, 0x0 );
+        WRITE_VCBUS_REG(ISP_PAT_GEN_CTRL, 0x0);
         WRITE_VCBUS_REG(ISP_PAT_XRAMP_SCAL,0x00ffffff);
         WRITE_VCBUS_REG(ISP_PAT_YRAMP_SCAL,0x00ffffff);
         WRITE_VCBUS_REG(ISP_PAT_XYIDX_OFST,0x0 );
@@ -378,53 +387,6 @@ void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsi
         WRITE_VCBUS_REG(ISP_PAT_DFT_GAIN, 0x0);
         WRITE_VCBUS_REG(ISP_PAT_HVTOTAL,(vtotal<<16)|(htotal));
         WRITE_VCBUS_REG(ISP_PAT_VDE_SLINE,0x00000007 );
-
-        // clamp gain
-        WRITE_VCBUS_REG(ISP_CLAMPGAIN_CTRL,  0x00000020);
-        WRITE_VCBUS_REG(ISP_GAIN_BSCORE_GRBG,0x00000000);
-        WRITE_VCBUS_REG(ISP_CLAMP_GRBG01, 0x0);
-        WRITE_VCBUS_REG(ISP_CLAMP_GRBG23, 0x0);
-        WRITE_VCBUS_REG(ISP_GAIN_GRBG01,0x01000100 );
-        WRITE_VCBUS_REG(ISP_GAIN_GRBG23,0x01000100 );
-
-        // lens shading
-        WRITE_VCBUS_REG(ISP_LNS_CTRL,0x0);
-        WRITE_VCBUS_REG(ISP_LNS_XYSCAL,0x008400eb);
-        WRITE_VCBUS_REG(ISP_LNS_XYIDX_SHFT,0x0 );
-        WRITE_VCBUS_REG(ISP_LNS_SENSOR_GAINGRBG,0x80808080);
-        WRITE_VCBUS_REG(ISP_LNS_POST_OFSTGRBG,0x0 );
-
-        // raw gamma
-        WRITE_VCBUS_REG(ISP_GMR0_CTRL, 0x0);
-
-        // dft det/correct
-        // reg_isp_dft_enable=0;reg_isp_dftmap_writeto_lut_stline=0
-        // reg_isp_dftmap_correct_drtrate=1;reg_isp_dft_detect_mode=2;reg_isp_dftmap_correct_mode =0;
-        WRITE_VCBUS_REG(ISP_DFT_CTRL,  (0<<28)|(0<<16)|(1<<8)|(2<<4)|(0<<0));
-        WRITE_VCBUS_REG(ISP_DFT_VAR_MINMAX, 0x0a204baf);
-
-        WRITE_VCBUS_REG(ISP_DFT_CALIBRAT_REF,0x00646464);
-        //reg_isp_dft_lastvalid_mode=1;reg_isp_dft_lastvalid_tmode=1;isp_dft_calibrat_mode=0
-        //WRITE_VCBUS_REG(ISP_DFT_CALIBRAT_CTRL, 0x2c230110);
-        //WRITE_VCBUS_REG(ISP_DFT_THDLOW,0x10080202);
-        //WRITE_VCBUS_REG(ISP_DFT_THDHIG,0x10080202);
-
-        //isp_dft_calibrat_mode =2
-        WRITE_VCBUS_REG(ISP_DFT_CALIBRAT_CTRL, 0x2c230112);
-        WRITE_VCBUS_REG(ISP_DFT_THDLOW,0x100819d2);
-        WRITE_VCBUS_REG(ISP_DFT_THDHIG,0x100819d2);
-
-        //isp_dft_calibrat_mode =3  if(reg_isp_dft_detect_mode==0)
-        //WRITE_VCBUS_REG(ISP_DFT_CALIBRAT_CTRL, 0x2c230113);
-        //WRITE_VCBUS_REG(ISP_DFT_THDLOW,0x10080202);
-        //WRITE_VCBUS_REG(ISP_DFT_THDHIG,0x10080202);
-
-        WRITE_VCBUS_REG(ISP_DFT_DET0_MANUALTH, 0x00505050);
-        WRITE_VCBUS_REG(ISP_DFT_DET1_ADPTLOWTH,0x00323232);
-        WRITE_VCBUS_REG(ISP_DFT_DET1_ADPTHIGTH,0x00c8c8c8);
-        WRITE_VCBUS_REG(ISP_DFT_DET1_ADPTNUM0, 0x00040404);
-        WRITE_VCBUS_REG(ISP_DFT_DET1_ADPTNUM1, 0x00030303);
-
         // demosaicing
         WRITE_VCBUS_REG(ISP_DMS_CTRL0, 0x00030000);
         WRITE_VCBUS_REG(ISP_DMS_CTRL1, 0x00120510);
@@ -439,101 +401,7 @@ void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsi
         WRITE_VCBUS_REG(ISP_MATRIX_COEF22,    0x000003eb);
         WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST0_1, 0x00000200);
         WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST2,   0x00000200);
-
-        // nr+peaking
-        WRITE_VCBUS_REG(ISP_PKNR_HVBLANK_NUM,0x081e081e);
-        WRITE_VCBUS_REG(ISP_NR_GAUSSIAN_MODE ,0x00000011);
-        WRITE_VCBUS_REG(ISP_PK_HVCON_LPF_MODE,0x22222222);
-        WRITE_VCBUS_REG(ISP_PK_CON_BLEND_GAIN ,0x44000260);
-        WRITE_VCBUS_REG(ISP_PK_CON_2CIRHPGAIN_TH_RATE,0x193c5014);
-        WRITE_VCBUS_REG(ISP_PK_CON_2CIRHPGAIN_LIMIT,0x00600500);
-        WRITE_VCBUS_REG(ISP_PK_CON_2CIRBPGAIN_TH_RATE,0x14323219);
-        WRITE_VCBUS_REG(ISP_PK_CON_2CIRBPGAIN_LIMIT,0x00280500);
-        WRITE_VCBUS_REG(ISP_PK_CON_2DRTHPGAIN_TH_RATE,0x193c5014);
-        WRITE_VCBUS_REG(ISP_PK_CON_2DRTHPGAIN_LIMIT,0x00600500);
-        WRITE_VCBUS_REG(ISP_PK_CON_2DRTBPGAIN_TH_RATE,0x14323219);
-        WRITE_VCBUS_REG(ISP_PK_CON_2DRTBPGAIN_LIMIT,0x00280500);
-        WRITE_VCBUS_REG(ISP_PK_CIRFB_LPF_MODE,0x11101110);
-        WRITE_VCBUS_REG(ISP_PK_DRTFB_LPF_MODE,0x22102210);
-        WRITE_VCBUS_REG(ISP_PK_CIRFB_HP_CORING,0x00141414);
-        WRITE_VCBUS_REG(ISP_PK_CIRFB_BP_CORING,0x000f0f0f);
-        WRITE_VCBUS_REG(ISP_PK_DRTFB_HP_CORING,0x00141414);
-        WRITE_VCBUS_REG(ISP_PK_DRTFB_BP_CORING,0x000f0f0f);
-        WRITE_VCBUS_REG(ISP_PK_CIRFB_BLEND_GAIN,0x88808880);
-        WRITE_VCBUS_REG(ISP_NR_ALPY_SSD_GAIN_OFST,0x0000103e);
-        WRITE_VCBUS_REG(ISP_NR_ALP0Y_ERR2CURV_TH_RATE,0x0a195040);
-        WRITE_VCBUS_REG(ISP_NR_ALP0Y_ERR2CURV_LIMIT,0x3f003f00);
-        WRITE_VCBUS_REG(ISP_NR_ALP0C_ERR2CURV_TH_RATE,0x0a195040);
-        WRITE_VCBUS_REG(ISP_NR_ALP0C_ERR2CURV_LIMIT,0x3f3f00);
-        WRITE_VCBUS_REG(ISP_NR_ALP0_MIN_MAX,0x023f023f);
-        WRITE_VCBUS_REG(ISP_NR_ALP1_MIERR_CORING,0x00000003);
-        WRITE_VCBUS_REG(ISP_NR_ALP1_ERR2CURV_TH_RATE,0x00180014);
-        WRITE_VCBUS_REG(ISP_NR_ALP1_ERR2CURV_LIMIT,0x00203f00);
-        WRITE_VCBUS_REG(ISP_NR_ALP1_MIN_MAX,0x003f003f);
-        WRITE_VCBUS_REG(ISP_PK_ALP2_MIERR_CORING,0x00010d03);
-        WRITE_VCBUS_REG(ISP_PK_ALP2_ERR2CURV_TH_RATE,0x00180014);
-        WRITE_VCBUS_REG(ISP_PK_ALP2_ERR2CURV_LIMIT,0x00203f00);
-        WRITE_VCBUS_REG(ISP_PK_ALP2_MIN_MAX,0x0000003f);
-        WRITE_VCBUS_REG(ISP_PK_FINALGAIN_HP_BP,0x00004040);
-        WRITE_VCBUS_REG(ISP_PK_OS_HORZ_CORE_GAIN,0x08140214);
-        WRITE_VCBUS_REG(ISP_PK_OS_VERT_CORE_GAIN,0x08140214);
-        WRITE_VCBUS_REG(ISP_PK_OS_ADPT_MISC,0x3206c814);
-        WRITE_VCBUS_REG(ISP_PK_OS_STATIC,0x22000000);
-        WRITE_VCBUS_REG(ISP_PKNR_ENABLE,0x3);
-
-        // pk sde
-        WRITE_VCBUS_REG(ISP_PKSDE_MODE_PKGAIN, 0x00000888);
-        WRITE_VCBUS_REG(ISP_PKSDE_REPLACE_Y_U, 0x02000200);
-        WRITE_VCBUS_REG(ISP_PKSDE_REPLACE_V,   0x02000000);
-        WRITE_VCBUS_REG(ISP_PKSDE_BINARY_HIG,  0x00c0c0c0);
-        WRITE_VCBUS_REG(ISP_PKSDE_BINARY_LOW,  0x00408080);
-
-        // awb sta
-        WRITE_VCBUS_REG(ISP_AWB_WIND_LR, 0x00000064);
-        WRITE_VCBUS_REG(ISP_AWB_WIND_TB, 0x00000064);
-        WRITE_VCBUS_REG(ISP_AWB_GBGRBR_THRD, 0x00c8c8c8);
-        WRITE_VCBUS_REG(ISP_AWB_UVTH_YPIECE, 0xc8c832c8);
-        WRITE_VCBUS_REG(ISP_AWB_AEC_ENABLE,  0x00000007);
-
-        // aec sta
-        WRITE_VCBUS_REG(ISP_AEC_THRESHOLDS,0x80c8c8c8);
-        WRITE_VCBUS_REG(ISP_AEC_WIND_XYSTART,0x0 );
-        WRITE_VCBUS_REG(ISP_AEC_WIND_XYSTEP,0x00400040);
-        WRITE_VCBUS_REG(ISP_AECRAW_WIND_LR, 0x00000064);
-        WRITE_VCBUS_REG(ISP_AECRAW_WIND_TB, 0x00000064);
-
-        // afc sta
-        WRITE_VCBUS_REG(ISP_AFC_FILTER_SEL, 0x00012422);
-        WRITE_VCBUS_REG(ISP_AFC_WIND0_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND0_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND1_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND1_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND2_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND2_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND3_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND3_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND4_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND4_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND5_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND5_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND6_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND6_TB,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND7_LR,   0x00000064);
-        WRITE_VCBUS_REG(ISP_AFC_WIND7_TB,   0x00000064);
-
-        // blnr sta
-        WRITE_VCBUS_REG(ISP_BLNR_CTRL, 0x00000132);
-        WRITE_VCBUS_REG(ISP_BLNR_WIND_LR,0x00000064);
-        WRITE_VCBUS_REG(ISP_BLNR_WIND_TB,0x00000064);
-
-        // debug pixel
-        WRITE_VCBUS_REG(ISP_DBG_PIXEL_CTRL, 0x0);
-        WRITE_VCBUS_REG(ISP_DBG_PIXEL_POSITION, 0x00640064 );
-        //WRITE_VCBUS_REG(, );
-
-        // ram/cbus mode setting
-        WRITE_VCBUS_REG(ISP_RAM_ACC_MODE,0x0);
-    
+		
         WRITE_VCBUS_REG(ISP_RST_DLY_NUM,htotal*6);
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,1,28,1);
 }
@@ -745,19 +613,25 @@ void isp_get_ae_stat(isp_ae_stat_t *ae_stat)
 	return;
 }
 
-void isp_set_ae_win(unsigned int width, unsigned int height)
+void isp_set_ae_win(unsigned int left, unsigned int right, unsigned int top, unsigned int bottom)
 {
-	WR(ISP_AECRAW_WIND_LR, width-1);
-	WR(ISP_AECRAW_WIND_TB, height-1);
-	WR(ISP_AEC_WIND_XYSTART, 0);
-	WR_BITS(ISP_AEC_WIND_XYSTEP, width>>2, AEC_WIND_XSTEP_BIT, AEC_WIND_XSTEP_WID);
-	WR_BITS(ISP_AEC_WIND_XYSTEP, height>>2, AEC_WIND_YSTEP_BIT, AEC_WIND_YSTEP_WID);
+	WR_BITS(ISP_AECRAW_WIND_LR, left, AECRAW_WIND_LEFT_BIT, AECRAW_WIND_LEFT_WID);
+	WR_BITS(ISP_AECRAW_WIND_LR, right, AECRAW_WIND_RIGHT_BIT, AECRAW_WIND_RIGHT_WID);
+	WR_BITS(ISP_AECRAW_WIND_TB, top, AECRAW_WIND_TOP_BIT, AECRAW_WIND_TOP_WID);
+	WR_BITS(ISP_AECRAW_WIND_TB, bottom, AECRAW_WIND_BOT_BIT, AECRAW_WIND_BOT_WID);
+	
+	WR_BITS(ISP_AEC_WIND_XYSTART, left, AEC_WIND_XSTART_BIT, AEC_WIND_XSTART_WID);
+	WR_BITS(ISP_AEC_WIND_XYSTART, top, AEC_WIND_YSTART_BIT, AEC_WIND_YSTART_WID);
+	WR_BITS(ISP_AEC_WIND_XYSTEP, (right-left+1)>>2, AEC_WIND_XSTEP_BIT, AEC_WIND_XSTEP_WID);
+	WR_BITS(ISP_AEC_WIND_XYSTEP, (bottom-top+1)>>2, AEC_WIND_YSTEP_BIT, AEC_WIND_YSTEP_WID);
 }
 
-void isp_set_awb_win(unsigned int width, unsigned int height)
+void isp_set_awb_win(unsigned int left, unsigned int right, unsigned int top, unsigned int bottom)
 {
-	WR(ISP_AWB_WIND_LR, width-1);
-	WR(ISP_AWB_WIND_TB, height-1);
+	WR_BITS(ISP_AWB_WIND_LR, left, AWB_WIND_LEFT_BIT, AWB_WIND_LEFT_BIT);
+	WR_BITS(ISP_AWB_WIND_LR, right, AWB_WIND_RIGHT_BIT, AWB_WIND_RIGHT_WID);
+	WR_BITS(ISP_AWB_WIND_TB, top, AWB_WIND_TOP_BIT, AWB_WIND_TOP_WID);
+	WR_BITS(ISP_AWB_WIND_TB, bottom, AWB_WIND_BOT_BIT, AWB_WIND_BOT_WID);
 }
 
 void isp_set_ae_thrlpf(unsigned char thr_r, unsigned char thr_g, unsigned char thr_b, unsigned char lpf)
@@ -786,10 +660,12 @@ void isp_set_awb_rgb_thr(unsigned char gb, unsigned char gr, unsigned br)
 void isp_get_af_stat(isp_af_stat_t * af_stat)
 {
 	int i = 0;
-	/*0x1c~0x2b*/
-	for(i=0;i<16;i++){
-		WR(ISP_RO_ADDR_PORT, 155 + i);
-		af_stat->luma_win[i] = RD(ISP_RO_DATA_PORT);
+	/*0xbc~0xc6*/
+	if(IS_ERR_OR_NULL(af_stat)){
+		pr_info("%s null pointer error.\n",__func__);
+	} else {
+	for(i=0;i<16;i++)
+		af_stat->luma_win[i]=isp_rd(0xbc + i);
 	}
 	return;
 }
@@ -819,16 +695,60 @@ void isp_hw_reset()
 
 void isp_awb_set_gain(unsigned int r,unsigned int g,unsigned int b)
 {
-	WR_BITS(ISP_GAIN_GRBG01, r, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
-	WR_BITS(ISP_GAIN_GRBG01, g, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
-	WR_BITS(ISP_GAIN_GRBG23, g, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);	
-	WR_BITS(ISP_GAIN_GRBG23, b, GAIN_GRBG3_BIT, GAIN_GRBG3_WID);
+	WR_BITS(ISP_GAIN_GRBG01, g, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
+	WR_BITS(ISP_GAIN_GRBG01, r, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
+	WR_BITS(ISP_GAIN_GRBG23, b, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);	
+	WR_BITS(ISP_GAIN_GRBG23, g, GAIN_GRBG3_BIT, GAIN_GRBG3_WID);
 }
 
 void isp_awb_get_gain(isp_awb_gain_t *awb_gain)
 {
-	awb_gain->b_val = RD_BITS(ISP_GAIN_GRBG23, GAIN_GRBG3_BIT, GAIN_GRBG3_WID);
-	awb_gain->g_val = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
-	awb_gain->r_val = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
+	awb_gain->b_val = RD_BITS(ISP_GAIN_GRBG23, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);
+	awb_gain->r_val = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
+	awb_gain->g_val = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
+}
+
+void set_isp_gamma_table(unsigned short *gamma,unsigned int type)
+{
+	unsigned int flag = 0,i = 0; 
+
+        // store gamma table enable/disable status
+        flag = RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+
+        // gamma table disable, gamma table vbus mode
+        WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+	WR_BITS(ISP_GMR0_CTRL,1,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
+        // point to gamma
+        WR(ISP_GAMMA_LUT_ADDR, type);
+        // write gamma
+        for (i = 0; i < 257; i++) {
+                WR(ISP_GAMMA_LUT_DATA, gamma[i]);
+        }
+
+        // retrieve gamma table enable/disable status, gamma table hardware mode
+        WR_BITS(ISP_GMR0_CTRL, flag,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+	WR_BITS(ISP_GMR0_CTRL,0,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
+	
+}
+void get_isp_gamma_table(unsigned short *gamma,unsigned int type)
+{
+	unsigned int flag = 0,i = 0; 
+
+        // store gamma table enable/disable status
+        flag = RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+
+        // gamma table disable, gamma table vbus mode
+        WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+	WR_BITS(ISP_GMR0_CTRL,1,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
+        // point to gamma
+        WR(ISP_GAMMA_LUT_ADDR, type);
+        // get gamma
+        for (i = 0; i < 257; i++) {
+                gamma[i] = RD(ISP_GAMMA_LUT_DATA);
+        }
+
+        // retrieve gamma table enable/disable status, gamma table hardware mode
+        WR_BITS(ISP_GMR0_CTRL, flag,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+	WR_BITS(ISP_GMR0_CTRL,0,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
 }
 

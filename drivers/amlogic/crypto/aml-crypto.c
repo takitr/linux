@@ -188,7 +188,7 @@ unsigned long   dest_addr )
                (post_endian<<4)  |
                (keytype<<8)  |
                (cryptodir<<10)|
-               (((mode==1)?1:0)<<11)|
+               (((mode==0)?0:1)<<11)|
                (mode<<12);
             break;    
         default:
@@ -376,6 +376,21 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     int i;
 #endif
     //int ret;
+#if 0
+	char aes_key[16] = {0x7e,0x24,0x06,0x78,0x17,0xfa,0xe0,0xd7,
+	                                 0x43,0xd6,0xce,0x1f,0x32,0x53,0x91,0x63};
+       char aes_counter[16]= {0x00,0x6c,0xb6,0xdb,0xc0,0x54,0x3b,0x59,
+	   	                          0xda,0x48,0xd9,0x0b,0x00,0x00,0x00,0x01};
+       char aes_string[32] = {0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,
+	   	                        0x08,0x09,0x0a,0x0b,0x0c,0x0d,0x0e,0x0f,
+	   	                        0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,
+	   	                        0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f};
+
+	op->len =32;
+	memcpy(op->src,aes_string,op->len);
+	memcpy(op->key,aes_key,16);
+	memcpy(op->iv,aes_counter,16);
+#endif
 
     if (op->len == 0)
         return 0;
@@ -384,7 +399,7 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     spin_lock_irqsave(&lock, iflags);
 
     set_aes_key(op->key, op->key_len);
-    if(op->mode == MODE_CBC )
+    if((op->mode == MODE_CBC )||(op->mode == MODE_CTR))
     	set_aes_iv(op->iv);
     	                    	
     init_table_addr(op->threadidx);
@@ -416,7 +431,7 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     NDMA_set_table_count(op->threadidx,1);  
 
 #if AML_CRYPTO_DEBUG
-    for(i=0x2270;i<0x228D;i++)
+    for(i=0x2270;i<0x229d;i++)
         printk("reg(%4x) = 0x%8x\n",i,Rd(i));
 
     for(i=0;i<8;i++)
@@ -433,7 +448,7 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     if(op->dma_dest!=op->dma_src)
         dma_unmap_single(NULL, op->dma_dest, op->len,DMA_FROM_DEVICE);
 #if AML_CRYPTO_DEBUG
-    for(i=0x2270;i<0x228D;i++)
+    for(i=0x2270;i<0x229d;i++)
         printk("reg(%4x) = 0x%8x\n",i,Rd(i));
 
     for(i=0;i<8;i++)
@@ -441,7 +456,12 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
         printk("table addr(%d) = 0x%8x\n",i,*(unsigned long *)(NDMA_table_ptr+i*4));
     }	
 #endif
-	
+#if 0
+    for(i=0;i<32;i++)
+    {
+        printk("dst(%d) = 0x%x\n",i,*((unsigned char *)op->dst + i));
+    }
+#endif
     spin_unlock_irqrestore(&lock, iflags);
 
     return op->len;
@@ -887,6 +907,126 @@ static struct crypto_alg aml_cbc_aes_alg = {
 	}
 };
 
+/************************
+aes ctr  crypto
+*************************/
+static int aml_ctr_aes_setkey_blk(struct crypto_tfm *tfm, const u8 *key,
+		unsigned int len)
+{
+#if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6
+		printk("aes alg by hardware is not support on this chip.\n");
+    return 1;
+#else	
+    struct aml_crypto_ctx *op = crypto_tfm_ctx(tfm);
+    int ivsize = AES_BLOCK_SIZE;
+    int keysize = len-ivsize;
+    
+    if (keysize != AES_KEYSIZE_192 && keysize != AES_KEYSIZE_256 && keysize != AES_KEYSIZE_128) {
+        printk("aml_ecb_aes key len is wrong.\n");
+        return 1;
+    }
+    op->key_len = keysize;
+    memcpy(op->key, key, keysize);
+    memcpy(op->iv,key+keysize,ivsize);
+    return 0;
+#endif
+}
+
+static int
+aml_ctr_aes_encrypt(struct blkcipher_desc *desc,
+		  struct scatterlist *dst, struct scatterlist *src,
+		  unsigned int nbytes)
+{
+#if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6
+		printk("cbc-aes alg by hardware is not support on this chip.\n");
+    return 1;
+#else	 
+    struct aml_crypto_ctx *op = crypto_blkcipher_ctx(desc->tfm);
+    struct blkcipher_walk walk;
+    int err=0, ret;
+
+    if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
+        printk("aml_cbc_aes key len is wrong.\n");
+        return 1;
+    }
+
+    blkcipher_walk_init(&walk, dst, src, nbytes);
+    err = blkcipher_walk_virt(desc, &walk);
+    while((nbytes = walk.nbytes)) {
+        op->src = walk.src.virt.addr,
+        op->dst = walk.dst.virt.addr;
+        op->mode = MODE_CTR;
+        op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
+        op->dir = DIR_ENCRYPT;
+        op->threadidx = 0;
+        ret = aml_aes_crypt(op);
+
+        nbytes -= ret;
+        err = blkcipher_walk_done(desc, &walk, nbytes);
+    }
+
+    return err;
+#endif
+}
+
+static int
+aml_ctr_aes_decrypt(struct blkcipher_desc *desc,
+		  struct scatterlist *dst, struct scatterlist *src,
+		  unsigned int nbytes)
+{
+#if MESON_CPU_TYPE <= MESON_CPU_TYPE_MESON6
+		printk("cbc-aes alg by hardware is not support on this chip.\n");
+    return 1;
+#else	
+    struct aml_crypto_ctx *op = crypto_blkcipher_ctx(desc->tfm);
+    struct blkcipher_walk walk;
+    int err=0, ret;
+
+    if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
+        printk("aml_cbc_aes key len is wrong.\n");
+        return 1;
+    }
+
+    blkcipher_walk_init(&walk, dst, src, nbytes);
+    err = blkcipher_walk_virt(desc, &walk);
+    while((nbytes = walk.nbytes)) {
+        op->src = walk.src.virt.addr,
+        op->dst = walk.dst.virt.addr;
+        op->mode = MODE_CTR;
+        op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
+        op->dir = DIR_DECRYPT;
+        op->threadidx = 0;
+        ret = aml_aes_crypt(op);
+
+        nbytes -= ret;
+        err = blkcipher_walk_done(desc, &walk, nbytes);
+    }
+
+    return err;
+#endif
+}
+
+static struct crypto_alg aml_ctr_aes_alg = {
+	.cra_name			=	"ctr-aes-aml",
+	.cra_driver_name	=	"ctr-aes-aml",
+	.cra_priority		=	300,
+	.cra_flags			=	CRYPTO_ALG_TYPE_BLKCIPHER,
+	.cra_blocksize		=	AES_BLOCK_SIZE,
+	.cra_ctxsize		=	sizeof(struct aml_crypto_ctx),
+	.cra_alignmask		=	0,
+	.cra_type			=	&crypto_blkcipher_type,
+	.cra_module			=	THIS_MODULE,
+	.cra_list			=	LIST_HEAD_INIT(aml_ctr_aes_alg.cra_list),
+	.cra_u				=	{
+		.blkcipher	=	{
+                     .min_keysize	=	AES_MIN_KEY_SIZE+AES_BLOCK_SIZE,
+			.max_keysize	=	AES_MAX_KEY_SIZE+AES_BLOCK_SIZE,
+			.setkey			=	aml_ctr_aes_setkey_blk,
+			.encrypt		=	aml_ctr_aes_encrypt,
+			.decrypt		=	aml_ctr_aes_decrypt,
+		}
+	}
+};
 #define blkmove_thread_idx  2
 unsigned int
 aml_blkmove(unsigned char * dst,unsigned char * src,unsigned long count)
@@ -961,6 +1101,9 @@ static int __init aml_hw_crypto_init(void)
     if ((ret = crypto_register_alg(&aml_cbc_aes_alg)))
         goto efail;	
 	
+    if ((ret = crypto_register_alg(&aml_ctr_aes_alg)))
+        goto efail;		
+	
     return 0;
 efail:
     printk(KERN_ERR "aml_hw_crypto initialization failed.\n");
@@ -974,6 +1117,7 @@ static void __exit aml_hw_crypto_exit(void)
     crypto_unregister_alg(&aml_cbc_tdes_alg);
     crypto_unregister_alg(&aml_ecb_aes_alg);
     crypto_unregister_alg(&aml_cbc_aes_alg);
+    crypto_unregister_alg(&aml_ctr_aes_alg);
 }
 module_exit(aml_hw_crypto_exit);
 

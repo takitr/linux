@@ -19,6 +19,7 @@ struct amlnand_chip *aml_chip_secure = NULL;
 	secure_ptr = kzalloc(CONFIG_SECURE_SIZE, GFP_KERNEL);
 	if(secure_ptr == NULL)
 		return -ENOMEM;
+	amlnand_get_device(aml_chip, CHIP_READING);
 	memset(secure_ptr,0,CONFIG_SECURE_SIZE);
 
 	error = amlnand_read_info_by_name(aml_chip, &(aml_chip->nand_secure),secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
@@ -31,6 +32,7 @@ struct amlnand_chip *aml_chip_secure = NULL;
 	memcpy(buf, secure_ptr->data, len);
 	
 exit:
+	amlnand_release_device(aml_chip);
 	kfree(secure_ptr);
 	return error;
 }
@@ -45,6 +47,8 @@ int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 		aml_nand_msg("key data len too much,%s\n",__func__);
 		return -EFAULT;
 	}
+	
+	amlnand_get_device(aml_chip, CHIP_READING);
 	secure_ptr = kzalloc(CONFIG_SECURE_SIZE, GFP_KERNEL);
 	if(secure_ptr == NULL)
 		return -ENOMEM;
@@ -59,6 +63,7 @@ int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 		goto exit;
 	}
 exit:
+	amlnand_release_device(aml_chip);
 	kfree(secure_ptr);
 	return error;
 }

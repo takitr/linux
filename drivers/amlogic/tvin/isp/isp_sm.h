@@ -17,15 +17,15 @@
 typedef enum isp_auto_exposure_step_e {
 	AE_START = 0,
 	AE_EXPOSURE_MAX_CHECK,
-	AE_EXPOSURE_RDECREASE,
-	AE_EXPOSURE_GDECREASE,
-	AE_EXPOSURE_BDECREASE,
+	AE_EXPOSURE_DECREASE,
 	AE_EXPOSURE_INCREASE,
 	AE_CALCULATE_LUMA_AVG,
 	AE_CALCULATE_LUMA_TARG,
 	AE_LUMA_AVG_CHECK,
 	AE_EXPOSURE_ADJUST,
 	AE_SET_NEWSTEP,
+	AE_MAX_CHECK_STOP,
+	AE_EXPOSURE_MAX_CHECK2,
 	AE_SUCCESS,
 } isp_auto_exposure_step_t;
 
@@ -78,10 +78,19 @@ typedef enum isp_auto_white_balance_state_e {
 	AWB_CHECK,
 } isp_auto_white_balance_state_t;
 
-typedef enum isp_auto_focus_state_e {
-	AF_IDLE,
+typedef enum af_state_e {
+	AF_NULL,
+	AF_DETECT_INIT,
+	AF_GET_STEPS_INFO,
+	AF_GET_STATUS,
+	AF_INIT,
+	AF_GET_COARSE_INFO,
+	AF_CALC_GREAT,
+	AF_GET_FINE_INFO,
+	AF_CLIMBING,
+	AF_FINE,
 	AF_SUCCESS,
-} isp_auto_focus_state_t;
+} af_state_t;
 typedef enum isp_capture_state_e {
 	CAPTURE_INIT,
 	CAPTURE_PRE_WAIT,//for time lapse
@@ -110,6 +119,10 @@ typedef enum isp_ae_status_s {
 typedef struct isp_ae_sm_s {
 	unsigned int pixel_sum;
 	unsigned int sub_pixel_sum;
+	unsigned int win_l;
+	unsigned int win_r;
+	unsigned int win_t;
+	unsigned int win_b;
 	unsigned int alert_r;   
 	unsigned int alert_g;   
 	unsigned int alert_b; 
@@ -122,7 +135,8 @@ typedef struct isp_ae_sm_s {
 	unsigned int countlimit_g;
 	unsigned int countlimit_b;
 	unsigned int tf_ratio;
-
+    unsigned int change_step;
+	
 	isp_auto_exposure_enh_state_t  isp_ae_enh_state;
 	isp_auto_exposure_state_t isp_ae_state;
 }isp_ae_sm_t;
@@ -136,6 +150,10 @@ typedef enum isp_awb_status_s {
 typedef struct isp_awb_sm_s {
 	enum isp_awb_status_s status;
 	unsigned int pixel_sum;
+	unsigned int win_l;
+	unsigned int win_r;
+	unsigned int win_t;
+	unsigned int win_b;
 	unsigned int countlimitrgb;
 	unsigned int countlimityh;
 	unsigned int countlimitym;
@@ -162,6 +180,9 @@ typedef enum isp_env_status_s {
 	ENV_MID,
 	ENV_LOW,
 }isp_env_status_t;
+typedef struct isp_af_sm_s {
+	af_state_t state;
+} isp_af_sm_t;
 
 typedef struct isp_capture_sm_s {
 	unsigned int adj_cnt;
@@ -178,9 +199,10 @@ typedef struct isp_sm_s {
 	enum isp_flash_status_s flash;
 	enum isp_env_status_s env;
 	bool ae_down;
-	isp_auto_focus_state_t isp_af_state;
+	af_state_t af_state;
 	isp_ae_sm_t isp_ae_parm;
 	isp_awb_sm_t isp_awb_parm;
+	isp_af_sm_t af_sm;
 	isp_capture_sm_t cap_sm;
 } isp_sm_t;
 
@@ -196,7 +218,9 @@ extern void isp_set_flash_mode(isp_dev_t *devp);
 extern void isp_ae_sm(isp_dev_t *devp);
 extern void isp_awb_sm(isp_dev_t *devp);
 extern void isp_af_sm(isp_dev_t *devp);
+extern void isp_af_detect(isp_dev_t *devp);
 extern int isp_capture_sm(isp_dev_t *devp);
+extern unsigned long long div64(unsigned long long n, unsigned long long d);
 #endif
 
 

@@ -29,8 +29,10 @@
 #include <linux/irq.h>
 #include <mach/sd.h>
 #include "amlsd.h"
+#include <linux/mmc/emmc_partitions.h>
 
 #include <linux/amlogic/aml_gpio_consumer.h>
+#include <linux/amlogic/wifi_dt.h>
 
 static struct mmc_claim aml_sdio_claim;
 
@@ -72,14 +74,24 @@ static void aml_sdio_init_param(struct amlsd_platform* pdata)
     writel(*(u32*)&conf, host->base + SDIO_CONF);
 }
 
+static bool is_card_last_block (struct amlsd_platform * pdata, u32 lba, u32 cnt)
+{
+    if (!pdata->card_capacity)
+        pdata->card_capacity = mmc_capacity(pdata->mmc->card);
+
+    return (lba + cnt) == pdata->card_capacity;
+}
+
 /*
 read response from REG0_ARGU(136bit or 48bit)
 */
-void aml_sdio_read_response(struct amlsd_host *host, struct mmc_command *cmd)
+void aml_sdio_read_response(struct amlsd_platform * pdata, struct mmc_request *mrq)
 {
     int i, resp[4];
+    struct amlsd_host* host = pdata->host;
     u32 vmult = readl(host->base + SDIO_MULT);
     struct sdio_mult_config* mult = (void*)&vmult;
+    struct mmc_command *cmd = mrq->cmd;
 
     mult->write_read_out_index = 1;
     mult->response_read_index = 0;
@@ -99,6 +111,15 @@ void aml_sdio_read_response(struct amlsd_host *host, struct mmc_command *cmd)
     else if(cmd->flags & MMC_RSP_PRESENT){
         cmd->resp[0] = readl(host->base + SDIO_ARGU);
         // sdio_dbg(AMLSD_DBG_RESP,"Cmd %d ,Resp 0x%x\n", cmd->opcode, cmd->resp[0]);
+        
+        /* Now in sdio controller, something is wrong. 
+         * When we read last block in multi-blocks-mode, 
+         * it will cause "ADDRESS_OUT_OF_RANGE" error in card status, we must clear it.
+         */
+        if ((cmd->resp[0] & R1_OUT_OF_RANGE) // status error: address out of range
+                && (mrq->data) && (is_card_last_block(pdata, cmd->arg, mrq->data->blocks))) {
+            cmd->resp[0] &= (~R1_OUT_OF_RANGE); // clear the error
+        }
     }
 }
 
@@ -245,7 +266,7 @@ void aml_sdio_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
     spin_lock_irqsave(&host->mrq_lock, flags);
     WARN_ON(!host->mrq->cmd);
     BUG_ON(host->xfer_step == XFER_FINISHED);
-    aml_sdio_read_response(host, host->mrq->cmd);
+    aml_sdio_read_response(pdata, host->mrq);
 
     cmd = host->mrq->cmd; // for debug
 
@@ -372,7 +393,7 @@ int aml_sdio_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq)
     if ((pdata->port != PORT_SDIO) && (mrq->cmd->opcode == SD_IO_SEND_OP_COND ||
         mrq->cmd->opcode == SD_IO_RW_DIRECT ||
         mrq->cmd->opcode == SD_IO_RW_EXTENDED)) {
-        mrq->cmd->error = -1;
+        mrq->cmd->error = -EINVAL;
         mmc_request_done(mmc, mrq);
         return -EINVAL;
     }
@@ -401,7 +422,7 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
     if(aml_sdio_check_unsupport_cmd(mmc, mrq))
         return;
 	if(pdata->eject){
-        mrq->cmd->error = -ETIMEDOUT;
+        mrq->cmd->error = -ENOMEDIUM;
         mmc_request_done(mmc, mrq);
 		return;
 	}
@@ -614,9 +635,9 @@ static void aml_sdio_set_clk_rate(struct amlsd_platform* pdata, u32 clk_ios)
 	struct amlsd_host* host = (void*)pdata->host;
     u32 vconf = readl(host->base + SDIO_CONF);
     struct sdio_config* conf = (void*)&vconf;
-    //struct clk* clk_src = clk_get_sys("clk81", NULL);
-    //u32 clk_rate = clk_get_rate(clk_src)/2;
-    u32 clk_rate = 159000000/2; //tmp for 3.10
+    struct clk* clk_src = clk_get_sys("clk81", NULL);
+    u32 clk_rate = clk_get_rate(clk_src)/2;
+    // u32 clk_rate = 159000000/2; //tmp for 3.10
 	u32 clk_div;
 
     // aml_sdio_init_param(pdata);
@@ -830,6 +851,9 @@ static int aml_sdio_resume(struct platform_device *pdev)
 
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 	list_for_each_entry(pdata, &host->sibling, sibling){
+        if(pdata->port == MESON_SDIO_PORT_A) { // sdio_wifi
+            wifi_setup_dt();
+        }
 		mmc = pdata->mmc;
 		//mmc_power_restore_host(mmc);
 		mmc_resume_host(mmc);
@@ -880,7 +904,8 @@ static struct amlsd_host* aml_sdio_init_host(void)
 	host->xfer_step = XFER_INIT;
 
 	INIT_LIST_HEAD(&host->sibling);
-
+    
+    host->version = AML_MMC_VERSION;
     host->storage_flag = storage_flag;
 	return host;
 }
@@ -897,6 +922,9 @@ static int aml_sdio_probe(struct platform_device *pdev)
 	host = aml_sdio_init_host();
 	if(!host)
 		goto fail_init_host;
+    
+    printk("mmc driver version: %2d.%02d\n", host->version>>8, host->version&0xff);
+
 	if(amlsd_get_reg_base(pdev, host))
 		goto fail_init_host;
 

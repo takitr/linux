@@ -269,7 +269,7 @@ static int meson_cpufreq_init(struct cpufreq_policy *policy)
 	if(policy->max > policy->cpuinfo.max_freq)
 		policy->max = policy->cpuinfo.max_freq;
 
-	policy->cur = clk_get_rate(cpufreq.armclk) / 1000;
+	policy->cur =  clk_round_rate(cpufreq.armclk, clk_get_rate(cpufreq.armclk)) / 1000;;
 
 	/* FIXME: what's the actual transition time? */
     policy->cpuinfo.transition_latency = 200 * 1000;

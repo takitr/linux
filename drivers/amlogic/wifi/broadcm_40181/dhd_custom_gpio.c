@@ -2,7 +2,7 @@
 * Customer code to add GPIO control during WLAN start/stop
 * $Copyright Open Broadcom Corporation$
 *
-* $Id: dhd_custom_gpio.c 389250 2013-03-06 02:05:03Z $
+* $Id: dhd_custom_gpio.c 417465 2013-08-09 11:47:27Z $
 */
 
 #include <typedefs.h>
@@ -128,9 +128,8 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			bcm_wlan_power_off(2);
 #endif /* CUSTOMER_HW */
 #if defined(CUSTOMER_HW2)
-			wifi_set_power(0, 0);
+			wifi_set_power(0, WIFI_TURNOFF_DELAY);
 #endif
-			mdelay(100);
 			WL_ERROR(("=========== WLAN placed in RESET ========\n"));
 		break;
 
@@ -139,9 +138,10 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 				__FUNCTION__));
 #ifdef CUSTOMER_HW
 			bcm_wlan_power_on(2);
+			OSL_DELAY(200);
 #endif /* CUSTOMER_HW */
 #if defined(CUSTOMER_HW2)
-			wifi_set_power(1, 0);
+			wifi_set_power(1, 200);
 #endif
 #ifdef CUSTOMER_HW_AMLOGIC
 			extern_wifi_set_enable(0);
@@ -182,7 +182,7 @@ dhd_customer_gpio_wlan_ctrl(int onoff)
 			sdio_reinit();
 #endif /* CUSTOMER_HW_AMLOGIC */
 			/* Lets customer power to get stable */
-			mdelay(100);
+			OSL_DELAY(200);
 			WL_ERROR(("=========== WLAN placed in POWER ON ========\n"));
 		break;
 	}

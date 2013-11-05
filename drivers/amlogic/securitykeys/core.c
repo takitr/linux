@@ -623,7 +623,7 @@ core_show_return:
         kfree(dec_data);
     return n;
 }
-#define KEY_READ_ATTR  (S_IRUSR|S_IRGRP|S_IROTH)
+#define KEY_READ_ATTR  (S_IRUSR|S_IRGRP)
 #define KEY_WRITE_ATTR (S_IWUSR|S_IWGRP)
 
 
@@ -1253,6 +1253,11 @@ static ssize_t key_name_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 //DEVICE_ATTR(key_name, 0660, key_name_show, key_name_store);
+static ssize_t hdcp_store(struct device *dev, struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	return key_name_store(dev, attr, buf, count);
+}
 
 #if 0
 static ssize_t key_write_show(struct device *dev, struct device_attribute *attr,
@@ -1290,6 +1295,21 @@ static ssize_t key_read_show(struct device *dev, struct device_attribute *attr,
 	err = key_core_show(dev, (struct device_attribute*)curkey,buf);
 	return err;
 }
+
+static ssize_t hdcp_show(struct device *dev, struct device_attribute *attr,
+                            char *buf)
+{
+	int err;
+	if((curkey == NULL)||(curkey->name[0] == 0)){
+		printk("unkown current key-name,%s:%d\n",__func__,__LINE__);
+		return -EINVAL;
+	}
+	if (!strncmp(curkey->name, "hdcp2lc128", sizeof("hdcp2lc128")) || !strncmp(curkey->name, "hdcp2key", sizeof("hdcp2key")))
+		err = key_core_show(dev, (struct device_attribute*)curkey,buf);
+	else
+		err = -EINVAL;
+	return err;
+}
 #if 0
 static ssize_t key_read_store(struct device *dev, struct device_attribute *attr,
                              const char *buf, size_t count)
@@ -1304,6 +1324,7 @@ static ssize_t key_read_store(struct device *dev, struct device_attribute *attr,
 #define MAC_KEY_NAME	"mac"
 #define MAC_BT_KEY_NAME "mac_bt"
 #define MAC_WIFI_KEY_NAME "mac_wifi"
+#define HDCP_KEY_NAME "hdcp"
 
 static char twoASCByteToByte(char c1, char c2)
 {
@@ -1406,6 +1427,9 @@ static struct key_new_node key_node_name[]={
 	[4]={
 		.name = USID_KEY_NAME,
 	},
+	[5]={
+		.name = HDCP_KEY_NAME,
+	},
 };
 static ssize_t key_node_set(struct device *dev)
 {
@@ -1465,6 +1489,18 @@ static ssize_t key_node_set(struct device *dev)
 	mode = KEY_READ_ATTR ;
 	key_new[i].attr.show = key_usid_show;
 	//key_new[i].attr.store = key_usid_store;
+	key_new[i].attr.attr.name = &key_new[i].name[0];
+	key_new[i].attr.attr.mode = mode;
+    ret = device_create_file(dev, (const struct device_attribute *) &key_new[i].attr);
+    if (ret < 0)
+    {
+        printk("%s:%d\n", __FILE__, __LINE__);
+        return -EINVAL;
+    }
+    i=5;
+	mode = KEY_READ_ATTR | KEY_WRITE_ATTR;
+	key_new[i].attr.show = hdcp_show;
+	key_new[i].attr.store = hdcp_store;
 	key_new[i].attr.attr.name = &key_new[i].name[0];
 	key_new[i].attr.attr.mode = mode;
     ret = device_create_file(dev, (const struct device_attribute *) &key_new[i].attr);

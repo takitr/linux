@@ -61,6 +61,7 @@
 #include "vdec.h"
 #include "adec.h"
 #include "rmparser.h"
+#include "ampotrs_priv.h"
 
 #include <linux/of.h>
 
@@ -345,6 +346,14 @@ static stream_buf_t bufs[BUF_MAX_NUM] = {
         .first_tstamp = INVALID_PTS
     }
 };
+stream_buf_t *get_buf_by_type(u32  type)
+{
+   if(type<BUF_MAX_NUM)
+       return &bufs[type];
+   else 
+       return NULL;
+}
+
 void set_sample_rate_info(int arg)
 {
     audio_dec_info.sample_rate = arg;
@@ -1283,6 +1292,18 @@ static long amstream_ioctl(struct file *file,
             r = es_vpts_checkin(&bufs[BUF_TYPE_VIDEO], arg);
         } else if (this->type & PORT_TYPE_AUDIO) {
             r = es_apts_checkin(&bufs[BUF_TYPE_AUDIO], arg);
+        }
+        break;
+	case AMSTREAM_IOC_TSTAMP_uS64:
+        if ((this->type & (PORT_TYPE_AUDIO | PORT_TYPE_VIDEO)) ==
+        	((PORT_TYPE_AUDIO | PORT_TYPE_VIDEO))) {	
+        	r = -EINVAL;
+        } else{
+            if (this->type & PORT_TYPE_VIDEO) {	
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],arg);
+            } else if (this->type & PORT_TYPE_AUDIO) {
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],arg);
+            }	
         }
         break;
 

@@ -38,7 +38,7 @@
 #if GTP_ICS_SLOT_REPORT
     #include <linux/input/mt.h>
 #endif
-
+u8 *config_info = NULL;
 static const char *goodix_ts_name = "Goodix Capacitive TouchScreen";
 static struct workqueue_struct *goodix_wq;
 static struct i2c_client * i2c_connect_client = NULL; 
@@ -547,13 +547,13 @@ void gtp_reset_guitar(struct i2c_client *client, s32 ms)
     msleep(ms);
     GTP_GPIO_OUTPUT(GTP_INT_PORT, client->addr == 0x14);
 
-    msleep(2);
+    mdelay(2);
     GTP_GPIO_OUTPUT(GTP_RST_PORT, 1);
     
-    msleep(6);                          //must > 3ms
+    mdelay(6);                          //must > 3ms
     GTP_GPIO_AS_INPUT(GTP_RST_PORT);    //end select I2C slave addr
     
-    gtp_int_sync(50);
+    gtp_int_sync(40);
 }
 
 /*******************************************************
@@ -607,31 +607,32 @@ static s8 gtp_wakeup_sleep(struct goodix_ts_data * ts)
 
     GTP_DEBUG_FUNC();
 
-    while(retry++ < 10)
-    {
-        GTP_GPIO_OUTPUT(GTP_INT_PORT, 1);
-        msleep(5);
-        
-        ret = gtp_i2c_test(ts->client);
-        if (ret > 0)
-        {
-            GTP_DEBUG("GTP wakeup sleep.");
-            
-            gtp_int_sync(25);
-            return ret;
-        }
-        gtp_reset_guitar(ts->client, 20);
-    }
 #if GTP_POWER_CTRL_SLEEP
-	while(retry++ < 5)
+    while(retry++ < 5)
     {
-        gtp_reset_guitar(ts->client, 20);
+        gtp_reset_guitar(ts->client, 10);
         ret = gtp_send_cfg(ts->client);
         if (ret > 0)
         {
             GTP_DEBUG("Wakeup sleep send config success.");
             return ret;
         }
+    }
+#else
+    while(retry++ < 10)
+    {
+        GTP_GPIO_OUTPUT(GTP_INT_PORT, 1);
+        msleep(5);
+
+        ret = gtp_i2c_test(ts->client);
+        if (ret > 0)
+        {
+            GTP_DEBUG("GTP wakeup sleep.");
+
+            gtp_int_sync(25);
+            return ret;
+        }
+        gtp_reset_guitar(ts->client, 20);
     }
 #endif
 
@@ -1024,17 +1025,11 @@ static void gt9xx_read_version(char* ver)
 {
 	int ret = 0;
 	u16 version_info;
-	struct goodix_ts_data *ts;
 
-	ts = i2c_get_clientdata(i2c_connect_client);
-	if(ts==NULL)
-		return;
-
-	ret = gtp_read_version(ts, &version_info);
+	ret = gtp_read_version(i2c_connect_client, &version_info);
 	if(ret <= 0)
 	{
 		printk(KERN_INFO"Read version data failed!\n");
-		vfree(version_info);
 		return;
 	}
 

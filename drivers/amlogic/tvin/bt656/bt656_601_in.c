@@ -572,7 +572,7 @@ static int am656in_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		return -1;
 	}
 	if( TVIN_PORT_CAMERA == port ){
-		am656_devp->skip_vdin_frame_count = parm->reserved;
+		am656_devp->skip_vdin_frame_count = parm->skip_count;
 	}
 	/*copy the param from vdin to bt656*/
 	if(!memcpy(&am656_devp->para, parm, sizeof(vdin_parm_t))){

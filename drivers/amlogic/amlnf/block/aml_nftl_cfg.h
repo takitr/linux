@@ -1,7 +1,7 @@
 
 #include "aml_nftl_type.h"
 
-#define  PRINT aml_nftl_dbg
+#define  PRINT printk
 
 #define NFTL_DONT_CACHE_DATA                      0
 #define SUPPORT_GC_READ_RECLAIM                   0

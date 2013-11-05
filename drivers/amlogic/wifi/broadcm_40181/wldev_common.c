@@ -13,6 +13,7 @@
 
 #include <wldev_common.h>
 #include <bcmutils.h>
+#include <dhd_config.h>
 
 #define htod32(i) i
 #define htod16(i) i
@@ -308,6 +309,11 @@ int wldev_set_band(
 	struct net_device *dev, uint band)
 {
 	int error = -1;
+	uint band_conf;
+
+	band_conf = dhd_conf_get_band(bcmsdh_get_drvdata());
+	if (band_conf != WLC_BAND_AUTO)
+		band = band_conf;
 
 	if ((band == WLC_BAND_AUTO) || (band == WLC_BAND_5G) || (band == WLC_BAND_2G)) {
 		error = wldev_ioctl(dev, WLC_SET_BAND, &band, sizeof(band), true);

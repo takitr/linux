@@ -27,6 +27,10 @@
 #include <asm/hardware/cache-l2x0.h>
 #include "cache-aurora-l2.h"
 
+#ifdef CONFIG_PLAT_MESON
+#include <mach/io.h>
+#endif
+
 #define CACHE_LINE_SIZE		32
 
 static void __iomem *l2x0_base;
@@ -1063,8 +1067,7 @@ int __init l2x0_of_init(u32 aux_val, u32 aux_mask)
 		return -ENODEV;
 	
 #ifdef CONFIG_PLAT_MESON
-#include <mach/io.h>
-	l2x0_base = IO_PL310_BASE;
+	l2x0_base = (void __iomem *)IO_PL310_BASE;
 #else
 	l2x0_base = ioremap(res.start, resource_size(&res));
 	if (!l2x0_base)

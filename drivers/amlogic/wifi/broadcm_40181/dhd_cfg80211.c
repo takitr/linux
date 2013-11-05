@@ -274,7 +274,7 @@ static bool btcoex_is_sco_active(struct net_device *dev)
 			break;
 		}
 
-		msleep(5);
+		OSL_SLEEP(5);
 	}
 
 	return res;

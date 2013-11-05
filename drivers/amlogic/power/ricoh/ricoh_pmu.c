@@ -326,7 +326,7 @@ static int __init ricoh_pmu_init(void)
 {
 	return i2c_add_driver(&ricoh_pmu_driver);
 }
-arch_initcall(ricoh_pmu_init);
+subsys_initcall(ricoh_pmu_init);
 
 static void __exit ricoh_pmu_exit(void)
 {

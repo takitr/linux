@@ -49,7 +49,7 @@ extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 extern void __init meson_timer_init(void);
 
-static __init void meson8_reserve()
+static __init void meson8_reserve(void)
 {
 
     /* 

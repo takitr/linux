@@ -4,7 +4,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: siutils.c 402429 2013-05-15 16:55:28Z $
+ * $Id: siutils.c 414368 2013-07-24 15:00:23Z $
  */
 
 #include <bcm_cfg.h>
@@ -26,6 +26,7 @@
 #include <sbsdpcmdev.h>
 #include <bcmsdpcm.h>
 #include <hndpmu.h>
+#include <dhd_config.h>
 
 #include "siutils_priv.h"
 
@@ -361,7 +362,7 @@ si_doattach(si_info_t *sii, uint devid, osl_t *osh, void *regs,
 	sih->chippkg = (w & CID_PKG_MASK) >> CID_PKG_SHIFT;
 
 #if defined(HW_OOB)
-	bcmsdh_config_hw_oob_intr(sdh, sih->chip);
+	dhd_conf_set_hw_oob_intr(sdh, sih->chip);
 #endif
 
 	if ((CHIPID(sih->chip) == BCM4329_CHIP_ID) && (sih->chiprev == 0) &&
@@ -1100,6 +1101,7 @@ si_clock_rate(uint32 pll_type, uint32 n, uint32 m)
 		return (clock);
 	}
 }
+
 
 
 /* set chip watchdog reset timer to fire in 'ticks' */

@@ -291,7 +291,7 @@ typedef struct xml_window_s {
         unsigned char ratio_y1; // 0 ~ 255, y1 = (format.v * ratio_y1) >> 8
 } xml_window_t;
 
-#define AE_PARM_NUM			55
+#define AE_PARM_NUM			59
 typedef struct xml_algorithm_ae_s {
         unsigned int  ae_algorithm;       //0:basic;    1:enhanced
         unsigned int  ae_statistics[3];   //0: false, 1: true
@@ -357,7 +357,7 @@ typedef struct xml_algorithm_ae_s {
         unsigned int           flash_thr_enh;	     // 0 ~ 255                 
 } xml_algorithm_ae_t;
 
-#define AWB_PARM_NUM			53
+#define AWB_PARM_NUM			57
 typedef struct xml_algorithm_awb_s {
         unsigned int           awb_algorithm;       //0:basic;    1:enhanced
         unsigned int           ratio_winl;            //0 ~ 1024

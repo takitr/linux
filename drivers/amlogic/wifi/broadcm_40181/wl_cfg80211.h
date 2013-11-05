@@ -3,7 +3,7 @@
  *
  * $Copyright Open Broadcom Corporation$
  *
- * $Id: wl_cfg80211.h 401713 2013-05-13 12:11:03Z $
+ * $Id: wl_cfg80211.h 418267 2013-08-14 12:49:52Z $
  */
 
 #ifndef _wl_cfg80211_h_
@@ -624,6 +624,8 @@ struct wl_priv {
 	struct mutex event_sync;	/* maily for up/down synchronization */
 	bool pm_enable_work_on;
 	struct delayed_work pm_enable_work;
+	vndr_ie_setbuf_t *ibss_vsie;	/* keep the VSIE for IBSS */
+	int ibss_vsie_len;
 };
 
 
@@ -967,4 +969,11 @@ extern void get_primary_mac(struct wl_priv *wl, struct ether_addr *mac);
 #define wl_escan_print_sync_id(a, b, c)
 #define wl_escan_increment_sync_id(a, b)
 #define wl_escan_init_sync_id(a)
+extern void wl_cfg80211_ibss_vsie_set_buffer(vndr_ie_setbuf_t *ibss_vsie, int ibss_vsie_len);
+extern s32 wl_cfg80211_ibss_vsie_delete(struct net_device *dev);
+
+/* Action frame specific functions */
+extern u8 wl_get_action_category(void *frame, u32 frame_len);
+extern int wl_get_public_action(void *frame, u32 frame_len, u8 *ret_action);
+
 #endif				/* _wl_cfg80211_h_ */

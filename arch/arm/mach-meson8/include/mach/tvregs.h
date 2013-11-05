@@ -1008,13 +1008,79 @@ static const reg_t tvregs_1080p_24hz[] = {
     {MREG_END_MARKER,            0      }
 };
 
+static const reg_t tvregs_4k2k_30hz[] = {
+    {P_ENCP_VIDEO_MODE,             0x4040}, // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
+    {P_ENCP_VIDEO_MODE_ADV,         0x0008}, // Sampling rate: 1
+    {P_ENCP_VIDEO_YFP1_HTIME,       140},
+    {P_ENCP_VIDEO_YFP2_HTIME,       140+3840},
+
+    {P_ENCP_VIDEO_MAX_PXCNT,        3840+560-1},
+    {P_ENCP_VIDEO_HSPULS_BEGIN,     2156+1920},
+    {P_ENCP_VIDEO_HSPULS_END,       44},
+    {P_ENCP_VIDEO_HSPULS_SWITCH,    44},
+    {P_ENCP_VIDEO_VSPULS_BEGIN,     140},
+    {P_ENCP_VIDEO_VSPULS_END,       2059+1920},
+    {P_ENCP_VIDEO_VSPULS_BLINE,     0},
+    {P_ENCP_VIDEO_VSPULS_ELINE,     4},
+
+    {P_ENCP_VIDEO_HAVON_BEGIN,      148},
+    {P_ENCP_VIDEO_HAVON_END,        3987},
+    {P_ENCP_VIDEO_VAVON_BLINE,      89},
+    {P_ENCP_VIDEO_VAVON_ELINE,      2248},
+
+    {P_ENCP_VIDEO_HSO_BEGIN,	    44},
+    {P_ENCP_VIDEO_HSO_END, 		    2156+1920},
+    {P_ENCP_VIDEO_VSO_BEGIN,	    2100+1920},
+    {P_ENCP_VIDEO_VSO_END, 		    2164+1920},
+
+    {P_ENCP_VIDEO_VSO_BLINE,        51},
+    {P_ENCP_VIDEO_VSO_ELINE,        53},
+    {P_ENCP_VIDEO_MAX_LNCNT,        2249},
+
+    {P_ENCP_VIDEO_FILT_CTRL,        0x1000}, //bypass filter
+    {MREG_END_MARKER,            0      },
+};
+
+static const reg_t tvregs_4k2k_25hz[] = {
+    {P_ENCP_VIDEO_MODE,             0x4040}, // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
+    {P_ENCP_VIDEO_MODE_ADV,         0x0008}, // Sampling rate: 1
+    {P_ENCP_VIDEO_YFP1_HTIME,       140},
+    {P_ENCP_VIDEO_YFP2_HTIME,       140+3840},
+
+    {P_ENCP_VIDEO_MAX_PXCNT,        3840+1440-1},
+    {P_ENCP_VIDEO_HSPULS_BEGIN,     2156+1920},
+    {P_ENCP_VIDEO_HSPULS_END,       44},
+    {P_ENCP_VIDEO_HSPULS_SWITCH,    44},
+    {P_ENCP_VIDEO_VSPULS_BEGIN,     140},
+    {P_ENCP_VIDEO_VSPULS_END,       2059+1920},
+    {P_ENCP_VIDEO_VSPULS_BLINE,     0},
+    {P_ENCP_VIDEO_VSPULS_ELINE,     4},
+
+    {P_ENCP_VIDEO_HAVON_BEGIN,      148},
+    {P_ENCP_VIDEO_HAVON_END,        3987},
+    {P_ENCP_VIDEO_VAVON_BLINE,      89},
+    {P_ENCP_VIDEO_VAVON_ELINE,      2248},
+
+    {P_ENCP_VIDEO_HSO_BEGIN,	    44},
+    {P_ENCP_VIDEO_HSO_END, 		    2156+1920},
+    {P_ENCP_VIDEO_VSO_BEGIN,	    2100+1920},
+    {P_ENCP_VIDEO_VSO_END, 		    2164+1920},
+
+    {P_ENCP_VIDEO_VSO_BLINE,        51},
+    {P_ENCP_VIDEO_VSO_ELINE,        53},
+    {P_ENCP_VIDEO_MAX_LNCNT,        2249},
+
+    {P_ENCP_VIDEO_FILT_CTRL,        0x1000}, //bypass filter
+    {MREG_END_MARKER,            0      },
+};
+
 static const reg_t tvregs_4k2k_24hz[] = {
     {P_ENCP_VIDEO_MODE,             0x4040}, // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
     {P_ENCP_VIDEO_MODE_ADV,         0x0008}, // Sampling rate: 1
     {P_ENCP_VIDEO_YFP1_HTIME,       140},
     {P_ENCP_VIDEO_YFP2_HTIME,       140+3840},
 
-    {P_ENCP_VIDEO_MAX_PXCNT,        5499},
+    {P_ENCP_VIDEO_MAX_PXCNT,        3840+1660-1},
     {P_ENCP_VIDEO_HSPULS_BEGIN,     2156+1920},
     {P_ENCP_VIDEO_HSPULS_END,       44},
     {P_ENCP_VIDEO_HSPULS_SWITCH,    44},
@@ -1039,7 +1105,40 @@ static const reg_t tvregs_4k2k_24hz[] = {
 
     {P_ENCP_VIDEO_FILT_CTRL,        0x1000}, //bypass filter
 
-    {MREG_END_MARKER,            0      }
+    {MREG_END_MARKER,            0      },
+};
+
+static const reg_t tvregs_4k2k_smpte[] = {      //24hz
+    {P_ENCP_VIDEO_MODE,             0x4040}, // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
+    {P_ENCP_VIDEO_MODE_ADV,         0x0008}, // Sampling rate: 1
+    {P_ENCP_VIDEO_YFP1_HTIME,       140},
+    {P_ENCP_VIDEO_YFP2_HTIME,       140+3840+256},
+
+    {P_ENCP_VIDEO_MAX_PXCNT,        4096+1404-1},
+    {P_ENCP_VIDEO_HSPULS_BEGIN,     2156+1920},
+    {P_ENCP_VIDEO_HSPULS_END,       44},
+    {P_ENCP_VIDEO_HSPULS_SWITCH,    44},
+    {P_ENCP_VIDEO_VSPULS_BEGIN,     140},
+    {P_ENCP_VIDEO_VSPULS_END,       2059+1920},
+    {P_ENCP_VIDEO_VSPULS_BLINE,     0},
+    {P_ENCP_VIDEO_VSPULS_ELINE,     4},
+
+    {P_ENCP_VIDEO_HAVON_BEGIN,      148},
+    {P_ENCP_VIDEO_HAVON_END,        3987+256},
+    {P_ENCP_VIDEO_VAVON_BLINE,      89},
+    {P_ENCP_VIDEO_VAVON_ELINE,      2248},
+
+    {P_ENCP_VIDEO_HSO_BEGIN,	    44},
+    {P_ENCP_VIDEO_HSO_END, 		    2156+1920+256},
+    {P_ENCP_VIDEO_VSO_BEGIN,	    2100+1920+256},
+    {P_ENCP_VIDEO_VSO_END, 		    2164+1920+256},
+
+    {P_ENCP_VIDEO_VSO_BLINE,        51},
+    {P_ENCP_VIDEO_VSO_ELINE,        53},
+    {P_ENCP_VIDEO_MAX_LNCNT,        2249},
+
+    {P_ENCP_VIDEO_FILT_CTRL,        0x1000}, //bypass filter
+    {MREG_END_MARKER,            0      },
 };
 
 static const reg_t tvregs_vga_640x480[] = { // 25.17mhz 800 *525
@@ -1313,7 +1412,10 @@ static const reg_t *tvregsTab[] = {
     tvregs_1080i_50hz,
     tvregs_1080p_50hz,
     tvregs_1080p_24hz,
+    tvregs_4k2k_30hz,
+    tvregs_4k2k_25hz,
     tvregs_4k2k_24hz,
+    tvregs_4k2k_smpte,
     tvregs_vga_640x480,
     tvregs_svga_800x600,
     tvregs_xga_1024x768
@@ -1333,7 +1435,10 @@ static const tvinfo_t tvinfoTab[] = {
     {.xres = 1920, .yres = 1080, .id = "1080i50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p50hz"},
     {.xres = 1920, .yres = 1080, .id = "1080p24hz"},
+    {.xres = 3840, .yres = 2160, .id = "4k2k30hz"},
+    {.xres = 3840, .yres = 2160, .id = "4k2k25hz"},
     {.xres = 3840, .yres = 2160, .id = "4k2k24hz"},
+    {.xres = 4096, .yres = 2160, .id = "4k2ksmpte"},
     {.xres = 640, .yres = 480, .id = "vga"},
     {.xres = 800, .yres = 600, .id = "svga"},
     {.xres = 1024, .yres = 768, .id = "xga"},

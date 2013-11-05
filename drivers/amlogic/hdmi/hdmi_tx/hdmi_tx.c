@@ -242,8 +242,20 @@ static  int  set_disp_mode(const char *mode)
     else{
         vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, 1);
     }
-    if(strncmp(mode, "4k2k24hz", strlen("4k2k24hz")) == 0) {
+    if(strncmp(mode, "4k2k30hz", strlen("4k2k30hz")) == 0) {
+        vic = HDMI_4k2k_30;
+    }
+    else if(strncmp(mode, "4k2k25hz", strlen("4k2k25hz")) == 0) {
+        vic = HDMI_4k2k_25;
+    }
+    else if(strncmp(mode, "4k2k24hz", strlen("4k2k24hz")) == 0) {
         vic = HDMI_4k2k_24;
+    }
+    else if(strncmp(mode, "4k2ksmpte", strlen("4k2ksmpte")) == 0) {
+        vic = HDMI_4k2k_smpte;
+    }
+    else {
+        //nothing
     }
 
     if(vic != HDMI_Unkown){
@@ -328,8 +340,20 @@ static int set_disp_mode_auto(void)
         vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
     }
     vic = hdmitx_edid_get_VIC(&hdmitx_device, mode, (hdmitx_device.disp_switch_config==DISP_SWITCH_FORCE)?1:0);
-    if(strncmp(info->name, "4k2k24hz", strlen("4k2k24hz")) == 0) {
+    if(strncmp(info->name, "4k2k30hz", strlen("4k2k30hz")) == 0) {
+        vic = HDMI_4k2k_30;
+    }
+    else if(strncmp(info->name, "4k2k25hz", strlen("4k2k25hz")) == 0) {
+        vic = HDMI_4k2k_25;
+    }
+    else if(strncmp(info->name, "4k2k24hz", strlen("4k2k24hz")) == 0) {
         vic = HDMI_4k2k_24;
+    }
+    else if(strncmp(info->name, "4k2ksmpte", strlen("4k2ksmpte")) == 0) {
+        vic = HDMI_4k2k_smpte;
+    }
+    else {
+        //nothing
     }
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
@@ -598,7 +622,7 @@ static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, con
 static ssize_t show_disp_cap(struct device * dev, struct device_attribute *attr, char * buf)
 {   
     int i,pos=0;
-    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","1080p24hz","4k2k24hz",NULL};
+    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","1080p24hz","4k2k30hz","4k2k25hz","4k2k24hz","4k2ksmpte",NULL};
     char* native_disp_mode = hdmitx_edid_get_native_VIC(&hdmitx_device);
     HDMI_Video_Codes_t vic;
     if(hdmitx_device.tv_no_edid){
@@ -627,7 +651,7 @@ static ssize_t show_disp_cap_3d(struct device * dev, struct device_attribute *at
 {   
     int i,pos=0;
     int j=0;
-    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","1080p24hz","4k2k24hz",NULL};
+    char* disp_mode_t[]={"480i","480p","576i","576p","720p","1080i","1080p","720p50hz","1080i50hz","1080p50hz","1080p24hz","4k2k30hz","4k2k25hz","4k2k24hz","4k2ksmpte",NULL};
     HDMI_Video_Codes_t vic;
 
     for(i=0; disp_mode_t[i]; i++){

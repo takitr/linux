@@ -16,10 +16,11 @@
 #include <mach/vpu.h>
 #include <linux/amlogic/vout/vinfo.h>
 
-#define VPU_VERION	"v01"
+#define VPU_VERION	"v02"
 
 //#define LIMIT_VPU_CLK_LOW
 static spinlock_t vpu_lock;
+static spinlock_t vpu_mem_lock;
 
 #define CLK_LEVEL_DFT		4
 #define CLK_LEVEL_MAX		8	//limit max clk to 364M
@@ -40,23 +41,33 @@ static unsigned int vpu_clk_setting[][3] = {
 };
 
 static unsigned int vpu_clk_vmod[] = {
-	0,	//VPU_MODE_ENCP
-	0,	//VPU_MODE_ENCI
-	0,	//VPU_MODE_ENCL
-	0,	//VPU_MODE_VIDEO
-	0,	//VPU_MODE_OSD
-	0,	//VPU_MODE_VPP
-	0,	//NONE
-};
-
-static const char* vpu_vmod_table[]={
-	"ENCP",
-	"ENCI",
-	"ENCL",
-	"VIDEO",
-	"OSD",
-	"VPP",
-	"NONE",
+	0,	//VPU_VIU_OSD1,
+	0,	//VPU_VIU_OSD2,
+	0,	//VPU_VIU_VD1,
+	0,	//VPU_VIU_VD2,
+	0,	//VPU_VIU_CHROMA,
+	0,	//VPU_VIU_OFIFO,
+	0,	//VPU_VIU_SCALE,
+	0,	//VPU_VIU_OSD_SCALE,
+	0,	//VPU_VIU_VDIN0,
+	0,	//VPU_VIU_VDIN1,
+	0,	//VPU_PIC_ROT1,
+	0,	//VPU_PIC_ROT2,
+	0,	//VPU_PIC_ROT3,
+	0,	//VPU_DI_PRE,
+	0,	//VPU_DI_POST,
+	0,	//VPU_VIU2_OSD1,
+	0,	//VPU_VIU2_OSD2,
+	0,	//VPU_VIU2_VD1,
+	0,	//VPU_VIU2_CHROMA,
+	0,	//VPU_VIU2_OFIFO,
+	0,	//VPU_VIU2_SCALE,
+	0,	//VPU_VIU2_OSD_SCALE,
+	0,	//VPU_VENCP,
+	0,	//VPU_VENCL,
+	0,	//VPU_VENCI,
+	0,	//VPU_ISP,
+	0,	//VPU_MAX,
 };
 
 static VPU_Conf_t vpu_config = {
@@ -68,14 +79,13 @@ static VPU_Conf_t vpu_config = {
 
 static int dft_clk_level;
 
-static vpu_mode_t get_vpu_mode(unsigned int vmod)
+static vpu_mod_t get_vpu_mod(unsigned int vmod)
 {
-	unsigned int vpu_mode;
+	unsigned int vpu_mod;
 	
+	if (vmod < VPU_MOD_START) {
 	switch (vmod) {
-		case VMODE_480I:
 		case VMODE_480P:
-		case VMODE_576I:
 		case VMODE_576P:
 		case VMODE_720P:
 		case VMODE_1080I:
@@ -89,45 +99,48 @@ static vpu_mode_t get_vpu_mode(unsigned int vmod)
 		case VMODE_SVGA:
 		case VMODE_XGA:
 		case VMODE_SXGA:
-			vpu_mode = VPU_MODE_ENCP;
+				vpu_mod = VPU_VENCP;
 			break;
+			case VMODE_480I:
+			case VMODE_576I:
 		case VMODE_480CVBS:
 		case VMODE_576CVBS:
-			vpu_mode = VPU_MODE_ENCI;
+				vpu_mod = VPU_VENCI;
 			break;
 		case VMODE_LCD:
 		case VMODE_LVDS_1080P:
 		case VMODE_LVDS_1080P_50HZ:
-			vpu_mode = VPU_MODE_ENCL;
+				vpu_mod = VPU_VENCL;
 			break;
-		case (VPU_MODE_VIDEO | VPU_MODE_BIT_MASK):
-			vpu_mode = VPU_MODE_VIDEO;
-			break;
-		case (VPU_MODE_OSD | VPU_MODE_BIT_MASK):
-			vpu_mode = VPU_MODE_OSD;
-			break;
-		case (VPU_MODE_VPP | VPU_MODE_BIT_MASK):
-			vpu_mode = VPU_MODE_VPP;
-			break;
-		default:
-			vpu_mode = VPU_MODE_MAX;
-			break;
+			default:
+				vpu_mod = VPU_MAX;
+				break;
+		}
 	}
-	
-	return vpu_mode;
+	else if ((vmod >= VPU_MOD_START) && (vmod < VPU_MAX)) {
+		vpu_mod = vmod;
+	}
+	else {
+		vpu_mod = VPU_MAX;
+	}
+
+	return vpu_mod;
 } 
 
+#ifdef CONFIG_VPU_DYNAMIC_ADJ
 static unsigned int get_vpu_clk_level_max_vmod(void)
 {
 	unsigned int max_level;
-	int i,j;
+	int i;
 	
 	max_level = 0;
-	for (i=0; i<VPU_MODE_MAX; i++) {
-		if (vpu_clk_vmod[i] > max_level)
-			max_level = vpu_clk_vmod[i];
+	for (i=VPU_MOD_START; i<VPU_MAX; i++) {
+		if (vpu_clk_vmod[i-VPU_MOD_START] > max_level)
+			max_level = vpu_clk_vmod[i-VPU_MOD_START];
 	}
+	return max_level;
 }
+#endif
 
 static unsigned int get_vpu_clk_level(unsigned int video_clk)
 {
@@ -135,7 +148,7 @@ static unsigned int get_vpu_clk_level(unsigned int video_clk)
 	unsigned clk_level;
 	int i;
 	
-	video_bw = video_clk + 2000000;
+	video_bw = video_clk + 1000000;
 
 	for (i=0; i<CLK_LEVEL_MAX; i++) {
 		if (video_bw <= vpu_clk_setting[i][0])			
@@ -207,6 +220,8 @@ static int set_vpu_clk(unsigned int vclk)
 		vpu_config.clk_level = clk_level;
 		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
 	}
+	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
+		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 
 set_vpu_clk_limit:
 	spin_unlock_irqrestore(&vpu_lock, flags);
@@ -234,18 +249,19 @@ set_vpu_clk_limit:
 */
 unsigned int get_vpu_clk_vmod(unsigned int vmod)
 {
-	unsigned int vpu_mode;
+	unsigned int vpu_mod;
 	unsigned int vpu_clk;
 	unsigned long flags = 0;
 	spin_lock_irqsave(&vpu_lock, flags);
 	
-	vpu_mode = get_vpu_mode(vmod);
-	if (vpu_mode < VPU_MODE_MAX) {
-		vpu_clk = vpu_clk_setting[vpu_clk_vmod[vpu_mode]][0];
+	vpu_mod = get_vpu_mod(vmod);
+	if ((vpu_mod >= VPU_MOD_START) && (vpu_mod < VPU_MAX)) {
+		vpu_clk = vpu_clk_vmod[vpu_mod - VPU_MOD_START];
+		vpu_clk = vpu_clk_setting[vpu_clk][0];
 	}
 	else {
 		vpu_clk = 0;
-		printk("unsupport vomd\n");
+		printk("unsupport vmod\n");
 	}
 	
 	spin_unlock_irqrestore(&vpu_lock, flags);
@@ -273,11 +289,11 @@ unsigned int get_vpu_clk_vmod(unsigned int vmod)
  *      ret = request_vpu_clk_vomd(300000000, VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
  *
 */
-int request_vpu_clk_vomd(unsigned int vclk, unsigned int vmod)
+int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
 {
 	int ret = 0;
 	unsigned clk_level;
-	unsigned vpu_mode;
+	unsigned vpu_mod;
 	unsigned long flags = 0;
 	spin_lock_irqsave(&vpu_lock, flags);
 	
@@ -294,9 +310,9 @@ int request_vpu_clk_vomd(unsigned int vclk, unsigned int vmod)
 		goto request_vpu_clk_limit;
 	}
 	
-	vpu_mode = get_vpu_mode(vmod);
-	vpu_clk_vmod[vpu_mode] = clk_level;
-	printk("request vpu clk holdings: %s %uHz\n", vpu_vmod_table[vpu_mode], vpu_clk_setting[clk_level][0]);
+	vpu_mod = get_vpu_mod(vmod);
+	vpu_clk_vmod[vpu_mod - VPU_MOD_START] = clk_level;
+	printk("request vpu clk holdings: %s %uHz\n", vpu_mod_table[vpu_mod - VPU_MOD_START], vpu_clk_setting[clk_level][0]);
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
 	clk_level = get_vpu_clk_level_max_vmod();
 	if (clk_level > vpu_config.clk_level) {
@@ -304,6 +320,8 @@ int request_vpu_clk_vomd(unsigned int vclk, unsigned int vmod)
 		vpu_config.clk_level = clk_level;
 		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
 	}
+	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
+		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 #endif
 
 request_vpu_clk_limit:
@@ -331,18 +349,18 @@ request_vpu_clk_limit:
  *      ret = release_vpu_clk_vomd(VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
  *
 */
-int release_vpu_clk_vomd(unsigned int vmod)
+int release_vpu_clk_vmod(unsigned int vmod)
 {
 	unsigned clk_level;
-	unsigned vpu_mode;
+	unsigned vpu_mod;
 	unsigned long flags = 0;
 	spin_lock_irqsave(&vpu_lock, flags);
 	
 	clk_level = 0;
 	
-	vpu_mode = get_vpu_mode(vmod);
-	vpu_clk_vmod[vpu_mode] = clk_level;
-	printk("release vpu clk holdings: %s\n", vpu_vmod_table[vpu_mode]);
+	vpu_mod = get_vpu_mod(vmod);
+	vpu_clk_vmod[vpu_mod - VPU_MOD_START] = clk_level;
+	printk("release vpu clk holdings: %s\n", vpu_mod_table[vpu_mod - VPU_MOD_START]);
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
 	clk_level = get_vpu_clk_level_max_vmod();
 	if (clk_level > vpu_config.clk_level) {
@@ -350,18 +368,77 @@ int release_vpu_clk_vomd(unsigned int vmod)
 		vpu_config.clk_level = clk_level;
 		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
 	}
+	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
+		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 #endif
 	spin_unlock_irqrestore(&vpu_lock, flags);
 	return 0;
 }
 
 //***********************************************//
+#define VPU_MEM_PD_MASK		0x3
+/*
+ *  Function: switch_vpu_mem_pd_vmod
+ *      switch vpu memory power down by specified vmod
+ *
+ *	Parameters:
+ *      vmod - unsigned int, must be one of the following constants:
+ *                 VMODE, VMODE is supported by VOUT
+ *                 VPU_MOD, supported by vpu_mod_t
+ *      flag - int, on/off switch flag, must be one of the following constants:
+ *                 VPU_MEM_POWER_ON
+ *                 VPU_MEM_POWER_DOWN
+ * 
+ *	Example:
+ *      switch_vpu_mem_pd_vmod(VMODE_720P, VPU_MEM_POWER_ON);
+ *      switch_vpu_mem_pd_vmod(VPU_VIU_OSD1, VPU_MEM_POWER_DOWN);
+ *
+*/
+void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag)
+{
+	unsigned vpu_mod;
+	unsigned vpu_mem_bit = 0;
+	unsigned long flags = 0;
+	spin_lock_irqsave(&vpu_mem_lock, flags);
+	
+	flag = (flag > 0) ? 1 : 0;
+	
+	vpu_mod = get_vpu_mod(vmod);
+	if ((vpu_mod >= VPU_MOD_START) && (vpu_mod <= VPU_DI_POST)) {
+		vpu_mem_bit = (vpu_mod - VPU_MOD_START) * 2;
+		if (flag)
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG0, VPU_MEM_PD_MASK, vpu_mem_bit, 2);
+		else
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG0, 0, vpu_mem_bit, 2);
+	}
+	else if ((vpu_mod >= VPU_VIU2_OSD1) && (vpu_mod <= VPU_VIU2_OSD_SCALE)) {
+		vpu_mem_bit = (vpu_mod - VPU_VIU2_OSD1) * 2;
+		if (flag)
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG1, VPU_MEM_PD_MASK, vpu_mem_bit, 2);
+		else
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG1, 0, vpu_mem_bit, 2);
+	}
+	else if ((vpu_mod >= VPU_VENCP) && (vpu_mod < VPU_MAX)) {
+		vpu_mem_bit = (vpu_mod - VPU_VENCP + 10) * 2;
+		if (flag) {
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG1, VPU_MEM_PD_MASK, vpu_mem_bit, 2);
+		}
+		else {
+			aml_set_reg32_bits(P_HHI_VPU_MEM_PD_REG1, 0, vpu_mem_bit, 2);
+		}
+	}
+	else {
+		printk("switch_vpu_mem_pd: unsupport vpu mod\n");
+	}
+	printk("switch_vpu_mem_pd: %s %s\n", vpu_mod_table[vpu_mod - VPU_MOD_START], ((flag > 0) ? "OFF" : "ON"));
+	spin_unlock_irqrestore(&vpu_mem_lock, flags);
+}
 static const char * vpu_usage_str =
 {"Usage:\n"
 "	echo get > clk ; print current vpu clk\n"
 "	echo set <vclk> > clk ; force to set vpu clk\n"
 "	echo dump [vmod] > clk ; dump vpu clk by vmod, [vmod] is unnecessary\n"
-"	echo request <vclk> <vmod> > clk ; request vpu clk holding by vomd\n"
+"	echo request <vclk> <vmod> > clk ; request vpu clk holding by vmod\n"
 "	echo release <vmod> > clk ; release vpu clk holding by vmod\n"
 "\n"
 "	request & release will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level.\n" 
@@ -402,28 +479,28 @@ static ssize_t vpu_debug(struct class *class, struct class_attribute *attr, cons
 		case 'r':
 			if (buf[2] == 'q') {	//request
 				tmp[0] = 0;
-				tmp[1] = VPU_MODE_NONE;
+				tmp[1] = VPU_MAX;
 				ret = sscanf(buf, "request %u %u", &tmp[0], &tmp[1]);
-				request_vpu_clk_vomd(tmp[0], tmp[1]);
+				request_vpu_clk_vmod(tmp[0], tmp[1]);
 			}
 			else if (buf[2] == 'l') {	//release
-				tmp[0] = VPU_MODE_NONE;
+				tmp[0] = VPU_MAX;
 				ret = sscanf(buf, "release %u", &tmp[0]);
-				release_vpu_clk_vomd(tmp[0]);
+				release_vpu_clk_vmod(tmp[0]);
 			}
 			break;
 		case 'd':
-			tmp[0] = VPU_MODE_NONE;
+			tmp[0] = VPU_MAX;
 			ret = sscanf(buf, "dump %u", &tmp[0]);
-			tmp[1] = get_vpu_mode(tmp[0]);
+			tmp[1] = get_vpu_mod(tmp[0]);
 			printk("vpu clk holdings:\n");
-			if (tmp[1] == VPU_MODE_MAX) {
-				for (i=0; i<VPU_MODE_MAX; i++) {
-					printk("%s:		%uHz(%u)\n", vpu_vmod_table[i], vpu_clk_setting[vpu_clk_vmod[i]][0], vpu_clk_vmod[i]);
+			if (tmp[1] == VPU_MAX) {
+				for (i=VPU_MOD_START; i<VPU_MAX; i++) {
+					printk("%s:		%uHz(%u)\n", vpu_mod_table[i - VPU_MOD_START], vpu_clk_setting[vpu_clk_vmod[i - VPU_MOD_START]][0], vpu_clk_vmod[i - VPU_MOD_START]);
 				}
 			}
 			else {
-				printk("%s:		%uHz(%u)\n", vpu_vmod_table[tmp[1]], vpu_clk_setting[vpu_clk_vmod[tmp[1]]][0], vpu_clk_vmod[tmp[1]]);
+				printk("%s:		%uHz(%u)\n", vpu_mod_table[tmp[1] - VPU_MOD_START], vpu_clk_setting[vpu_clk_vmod[tmp[1] - VPU_MOD_START]][0], vpu_clk_vmod[tmp[1] - VPU_MOD_START]);
 			}
 			break;
 		default:
@@ -457,20 +534,14 @@ static void vpu_driver_init(void)
 	//VPU MEM_PD, need to modify
 	aml_write_reg32(P_HHI_VPU_MEM_PD_REG0, 0x00000000);
     aml_write_reg32(P_HHI_VPU_MEM_PD_REG1, 0x00000000);
-
-    aml_write_reg32(P_VPU_MEM_PD_REG0, 0x00000000);
-    aml_write_reg32(P_VPU_MEM_PD_REG1, 0x00000000);
 }
 
 static void vpu_driver_disable(void)
 {
-    aml_write_reg32(P_VPU_MEM_PD_REG0, 0xffffffff);
-    aml_write_reg32(P_VPU_MEM_PD_REG1, 0xffffffff);
-	
 	aml_write_reg32(P_HHI_VPU_MEM_PD_REG0, 0xffffffff);
     aml_write_reg32(P_HHI_VPU_MEM_PD_REG1, 0xffffffff);
 	
-	aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 0);
+	aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 0, 8, 1);
 }
 
 #ifdef CONFIG_PM
@@ -535,6 +606,7 @@ static int vpu_probe(struct platform_device *pdev)
 	int ret;
 	
 	spin_lock_init(&vpu_lock);
+	spin_lock_init(&vpu_mem_lock);
 	
 	printk("VPU driver version: %s\n", VPU_VERION);
 	get_vpu_config(pdev);

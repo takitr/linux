@@ -438,6 +438,7 @@ typedef struct DSI_Config_s{
 }DSI_Config_t;
 
 typedef struct {
+	unsigned lvds_vswing;
 	unsigned lvds_repack_user;
 	unsigned lvds_repack;
 	unsigned pn_swap;

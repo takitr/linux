@@ -109,6 +109,10 @@ config TAS5707_2_SUBWOOFER_CHANNEL
 endchoice
 endif
 
+#config  SND_AML_SPDIF
+#	tristate "Amlogic S/PDIF codec support"
+#	depends on SND_AML_SOC
+#	select SND_SOC_AML_SPDIF_CODEC if SND_AML_SPDIF
 config SND_AML_M8
 	tristate "AML-SND-M8 Board"
 	depends on SND_AML_SOC && SWITCH

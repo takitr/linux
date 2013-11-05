@@ -36,6 +36,7 @@
 #include <linux/dma-mapping.h>
 
 #include <mach/am_regs.h>
+#include <mach/vpu.h>
 #include "vdec_reg.h"
 
 #include "vdec.h"
@@ -753,6 +754,22 @@ printk("M->S,[%d] %s = 0x%x\n",ret, reg_name[ret], READ_VREG(MAILBOX_DATA_1));
                 printk("REC_CANVAS_ADDR = 0x%x\n", READ_VREG(MAILBOX_DATA_1));
                 WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
                 break;
+            case 4:
+                printk("after DPB_MMCO\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 5:
+                printk("MBY = 0x%x, S_MBXY = 0x%x\n", READ_VREG(MAILBOX_DATA_1), READ_VREG(0x2c07));
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 6:
+                printk("after FIFO_OUT_FRAME\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 7:
+                printk("after RELEASE_EXCEED_REF_BUFF\n");
+                WRITE_VREG(MAILBOX_COMMAND, CMD_FINISHED);
+                break;
             case 0x5a:
                 printk("\n");
                 break;
@@ -788,6 +805,22 @@ static irqreturn_t vh264_4k2k_vdec2_isr(int irq, void *dev_id)
                 break;
             case 3:
                 printk("REC_CANVAS_ADDR = 0x%x\n", READ_VREG(VDEC2_MAILBOX_DATA_1));
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 4:
+                printk("after DPB_MMCO\n");
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 5:
+                printk("MBY = 0x%x, M/S_MBXY = 0x%x-0x%x\n", READ_VREG(VDEC2_MAILBOX_DATA_1), READ_VREG(0xc07), READ_VREG(0x2c07));
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 6:
+                printk("after FIFO_OUT_FRAME\n");
+                WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
+                break;
+            case 7:
+                printk("after RELEASE_EXCEED_REF_BUFF\n");
                 WRITE_VREG(VDEC2_MAILBOX_COMMAND, CMD_FINISHED);
                 break;
             case 0x5a:
@@ -1069,6 +1102,9 @@ static void vh264_4k2k_prot_init(void)
     SET_VREG_MASK(MDEC_PIC_DC_CTRL, 1<<17);
     SET_VREG_MASK(VDEC2_MDEC_PIC_DC_CTRL, 1<<17);
 #endif
+
+    WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
+    WRITE_VREG(VDEC2_MDEC_PIC_DC_THRESH, 0x404038aa);
 }
 
 static void vh264_4k2k_local_init(void)
@@ -1222,9 +1258,6 @@ static int vh264_4k2k_stop(void)
     }
 
     if (stat & STAT_VF_HOOK) {
-        ulong flags;
-        spin_lock_irqsave(&lock, flags);
-        spin_unlock_irqrestore(&lock, flags);
         vf_unreg_provider(&vh264_4k2k_vf_prov);
         stat &= ~STAT_VF_HOOK;
     }
@@ -1255,11 +1288,16 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     vdec_poweron(VDEC_2);
 
+    vdec_power_mode(1);
+    vdec2_power_mode(1);
+
     if (vh264_4k2k_init() < 0) {
         printk("\namvdec_h264_4k2k init failed.\n");
 
         return -ENODEV;
     }
+
+    request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
 
     return 0;
 }
@@ -1275,6 +1313,8 @@ static int amvdec_h264_4k2k_remove(struct platform_device *pdev)
     printk("pts missed %ld, pts hit %ld, duration %d\n",
            pts_missed, pts_hit, frame_dur);
 #endif
+
+    release_vpu_clk_vmod(VPU_VIU_VD1);
 
     return 0;
 }

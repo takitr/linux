@@ -6,6 +6,9 @@
  * $Id: wl_android.h 367305 2012-11-07 13:49:55Z $
  */
 
+#ifndef _wl_android_
+#define _wl_android_
+
 #include <linux/module.h>
 #include <linux/netdevice.h>
 #include <wldev_common.h>
@@ -101,9 +104,15 @@ s32 wl_genl_send_msg(struct net_device *ndev, u32 event_type,
 #define RSSIOFFSET
 //#define RSSIOFFSET_NEW
 
+#if defined(ESCAN_RESULT_PATCH)
+#define REPEATED_SCAN_RESULT_CNT	2
+#else
+#define REPEATED_SCAN_RESULT_CNT	1
+#endif
+
 #if defined(RSSIAVG)
-#define RSSIAVG_LEN 8
-#define RSSICACHE_LEN 8
+#define RSSIAVG_LEN (4*REPEATED_SCAN_RESULT_CNT)
+#define RSSICACHE_LEN (4*REPEATED_SCAN_RESULT_CNT)
 
 typedef struct wl_rssi_cache {
 	struct wl_rssi_cache *next;
@@ -121,7 +130,7 @@ void wl_delete_dirty_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl);
 void wl_delete_disconnected_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, u8 *bssid);
 void wl_reset_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl);
 void wl_update_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, wl_scan_results_t *ss_list);
-void wl_update_connected_rssi_cache(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, struct net_device *net);
+int wl_update_connected_rssi_cache(struct net_device *net, wl_rssi_cache_ctrl_t *rssi_cache_ctrl, int *rssi_avg);
 int16 wl_get_avg_rssi(wl_rssi_cache_ctrl_t *rssi_cache_ctrl, void *addr);
 #endif
 
@@ -136,11 +145,7 @@ int wl_update_rssi_offset(int rssi);
 #endif
 
 #if defined(BSSCACHE)
-#if defined(ESCAN_RESULT_PATCH)
-#define BSSCACHE_LEN	8
-#else
-#define BSSCACHE_LEN	4
-#endif
+#define BSSCACHE_LEN	(4*REPEATED_SCAN_RESULT_CNT)
 #define BSSCACHE_TIME	15000
 
 typedef struct wl_bss_cache {
@@ -164,3 +169,4 @@ void wl_run_bss_cache_timer(wl_bss_cache_ctrl_t *bss_cache_ctrl, int kick_off);
 void wl_release_bss_cache_ctrl(wl_bss_cache_ctrl_t *bss_cache_ctrl);
 void wl_init_bss_cache_ctrl(wl_bss_cache_ctrl_t *bss_cache_ctrl);
 #endif
+#endif /* _wl_android_ */

@@ -990,13 +990,17 @@ s32 amvenc_loadmc(const u32 *p)
 
     return ret;
 }
-
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV
 #define  DMC_SEC_PORT8_RANGE0  0x840
 #define  DMC_SEC_CTRL  0x829
+#endif
+
 void enable_hcoder_ddr_access(void)
 {
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV
 	WRITE_SEC_REG(DMC_SEC_PORT8_RANGE0 , 0xffff);
 	WRITE_SEC_REG(DMC_SEC_CTRL , 0x80000000);
+#endif
 }
 
 static s32 avc_poweron(void)

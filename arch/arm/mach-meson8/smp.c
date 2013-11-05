@@ -18,12 +18,14 @@
 #include <plat/io.h>
 #include <mach/io.h>
 #include <mach/cpu.h>
+#include <mach/smp.h>
 #include <asm/smp_scu.h>
 #include <asm/hardware/gic.h>
 #include <asm/smp_plat.h>
 #include <asm/smp_scu.h>
 #include <asm/cacheflush.h>
 #include <asm/mach-types.h>
+#include <linux/percpu.h>
 
 static DEFINE_SPINLOCK(boot_lock);
 
@@ -77,28 +79,6 @@ extern void  init_fiq(void);
 	spin_unlock(&boot_lock);
 }
 
-static void __init wakeup_secondary(unsigned int cpu)
-{
-#if 0
-	meson_set_cpu_power_ctrl(cpu, 1);
-	//msleep(1);
-	/*
-	* Write the address of secondary startup routine into the
-	* AuxCoreBoot1 where ROM code will jump and start executing
-	* on secondary core once out of WFE
-	* A barrier is added to ensure that write buffer is drained
-	*/
-	meson_secondary_set(cpu);
-	/*
-	 * Send a 'sev' to wake the secondary core from WFE.
-	 * Drain the outstanding writes to memory
-	 */
-	 //mb();
-	dsb_sev();
-#endif
-
-}
-unsigned int bootflag[4]={0};
 int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
@@ -108,35 +88,18 @@ int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	* and the secondary one
 	*/
 	spin_lock(&boot_lock);
-//	wakeup_secondary(cpu);
-	
-	//meson_secondary_set(cpu);
 	 
 	/*
 	 * The secondary processor is waiting to be released from
 	 * the holding pen - release it, then wait for it to flag
 	 * that it has been released by resetting pen_release.
 	 */
-printk("write pen_release: %d\n",cpu_logical_map(cpu));
+	printk("write pen_release: %d\n",cpu_logical_map(cpu));
 	write_pen_release(cpu_logical_map(cpu));
 
-#if 0			//hotplug via power off		
-			meson_set_cpu_power_ctrl(cpu, 1);
-			meson_secondary_set(cpu);
-			dsb_sev();
-
-#else		// hotplug via wfi
-
-	if(bootflag[cpu] == 0){
-		bootflag[cpu]=1;
-		printk("first boot secondary! addr=0x%x, value=0x%x\n", &(bootflag[cpu]), bootflag[cpu]);
-		meson_set_cpu_power_ctrl(cpu, 1);
-	}
-
+	meson_set_cpu_power_ctrl(cpu, 1);
 	meson_secondary_set(cpu);
 	dsb_sev();
-	//gic_raise_softirq(cpumask_of(cpu), 0);
-#endif
 
 	smp_send_reschedule(cpu);
 	timeout = jiffies + (10* HZ);
@@ -186,10 +149,6 @@ void __init meson_smp_prepare_cpus(unsigned int max_cpus)
 	* wakeup_secondary().
 	*/
 	scu_enable((void __iomem *) IO_PERIPH_BASE);
-	for (i = 1; i < max_cpus; i++)
-		wakeup_secondary(i);
-	///    dsb_sev();
-
 }
 
 struct smp_operations meson_smp_ops __initdata = {
@@ -203,4 +162,100 @@ struct smp_operations meson_smp_ops __initdata = {
 	.cpu_disable    =meson_cpu_disable,
 #endif
 };
+
+#ifdef CONFIG_SMP
+static DEFINE_PER_CPU(unsigned long, in_wait);
+static unsigned long timeout_flag;
+extern void cpu_maps_update_begin(void);
+extern void cpu_maps_update_done(void);
+
+typedef enum _ENUM_SMP_FLAG {
+    SMP_FLAG_IDLE = 0,
+    SMP_FLAG_GETED,
+    SMP_FLAG_FINISHED,
+    SMP_FLAG_NUM
+} ENUM_SCAL_FLAG;
+
+static void smp_wait(void * info)
+{
+/*This function is call under automic context. So, need not irq protect.*/
+	unsigned long cpu;
+
+	cpu = smp_processor_id();
+
+	info = info;
+
+	per_cpu(in_wait, cpu) = SMP_FLAG_GETED;
+
+	printk("cpu%d stall.\n", cpu);
+	while((per_cpu(in_wait, cpu) == SMP_FLAG_GETED) && !timeout_flag)//waiting until flag != SMP_FLAG_GETED
+		cpu_relax();
+
+	return;
+}
+
+/*
+Try exclusive cpu run func, the others wait it for finishing.
+ If try fail, you can try again.
+ NOTE: It need call at non-automatic context, because of mutex_lock @ cpu_maps_update_begin*/
+int try_exclu_cpu_exe(exl_call_func_t func, void * p_arg)
+{
+	unsigned int cpu;
+	unsigned long irq_flags;
+	unsigned long jiffy_timeout;
+	unsigned long count=0;
+	int ret;
+	/*Protect hotplug scenary*/
+	cpu_maps_update_begin();
+
+	timeout_flag = 0; // clean timeout flag;
+
+	for(cpu=0; cpu< CONFIG_NR_CPUS; cpu++)
+		if(per_cpu(in_wait, cpu))
+		{
+			printk("The previous call is not complete yet!\n");
+			ret = -1;
+			goto finish2;
+		}
+
+	smp_call_function(/*(void (*) (void * info))*/smp_wait, NULL, 0);
+
+	irq_flags = arch_local_irq_save();
+
+	jiffy_timeout = jiffies + HZ/2; //0.5s
+	while(count+1 != num_online_cpus())//the other cpus all in wait loop when count+1 == num_online_cpus()
+	{
+		if(time_after(jiffies, jiffy_timeout))
+		{
+			printk("Cannot stall other cpus. Timeout!\n");
+
+			timeout_flag = 1;
+
+			ret = -1;
+			goto finish1;
+		}
+
+		for(cpu=0, count=0; cpu< CONFIG_NR_CPUS; cpu++)
+			if(per_cpu(in_wait, cpu) == SMP_FLAG_GETED)
+				count ++;
+	}
+
+	ret = func(p_arg);
+
+finish1:
+	for(cpu=0; cpu< CONFIG_NR_CPUS; cpu++)
+		per_cpu(in_wait, cpu) = SMP_FLAG_IDLE;
+
+	arch_local_irq_restore(irq_flags);
+
+finish2:
+	cpu_maps_update_done();
+	return ret;
+}
+#else//CONFIG_SMP
+int try_exclu_cpu_exe(exl_call_func_t func, void * p_arg)
+{
+	return func(p_arg);
+}
+#endif
 

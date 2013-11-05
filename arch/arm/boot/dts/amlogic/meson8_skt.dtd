@@ -507,6 +507,7 @@ void root_func(){
         vcck_dvfs {
             dvfs_id     = <1>;                                  /** must be value of (1 << n)            */
             table_count = <17>;                                 /** must be correct count for dvfs_table */
+            change-frequent-only;
             dvfs_table  = <
             /* NOTE: frequent in this table must be ascending order */
             /* frequent(Khz)    min_uV      max_uV                  */
@@ -696,7 +697,7 @@ void root_func(){
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
             board_battery = <&battery_parameter>;               /** battery parameter used, must have    */
             vbus_dcin_short_connect = <1>;
-            status = "okay";                                    /** status of pmu, only one should be OK */
+            status = "disable";                                 /** status of pmu, only one should be OK */
         };
     };
 
@@ -913,8 +914,19 @@ void root_func(){
 //$$ DEVICE="audio_dai"
 //$$ L2 PROP_STR = "status"
     audio_dai{
-        compatible = "amlogic,aml-dai";
-        dev_name = "aml-dai.0";
+        compatible = "amlogic,aml-i2s-dai";
+        dev_name = "aml-i2s-dai.0";
+        status = "okay";
+    };
+    audio_spdif_dai{
+        compatible = "amlogic,aml-spdif-dai";
+        dev_name = "aml-spdif-dai.0";
+        status = "okay";
+    };
+
+    audio_spdif_codec{
+        compatible = "amlogic,aml-spdif-codec";
+        dev_name = "spdif-dit.0";
         status = "okay";
     };
 
@@ -938,7 +950,7 @@ void root_func(){
     aml_m8_sound_card{
         compatible = "sound_card, aml_snd_m8";
         aml,sound_card = "AML-M8AUDIO";
-        aml,codec_dai = "AML-M8";
+        aml,codec_dai = "AML-M8","dit-hifi";
         aml,audio-routing =
             "Ext Spk","LINEOUTL",
             "Ext Spk","LINEOUTR",

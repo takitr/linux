@@ -29,9 +29,6 @@
 #include <sdio.h>	/* SDIO Device and Protocol Specs */
 #include <bcmsdbus.h>	/* bcmsdh to/from specific controller APIs */
 #include <sdiovar.h>	/* to get msglevel bit values */
-#include <proto/ethernet.h>
-#include <dngl_stats.h>
-#include <dhd.h>
 
 #include <linux/sched.h>	/* request_irq() */
 
@@ -39,6 +36,7 @@
 #include <linux/mmc/card.h>
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
+#include <dhd_config.h>
 
 #if !defined(SDIO_VENDOR_ID_BROADCOM)
 #define SDIO_VENDOR_ID_BROADCOM		0x02d0
@@ -107,48 +105,6 @@ extern int bcmsdh_probe(struct device *dev);
 extern int bcmsdh_remove(struct device *dev);
 extern volatile bool dhd_mmc_suspend;
 
-#ifndef CONFIG_BCM40181_POWER_ALWAYS_ON
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-struct sdio_early_suspend_info {
-    struct sdio_func *func;
-    struct early_suspend sdio_early_suspend;
-    struct work_struct	tqueue;
-    int do_late_resume;
-};
-struct sdio_early_suspend_info sdioinfo[4];
-
-static void bcmsdh_probe_workqueue(struct work_struct *work)
-{
-    struct sdio_early_suspend_info *sdioinfo =container_of(work, struct sdio_early_suspend_info, tqueue);
-    printk("call bcmsdh_probe\n");
-    /* Call customer gpio to turn on power with WL_REG_ON signal */
-    dhd_customer_gpio_wlan_ctrl(WLAN_POWER_ON);
-    bcmsdh_probe(&sdioinfo->func->dev);
-}
-
-static void bcmsdh_sdmmc_early_suspend(struct early_suspend *h)
-{
-	struct sdio_early_suspend_info *sdioinfo = container_of(h, struct sdio_early_suspend_info, sdio_early_suspend);
-
-	printk(KERN_DEBUG "%s: enter\n", __FUNCTION__);
-    if(sdioinfo->func->num == 2)
-        sdioinfo->do_late_resume = 0;
-}
-
-static void bcmsdh_sdmmc_late_resume(struct early_suspend *h)
-{
-	struct sdio_early_suspend_info *sdioinfo = container_of(h, struct sdio_early_suspend_info, sdio_early_suspend);
-
-	printk(KERN_DEBUG "%s: enter\n", __FUNCTION__);
-    if(sdioinfo->func->num == 2 && sdioinfo->do_late_resume ){
-        printk("schedule sdioinfo->tqueue\n");
-        sdioinfo->do_late_resume = 0;
-        schedule_work(&sdioinfo->tqueue);
-    }
-}
-#endif /* defined(CONFIG_HAS_EARLYSUSPEND) */
-#endif
 static int bcmsdh_sdmmc_probe(struct sdio_func *func,
                               const struct sdio_device_id *id)
 {
@@ -190,22 +146,10 @@ static int bcmsdh_sdmmc_probe(struct sdio_func *func,
 	} else {
 		ret = -ENODEV;
 	}
+#ifdef POWER_OFF_IN_SUSPEND
+	dhd_conf_register_wifi_suspend(func);
+#endif
 
-#ifndef CONFIG_BCM40181_POWER_ALWAYS_ON
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if ((ret == 0) && (func->num == 2)) 
-	{
-    sdioinfo[func->num].func = func;
-    sdioinfo[func->num].do_late_resume = 0;
-    sdioinfo[func->num].sdio_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 30;
-	sdioinfo[func->num].sdio_early_suspend.suspend = bcmsdh_sdmmc_early_suspend;
-	sdioinfo[func->num].sdio_early_suspend.resume = bcmsdh_sdmmc_late_resume;
-	register_early_suspend(&sdioinfo[func->num].sdio_early_suspend);
-    INIT_WORK(&sdioinfo[func->num].tqueue, bcmsdh_probe_workqueue);
-    printk("register sdio_early_suspend\n");
-    }
-#endif
-#endif
 	return ret;
 }
 
@@ -218,15 +162,8 @@ static void bcmsdh_sdmmc_remove(struct sdio_func *func)
 		sd_info(("sdio_device: 0x%04x\n", func->device));
 		sd_info(("Function#: 0x%04x\n", func->num));
 
-#ifndef CONFIG_BCM40181_POWER_ALWAYS_ON
-#ifdef CONFIG_HAS_EARLYSUSPEND
-		if (func->num == 2)
-		if (sdioinfo[func->num].sdio_early_suspend.suspend) {
-			printk("mylin s2 num=%d\n", func->num);
-            unregister_early_suspend(&sdioinfo[func->num].sdio_early_suspend);
-			sdioinfo[func->num].sdio_early_suspend.suspend = NULL;
-		}
-#endif
+#ifdef POWER_OFF_IN_SUSPEND
+		dhd_conf_unregister_wifi_suspend(func);
 #endif
 		if (gInstance->func[2]) {
 			sd_trace(("F2 found, calling bcmsdh_remove...\n"));
@@ -263,8 +200,10 @@ MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
 {
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-
-    
+#ifndef POWER_OFF_IN_SUSPEND
+	mmc_pm_flag_t sdio_flags;
+	int ret;
+#endif
 
 	if (func->num != 2)
 		return 0;
@@ -272,16 +211,26 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 	sd_trace(("%s Enter\n", __FUNCTION__));
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
-#ifdef CONFIG_BCM40181_POWER_ALWAYS_ON
+
+#ifdef POWER_OFF_IN_SUSPEND
+	dhd_conf_wifi_suspend(func);
+#else
+	sdio_flags = sdio_get_host_pm_caps(func);
+
+	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
+		sd_err(("%s: can't keep power while host is suspended\n", __FUNCTION__));
+		return  -EINVAL;
+	}
+
+	/* keep power while host suspended */
+	ret = sdio_set_host_pm_flags(func, MMC_PM_KEEP_POWER);
+	if (ret) {
+		sd_err(("%s: error while trying to keep power\n", __FUNCTION__));
+		return ret;
+	}
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
-#endif	/* defined(OOB_INTR_ONLY) */
-#else
-    if (func->num == 2 && !sdioinfo[func->num].do_late_resume) {
-        printk(KERN_INFO "dhd suspend, remove bcmsdh\n");
-        bcmsdh_remove(&func->dev);
-        sdioinfo[func->num].do_late_resume = 1;
-       }
+#endif
 #endif
 	dhd_mmc_suspend = TRUE;
 	smp_mb();
@@ -291,23 +240,20 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
-#if defined(OOB_INTR_ONLY)
+#if defined(OOB_INTR_ONLY) || defined(POWER_OFF_IN_SUSPEND)
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-#endif 
+#endif
 	sd_trace(("%s Enter\n", __FUNCTION__));
 	dhd_mmc_suspend = FALSE;
-#ifdef CONFIG_BCM40181_POWER_ALWAYS_ON
+	
+#ifdef POWER_OFF_IN_SUSPEND
+	gInstance->func[func->num] = func;
+#else
 #if defined(OOB_INTR_ONLY)
 	if ((func->num == 2) && dhd_os_check_if_up(bcmsdh_get_drvdata()))
 		bcmsdh_oob_intr_set(1);
-#endif /* (OOB_INTR_ONLY) */
-#else
-    gInstance->func[func->num] = func;
-    if (func->num == 2) {
-        printk(KERN_DEBUG "dhd resume, late probe bcmsdh\n");
-    }
 #endif 
-
+#endif
 	smp_mb();
 	return 0;
 }

@@ -160,7 +160,8 @@
 
 #define SECBUS_REG_OFFSET(reg)   ((reg) <<2)
 #define SECBUS_REG_ADDR(reg)     (IO_SECBUS_BASE+SECBUS_REG_OFFSET(reg))
-#define SECBUS2_REG_ADDR(reg)       (IO_SECBUS_BASE+0x2000+SECBUS_REG_OFFSET(reg))
+#define SECBUS2_REG_ADDR(reg)       (IO_SECBUS_BASE+0x4000+SECBUS_REG_OFFSET(reg))
+#define SECBUS3_REG_ADDR(reg)       (IO_SECBUS_BASE+0x6000+SECBUS_REG_OFFSET(reg))
 
 void meson_map_default_io(void);
 

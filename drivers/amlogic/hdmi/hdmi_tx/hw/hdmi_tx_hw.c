@@ -427,23 +427,74 @@ static void hdmi_tvenc4k2k_set(Hdmi_tx_video_para_t* param)
     unsigned long vs_adjust;
     unsigned long vs_bline_evn, vs_eline_evn, vs_bline_odd, vs_eline_odd;
     unsigned long vso_begin_evn, vso_begin_odd;
-    
-    if(param->VIC==HDMI_4k2k_24){
-         INTERLACE_MODE     = 0;                   
-         PIXEL_REPEAT_VENC  = 0;                   
-         PIXEL_REPEAT_HDMI  = 0;                   
+
+    if(param->VIC==HDMI_4k2k_30){
+         INTERLACE_MODE     = 0;
+         PIXEL_REPEAT_VENC  = 0;
+         PIXEL_REPEAT_HDMI  = 0;
          ACTIVE_PIXELS  =     (3840*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
          ACTIVE_LINES   =     (2160/(1+INTERLACE_MODE));    // Number of active lines per field.
-         LINES_F0           = 2250;                 
-         LINES_F1           = 2250;                 
-         FRONT_PORCH        = 1276;                  
-         HSYNC_PIXELS       = 88;                  
-         BACK_PORCH         = 296;                  
-         EOF_LINES          = 8 + 1;                   
-         VSYNC_LINES        = 10;                   
-         SOF_LINES          = 72 + 1;                  
-         TOTAL_FRAMES       = 3;                   
-    }//todo
+         LINES_F0           = 2250;
+         LINES_F1           = 2250;
+         FRONT_PORCH        = 176;
+         HSYNC_PIXELS       = 88;
+         BACK_PORCH         = 296;
+         EOF_LINES          = 8 + 1;
+         VSYNC_LINES        = 10;
+         SOF_LINES          = 72 + 1;
+         TOTAL_FRAMES       = 3;
+    }
+    else if(param->VIC==HDMI_4k2k_25){
+         INTERLACE_MODE     = 0;
+         PIXEL_REPEAT_VENC  = 0;
+         PIXEL_REPEAT_HDMI  = 0;
+         ACTIVE_PIXELS  =     (3840*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES   =     (2160/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 2250;
+         LINES_F1           = 2250;
+         FRONT_PORCH        = 1056;
+         HSYNC_PIXELS       = 88;
+         BACK_PORCH         = 296;
+         EOF_LINES          = 8 + 1;
+         VSYNC_LINES        = 10;
+         SOF_LINES          = 72 + 1;
+         TOTAL_FRAMES       = 3;
+    }
+    else if(param->VIC==HDMI_4k2k_24){
+         INTERLACE_MODE     = 0;
+         PIXEL_REPEAT_VENC  = 0;
+         PIXEL_REPEAT_HDMI  = 0;
+         ACTIVE_PIXELS  =     (3840*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES   =     (2160/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 2250;
+         LINES_F1           = 2250;
+         FRONT_PORCH        = 1276;
+         HSYNC_PIXELS       = 88;
+         BACK_PORCH         = 296;
+         EOF_LINES          = 8 + 1;
+         VSYNC_LINES        = 10;
+         SOF_LINES          = 72 + 1;
+         TOTAL_FRAMES       = 3;
+    }
+    else if(param->VIC==HDMI_4k2k_smpte){
+         INTERLACE_MODE     = 0;
+         PIXEL_REPEAT_VENC  = 0;
+         PIXEL_REPEAT_HDMI  = 0;
+         ACTIVE_PIXELS  =     (4096*(1+PIXEL_REPEAT_HDMI)); // Number of active pixels per line.
+         ACTIVE_LINES   =     (2160/(1+INTERLACE_MODE));    // Number of active lines per field.
+         LINES_F0           = 2250;
+         LINES_F1           = 2250;
+         FRONT_PORCH        = 1020;
+         HSYNC_PIXELS       = 88;
+         BACK_PORCH         = 296;
+         EOF_LINES          = 8 + 1;
+         VSYNC_LINES        = 10;
+         SOF_LINES          = 72 + 1;
+         TOTAL_FRAMES       = 3;
+    }
+    else {
+        // nothing
+    }
     total_pixels_venc = (TOTAL_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
     active_pixels_venc= (ACTIVE_PIXELS / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
@@ -1645,7 +1696,10 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     //tmp_add_data[6] = 1'b0;      // Force Video Scan, only if [7]is set
     //tmp_add_data[5] = 1'b0 ;     // Force Video field, only if [7]is set
     //tmp_add_data[4:0] = 5'b00 ;  // Rsrv
-    tmp_add_data = 0;
+    if(hdmitx_device->cur_VIC == 39)
+        tmp_add_data = 0;
+    else
+        tmp_add_data = (1<<4);
     hdmi_wr_reg(TX_VIDEO_DTV_TIMING, tmp_add_data);
     
     tmp_add_data  = 0;
@@ -2268,7 +2322,10 @@ static void hdmitx_set_pll(Hdmi_tx_video_para_t *param)
 //            }
             set_vmode_clk(VMODE_1080P);
             break;
+        case HDMI_4k2k_30:
+        case HDMI_4k2k_25:
         case HDMI_4k2k_24:
+        case HDMI_4k2k_smpte:
             set_vmode_clk(VMODE_4K2K_24HZ);
         default:
             break;
@@ -2296,10 +2353,9 @@ static int hdmitx_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t
         &&(param->VIC!=HDMI_576i50)&&(param->VIC!=HDMI_576i50_16x9)
         &&(param->VIC!=HDMI_1080p30)
         &&(param->VIC!=HDMI_1080p24)
-
         &&(param->VIC!=HDMI_1080p60)&&(param->VIC!=HDMI_1080p50)
         &&(param->VIC!=HDMI_720p60)&&(param->VIC!=HDMI_720p50)
-        &&(param->VIC!=HDMI_4k2k_24)
+        &&(param->VIC!=HDMI_4k2k_30)&&(param->VIC!=HDMI_4k2k_25)&&(param->VIC!=HDMI_4k2k_24)&&(param->VIC!=HDMI_4k2k_smpte)
         &&(param->VIC!=HDMI_1080i60)&&(param->VIC!=HDMI_1080i50)){
         return -1;
     }
@@ -2340,7 +2396,10 @@ static int hdmitx_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t
         case HDMI_1080i50:
             hdmi_tvenc1080i_set(param);
             break;
+        case HDMI_4k2k_30:
+        case HDMI_4k2k_25:
         case HDMI_4k2k_24:
+        case HDMI_4k2k_smpte:
             hdmi_tvenc4k2k_set(param);
             break;
         default:
