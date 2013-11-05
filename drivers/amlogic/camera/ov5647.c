@@ -45,6 +45,7 @@
 //#include <media/amlogic/656in.h>
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
@@ -81,7 +82,7 @@ static unsigned debug;
 //module_param(debug, uint, 0644);
 //MODULE_PARM_DESC(debug, "activates debug info");
 
-static unsigned int vid_limit = 16;
+static unsigned int vid_limit = 32;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
@@ -116,7 +117,7 @@ static struct file *debug_file;
 static struct ov5647_device *debug_dev;
 static struct ov5647_fh *debug_fh;
 
-static int i_index = 4;
+static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
@@ -253,7 +254,7 @@ static struct v4l2_frmivalenum ov5647_frmivalenum[]={
                 {
                         .discrete	={
                                 .numerator	= 1,
-                                .denominator	= 25,
+                                .denominator	= 30,
                         }
                 }
         },{
@@ -510,7 +511,7 @@ struct ov5647_dmaqueue {
 };
 
 typedef enum resulution_size_type{
-	//SIZE_NULL = 0,
+	SIZE_NULL_TYPE = 0,
 	SIZE_CIF_352X288,
 	SIZE_VGA_640X480,
 	SIZE_720P_1280X720,
@@ -1422,7 +1423,7 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script			= OV5647_preview_720P_script,
 	}, {
 		.frmsize			= {1280, 960},
-		.active_frmsize		= {1280, 720},
+		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
 		.size_type			= SIZE_960P_1280X960,
 		.reg_script			= OV5647_preview_960P_script,
@@ -1432,13 +1433,7 @@ static resolution_param_t  prev_resolution_array[] = {
 		.active_fps			= 15,
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script			= OV5647_preview_1080P_script,
-	},{
-		.frmsize			= {2592, 1944},
-		.active_frmsize		= {2592, 1944},
-		.active_fps			= 7.5,
-		.size_type			= SIZE_H1080P_2592X1944,
-		.reg_script			= OV5647_capture_5M_script,
-	},
+	}
 };
 	
 
@@ -2148,7 +2143,7 @@ static int set_flip(struct ov5647_device *dev)
 
 static resulution_size_type_t get_size_type(int width, int height)
 {
-    resulution_size_type_t rv = SIZE_NULL;
+    resulution_size_type_t rv = SIZE_NULL_TYPE;
     if (width * height >= 2500 * 1900)
         rv = SIZE_H1080P_2592X1944;
     else if (width * height >= 1900 * 1000)
@@ -2195,9 +2190,9 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
     int i = 0;
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
-    resulution_size_type_t res_type = SIZE_NULL;
+    resulution_size_type_t res_type = SIZE_NULL_TYPE;
     res_type = get_size_type(width, height);
-    if (res_type == SIZE_NULL)
+    if (res_type == SIZE_NULL_TYPE)
         return NULL;
     if (is_capture == 1) {
         tmp_resolution_param = capture_resolution_array;
@@ -2206,7 +2201,6 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
         tmp_resolution_param = prev_resolution_array;
         arry_size = ARRAY_SIZE(prev_resolution_array);
     }
-
     for (i = 0; i < arry_size; i++) {
         if (tmp_resolution_param[i].size_type == res_type)
             return &tmp_resolution_param[i];
@@ -2914,7 +2908,6 @@ char *res_size[]={
 	"720p",
 	"960p",
 	"1080p",
-	"5m",	
 };
 static int get_index(char *res){
 	int i = 0;
@@ -2991,7 +2984,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
                               "   before fsize->index== %d\n",fsize->index);//potti
               if (fsize->index >= ARRAY_SIZE(prev_resolution_array))
                       return -EINVAL;
-              frmsize = &prev_resolution_array[fsize->index].frmsize;
+              frmsize = &prev_resolution_array[fsize->index].active_frmsize;
               printk("ov5647_prev_resolution[fsize->index]"
                               "   after fsize->index== %d\n",fsize->index);
               fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
@@ -3442,7 +3435,7 @@ static int ov5647_probe(struct i2c_client *client,
 		kfree(client);
 		return -1;
 	}
-   printk("register device\n");	
+    printk("register device\n");	
 	err = video_register_device(t->vdev, VFL_TYPE_GRABBER, video_nr);
 	if (err < 0) {
 		video_device_release(t->vdev);

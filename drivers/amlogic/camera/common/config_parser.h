@@ -14,6 +14,7 @@
 #define WB_MAX 9
 #define CAPTURE_MAX 5
 #define GAMMA_MAX 257
+#define SCENE_MAX 202
 #define BUFFER_SIZE 1024
 
 enum error_code {
@@ -68,7 +69,7 @@ typedef struct{
 typedef struct{
     int num;
     char name[40];
-    int export[194];
+    int export[SCENE_MAX];
 }scene_type;
 
 typedef struct{
