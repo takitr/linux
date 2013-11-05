@@ -653,6 +653,10 @@ static int aml_rtc_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto out;
 	}
+	
+	/* platform setup code should have handled this; sigh */
+	if (!device_can_wakeup(&pdev->dev))
+		device_init_wakeup(&pdev->dev, 1);
 
 	priv->rtc = rtc_device_register("aml_rtc", &pdev->dev, &
 						aml_rtc_ops, THIS_MODULE);
