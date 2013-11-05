@@ -14,11 +14,4 @@ config AM_WIFI_USB
 	default n
 
 
-source "../hardware/wifi/broadcom/drivers/ap6xxx/broadcm_40181/Kconfig"
-source "../hardware/wifi/realtek/drivers/8188eu/rtl8xxx_EU/Kconfig"
-source "../hardware/wifi/realtek/drivers/8188eu/rtl8xxx_EU_MP/Kconfig"
-source "../hardware/wifi/realtek/drivers/8192cu/rtl8xxx_CU/Kconfig"
-source "../hardware/wifi/realtek/drivers/8192du/rtl8xxx_DU/Kconfig"
-source "../hardware/wifi/realtek/drivers/8192eu/rtl8192EU/Kconfig"
-
 endif # AM_WIFI
