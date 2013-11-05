@@ -406,6 +406,7 @@ sdio{
 //$$ L2 PROP_STR = "gpio_cd"
 //$$ L2 PROP_U32 = "irq_in"
 //$$ L2 PROP_U32 = "irq_out"
+//$$ L2 PROP_U32 = "card_type"
         sd{
             status = "okay";
             port = <1>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
@@ -420,6 +421,7 @@ sdio{
             gpio_cd = "CARD_6";
             irq_in = <3>;
             irq_out = <5>;
+            card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
 
 //$$ DEVICE="emmc"
@@ -433,6 +435,7 @@ sdio{
 //$$ L3 PROP_U32 = "f_max_w"
 //$$ L3 PROP_U32 = "max_req_size"
 //$$ L2 PROP_STR = "gpio_dat3"       	
+//$$ L2 PROP_U32 = "card_type"
         emmc{
             status = "ok";
             port = <2>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
@@ -444,6 +447,7 @@ sdio{
             f_max_w = <50000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "BOOT_3";
+            card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
 
 //$$ DEVICE="sdio"
@@ -454,7 +458,8 @@ sdio{
 //$$ L2 PROP_STR 4 = "caps"
 //$$ L3 PROP_U32 = "f_min"
 //$$ L3 PROP_U32 = "f_max"
-//$$ L3 PROP_U32 = "max_req_size"        
+//$$ L3 PROP_U32 = "max_req_size"    
+//$$ L2 PROP_U32 = "card_type"    
         sdio{
           status = "okay";
           port = <0>;          /**0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
@@ -464,6 +469,7 @@ sdio{
           f_min = <300000>;
           f_max = <30000000>;
           max_req_size = <0x20000>;          /**128KB*/
+          card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
     };
 

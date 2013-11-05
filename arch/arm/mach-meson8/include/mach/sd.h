@@ -77,6 +77,22 @@ struct amlsd_platform {
     unsigned int gpio_dat3;
     unsigned int jtag_pin;
     int is_sduart;
+
+    /* we used this flag to filter some unnecessary cmd before initialized flow */
+    bool is_fir_init; // has been initialized for the first time
+    unsigned int card_type; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
+#define CARD_TYPE_UNKNOWN           0        /* unknown */
+#define CARD_TYPE_MMC               1        /* MMC card */
+#define CARD_TYPE_SD                2        /* SD card */
+#define CARD_TYPE_SDIO              3        /* SDIO card */
+#define CARD_TYPE_SD_COMBO          4        /* SD combo (IO+mem) card */
+#define CARD_TYPE_NON_SDIO          5        /* NON sdio device (means SD/MMC card) */
+#define aml_card_type_unknown(c)    ((c)->card_type == CARD_TYPE_UNKNOWN)
+#define aml_card_type_mmc(c)        ((c)->card_type == CARD_TYPE_MMC)
+#define aml_card_type_sd(c)         ((c)->card_type == CARD_TYPE_SD)
+#define aml_card_type_sdio(c)       ((c)->card_type == CARD_TYPE_SDIO)
+#define aml_card_type_non_sdio(c)   ((c)->card_type == CARD_TYPE_NON_SDIO)
+
     // struct pinctrl *uart_ao_pinctrl;
 	void (*irq_init)(struct amlsd_platform* pdata);
 

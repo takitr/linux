@@ -16,6 +16,7 @@
 #include <linux/mmc/host.h>
 #include <linux/io.h>
 #include <linux/mmc/mmc.h>
+#include <linux/mmc/sd.h>
 #include <linux/mmc/sdio.h>
 #include <linux/highmem.h>
 #include <linux/slab.h>
@@ -289,6 +290,33 @@ void aml_sdio_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
     mmc_request_done(host->mmc, mrq);
 }
 
+static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
+{
+    struct amlsd_platform * pdata = mmc_priv(host->mmc);
+    u32 virqs = readl(host->base + SDIO_IRQS);
+    u32 virqc = readl(host->base + SDIO_IRQC);
+    u32 vconf = readl(host->base + SDIO_CONF);
+    struct sdio_config* conf = (void*)&vconf;
+
+    sdio_err("%s: %s, Cmd%d arg %08x Xfer %d Bytes, "
+            "host->xfer_step=%d, host->cmd_is_stop=%d, pdata->port=%d, "
+            "virqs=%#0x, virqc=%#0x, conf->cmd_clk_divide=%#x, pdata->clkc=%d, "
+            "conf->bus_width=%d, pdata->width=%d\n",
+            mmc_hostname(host->mmc),
+            msg,
+            host->mrq->cmd->opcode,
+            host->mrq->cmd->arg,
+            host->mrq->data?host->mrq->data->blksz*host->mrq->data->blocks:0,
+            host->xfer_step,
+            host->cmd_is_stop,
+            pdata->port,
+            virqs, virqc,
+            conf->cmd_clk_divide,
+            pdata->clkc,
+            conf->bus_width,
+            pdata->width);    
+}
+
 /*setup delayed workstruct in aml_sdio_request*/
 static void aml_sdio_timeout(struct work_struct *data)
 {
@@ -300,9 +328,6 @@ static void aml_sdio_timeout(struct work_struct *data)
     struct sdio_status_irq* irqs = (void*)&virqs;
     u32 virqc =readl(host->base + SDIO_IRQC);
     struct sdio_irq_config* irqc = (void*)&virqc;
-    struct amlsd_platform * pdata = mmc_priv(host->mmc);
-    u32 vconf;
-    struct sdio_config* conf;
 
     spin_lock_irqsave(&host->mrq_lock, flags);
 	if(host->xfer_step == XFER_FINISHED){
@@ -328,36 +353,19 @@ static void aml_sdio_timeout(struct work_struct *data)
     irqc->arc_cmd_int_en = 0;   // disable cmd irq
     writel(virqc, host->base + SDIO_IRQC);
 
-    vconf = readl(host->base + SDIO_CONF);
-    conf = (void*)&vconf;
-    sdio_err("%s: Timeout Cmd%d arg %08x Xfer %d Bytes, "
-            "host->xfer_step=%d, host->cmd_is_stop=%d, pdata->port=%d, "
-            "virqs=%#0x, virqc=%#0x, conf->cmd_clk_divide=%#x, pdata->clkc=%d, "
-            "conf->bus_width=%d, pdata->width=%d\n",
-            mmc_hostname(host->mmc),
-            host->mrq->cmd->opcode,
-            host->mrq->cmd->arg,
-            host->mrq->data?host->mrq->data->blksz*host->mrq->data->blocks:0,
-            host->xfer_step,
-            host->cmd_is_stop,
-            pdata->port,
-            virqs, virqc,
-            conf->cmd_clk_divide,
-            pdata->clkc,
-            conf->bus_width,
-            pdata->width);
+    aml_sdio_print_err(host, "Timeout error");
     // if (pdata->port == MESON_SDIO_PORT_A) {
         // sdio_err("power_on_pin=%d\n",
                 // amlogic_get_value(185, "sdio_wifi")); // G24-113, G33-185
     // }
-    if (pdata->port == MESON_SDIO_PORT_B) {
-#ifdef CONFIG_ARCH_MESON6
-        if ((pdata->port == MESON_SDIO_PORT_B) && (pdata->gpio_power != 0))
-            sdio_err("power_on_pin=%d\n", amlogic_get_value(pdata->gpio_power, MODULE_NAME));
-#endif
-        aml_dbg_print_pinmux();
-        aml_sdio_print_reg(host);
-    }
+    // if (pdata->port == MESON_SDIO_PORT_B) {
+// #ifdef CONFIG_ARCH_MESON6
+        // if ((pdata->port == MESON_SDIO_PORT_B) && (pdata->gpio_power != 0))
+            // sdio_err("power_on_pin=%d\n", amlogic_get_value(pdata->gpio_power, MODULE_NAME));
+// #endif
+        // aml_dbg_print_pinmux();
+        // aml_sdio_print_reg(host);
+    // }
 
     host->xfer_step = XFER_TIMEDOUT;
 
@@ -382,21 +390,69 @@ static void aml_sdio_timeout(struct work_struct *data)
 	// sdio_err("Timeout out func\n");
 }
 
-#define     PORT_SDIO           PORT_SDIO_A // SDIO devices(for SDIO-WIFI)
-#define     PORT_BLOCK          PORT_SDIO_B // Block devices(for SD/MMC card)
-#define     PORT_BASE           PORT_SDIO_C // Base block device (for TSD/eMMC)
+
+int aml_cmd_invalid (struct mmc_host* mmc, struct mmc_request* mrq)
+{
+	// struct amlsd_platform * pdata = mmc_priv(mmc);
+
+    // sdio_err("%s: filter cmd%d, card_type=%d\n", mmc_hostname(mmc), mrq->cmd->opcode, pdata->card_type);
+    mrq->cmd->error = -EINVAL;
+    mmc_request_done(mmc, mrq);
+
+    return -EINVAL;
+}
+
 /*sdio controller does not support wifi now, return*/
 int aml_sdio_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq)
 {
 	struct amlsd_platform * pdata = mmc_priv(mmc);
 
-    if ((pdata->port != PORT_SDIO) && (mrq->cmd->opcode == SD_IO_SEND_OP_COND ||
-        mrq->cmd->opcode == SD_IO_RW_DIRECT ||
-        mrq->cmd->opcode == SD_IO_RW_EXTENDED)) {
-        mrq->cmd->error = -EINVAL;
-        mmc_request_done(mmc, mrq);
-        return -EINVAL;
+    // if ((pdata->port != PORT_SDIO) && (mrq->cmd->opcode == SD_IO_SEND_OP_COND ||
+    // mrq->cmd->opcode == SD_IO_RW_DIRECT ||
+    // mrq->cmd->opcode == SD_IO_RW_EXTENDED)) {
+    // mrq->cmd->error = -EINVAL;
+    // mmc_request_done(mmc, mrq);
+    // return -EINVAL;
+    // } 
+
+    if (mrq->cmd->opcode == 3) { // CMD3 means the first time initialized flow is running
+		pdata->is_fir_init = false;
     }
+
+    if ((pdata->is_fir_init) && (mmc->caps & MMC_CAP_NONREMOVABLE)) { // init for the first time
+        if (aml_card_type_sdio(pdata)) {
+            if (mrq->cmd->opcode == SD_IO_RW_DIRECT
+                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                    || mrq->cmd->opcode == SD_SEND_IF_COND) { // filter cmd 52/53/8 for a sdio device before init
+                return aml_cmd_invalid(mmc, mrq);
+            }
+        } else if (aml_card_type_mmc(pdata)) {
+            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                    || mrq->cmd->opcode == SD_SEND_IF_COND
+                    || mrq->cmd->opcode == MMC_APP_CMD) { // filter cmd 5/52/53/8/55 for an mmc device before init
+                return aml_cmd_invalid(mmc, mrq);
+            }
+        } else if (aml_card_type_sd(pdata) || aml_card_type_non_sdio(pdata)) {
+            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED) { // filter cmd 5/52/53 for a sd card before init
+                return aml_cmd_invalid(mmc, mrq);
+            }
+        }
+    } else {
+        // filter cmd 5/52/53 for a non-sdio & nonremovable device
+        if (!(mmc->caps & MMC_CAP_NONREMOVABLE) 
+                && (!aml_card_type_sdio(pdata) && !aml_card_type_unknown(pdata))) {
+            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED) {
+                return aml_cmd_invalid(mmc, mrq);
+            }
+        }
+    }
+    // sdio_err("%s: cmd%d, card_type=%d\n", mmc_hostname(mmc), mrq->cmd->opcode, pdata->card_type);
     return 0;
 }
 
@@ -588,8 +644,7 @@ irqreturn_t aml_sdio_irq_thread(int irq, void *data)
             mrq->cmd->error = 0;
         else {
             mrq->cmd->error = -EILSEQ;
-            sdio_err("%s CMD%u, arg %08x, cmd crc7 error\n",
-                    mmc_hostname(host->mmc), host->mrq->cmd->opcode, host->arg);
+            aml_sdio_print_err(host, "cmd crc7 error");
         }
 		spin_unlock_irqrestore(&host->mrq_lock, flags);
         aml_sdio_request_done(host->mmc, mrq);
@@ -598,8 +653,7 @@ irqreturn_t aml_sdio_irq_thread(int irq, void *data)
             mrq->cmd->error = 0;
         else {
             mrq->cmd->error = -EILSEQ;
-            sdio_err("%s CMD%u, arg %08x, data crc16 error\n",
-                    mmc_hostname(host->mmc), host->mrq->cmd->opcode, host->arg);
+            aml_sdio_print_err(host, "data crc16 error");
         }
         mrq->data->bytes_xfered = mrq->data->blksz*mrq->data->blocks;
 		spin_unlock_irqrestore(&host->mrq_lock, flags);
@@ -851,7 +905,8 @@ static int aml_sdio_resume(struct platform_device *pdev)
 
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 	list_for_each_entry(pdata, &host->sibling, sibling){
-        if(pdata->port == MESON_SDIO_PORT_A) { // sdio_wifi
+        // if(pdata->port == MESON_SDIO_PORT_A) { // sdio_wifi
+        if(aml_card_type_sdio(pdata)) {
             wifi_setup_dt();
         }
 		mmc = pdata->mmc;
@@ -966,6 +1021,7 @@ static int aml_sdio_probe(struct platform_device *pdev)
         // host->pdata = pdata; // should not do this here, it will conflict with aml_sdio_request
         // host->mmc = mmc;
 		pdata->mmc = mmc;
+		pdata->is_fir_init = true;
 
 		mmc->index = i;
 		mmc->ops = &aml_sdio_ops;
