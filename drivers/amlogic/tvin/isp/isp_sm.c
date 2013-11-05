@@ -56,7 +56,7 @@ static unsigned int ae_debug6 = 0;
 module_param(ae_debug6,uint,0664);
 MODULE_PARM_DESC(ae_debug6,"\n debug flag for ae.\n");
 
-static unsigned int ae_step = 2;
+static unsigned int ae_step = 1;
 
 module_param(ae_step,uint,0664);
 MODULE_PARM_DESC(ae_step,"\n debug flag for ae.\n");
@@ -166,7 +166,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	u8 radium_outer;
 	u8 radium_inner;
 
-	k++;
+	//k++;
 
     switch(sm_state.isp_ae_parm.isp_ae_state){
 		case AE_IDLE:
@@ -181,9 +181,9 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
 			aepa->pixel_sum = parm->h_active * parm->v_active;
 			aepa->sub_pixel_sum = aepa->pixel_sum >> 4;
-			aepa->alert_r = ((aepa->pixel_sum >> 2) * aep->ratio_r) >> 8;
-			aepa->alert_g = ((aepa->pixel_sum >> 2) * aep->ratio_g) >> 7;	 //grgb
-			aepa->alert_b = ((aepa->pixel_sum >> 2) * aep->ratio_b) >> 8;
+			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;
+			aepa->alert_g = ((aepa->pixel_sum >> 4) * aep->ratio_g) >> 7;	 //grgb
+			aepa->alert_b = ((aepa->pixel_sum >> 4) * aep->ratio_b) >> 8;
 			printk("aepa->alert_r=%d,g=%d,b=%d\n",aepa->alert_r,aepa->alert_g,aepa->alert_b);
 			aepa->change_step = 0;
 			if(func&&func->get_aet_max_gain)
@@ -410,8 +410,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							step = AE_SET_NEWSTEP;
 						break;
 					case AE_SET_NEWSTEP:
-						if(ae_sens.send == 0)
-						{
 						ae_sens.send = 1;
 						ae_sens.new_step = newstep;
 						ae_sens.shutter = 1;
@@ -419,7 +417,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						//printk("ae_sens.send \n");
 						sm_state.ae_down = false;
 						sm_state.isp_ae_parm.isp_ae_state = AE_REST;
-						}
 						step = AE_SUCCESS;
 						break;
 					case AE_MAX_CHECK_STOP:
@@ -451,6 +448,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			break;
 		case AE_REST:
 			sm_state.ae_down = true;
+			if(ae_sens.send == 0)
+				k++;
 			//printk("func->check_mains_freq =%x\n",func->check_mains_freq);
 			//if(func->check_mains_freq)
 			//	sm_state.isp_ae_parm.isp_ae_state = AE_ORI_SET;
