@@ -418,9 +418,12 @@ static ulong keep_v_addr = 0, *keep_v_addr_remap = NULL;
 #define Y_BUFFER_SIZE   0x400000 // for 1920*1088
 #define U_BUFFER_SIZE   0x100000  //compatible with NV21
 #define V_BUFFER_SIZE   0x80000
+
+#ifdef CONFIG_KEEP_FRAME_RESERVED
 static uint y_buffer_size = 0;
 static uint u_buffer_size = 0;
 static uint v_buffer_size = 0;
+#endif
 
 /* zoom information */
 static u32 zoom_start_x_lines;
@@ -510,7 +513,10 @@ static const f2v_vphase_type_t vpp_phase_table[4][3] = {
 static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+static struct work_struct vpu_clk_work;
+static int vpu_clk_level = 0;
+#endif
 static u32 vpts_ref = 0;
 static u32 video_frame_repeat_count = 0;
 static u32 smooth_sync_enable = 0;
@@ -968,6 +974,20 @@ static void vsync_toggle_frame(vframe_t *vf)
 
         /* apply new vpp settings */
         frame_par_ready_to_set = 1;
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        if ((vf->width > 1920) && (vf->height > 1088)) {
+            if (vpu_clk_level == 0) {
+                vpu_clk_level = 1;
+                schedule_work(&vpu_clk_work);
+            }
+        } else {
+            if (vpu_clk_level == 1) {
+                vpu_clk_level = 0;
+                schedule_work(&vpu_clk_work);
+            }
+        }
+#endif
     } else {
     }
 
@@ -2214,7 +2234,7 @@ void get_video_keep_buffer(ulong *addr, ulong *phys_addr)
     }
 
     if(debug_flag& DEBUG_FLAG_BLACKOUT){
-        printk("%s: y=%x u=%x v=%x\n", __func__, phys_addr[0], phys_addr[1], phys_addr[2]);
+        printk("%s: y=%lx u=%lx v=%lx\n", __func__, phys_addr[0], phys_addr[1], phys_addr[2]);
     }
 }
 
@@ -2488,7 +2508,7 @@ unsigned int vf_keep_current(void)
     v_index = (cur_index >> 16) & 0xff;
 
     if(debug_flag& DEBUG_FLAG_BLACKOUT){
-    	printk("%s %x %x\n", __func__, keep_y_addr, canvas_get_addr(y_index));
+    	printk("%s %lx %lx\n", __func__, keep_y_addr, canvas_get_addr(y_index));
     }
 
     if ((cur_dispbuf->type & VIDTYPE_VIU_422) == VIDTYPE_VIU_422) {
@@ -4092,6 +4112,17 @@ static void vout_hook(void)
 #endif
 }
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+static void vpu_clk_switch(struct work_struct *work)
+{
+    if (vpu_clk_level > 0) {
+        request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
+    } else {
+        release_vpu_clk_vmod(VPU_VIU_VD1);
+    }
+}
+#endif
+
 /*********************************************************/
 static int __init video_early_init(void)
 {
@@ -4229,6 +4260,10 @@ static int __init video_init(void)
     }
 
     init_waitqueue_head(&amvideo_trick_wait);
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    INIT_WORK(&vpu_clk_work, vpu_clk_switch);
+#endif
 
     vout_hook();
 
