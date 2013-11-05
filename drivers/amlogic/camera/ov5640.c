@@ -1300,7 +1300,7 @@ static struct aml_camera_i2c_fig_s OV5640_script[] = {
 	{0x4202, 0x00}, 
 	{0x3023, 0x01},   
 	{0x3022, 0x04},
-	
+    {0x3031, 0x08},
 #endif
 
 	{0xffff, 0xff}
@@ -1350,7 +1350,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_VGA_script[] = {
 	
 	{0x3820, 0x41}, // #3 ck. origin: 0x47,
 	{0x3821, 0x07}, // #3 ck. origin: 0x01, 
-	   
+	{0x3031, 0x08},   
 	{0xffff, 0xff}
 };
 
@@ -2288,6 +2288,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_960P_script[] = {
 	{0x4202, 0x00}, 
 	{0x3023, 0x01},   
 	{0x3022, 0x04},
+	{0x3031, 0x08},
 #endif
 	
 	{0xffff, 0xff}
@@ -2610,6 +2611,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_720P_script[] = {
 	{0x3a0b, 0xb8},
 	{0x3a0e, 0x03},
 	{0x3a0d, 0x04},
+    {0x3031, 0x08},
 #endif
 
 #endif
@@ -2734,7 +2736,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_QVGA_script[] = {
 	
 	{0x3820, 0x41}, // #3 ck. origin: 0x47,
 	{0x3821, 0x07}, // #3 ck. origin: 0x01, 
-	   
+	{0x3031, 0x08},   
 	{0xffff, 0xff}
 };
 
@@ -2834,6 +2836,7 @@ static struct aml_camera_i2c_fig_s OV5640_capture_5M_script[] = {
 {0x3824, 0x01}, // PCLK manual divider
 {0x5001, 0x83}, // SDE on, CMX on, AWB on
 {0x3503, 0x03},
+{0x3031, 0x08},
 #endif
 {0xffff, 0xff}
 };
@@ -2884,7 +2887,8 @@ static struct aml_camera_i2c_fig_s OV5640_capture_3M_script[] = {
 	{0x3035, 0x21},  // 0x21
 	
 	{0x3820, 0x41},  // #3 ck. 0x47,
-	{0x3821, 0x07},  // #3 ck. 0x01, 
+	{0x3821, 0x07},  // #3 ck. 0x01,
+	{0x3031, 0x08},
 	{0xffff, 0xff}
 };
 
@@ -2935,6 +2939,7 @@ static struct aml_camera_i2c_fig_s OV5640_capture_2M_script[] = {
 	
 	{0x3820, 0x41},  // #3 ck. 0x47,
 	{0x3821, 0x07},  // #3 ck. 0x01, 
+	{0x3031, 0x08},
 	{0xffff, 0xff}
 };
 
