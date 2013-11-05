@@ -38,9 +38,12 @@ typedef struct {
 } video_prot_t;
 
 //extern void early_init_prot();
-extern void video_prot_init(video_prot_t* video_prot, vframe_t *vf);
-extern void video_prot_set_angle(video_prot_t* video_prot, u32 angle);
-extern void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf);
-extern void video_prot_set_canvas(vframe_t *vf);
-extern void video_prot_reset(video_prot_t* video_prot);
+void video_prot_init(video_prot_t* video_prot, vframe_t *vf);
+void video_prot_set_angle(video_prot_t* video_prot, u32 angle);
+void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf);
+void video_prot_set_canvas(vframe_t *vf);
+void video_prot_reset(video_prot_t* video_prot);
+int get_prot_on(void);
+u32 get_video_angle(void);
+void set_video_angle(u32 s_value);
 #endif

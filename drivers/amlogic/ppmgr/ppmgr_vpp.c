@@ -30,6 +30,7 @@
 #include <linux/mm.h>
 #include <linux/amlogic/ppmgr/ppmgr.h>
 #include <linux/amlogic/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/amports/video_prot.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
@@ -2261,8 +2262,6 @@ static struct task_struct *task=NULL;
 extern int video_property_notify(int flag);
 extern vframe_t* get_cur_dispbuf(void);
 extern platform_type_t get_platform_type();
-extern void set_video_angle(u32 s_value);
-extern ssize_t _ppmgr_angle_write(unsigned long val);
 
 static int ppmgr_task(void *data)
 {
