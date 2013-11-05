@@ -763,7 +763,7 @@ static int __init cpufreq_gov_dbs_init(void)
 	if (IS_ERR(cpu_hotplug_task))
 		return PTR_ERR(cpu_hotplug_task);
 
-	//sched_setscheduler_nocheck(cpu_hotplug_task, SCHED_FIFO, &param);
+	sched_setscheduler_nocheck(cpu_hotplug_task, SCHED_FIFO, &param);
 	get_task_struct(cpu_hotplug_task);
 	cpu_hotplug_flag = CPU_HOTPLUG_NONE;
 
