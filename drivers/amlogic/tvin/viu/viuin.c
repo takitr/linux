@@ -536,7 +536,7 @@ static int viuin_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 static void viuin_close(struct tvin_frontend_s *fe)
 {        
         viuin_t *devp = container_of(fe,viuin_t,frontend);
-        memset(&devp->parm,0,sizeof(viuin_t));
+        memset(&devp->parm,0,sizeof(vdin_parm_t));
         /*close the venc to vdin path*/
                         WR_BITS(VPU_VIU_VENC_MUX_CTRL,0,4,8);
 }

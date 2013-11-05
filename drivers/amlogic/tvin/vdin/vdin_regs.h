@@ -845,8 +845,8 @@
 #define MEAS_WIDEN_HS_VS_EN_WID         1
 #define MEAS_VS_TOTAL_CNT_EN_BIT        16 // vsync total counter always accumulating enable
 #define MEAS_VS_TOTAL_CNT_EN_WID        1
-#define MEAS_HS_VS_SEL_BIT              12 // 0: null, 1: vdi1, 2: vdi2, 3: vdi3, 4:vdi4, 5:vdi5,for m6 6:vdi6,7:vdi7
-#define MEAS_HS_VS_SEL_WID              3
+#define MEAS_HS_VS_SEL_BIT              12 // 0: null, 1: vdi1, 2: vdi2, 3: vdi3, 4:vdi4, 5:vdi5,for m6 6:vdi6,7:vdi7 8:vdi8-isp
+#define MEAS_HS_VS_SEL_WID              4
 #define MEAS_VS_SPAN_BIT                4  // define how many VS span need to measure
 #define MEAS_VS_SPAN_WID                8
 #define MEAS_HS_INDEX_BIT               0  // select which HS counter/range
