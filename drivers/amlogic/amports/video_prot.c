@@ -7,7 +7,7 @@
  * Author:  Amlogic R&D Group
  *
  */
-#include "video_prot.h"
+#include <linux/amlogic/amports/video_prot.h>
 
 static int set_prot_NV21(u32 x_start, u32 x_end, u32 y_start, u32 y_end, u32 y_step, u32 angle, u32 pat_val) {
 
