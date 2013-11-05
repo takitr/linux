@@ -797,11 +797,10 @@ static void report_abs(void)
 	}
 
 #endif
-        input_report_abs(mma7660_idev->input, ABS_X, data.x);
-        input_report_abs(mma7660_idev->input, ABS_Y, data.y);
-        input_report_abs(mma7660_idev->input, ABS_Z, data.z);
+
+
         
-        input_sync(mma7660_idev->input);
+        aml_sensor_report_acc(mma7660_i2c_client, mma7660_idev->input, data.x, data.y, data.z);
 
         if(dbg_level)
             printk(KERN_INFO"case 2: mma7660 sensor data (%d, %d, %d)\n", data.x, data.y, data.z);

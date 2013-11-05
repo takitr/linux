@@ -2960,9 +2960,12 @@ static int gc2035_open(struct file *file)
 	int retval = 0;
 
 #if CONFIG_CMA
-    retval = vm_init_buf(16*SZ_1M);
+    retval = vm_init_buf(32*SZ_1M);
     if(retval <0)
+    {
+        pr_err("%s : Allocation from CMA failed\n", __func__);
         return -1;
+    }
 #endif
 
 #ifdef CONFIG_ARCH_MESON6

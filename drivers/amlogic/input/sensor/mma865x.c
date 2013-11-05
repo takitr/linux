@@ -160,6 +160,26 @@ static int mma865x_position_setting[8][3][3] =
 
 static int mma865x_data_convert(struct mma865x_data* pdata,struct mma865x_data_axis *axis_data)
 {
+#if 0
+    int flag;
+    short temp;
+
+    sensor_pdata_t *p = pdata->client->dev.platform_data;
+    if(!p)
+    {
+       return 0;
+    }
+    if(p->acc_swap_xy)
+    {
+        temp = axis_data->x;
+        axis_data->x = axis_data->y; 
+        axis_data->y = temp;
+    }
+    axis_data->x *= p->acc_negate_x ? -1 : 1;
+    axis_data->y *= p->acc_negate_y ? -1 : 1;
+    axis_data->z *= p->acc_negate_z ? -1 : 1;
+   
+#else
    short rawdata[3],data[3];
    int i,j;
    int position = pdata->position ;
@@ -175,6 +195,7 @@ static int mma865x_data_convert(struct mma865x_data* pdata,struct mma865x_data_a
    axis_data->x = data[0];
    axis_data->y = data[1];
    axis_data->z = data[2];
+#endif
    return 0;
 }
 static char * mma865x_id2name(u8 id){
@@ -245,15 +266,13 @@ static void mma865x_report_data(struct mma865x_data* pdata)
 	if (mma865x_read_data(pdata->client,&data) != 0)
 		goto out;
     mma865x_data_convert(pdata,&data);
-	input_report_abs(poll_dev->input, ABS_X, data.x);
-	input_report_abs(poll_dev->input, ABS_Y, data.y);
-	input_report_abs(poll_dev->input, ABS_Z, data.z);
+
+    aml_sensor_report_acc(pdata->client,poll_dev->input, data.x, data.y, data.z);
 
 	if (enable_dbg) {
 			printk("xyz(%d,%d,%d)\n", data.x, data.y, data.z);
 	}
 
-	input_sync(poll_dev->input);
 out:
 	mutex_unlock(&pdata->data_lock);
 }
@@ -415,6 +434,9 @@ static int mma865x_probe(struct i2c_client *client,
 	struct mma865x_data *pdata;
 	struct i2c_adapter *adapter;
 	struct input_polled_dev *poll_dev;
+
+
+    pr_info(" ######################### chris probing 865x");
 	adapter = to_i2c_adapter(client->dev.parent);
 	result = i2c_check_functionality(adapter,
 					 I2C_FUNC_SMBUS_BYTE |

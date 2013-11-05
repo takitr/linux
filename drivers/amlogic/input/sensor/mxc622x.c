@@ -40,6 +40,7 @@
 #endif
 
 #include <linux/sensor/mxc622x.h>
+#include <linux/sensor/sensor_common.h>
 
 #define WHOAMI_MXC622X_ACC	0x25	/*	Expctd content for WAI	*/
 
@@ -275,10 +276,8 @@ static int mxc622x_acc_get_acceleration_data(struct mxc622x_acc_data *acc,
 
 static void mxc622x_acc_report_values(struct mxc622x_acc_data *acc, int *xyz)
 {
-	input_report_abs(acc->input_dev, ABS_X, xyz[0]);
-	input_report_abs(acc->input_dev, ABS_Y, xyz[1]);
-	input_report_abs(acc->input_dev, ABS_Z, xyz[2]);
-	input_sync(acc->input_dev);
+
+	aml_sensor_report_acc(acc->client, acc->input_dev, xyz[0], xyz[1], xyz[2]);
 }
 
 static int mxc622x_acc_enable(struct mxc622x_acc_data *acc)

@@ -2073,10 +2073,8 @@ static void bma250_work_func(struct work_struct *work)
 	unsigned long delay = msecs_to_jiffies(atomic_read(&bma250->delay));
 
 	bma250_read_accel_xyz(bma250->bma250_client, &acc);
-	input_report_abs(bma250->input, ABS_X, acc.x);
-	input_report_abs(bma250->input, ABS_Y, acc.y);
-	input_report_abs(bma250->input, ABS_Z, acc.z);
-	input_sync(bma250->input);
+
+    aml_sensor_report_acc(bma250->bma250_client, bma250->input, acc.x, acc.y, acc.z);
 	mutex_lock(&bma250->value_mutex);
 	bma250->value = acc;
 	mutex_unlock(&bma250->value_mutex);

@@ -578,10 +578,7 @@ static long device_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				dmtprintk("%s:copy_from_user(&intBuf, (int*)arg, sizeof(intBuf)) ERROR, -EFAULT\n",__func__);			
 				return -EFAULT;
 			}
-			input_report_abs(devdata.input, ABS_X, intBuf[0]);
-			input_report_abs(devdata.input, ABS_Y, intBuf[1]);
-			input_report_abs(devdata.input, ABS_Z, intBuf[2]);
-			input_sync(devdata.input);
+            aml_sensor_report_acc(devdata.client, devdata.input, intBuf[0], intBuf[1], intBuf[2]);
 			dmtprintk(KERN_INFO "%s:SENSOR_SETYPR OK! x=%d,y=%d,z=%d\n",__func__,intBuf[0],intBuf[1],intBuf[2]);
 			return 1;
 		case SENSOR_GET_OPEN_STATUS:
@@ -698,10 +695,9 @@ static void DMT_work_func(struct work_struct *fakework)
 
 	PRINT_X_Y_Z(xyz[0], xyz[1], xyz[2]);
 	PRINT_X_Y_Z(offset.u.x, offset.u.y, offset.u.z);
-	input_report_abs(devdata.input, ABS_X, xyz[0]);
-	input_report_abs(devdata.input, ABS_Y, -xyz[1]);
-	input_report_abs(devdata.input, ABS_Z, -xyz[2]);
-	input_sync(devdata.input);
+
+
+	aml_sensor_report_acc(devdata.client, devdata.input, xyz[0], xyz[1], xyz[2]);
 		
 	if(dmt_delay<1)
 		dmt_delay=1;

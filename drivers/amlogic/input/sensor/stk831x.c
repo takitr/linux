@@ -36,6 +36,7 @@
 #include <linux/workqueue.h>
 #include <linux/fcntl.h>
 #include <linux/syscalls.h>
+#include <linux/sensor/sensor_common.h>
 //#include <linux/time.h>
 
 //#define CONFIG_GRAVITY_STK8312
@@ -945,10 +946,7 @@ static int STK831x_ReportValue(struct stk831x_data *stk)
 	printk(KERN_INFO "%s:%4d,%4d,%4d\n", __func__, stk->raw_data[0], 
 		stk->raw_data[1], stk->raw_data[2]);	
 #endif	
-	input_report_abs(stk->input_dev, ABS_X, stk->raw_data[0]);  
-	input_report_abs(stk->input_dev, ABS_Y, stk->raw_data[1]);
-	input_report_abs(stk->input_dev, ABS_Z, stk->raw_data[2]);
-	input_sync(stk->input_dev);
+	aml_sensor_report_acc(this_client, stk->input_dev, stk->raw_data[0], stk->raw_data[1],stk->raw_data[2] );  
 	return 0;
 }
 

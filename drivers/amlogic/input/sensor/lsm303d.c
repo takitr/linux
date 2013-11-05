@@ -1595,19 +1595,12 @@ static int lsm303d_mag_get_data(struct lsm303d_status *stat, int *xyz)
 
 static void lsm303d_acc_report_values(struct lsm303d_status *stat, int *xyz)
 {
-	input_report_abs(stat->input_dev_acc, ABS_X, xyz[0]);
-	input_report_abs(stat->input_dev_acc, ABS_Y, xyz[1]);
-	input_report_abs(stat->input_dev_acc, ABS_Z, xyz[2]);
-	input_sync(stat->input_dev_acc);
-
+    aml_sensor_report_acc(stat->client, stat->input_dev_acc, xyz[0], xyz[1], xyz[2]);
 }
 
 static void lsm303d_mag_report_values(struct lsm303d_status *stat, int *xyz)
 {
-	input_report_abs(stat->input_dev_mag, ABS_X, xyz[0]);
-	input_report_abs(stat->input_dev_mag, ABS_Y, xyz[1]);
-	input_report_abs(stat->input_dev_mag, ABS_Z, xyz[2]);
-	input_sync(stat->input_dev_mag);
+    aml_sensor_report_acc(stat->client, stat->input_dev_mag, xyz[0], xyz[1], xyz[2]);
 }
 
 static void lsm303d_acc_input_work_func(struct work_struct *work)

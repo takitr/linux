@@ -2094,15 +2094,15 @@ static void bma222_work_func(struct work_struct *work)
 	bma222_read_accel_xyz(bma222->bma222_client, &acc);
 	//printk("%s:::x:%d,y:%d,z:%d\n",__FUNCTION__,acc.x,acc.y,acc.z);
 	if(!pdata){
-		input_report_abs(bma222->input, ABS_X, acc.x);
-		input_report_abs(bma222->input, ABS_Y, acc.y);
-		input_report_abs(bma222->input, ABS_Z, acc.z);
+
+        aml_sensor_report_acc(bma222->bma222_client, bma222->input, acc.x, acc.y, acc.z);
+
 	}else{
 		input_report_abs(bma222->input, ABS_X, acc.x * pdata->rotator[0] + acc.y * pdata->rotator[1]+acc.z * pdata->rotator[2]);
 		input_report_abs(bma222->input, ABS_Y, acc.x * pdata->rotator[3] + acc.y * pdata->rotator[4]+acc.z * pdata->rotator[5]);
 		input_report_abs(bma222->input, ABS_Z, acc.x * pdata->rotator[6] + acc.y * pdata->rotator[7]+acc.z * pdata->rotator[8]);
+        input_sync(bma222->input);
 	}	
-	input_sync(bma222->input);
 	mutex_lock(&bma222->value_mutex);
 	bma222->value = acc;
 	mutex_unlock(&bma222->value_mutex);

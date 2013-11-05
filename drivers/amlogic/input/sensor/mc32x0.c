@@ -417,15 +417,8 @@ static void report_abs(void)
 	for(i=0; i<3; i++)
 		mc32x0_read_xyz(i, &xyz[i]);
 
-	y = -xyz[0];
-	x = xyz[1];
-	z = xyz[2];
 
-
-	input_report_abs(mc32x0_idev->input, ABS_X, x);
-	input_report_abs(mc32x0_idev->input, ABS_Y, y);
-	input_report_abs(mc32x0_idev->input, ABS_Z, z);
-	input_sync(mc32x0_idev->input);
+    aml_sensor_report_acc(mc32x0_i2c_client, mc32x0_idev->input, x, y, z);
 	mutex_unlock(&sensor_lock);
 
 }

@@ -383,15 +383,23 @@ static void kionix_accel_grp1_report_accel_data(struct kionix_accel_driver *acce
 				y = ((s16) le16_to_cpu(((s16)(accel_data[acceld->axis_map_y] >> 2)) - 32)) << 6;
 				z = ((s16) le16_to_cpu(((s16)(accel_data[acceld->axis_map_z] >> 2)) - 32)) << 6;
 
+                acceld->accel_data[x] = x;
+                acceld->accel_data[y] = y;
+                acceld->accel_data[z] = z;
+                
+                #if 0
 				acceld->accel_data[acceld->axis_map_x] = (acceld->negate_x ? -x : x) + acceld->accel_cali[acceld->axis_map_x];
 				acceld->accel_data[acceld->axis_map_y] = (acceld->negate_y ? -y : y) + acceld->accel_cali[acceld->axis_map_y];
 				acceld->accel_data[acceld->axis_map_z] = (acceld->negate_z ? -z : z) + acceld->accel_cali[acceld->axis_map_z];
-
+                #endif
 				if(atomic_read(&acceld->accel_input_event) > 0) {
+                    aml_sensor_report_acc(acceld->client, acceld->input_dev, x, y, z);
+                    #if 0
 					input_report_abs(acceld->input_dev, ABS_X, acceld->accel_data[acceld->axis_map_x]);
 					input_report_abs(acceld->input_dev, ABS_Y, acceld->accel_data[acceld->axis_map_y]);
 					input_report_abs(acceld->input_dev, ABS_Z, acceld->accel_data[acceld->axis_map_z]);
 					input_sync(acceld->input_dev);
+                    #endif
 				}
 
 				write_unlock(&acceld->rwlock_accel_data);
@@ -540,16 +548,23 @@ static void kionix_accel_grp2_report_accel_data(struct kionix_accel_driver *acce
 				x = ((s16) le16_to_cpu(accel_data.accel_data_s16[acceld->axis_map_x])) >> acceld->shift;
 				y = ((s16) le16_to_cpu(accel_data.accel_data_s16[acceld->axis_map_y])) >> acceld->shift;
 				z = ((s16) le16_to_cpu(accel_data.accel_data_s16[acceld->axis_map_z])) >> acceld->shift;
-
+#if 0
 				acceld->accel_data[acceld->axis_map_x] = (acceld->negate_x ? -x : x) + acceld->accel_cali[acceld->axis_map_x];
 				acceld->accel_data[acceld->axis_map_y] = (acceld->negate_y ? -y : y) + acceld->accel_cali[acceld->axis_map_y];
 				acceld->accel_data[acceld->axis_map_z] = (acceld->negate_z ? -z : z) + acceld->accel_cali[acceld->axis_map_z];
-
+#endif
+                acceld->accel_data[0] = x;
+                acceld->accel_data[1] = y;
+                acceld->accel_data[2] = z;
+                
 				if(atomic_read(&acceld->accel_input_event) > 0) {
+                    aml_sensor_report_acc(acceld->client, acceld->input_dev, x, y, z);
+                #if 0
 					input_report_abs(acceld->input_dev, ABS_X, acceld->accel_data[acceld->axis_map_x]);
 					input_report_abs(acceld->input_dev, ABS_Y, acceld->accel_data[acceld->axis_map_y]);
 					input_report_abs(acceld->input_dev, ABS_Z, acceld->accel_data[acceld->axis_map_z]);
 					input_sync(acceld->input_dev);
+                #endif
 				}
 
 				write_unlock(&acceld->rwlock_accel_data);

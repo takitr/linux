@@ -1585,10 +1585,8 @@ static void report_abs(void)
     input_sync(mm3a310_idev->input);
 
 #else
-   input_report_abs(mm3a310_idev->input, ABS_X, x);
-    input_report_abs(mm3a310_idev->input, ABS_Y, y);
-    input_report_abs(mm3a310_idev->input, ABS_Z, z);
-    input_sync(mm3a310_idev->input); //Synchronous
+
+    aml_sensor_report_acc(mm3a310_i2c_client, mm3a310_idev->input, x, y, z);
 
 #endif
 

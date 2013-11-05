@@ -323,11 +323,7 @@ static void dmard06_report_value(struct i2c_client *client, struct dmard06_axis 
 
 	/* Report acceleration sensor information */
 
-	input_report_abs(dmard06->input_dev, ABS_X, axis->x);
-	input_report_abs(dmard06->input_dev, ABS_Y, axis->y);
-
-	input_report_abs(dmard06->input_dev, ABS_Z, axis->z);
-	input_sync(dmard06->input_dev);
+	aml_sensor_report_acc(client, dmard06->input_dev, axis->x, axis->y, axis->z);
 }
 
 #define RawDataLength 4

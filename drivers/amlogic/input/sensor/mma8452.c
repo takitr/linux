@@ -198,10 +198,9 @@ static void mma8452_work_func(struct work_struct *work)
 	unsigned long delay = msecs_to_jiffies(atomic_read(&mma8452->delay));
 
 	if (mma8452_read_accel_xyz(mma8452->mma8452_client, &acc) == 0) {
-		input_report_abs(mma8452->input, ABS_X, acc.x);
-		input_report_abs(mma8452->input, ABS_Y, acc.y);
-		input_report_abs(mma8452->input, ABS_Z, acc.z);
-		input_sync(mma8452->input);
+
+        aml_sensor_report_acc(mma8452->mma8452_client, mma8452->input, acc.x, acc.y, acc.z);    
+
 		mutex_lock(&mma8452->value_mutex);
 		mma8452->value = acc;
 		mutex_unlock(&mma8452->value_mutex);

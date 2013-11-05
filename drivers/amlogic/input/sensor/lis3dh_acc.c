@@ -778,10 +778,7 @@ static void lis3dh_acc_report_values(struct lis3dh_acc_status *stat,
      if(stat->debug_flag)
 	      printk("%s read x=%d, y=%d, z=%d\n", LIS3DH_ACC_DEV_NAME, xyz[0], xyz[1], xyz[2]);
 
-	input_report_abs(stat->input_dev, ABS_X, -xyz[1]);
-	input_report_abs(stat->input_dev, ABS_Y, -xyz[0]);
-	input_report_abs(stat->input_dev, ABS_Z, -xyz[2]);
-	input_sync(stat->input_dev);
+    aml_sensor_report_acc(stat->client, stat->input_dev, xyz[0], xyz[1], xyz[2]);
 }
 
 static int lis3dh_acc_enable(struct lis3dh_acc_status *stat)

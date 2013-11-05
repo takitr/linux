@@ -1166,6 +1166,7 @@ sdio{
             status = "okay";
             address = <0x1c>;
             i2c_bus = "i2c_bus_b";
+            acc_dir = <0x0101>;
         };
 
 //$$ DEVICE="mma865x"
@@ -1177,6 +1178,7 @@ sdio{
             status = "okay";
             address = <0x1d>;
             i2c_bus = "i2c_bus_b";
+            acc_dir = <0x1111>;
         };
 
 //$$ DEVICE="afa750"
