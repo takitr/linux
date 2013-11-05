@@ -953,24 +953,25 @@ static inline void vdin_set_wr_ctrl(unsigned int offset, unsigned int v, unsigne
 	WR_BITS(VDIN_WR_H_START_END, (h -1), WR_HEND_BIT, WR_HEND_WID);
 	// win_ve
 	WR_BITS(VDIN_WR_V_START_END, (v -1), WR_VEND_BIT, WR_VEND_WID);
-        // hconv_mode
-        WR_BITS(VDIN_WR_CTRL, 0, HCONV_MODE_BIT, HCONV_MODE_WID);
-        // vconv_mode
-        WR_BITS(VDIN_WR_CTRL, 0, VCONV_MODE_BIT, VCONV_MODE_WID);
-        if(write_format444 == 2){
-                // swap_cbcr
-                WR_BITS(VDIN_WR_CTRL, swap_cbcr, SWAP_CBCR_BIT, SWAP_CBCR_WID);
-	        //output even lines's cbcr
-	        WR_BITS(VDIN_WR_CTRL, 0, VCONV_MODE_BIT, VCONV_MODE_WID);
-                //chroma canvas
-                //WR_BITS(VDIN_WR_CTRL2, def_canvas_id+1, WRITE_CHROMA_CANVAS_ADDR_BIT, WRITE_CHROMA_CANVAS_ADDR_WID);
-        }else{
-                // swap_cbcr
-                WR_BITS(VDIN_WR_CTRL, 0, SWAP_CBCR_BIT, SWAP_CBCR_WID);
-                //chroma canvas
-                //WR_BITS(VDIN_WR_CTRL2,  0, WRITE_CHROMA_CANVAS_ADDR_BIT,
-                //WRITE_CHROMA_CANVAS_ADDR_WID);
-        }
+	// hconv_mode
+	WR_BITS(VDIN_WR_CTRL, 0, HCONV_MODE_BIT, HCONV_MODE_WID);
+	// vconv_mode
+	WR_BITS(VDIN_WR_CTRL, 0, VCONV_MODE_BIT, VCONV_MODE_WID);
+	if(write_format444 == 2){
+		// swap_cbcr
+		WR_BITS(VDIN_WR_CTRL, swap_cbcr, SWAP_CBCR_BIT, SWAP_CBCR_WID);
+		//output even lines's cbcr
+		WR_BITS(VDIN_WR_CTRL, 0, VCONV_MODE_BIT, VCONV_MODE_WID);
+		WR_BITS(VDIN_WR_CTRL, 2, HCONV_MODE_BIT, HCONV_MODE_WID);
+		//chroma canvas
+		//WR_BITS(VDIN_WR_CTRL2, def_canvas_id+1, WRITE_CHROMA_CANVAS_ADDR_BIT, WRITE_CHROMA_CANVAS_ADDR_WID);
+	}else{
+		// swap_cbcr
+		WR_BITS(VDIN_WR_CTRL, 0, SWAP_CBCR_BIT, SWAP_CBCR_WID);
+		//chroma canvas
+		//WR_BITS(VDIN_WR_CTRL2,  0, WRITE_CHROMA_CANVAS_ADDR_BIT,
+		//WRITE_CHROMA_CANVAS_ADDR_WID);
+	}
 	// format444
 	WR_BITS(VDIN_WR_CTRL, write_format444, WR_FMT_BIT, WR_FMT_WID);
 /*

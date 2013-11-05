@@ -604,30 +604,30 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
     
     x_yc_ratio = READ_MPEG_REG_BITS(GE2D_GEN_CTRL0, 11, 1);
     y_yc_ratio = READ_MPEG_REG_BITS(GE2D_GEN_CTRL0, 10, 1);
-    
-	if (x_yc_ratio) {
-		if (cfg->src1_x_rev) {
-			x_extra_bit_start = 0;
-			x_extra_bit_end   = 3;
-			x_chr_phase = 0x80;
-		} else {
-			x_extra_bit_start = 3;
-			x_extra_bit_end   = 0;
-			x_chr_phase = 0x08;
-		}
-	}
 
-	if (y_yc_ratio) {
-		if (cfg->src1_y_rev) {
-			y_extra_bit_start = 2;
-			y_extra_bit_end   = 3;
-			y_chr_phase = 0xc4;
-		} else {
-			y_extra_bit_start = 3;
-			y_extra_bit_end   = 2;
-			y_chr_phase = 0x4c;
-		}
-	}
+    if (x_yc_ratio) {
+        if( (cfg->src1_x_rev+cfg->dst_x_rev) == 1) {
+            x_extra_bit_start = 3;
+            x_extra_bit_end   = 2;
+            x_chr_phase = 0x08;
+        } else {
+            x_extra_bit_start = 2;
+            x_extra_bit_end   = 3;
+            x_chr_phase = 0x08;
+        }
+    }
+
+    if (y_yc_ratio) {
+        if( (cfg->src1_y_rev+cfg->dst_y_rev) == 1) {
+            y_extra_bit_start = 3;
+            y_extra_bit_end   = 2;
+            y_chr_phase = 0x4c;
+        } else {
+            y_extra_bit_start = 2;
+            y_extra_bit_end   = 3;
+            y_chr_phase = 0x4c;
+        }
+    }
 
     WRITE_MPEG_REG(GE2D_SRC1_X_START_END, 
                          (x_extra_bit_start << 30) |  //x start extra
@@ -642,7 +642,7 @@ void ge2d_set_cmd (ge2d_cmd_t *cfg)
                          (y_extra_bit_end << 14) |    //y end extra
                          ((src1_y_end & 0x3fff) << 0) // Limit the range in case of the sign bit extending to the top
                          ); 
- 
+
     WRITE_MPEG_REG_BITS (GE2D_SRC1_FMT_CTRL, x_chr_phase, 8, 8); 
     WRITE_MPEG_REG_BITS (GE2D_SRC1_FMT_CTRL, y_chr_phase, 0, 8); 
  
