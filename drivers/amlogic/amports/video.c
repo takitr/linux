@@ -52,6 +52,8 @@
 #include <linux/amlogic/aml_common.h>
 #endif
 
+#include <linux/amlogic/ppmgr/ppmgr_status.h>
+
 #ifdef CONFIG_PM
 #include <linux/delay.h>
 #include <linux/pm.h>
@@ -83,7 +85,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 #include "amve.h"
 #include "cm_regs.h"
 #include "amcm.h"
-#include "video_prot.h"
+#include <linux/amlogic/amports/video_prot.h>
 
 static int debugflags=0;
 static int output_fps = 0;
@@ -293,12 +295,15 @@ static int scaler_pos_changed = 0;
 #ifdef USE_PROT
 static video_prot_t video_prot;
 static u32 video_angle = 0;
-extern int get_use_prot();
-int get_prot_on() { return video_prot.status; }
-u32 get_video_angle() { return video_prot.angle; }
+int get_prot_on(void) { return video_prot.status; }
+EXPORT_SYMBOL(get_prot_on);
+u32 get_video_angle(void) { return video_prot.angle; }
+EXPORT_SYMBOL(get_video_angle);
 #else
-int get_prot_on() { return 0; }
-u32 get_video_angle() { return 0; }
+int get_prot_on(void) { return 0; }
+EXPORT_SYMBOL(get_prot_on);
+u32 get_video_angle(void) { return 0; }
+EXPORT_SYMBOL(get_video_angle);
 #endif
 
 #ifdef CONFIG_AM_VIDEO2
@@ -3816,6 +3821,7 @@ void set_video_angle(u32 s_value) {
         video_prot.angle_changed |= 0x1;
     }
 }
+EXPORT_SYMBOL(set_video_angle);
 
 static ssize_t video_angle_show(struct class *cla, struct class_attribute *attr, char *buf) {
     return snprintf(buf, 40, "%d\n", video_prot.angle);

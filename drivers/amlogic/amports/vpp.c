@@ -26,7 +26,7 @@
 #include <linux/amlogic/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
-#include "video_prot.h"
+#include <linux/amlogic/amports/video_prot.h>
 
 #include <linux/amlogic/amports/vframe_provider.h>
 
@@ -163,7 +163,6 @@ static u32 video_source_crop_top, video_source_crop_left, video_source_crop_bott
 static s32 video_layer_global_offset_x, video_layer_global_offset_y;
 static s32 osd_layer_top,osd_layer_left,osd_layer_width,osd_layer_height;
 static u32 video_speed_check_width=1800, video_speed_check_height=1400;
-extern int get_prot_on();
 
 #define ZOOM_BITS       18
 #define PHASE_BITS      8

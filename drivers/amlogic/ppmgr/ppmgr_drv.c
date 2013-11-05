@@ -27,6 +27,7 @@
 #include "ppmgr_dev.h"
 #include <linux/amlogic/ppmgr/ppmgr.h>
 #include <linux/amlogic/ppmgr/ppmgr_status.h>
+#include <linux/amlogic/amports/video_prot.h>
 
 /***********************************************************************
 *
@@ -198,6 +199,7 @@ ssize_t _ppmgr_angle_write(unsigned long val)
 
     return 0;
 }
+EXPORT_SYMBOL(_ppmgr_angle_write);
 
 /***********************************************************************
 *
@@ -249,8 +251,6 @@ static ssize_t show_ppmgr_info(struct class *cla,struct class_attribute *attr,ch
     return snprintf(buf,80,"buffer:\n start:%x.\tsize:%d\n",(unsigned int)bstart,bsize/(1024*1024));
 }
 
-extern void set_video_angle(u32 s_value);
-
 static ssize_t angle_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
     return snprintf(buf,80,"current angel is %d\n",ppmgr_device.global_angle);
@@ -291,9 +291,11 @@ static ssize_t angle_write(struct class *cla,
     return count;
 }
 
-int get_use_prot() {
+int get_use_prot(void) {
     return ppmgr_device.use_prot;
 }
+EXPORT_SYMBOL(get_use_prot);
+
 #ifdef USE_PROT_CONTROL
 static ssize_t use_prot_show(struct class *cla, struct class_attribute *attr, char *buf) {
     return snprintf(buf, 40, "%d\n", ppmgr_device.use_prot);
