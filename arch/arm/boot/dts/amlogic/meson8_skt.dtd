@@ -507,6 +507,7 @@ void root_func(){
         vcck_dvfs {
             dvfs_id     = <1>;                                  /** must be value of (1 << n)            */
             table_count = <17>;                                 /** must be correct count for dvfs_table */
+            change-frequent-only;
             dvfs_table  = <
             /* NOTE: frequent in this table must be ascending order */
             /* frequent(Khz)    min_uV      max_uV                  */
@@ -696,7 +697,7 @@ void root_func(){
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
             board_battery = <&battery_parameter>;               /** battery parameter used, must have    */
             vbus_dcin_short_connect = <1>;
-            status = "okay";                                    /** status of pmu, only one should be OK */
+            status = "disable";                                 /** status of pmu, only one should be OK */
         };
     };
 
