@@ -286,13 +286,9 @@ static ssize_t af_debug_show(struct device *dev,struct device_attribute *attr, c
 	
 	isp_dev_t *devp = dev_get_drvdata(dev);
 	unsigned int pix_sum = ((devp->info.h_active)*(devp->info.v_active))>>2;
-	len += sprintf(buf+len,"ac:  0x%x 0x%x 0x%x 0x%x.\nac/4:0x%x 0x%x 0x%x 0x%x.\ndc:  0x%x 0x%x 0x%x 0x%x.\n"
-				"dc/4:0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.ac[0],devp->blnr_stat.ac[1],devp->blnr_stat.ac[2],
-				devp->blnr_stat.ac[3],devp->blnr_stat.ac[0]/pix_sum,devp->blnr_stat.ac[1]/pix_sum,
-				devp->blnr_stat.ac[2]/pix_sum,devp->blnr_stat.ac[3]/pix_sum,devp->blnr_stat.dc[0],
-				devp->blnr_stat.dc[1],devp->blnr_stat.dc[2],devp->blnr_stat.dc[3],devp->blnr_stat.dc[0]/pix_sum,
-				devp->blnr_stat.dc[1]/pix_sum,devp->blnr_stat.dc[2]/pix_sum,devp->blnr_stat.dc[3]/pix_sum);
-	return len;
+	len += sprintf(buf+len,"0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.dc[0],devp->blnr_stat.dc[1],devp->blnr_stat.dc[2],devp->blnr_stat.dc[3]);
+
+        return len;
 }
 
 static void af_stat(struct af_debug_s *af,cam_function_t *ops)
