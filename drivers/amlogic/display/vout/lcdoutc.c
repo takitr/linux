@@ -1302,39 +1302,36 @@ static void set_pll_lcd(Lcd_Config_t *pConf)
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 void set_pll_mipi(Lcd_Config_t *pConf)
 {
-        int pll_lock;
-        int wait_loop = 100;
+	unsigned pll_reg, div_reg, clk_reg, xd;
+	int vclk_sel;
+	int lcd_type, ss_level;
 
-        DSI_Config_t *cfg = pConf->lcd_control.mipi_config;
+	//DSI_Config_t *cfg = pConf->lcd_control.mipi_config;
 
 	// Configure VS/HS/DE polarity before mipi_dsi_host.pixclk starts,
 	WRITE_LCD_REG(MIPI_DSI_TOP_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CNTL) & ~(0x7<<4))   |
-                          (1  << 4)               |
-                          (1  << 5)               |
-                          (0  << 6));
+					  (1  << 4)               |
+					  (1  << 5)               |
+					  (0  << 6));
 
-        unsigned pll_reg, div_reg, clk_reg, xd;
-        int vclk_sel;
-        int lcd_type, ss_level;
+	pll_reg = pConf->lcd_timing.pll_ctrl;
+	div_reg = pConf->lcd_timing.div_ctrl;
+	clk_reg = pConf->lcd_timing.clk_ctrl;
+	ss_level = (((clk_reg >> CLK_CTRL_SS) & 0xf) > 0 ? 1 : 0);
+	vclk_sel = (clk_reg >> CLK_CTRL_VCLK_SEL) & 0x1;
+	xd = (clk_reg >> CLK_CTRL_XD) & 0xf;
 
-        pll_reg = pConf->lcd_timing.pll_ctrl;
-        div_reg = pConf->lcd_timing.div_ctrl;
-        clk_reg = pConf->lcd_timing.clk_ctrl;
-        ss_level = (((clk_reg >> CLK_CTRL_SS) & 0xf) > 0 ? 1 : 0);
-        vclk_sel = (clk_reg >> CLK_CTRL_VCLK_SEL) & 0x1;
-        xd = (clk_reg >> CLK_CTRL_XD) & 0xf;
+	lcd_type = pConf->lcd_basic.lcd_type;
 
-        lcd_type = pConf->lcd_basic.lcd_type;
+	DBG_PRINT("ss_level=%u(%s), pll_reg=0x%x, div_reg=0x%x, xd=%d.\n", ss_level, lcd_ss_level_table[ss_level], pll_reg, div_reg, xd);
+	vclk_set_lcd(lcd_type, vclk_sel, pll_reg, div_reg, clk_reg);
+	set_lcd_spread_spectrum(ss_level);
 
-        DBG_PRINT("ss_level=%u(%s), pll_reg=0x%x, div_reg=0x%x, xd=%d.\n", ss_level, lcd_ss_level_table[ss_level], pll_reg, div_reg, xd);
-        vclk_set_lcd(lcd_type, vclk_sel, pll_reg, div_reg, clk_reg);
-        set_lcd_spread_spectrum(ss_level);
-
-        //startup_mipi_dsi_host()
-        WRITE_CBUS_REG( HHI_DSI_LVDS_EDP_CNTL0, 0x0);                                          // Select DSI as the output for u_dsi_lvds_edp_top
-        WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) | 0xf) );     // Release mipi_dsi_host's reset
-        WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) & 0xfffffff0) );     // Release mipi_dsi_host's reset
-        WRITE_LCD_REG( MIPI_DSI_TOP_CLK_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CLK_CNTL) | 0x3) );            // Enable dwc mipi_dsi_host's clock
+	//startup_mipi_dsi_host()
+	WRITE_CBUS_REG( HHI_DSI_LVDS_EDP_CNTL0, 0x0);                                          // Select DSI as the output for u_dsi_lvds_edp_top
+	WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) | 0xf) );     // Release mipi_dsi_host's reset
+	WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) & 0xfffffff0) );     // Release mipi_dsi_host's reset
+	WRITE_LCD_REG( MIPI_DSI_TOP_CLK_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CLK_CNTL) | 0x3) );            // Enable dwc mipi_dsi_host's clock
 
 }
 #endif
@@ -2026,7 +2023,7 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
 	unsigned edp_phy_div0 = 0, edp_phy_div1 = 0, vid_div_pre = 0;
 	unsigned crt_xd = 0;
 
-	unsigned m, n, od, od_fb, edp_div0, edp_div1, div_pre, div_post, xd;
+	unsigned m, n, od, od_fb=0, edp_div0, edp_div1, div_pre, div_post, xd;
 	unsigned od_sel, edp_div0_sel, edp_div1_sel, pre_div_sel;
 	unsigned div_pre_sel_max, crt_xd_max;
 	unsigned f_ref, pll_vco, fout_pll, edp_tx_phy_out, div_pre_out, div_post_out, final_freq, iflogic_vid_clk_in_max;	
@@ -2034,7 +2031,7 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
 	unsigned error = MAX_ERROR;
 	unsigned clk_num = 0;
 	unsigned tmp;
-        unsigned int    dsi_clk_div, dsi_clk_max, dsi_clk_min;
+        unsigned int    dsi_clk_div=0, dsi_clk_max=0, dsi_clk_min=0;
 	
 	unsigned fin = FIN_FREQ;
 	unsigned fout = pConf->lcd_timing.lcd_clk;
@@ -2847,7 +2844,7 @@ void _disable_backlight(void)
 static DEFINE_MUTEX(lcd_init_mutex);
 static void _lcd_module_enable(void)
 {
-	unsigned long flags = 0;
+	//unsigned long flags = 0;
 	mutex_lock(&lcd_init_mutex);
 	//spin_lock_irqsave(&lcd_init_lock, flags);
 	BUG_ON(pDev==NULL);
@@ -2863,7 +2860,7 @@ static void _lcd_module_enable(void)
 
 static void _lcd_module_disable(void)
 {
-	unsigned long flags = 0;
+	//unsigned long flags = 0;
 	mutex_lock(&lcd_init_mutex);
 	//spin_lock_irqsave(&lcd_init_lock, flags);
 	BUG_ON(pDev==NULL);
@@ -3028,6 +3025,7 @@ static void _lcd_init(Lcd_Config_t *pConf)
 {
 	//logo_object_t  *init_logo_obj=NULL;
 	_init_vout(pDev);
+	request_vpu_clk_vmod(pDev->lcd_info.video_clk, pDev->lcd_info.mode);
 	//init_logo_obj = get_current_logo_obj();    
 	//if(NULL==init_logo_obj ||!init_logo_obj->para.loaded)
 		//_lcd_module_enable();

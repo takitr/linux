@@ -914,7 +914,7 @@ sdio{
 		
 		lcd_model_name ="lcd_LP097QX1";	/** lcd model name for uboot driver */
 		lcd_model_config = <&lcd_LP097QX1>;	/** choose panel model config */
-		lcd_bits_user=<8>;	/** user defined lcd bits(6 or 8, desided by hardware design; only valid when lcd_bits_option=1) */
+		lcd_bits_user=<8>;	/** user defined lcd bits(6 or 8, decided by hardware design; only valid when lcd_bits_option=1) */
 		
 		/* below configs are decided by hardware design, you can modify them if needed. */
 		//ttl config
