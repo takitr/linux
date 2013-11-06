@@ -37,8 +37,6 @@ struct cfg_param {
 
 #ifdef CONFIG_PINCONF
 
-#include <linux/pinctrl/machine.h>
-
 struct pinctrl_dev;
 struct seq_file;
 
@@ -77,9 +75,6 @@ struct pinconf_ops {
 	int (*pin_config_group_set) (struct pinctrl_dev *pctldev,
 				     unsigned selector,
 				     unsigned long config);
-	int (*pin_config_dbg_parse_modify) (struct pinctrl_dev *pctldev,
-					   const char *arg,
-					   unsigned long *config);
 	void (*pin_config_dbg_show) (struct pinctrl_dev *pctldev,
 				     struct seq_file *s,
 				     unsigned offset);

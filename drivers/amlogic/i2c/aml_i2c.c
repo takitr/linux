@@ -110,6 +110,7 @@ static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 	i2c->p=devm_pinctrl_get_select(i2c->dev,i2c->master_state_name);
 	if(IS_ERR(i2c->p)){
 		printk("set i2c pinmux error\n");
+		i2c->p=NULL;
 	}
 #else
 	pinmux_set(&i2c->master_pinmux);
@@ -120,7 +121,8 @@ static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 static void aml_i2c_clr_pinmux(struct aml_i2c *i2c)
 {
 #ifdef CONFIG_OF
-	devm_pinctrl_put(i2c->p);
+	if(i2c->p)
+		devm_pinctrl_put(i2c->p);
 #else
     pinmux_clr(&i2c->master_pinmux);
 #endif
