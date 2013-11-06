@@ -138,19 +138,7 @@ int set_viu_path(unsigned viu_channel_sel, viu_type_e viu_type_sel)
 {
     if((viu_channel_sel > 2) || (viu_channel_sel == 0))
         return -1;
-#ifdef CONFIG_ARCH_MESON6
-    printk("VPU_VIU_VENC_MUX_CTRL: 0x%x\n", READ_CBUS_REG(VPU_VIU_VENC_MUX_CTRL));
-    if(viu_channel_sel == 1){
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, viu_type_sel, 0, 2);
-        printk("viu chan = 1\n");
-    }
-    else{
-        //viu_channel_sel ==2
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, viu_type_sel, 2, 2);
-        printk("viu chan = 2\n");
-    }
-    printk("VPU_VIU_VENC_MUX_CTRL: 0x%x\n", READ_CBUS_REG(VPU_VIU_VENC_MUX_CTRL));
-#endif
+
 #ifdef CONFIG_ARCH_MESON8
     printk("VPU_VIU_VENC_MUX_CTRL: 0x%x\n", aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL));
     if(viu_channel_sel == 1){

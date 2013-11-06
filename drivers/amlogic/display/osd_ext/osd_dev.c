@@ -63,7 +63,7 @@ void osddev_ext_set(struct myfb_dev *fbdev)
 
 void osddev_ext_update_disp_axis(struct myfb_dev *fbdev, int  mode_change)
 {
-	osd_ext_update_disp_axis_hw(fbdev->osd_ext_ctl.disp_start_x,
+	osddev_ext_update_disp_axis_hw(fbdev->osd_ext_ctl.disp_start_x,
 	                            fbdev->osd_ext_ctl.disp_end_x,
 	                            fbdev->osd_ext_ctl.disp_start_y,
 	                            fbdev->osd_ext_ctl.disp_end_y,
@@ -187,6 +187,26 @@ void osddev_ext_get_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
 	osd_ext_get_scale_axis_hw(index - 2, x0, y0, x1, y1);
 }
 
+void osddev_ext_free_scale_mode(u32 index ,u32 freescale_mode)
+{
+	osd_ext_free_scale_mode_hw(index - 2, freescale_mode);
+}
+
+void osddev_ext_get_free_scale_mode(u32 index, u32 *freescale_mode)
+{
+	osd_ext_get_free_scale_mode_hw(index - 2, freescale_mode);
+}
+
+void osddev_ext_get_window_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
+{
+	osd_ext_get_window_axis_hw(index - 2, x0, y0, x1, y1);
+}
+
+void osddev_ext_set_window_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
+{
+	osd_ext_set_window_axis_hw(index - 2, x0, y0, x1, y1);
+}
+
 void osddev_ext_get_osd_ext_info(u32 index, s32(*posdval)[4], u32(*posdreg)[5], s32 info_flag)
 {
 	osd_ext_get_osd_ext_info_hw(index - 2, posdval, posdreg, info_flag);
@@ -195,6 +215,37 @@ void osddev_ext_get_osd_ext_info(u32 index, s32(*posdval)[4], u32(*posdreg)[5], 
 void osddev_ext_set_2x_scale(u32 index, u16 h_scale_enable, u16 v_scale_enable)
 {
 	osd_ext_set_2x_scale_hw(index - 2, h_scale_enable, v_scale_enable);
+}
+
+
+void osddev_ext_get_osd_ext_rotate_on(u32 index, u32 *on_off)
+{
+        osd_ext_get_osd_ext_rotate_on_hw(index - 2, on_off);
+}
+
+void osddev_ext_set_osd_ext_rotate_on(u32 index, u32 on_off)
+{
+        osd_ext_set_osd_ext_rotate_on_hw(index - 2, on_off);
+}
+
+void osddev_ext_get_osd_ext_rotate_angle(u32 index, u32 *angle)
+{
+        osd_ext_get_osd_ext_rotate_angle_hw(index - 2, angle);
+}
+
+void osddev_ext_set_osd_ext_rotate_angle(u32 index, u32 angle)
+{
+        osd_ext_set_osd_ext_rotate_angle_hw(index - 2, angle);
+}
+
+void osddev_ext_get_prot_canvas(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end)
+{
+	osd_ext_get_prot_canvas_hw(index - 2, x_start, y_start, x_end, y_end);
+}
+
+void osddev_ext_set_prot_canvas(u32 index, s32 x_start, s32 y_start, s32 x_end, s32 y_end)
+{
+	osd_ext_set_prot_canvas_hw(index - 2, x_start, y_start, x_end, y_end);
 }
 
 void osddev_ext_set_block_windows(u32 index, u32 *block_windows)

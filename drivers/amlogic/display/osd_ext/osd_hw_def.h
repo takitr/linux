@@ -110,6 +110,11 @@ typedef struct {
 	u16 r_end;
 } osd_ext_3d_mode_t;
 
+typedef struct{
+	u32  on_off;
+	u32  angle;
+}osd_rotate_t;
+
 typedef pandata_t dispdata_t;
 
 typedef struct {
@@ -135,12 +140,13 @@ typedef struct {
 	u32             osd_ext_order;
 	osd_ext_3d_mode_t mode_3d[HW_OSD_COUNT];
 	u32             updated[HW_OSD_COUNT];
-	hw_list_t       reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 	u32             block_windows[HW_OSD_COUNT][HW_OSD_BLOCK_REG_COUNT];
 	u32             block_mode[HW_OSD_COUNT];
 	u32		free_scale_mode[HW_OSD_COUNT];
 	u32		osd_reverse[HW_OSD_COUNT];
-	u32             canvas_conf[HW_OSD_COUNT];
+	osd_rotate_t	rotate[HW_OSD_COUNT];
+	pandata_t		rotation_pandata[HW_OSD_COUNT];
+	hw_list_t       reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 	u32             clone[HW_OSD_COUNT];
 	u32             angle[HW_OSD_COUNT];
 } hw_para_t;
@@ -156,7 +162,10 @@ static void osd1_update_color_key(void);
 static void osd1_update_color_key_enable(void);
 static void osd1_update_gbl_alpha(void);
 static void osd1_update_order(void);
+static void osd1_update_coef(void);
 static void osd1_update_disp_geometry(void);
+static void osd1_update_disp_freescale_enable(void);
+static void osd1_update_disp_osd_rotate(void);
 static void osd1_update_disp_scale_enable(void);
 static void osd1_update_disp_3d_mode(void);
 
@@ -166,7 +175,10 @@ static void osd2_update_color_key_enable(void);
 static void osd2_update_color_key(void);
 static void osd2_update_gbl_alpha(void);
 static void osd2_update_order(void);
+static void osd2_update_coef(void);
 static void osd2_update_disp_geometry(void);
+static void osd2_update_disp_freescale_enable(void);
+static void osd2_update_disp_osd_rotate(void);
 static void osd2_update_disp_scale_enable(void);
 static void osd2_update_disp_3d_mode(void);
 
@@ -190,8 +202,11 @@ static update_func_t hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX] = {
 		osd1_update_color_key_enable,
 		osd1_update_gbl_alpha,
 		osd1_update_order,
+		osd1_update_coef,
 		osd1_update_disp_geometry,
 		osd1_update_disp_scale_enable,
+		osd1_update_disp_freescale_enable,
+		osd1_update_disp_osd_rotate,
 	},
 	{
 		osd2_update_color_mode,
@@ -200,8 +215,11 @@ static update_func_t hw_func_array[HW_OSD_COUNT][HW_REG_INDEX_MAX] = {
 		osd2_update_color_key_enable,
 		osd2_update_gbl_alpha,
 		osd2_update_order,
+		osd2_update_coef,
 		osd2_update_disp_geometry,
 		osd2_update_disp_scale_enable,
+		osd2_update_disp_freescale_enable,
+		osd2_update_disp_osd_rotate,
 	},
 };
 

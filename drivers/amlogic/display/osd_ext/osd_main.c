@@ -262,6 +262,7 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 	u32 gbl_alpha;
 	u32 osd_ext_order;
 	s32 osd_ext_axis[4] = {0};
+	s32 osd_ext_dst_axis[4] = {0};
 	u32 block_windows[8] = {0};
 	u32 block_mode;
 	unsigned long ret;
@@ -286,11 +287,15 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 	case FBIOPUT_OSD_2X_SCALE:
 	case FBIOPUT_OSD_ENABLE_3D_MODE:
 	case FBIOPUT_OSD_FREE_SCALE_ENABLE:
+	case FBIOPUT_OSD_FREE_SCALE_MODE:
 	case FBIOPUT_OSD_FREE_SCALE_WIDTH:
 	case FBIOPUT_OSD_FREE_SCALE_HEIGHT:
 	case FBIOGET_OSD_BLOCK_WINDOWS:
 	case FBIOGET_OSD_BLOCK_MODE:
 	case FBIOGET_OSD_FREE_SCALE_AXIS:
+	case FBIOGET_OSD_WINDOW_AXIS:
+	case FBIOPUT_OSD_ROTATE_ON:
+	case FBIOPUT_OSD_ROTATE_ANGLE:
 		break;
 	case FBIOPUT_OSD_BLOCK_MODE:
 		block_mode = (u32)argp;
@@ -300,6 +305,9 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 		break;
 	case FBIOPUT_OSD_FREE_SCALE_AXIS:
 		ret = copy_from_user(&osd_ext_axis, argp, 4 * sizeof(s32));
+		break;
+	case FBIOPUT_OSD_WINDOW_AXIS:
+		ret=copy_from_user(&osd_ext_dst_axis, argp, 4 * sizeof(s32));
 		break;
 	default :
 		amlog_mask_level(LOG_MASK_IOCTL, LOG_LEVEL_HIGH, "command not supported\r\n ");
@@ -324,11 +332,20 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 	case FBIOPUT_OSD_FREE_SCALE_ENABLE:
 		osddev_ext_free_scale_enable(info->node, arg);
 		break;
+	case FBIOPUT_OSD_FREE_SCALE_MODE:
+		osddev_ext_free_scale_mode(info->node, arg);
+		break;
 	case FBIOPUT_OSD_ENABLE_3D_MODE:
 		osddev_ext_enable_3d_mode(info->node, arg);
 		break;
 	case FBIOPUT_OSD_2X_SCALE: //arg :higher 16 bit h_scale_enable, lower 16 bit v_scale_enable
 		osddev_ext_set_2x_scale(info->node, arg & 0xffff0000 ? 1 : 0, arg & 0xffff ? 1 : 0);
+		break;
+	case FBIOPUT_OSD_ROTATE_ON:
+		osddev_ext_set_osd_ext_rotate_on(info->node, arg);
+		break;
+	case FBIOPUT_OSD_ROTATE_ANGLE:
+		osddev_ext_set_osd_ext_rotate_angle(info->node, arg);
 		break;
 	case FBIOPUT_OSD_SRCCOLORKEY:
 		switch (fbdev->color->color_index) {
@@ -403,8 +420,15 @@ osd_ext_ioctl(struct fb_info *info, unsigned int cmd,
 		osddev_ext_get_free_scale_axis(info->node, &osd_ext_axis[0], &osd_ext_axis[1], &osd_ext_axis[2], &osd_ext_axis[3]);
 		ret = copy_to_user(argp, &osd_ext_axis, 4 * sizeof(s32));
 		break;
+	case FBIOGET_OSD_WINDOW_AXIS:
+		osddev_ext_get_window_axis(info->node, &osd_ext_dst_axis[0], &osd_ext_dst_axis[1], &osd_ext_dst_axis[2], &osd_ext_dst_axis[3]);
+		ret=copy_to_user(argp, &osd_ext_dst_axis, 4 * sizeof(s32));
+		break;
 	case FBIOPUT_OSD_FREE_SCALE_AXIS:
 		osddev_ext_set_free_scale_axis(info->node, osd_ext_axis[0], osd_ext_axis[1], osd_ext_axis[2], osd_ext_axis[3]);
+		break;
+	case FBIOPUT_OSD_WINDOW_AXIS:
+		osddev_ext_set_window_axis(info->node, osd_ext_dst_axis[0], osd_ext_dst_axis[1], osd_ext_dst_axis[2], osd_ext_dst_axis[3]);
 		break;
 	default:
 		break;
@@ -908,7 +932,7 @@ static ssize_t show_free_scale(struct device *device, struct device_attribute *a
 	unsigned int free_scale_enable = 0;
 
 	osddev_ext_get_free_scale_enable(fb_info->node, &free_scale_enable);
-	return snprintf(buf, PAGE_SIZE, "free_scale_enalbe:[0x%x]\n", free_scale_enable);
+	return snprintf(buf, PAGE_SIZE, "free_scale_enable:[0x%x]\n",free_scale_enable);
 }
 
 static ssize_t store_scale(struct device *device, struct device_attribute *attr,
@@ -1072,6 +1096,55 @@ static ssize_t store_block_mode(struct device *device, struct device_attribute *
 	return count;
 }
 
+static ssize_t store_freescale_mode(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	unsigned int free_scale_mode=0;
+	int err;
+	free_scale_mode= simple_strtoul(buf, NULL, 0);
+	if ((err = osd_ext_ioctl(fb_info,FBIOPUT_OSD_FREE_SCALE_MODE,free_scale_mode)))
+		return err;
+	return count;
+}
+
+static ssize_t show_freescale_mode(struct device *device, struct device_attribute *attr,
+			 char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	unsigned int free_scale_mode=0;
+
+	osddev_ext_get_free_scale_mode(fb_info->node, &free_scale_mode);
+
+	return snprintf(buf, PAGE_SIZE, "free_scale_mode:%s\n",free_scale_mode?"new":"default");
+}
+
+static ssize_t show_window_axis(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x0, y0, x1, y1;
+
+	osddev_ext_get_window_axis(fb_info->node, &x0, &y0, &x1, &y1);
+
+	return snprintf(buf, PAGE_SIZE, "window axis is [%d %d %d %d]\n", x0, y0, x1, y1);
+}
+
+static ssize_t store_window_axis(struct device *device, struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	s32 parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_ext_set_window_axis(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set window axis error\n");
+	}
+
+	return count;
+}
+
 static ssize_t show_clone(struct device *device, struct device_attribute *attr,
 			 char *buf)
 {
@@ -1118,13 +1191,82 @@ static ssize_t store_angle(struct device *device, struct device_attribute *attr,
 	return count;
 }
 
+static ssize_t show_rotate_on(struct device *device, struct device_attribute *attr,
+                        char *buf)
+{
+        struct fb_info *fb_info = dev_get_drvdata(device);
+        unsigned int osd_ext_rotate = 0;
+
+        osddev_ext_get_osd_ext_rotate_on(fb_info->node, &osd_ext_rotate);
+        return snprintf(buf, PAGE_SIZE, "osd_ext_rotate:[%s]\n", osd_ext_rotate?"ON":"OFF");
+}
+
+static ssize_t store_rotate_on(struct device *device, struct device_attribute *attr,
+                         const char *buf, size_t count)
+{
+        struct fb_info *fb_info = dev_get_drvdata(device);
+        unsigned int osd_ext_rotate = 0;
+        int err;
+        osd_ext_rotate = simple_strtoul(buf, NULL, 0);
+        if ((err = osd_ext_ioctl(fb_info,FBIOPUT_OSD_ROTATE_ON,osd_ext_rotate)))
+                return err;
+        return count;
+}
+
+static ssize_t show_rotate_angle(struct device *device, struct device_attribute *attr,
+                        char *buf)
+{
+        struct fb_info *fb_info = dev_get_drvdata(device);
+        unsigned int osd_ext_rotate_angle = 0;
+
+        osddev_ext_get_osd_ext_rotate_angle(fb_info->node, &osd_ext_rotate_angle);
+        return snprintf(buf, PAGE_SIZE, "osd_ext_rotate:%d\n", osd_ext_rotate_angle);
+}
+
+static ssize_t store_rotate_angle(struct device *device, struct device_attribute *attr,
+                         const char *buf, size_t count)
+{
+        struct fb_info *fb_info = dev_get_drvdata(device);
+        unsigned int osd_ext_rotate_angle = 0;
+        int err;
+        osd_ext_rotate_angle = simple_strtoul(buf, NULL, 0);
+        if ((err = osd_ext_ioctl(fb_info,FBIOPUT_OSD_ROTATE_ANGLE,osd_ext_rotate_angle)))
+                return err;
+        return count;
+}
+
+static ssize_t show_prot_canvas(struct device *device, struct device_attribute *attr,
+			char *buf)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int x_start, y_start, x_end, y_end;
+
+	osddev_ext_get_prot_canvas(fb_info->node, &x_start, &y_start, &x_end, &y_end);
+
+	return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n", x_start, y_start, x_end, y_end);
+}
+
+static ssize_t store_prot_canvas(struct device *device, struct device_attribute *attr,
+                         const char *buf, size_t count)
+{
+	struct fb_info *fb_info = dev_get_drvdata(device);
+	int parsed[4];
+
+	if (likely(parse_para(buf, 4, parsed) == 4)) {
+		osddev_ext_set_prot_canvas(fb_info->node, parsed[0], parsed[1], parsed[2], parsed[3]);
+	} else {
+		amlog_level(LOG_LEVEL_HIGH, "set prot canvas error\n");
+	}
+
+	return count;
+}
 static struct device_attribute osd_ext_attrs[] = {
 	__ATTR(scale, S_IRUGO | S_IWUSR, show_scale, store_scale),
 	__ATTR(order, S_IRUGO | S_IWUSR, show_order, store_order),
 	__ATTR(enable_3d, S_IRUGO | S_IWUSR, show_enable_3d, store_enable_3d),
 	__ATTR(preblend_enable, S_IRUGO | S_IWUSR, show_preblend_enable, store_preblend_enable),
 	__ATTR(free_scale, S_IRUGO | S_IWUSR, show_free_scale, store_free_scale),
-	__ATTR(scale_axis, S_IRUGO | S_IWUSR | S_IWGRP, show_scale_axis, store_scale_axis),
+	__ATTR(scale_axis, S_IRUGO|S_IWUSR, show_scale_axis, store_scale_axis),
 	__ATTR(scale_width, S_IRUGO | S_IWUSR, show_scale_width, store_scale_width),
 	__ATTR(scale_height, S_IRUGO | S_IWUSR, show_scale_height, store_scale_height),
 	__ATTR(color_key, S_IRUGO | S_IWUSR, show_color_key, store_color_key),
@@ -1133,11 +1275,16 @@ static struct device_attribute osd_ext_attrs[] = {
 	__ATTR(block_windows, S_IRUGO | S_IWUSR, show_block_windows, store_block_windows),
 	__ATTR(block_mode, S_IRUGO | S_IWUSR, show_block_mode, store_block_mode),
 	__ATTR(free_scale_axis, S_IRUGO | S_IWUSR, show_free_scale_axis, store_free_scale_axis),
+	__ATTR(request2XScale, S_IRUGO|S_IWUSR, show_request_2xscale, store__request_2xscale),
 	__ATTR(osd_info_msg, S_IRUGO | S_IWUSR, NULL, store_osd_info),
-	__ATTR(request2XScale, S_IRUGO | S_IWUSR, show_request_2xscale, store__request_2xscale),
 	__ATTR(video_hole, S_IRUGO | S_IWUSR, show_video_hole, store__video_hole),
+	__ATTR(window_axis, S_IRUGO|S_IWUSR, show_window_axis, store_window_axis),
+	__ATTR(freescale_mode, S_IRUGO|S_IWUSR, show_freescale_mode, store_freescale_mode),
 	__ATTR(clone, S_IRUGO|S_IWUSR, show_clone, store_clone),
 	__ATTR(angle, S_IRUGO|S_IWUSR, show_angle, store_angle),
+	__ATTR(prot_on, S_IRUGO|S_IWUSR, show_rotate_on, store_rotate_on),
+	__ATTR(prot_angle, S_IRUGO|S_IWUSR, show_rotate_angle, store_rotate_angle),
+	__ATTR(prot_canvas, S_IRUGO|S_IWUSR, show_prot_canvas, store_prot_canvas),
 };
 
 #ifdef CONFIG_PM
@@ -1153,15 +1300,15 @@ static int osd_ext_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int osd_ext_resume(struct platform_device * dev)
 {
-#ifdef CONFIG_HAS_EARLYSUSPEND
-    if (early_suspend_flag)
-        return 0;
-#endif
 #ifdef CONFIG_SCREEN_ON_EARLY
 	if (early_resume_flag) {
 		early_resume_flag = 0;
 		return 0;
 	}
+#endif
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (early_suspend_flag)
+        return 0;
 #endif
 	osddev_ext_resume();
 	return 0;
@@ -1174,7 +1321,7 @@ static void osd_ext_early_suspend(struct early_suspend *h)
 	if (early_suspend_flag) {
 		return;
 	}
-	osd_ext_suspend((struct platform_device *)h->param, PMSG_SUSPEND);
+	osddev_ext_suspend();
 	early_suspend_flag = 1;
 }
 
@@ -1184,7 +1331,7 @@ static void osd_ext_late_resume(struct early_suspend *h)
 		return;
 	}
 	early_suspend_flag = 0;
-	osd_ext_resume((struct platform_device *)h->param);
+	osddev_ext_resume();
 }
 #endif
 
@@ -1350,7 +1497,6 @@ osd_ext_probe(struct platform_device *pdev)
 	early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
 	early_suspend.suspend = osd_ext_early_suspend;
 	early_suspend.resume = osd_ext_late_resume;
-	early_suspend.param = pdev;
 	register_early_suspend(&early_suspend);
 #endif
 
@@ -1434,7 +1580,8 @@ static const struct of_device_id meson_fbext_dt_match[]={
 	{},
 };
 
-static struct platform_driver osd_ext_driver = {
+static struct platform_driver
+osd_ext_driver = {
 	.probe      = osd_ext_probe,
 	.remove     = osd_ext_remove,
 #ifdef CONFIG_PM
@@ -1463,7 +1610,7 @@ osd_ext_init_module(void)
 #endif
 
 	if (platform_driver_register(&osd_ext_driver)) {
-		amlog_level(LOG_LEVEL_HIGH, "failed to register osd driver\n");
+		amlog_level(LOG_LEVEL_HIGH, "failed to register osd ext driver\n");
 		return -ENODEV;
 	}
 

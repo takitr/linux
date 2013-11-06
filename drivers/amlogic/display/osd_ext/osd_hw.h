@@ -23,8 +23,11 @@ typedef enum {
 	OSD_COLOR_KEY_ENABLE,
 	OSD_GBL_ALPHA,
 	OSD_CHANGE_ORDER,
+	OSD_FREESCALE_COEF,
 	DISP_GEOMETRY,
 	DISP_SCALE_ENABLE,
+	DISP_FREESCALE_ENABLE,
+	DISP_OSD_ROTATE,
 	HW_REG_INDEX_MAX
 } hw_reg_index;
 
@@ -61,7 +64,7 @@ extern void osd_ext_setup(struct osd_ctl_s *osd_ext_ctl,
 	u32 fbmem,
 	const color_bit_define_t *color,
 	int index);
-extern void osd_ext_update_disp_axis_hw(
+extern void osddev_ext_update_disp_axis_hw(
 	u32 display_h_start,
 	u32 display_h_end,
 	u32 display_v_start,
@@ -82,6 +85,10 @@ extern void osd_ext_get_free_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1,
 extern void osd_ext_set_free_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
 extern void osd_ext_get_scale_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osd_ext_set_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
+extern void osd_ext_get_window_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
+extern void osd_ext_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
+extern void osd_ext_get_free_scale_mode_hw(u32 index, u32 *freescale_mode);
+extern void osd_ext_free_scale_mode_hw(u32 index,u32 freescale_mode);
 extern void osd_ext_get_osd_ext_info_hw(u32 index, s32(*posdval)[4], u32(*posdreq)[5], s32 info_flag);
 extern void osd_ext_get_block_windows_hw(u32 index, u32 *windows);
 extern void osd_ext_set_block_windows_hw(u32 index, u32 *windows);
@@ -89,6 +96,12 @@ extern void osd_ext_get_block_mode_hw(u32 index, u32 *mode);
 extern void osd_ext_set_block_mode_hw(u32 index, u32 mode);
 extern void osd_ext_enable_3d_mode_hw(int index, int enable);
 extern void osd_ext_set_2x_scale_hw(u32 index, u16 h_scale_enable, u16 v_scale_enable);
+extern void osd_ext_set_osd_ext_rotate_on_hw(u32 index, u32 on_off);
+extern void osd_ext_get_osd_ext_rotate_on_hw(u32 index, u32 *on_off);
+extern void osd_ext_set_osd_ext_rotate_angle_hw(u32 index, u32 angle);
+extern void osd_ext_get_osd_ext_rotate_angle_hw(u32 index, u32 *angle);
+extern void osd_ext_get_prot_canvas_hw(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);
+extern void osd_ext_set_prot_canvas_hw(u32 index, s32 x_start, s32 y_start, s32 x_end, s32 y_end);
 extern void osd_ext_setpal_hw(unsigned regno, unsigned red, unsigned green, unsigned blue, unsigned transp, int index);
 extern void osd_ext_enable_hw(int enable, int index);
 extern void osd_ext_pan_display_hw(unsigned int xoffset, unsigned int yoffset, int index);
