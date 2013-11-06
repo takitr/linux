@@ -250,18 +250,21 @@ static int kp_probe(struct platform_device *pdev)
     struct adc_key *key;
     struct adc_kp_platform_data *pdata = NULL;
     int *key_param = NULL;
+	int state;
 
 		printk("==%s==\n", __func__);
 
 #ifdef CONFIG_OF
 	 if (!pdev->dev.of_node) {
 				printk("adc_key: pdev->dev.of_node == NULL!\n");
-				return -1;
+				state =  -EINVAL;
+				goto get_key_node_fail;
 		}
 		ret = of_property_read_u32(pdev->dev.of_node,"key_num",&key_size);
     if (ret) {
 		  printk("adc_key: faild to get key_num!\n");
-		  return -1;
+		  state =  -EINVAL;
+		  goto get_key_node_fail;
 	  }
 	  ret = of_property_read_u32(pdev->dev.of_node,"name_len",&name_len);
     if (ret) {
@@ -271,7 +274,8 @@ static int kp_probe(struct platform_device *pdev)
     pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
     if (!pdata) {
         dev_err(&pdev->dev, "platform data is required!\n");
-        return -EINVAL;
+        state = -EINVAL;
+        goto get_key_node_fail;
     }
    
 		pdata->key = kzalloc(sizeof(*(pdata->key))*key_size, GFP_KERNEL);
@@ -332,11 +336,12 @@ static int kp_probe(struct platform_device *pdev)
         kfree(kp->led_control_param);
         kfree(kp);
         input_free_device(input_dev);
-        return -ENOMEM;
+        state = -ENOMEM;
+        goto get_key_param_failed;
     }
     gp_kp=kp;
 
-    platform_set_drvdata(pdev, kp);
+    platform_set_drvdata(pdev, pdata);
     kp->input = input_dev;
     kp->cur_keycode = 0;
 		kp->tmp_code = 0;
@@ -399,10 +404,12 @@ static int kp_probe(struct platform_device *pdev)
 		    kfree(kp->led_control_param);
 		    kfree(kp);
 		    input_free_device(input_dev);
-		    return -EINVAL;
+		    state = -EINVAL;
+		    goto get_key_param_failed;
     }
     printk("adc keypad register input device completed.\r\n");
     register_keypad_dev(gp_kp);
+    kfree(key_param);
     return 0;
 
     get_key_param_failed:
@@ -411,12 +418,14 @@ static int kp_probe(struct platform_device *pdev)
 			kfree(pdata->key);
     get_key_mem_fail:
 			kfree(pdata);
-    return -EINVAL;
+    get_key_node_fail:
+    return state;
 }
 
 static int kp_remove(struct platform_device *pdev)
 {
-    struct kp *kp = platform_get_drvdata(pdev);
+    struct adc_kp_platform_data *pdata = platform_get_drvdata(pdev);
+    struct kp *kp = gp_kp;
 
 #if 0
     if (kp->p_led_timer){
@@ -437,6 +446,10 @@ static int kp_remove(struct platform_device *pdev)
     }
     kfree(kp->led_control_param);
     kfree(kp);
+#ifdef CONFIG_OF
+	kfree(pdata->key);
+	kfree(pdata);
+#endif
     gp_kp=NULL ;
     return 0;
 }

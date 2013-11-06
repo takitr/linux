@@ -186,6 +186,7 @@ static int gpio_key_probe(struct platform_device *pdev)
     struct gpio_key *key;
     struct gpio_platform_data *pdata = NULL;
     int *key_param = NULL;
+	int state;
 #ifdef USE_IRQ
     int irq_keyup;
     int irq_keydown;
@@ -195,18 +196,21 @@ static int gpio_key_probe(struct platform_device *pdev)
 
 	  if (!pdev->dev.of_node) {
 				printk("gpio_key: pdev->dev.of_node == NULL!\n");
-				return -1;
+				state = -EINVAL;
+				goto get_key_node_fail;
 		}
 		ret = of_property_read_u32(pdev->dev.of_node,"key_num",&key_size);
     if (ret) {
 		  printk("gpio_key: faild to get key_num!\n");
-		  return -1;
+		  state = -EINVAL;
+		  goto get_key_node_fail;
 	  }
 
     pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
     if (!pdata) {
         dev_err(&pdev->dev, "platform data is required!\n");
-        return -EINVAL;
+        state = -EINVAL;
+        goto get_key_node_fail;
     }
    
 		pdata->key = kzalloc(sizeof(*(pdata->key))*key_size, GFP_KERNEL);
@@ -244,7 +248,7 @@ static int gpio_key_probe(struct platform_device *pdev)
     ret |= of_property_read_u32(pdev->dev.of_node,"irq_keydown",&irq_keydown);
     if (ret) {
         printk(KERN_INFO "Failed to get key irq number from dts.\n");
-		goto get_key_param_failed;
+        goto get_key_param_failed;
 	}
     else
     {
@@ -288,11 +292,12 @@ static int gpio_key_probe(struct platform_device *pdev)
     if (!kp || !input_dev) {
         kfree(kp);
         input_free_device(input_dev);
-        return -ENOMEM;
+        state = -ENOMEM;
+        goto get_key_param_failed;
     }
     gp_kp=kp;
 
-    platform_set_drvdata(pdev, kp);
+    platform_set_drvdata(pdev, pdata);
     kp->input = input_dev;
      
     INIT_WORK(&(kp->work_update), update_work_func);
@@ -303,7 +308,8 @@ static int gpio_key_probe(struct platform_device *pdev)
         printk(KERN_INFO "Failed to request gpio key up irq.\n");
         kfree(kp);
         input_free_device(input_dev);
-        return -EINVAL;
+        state = -EINVAL;
+        goto get_key_param_failed;
     }
 
     if(request_irq(irq_keydown + INT_GPIO_0, kp_isr, IRQF_DISABLED, "irq_keydown", kp))
@@ -311,7 +317,8 @@ static int gpio_key_probe(struct platform_device *pdev)
         printk(KERN_INFO "Failed to request gpio key down irq.\n");
         kfree(kp);
         input_free_device(input_dev);
-        return -EINVAL;
+        state = -EINVAL;
+        goto get_key_param_failed;
     }
 #else
     setup_timer(&kp->timer, kp_timer_sr, (unsigned int)kp) ;
@@ -351,10 +358,12 @@ static int gpio_key_probe(struct platform_device *pdev)
         printk(KERN_ERR "Unable to register keypad input device.\n");
 		    kfree(kp);
 		    input_free_device(input_dev);
-		    return -EINVAL;
+		    state = -EINVAL;
+		    goto get_key_param_failed;
     }
     printk("gpio keypad register input device completed.\r\n");
     register_keypad_dev(gp_kp);
+    kfree(key_param);
     return 0;
 
     get_key_param_failed:
@@ -363,12 +372,14 @@ static int gpio_key_probe(struct platform_device *pdev)
 			kfree(pdata->key);
     get_key_mem_fail:
 			kfree(pdata);
-    return -EINVAL;
+    get_key_node_fail:
+    return state;
 }
 
 static int gpio_key_remove(struct platform_device *pdev)
 {
-    struct kp *kp = platform_get_drvdata(pdev);
+    struct gpio_platform_data *pdata = platform_get_drvdata(pdev);
+    struct kp *kp = gp_kp;
 
     input_unregister_device(kp->input);
     input_free_device(kp->input);
@@ -380,6 +391,10 @@ static int gpio_key_remove(struct platform_device *pdev)
         class_destroy(kp->config_class);
     }
     kfree(kp);
+#ifdef CONFIG_OF
+	kfree(pdata->key);
+	kfree(pdata);
+#endif
     gp_kp=NULL ;
     return 0;
 }
