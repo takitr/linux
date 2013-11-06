@@ -2504,8 +2504,10 @@ static ssize_t vdin_cm2_store(struct device *dev,
 		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
 
 		pr_info("rm:[0x%x]-->[0x%x][0x%x][0x%x][0x%x][0x%x] \n",addr, data[0],data[1],data[2],data[3],data[4]);
-	}
-	else {
+	}else if(!strcmp(parm[0],"config")){
+		val = simple_strtol(parm[1],NULL,10);
+		vdin_set_cm2(devp->addr_offset,val);
+	}else {
 		pr_info("invalid command\n");
 		pr_info("please: cat /sys/class/vdin/vdin0/bit");
 	}

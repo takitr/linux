@@ -125,6 +125,12 @@ typedef struct vdin_hist_cfg_s {
         unsigned int                vend;
 } vdin_hist_cfg_t;
 
+typedef struct vdin_cm2_s {
+	unsigned short addr;
+	unsigned int   mask;
+	unsigned int   value;
+} vdin_cm2_t;
+
 // *****************************************************************************
 // ******** GLOBAL FUNCTION CLAIM ********
 // *****************************************************************************
@@ -162,4 +168,5 @@ extern void vdin_output_ctl(unsigned int offset, unsigned int output_flag);
 extern void vdin_wr_reverse(unsigned int offset, bool hreverse, bool vreverse);
 extern void vdin_set_hvscale(struct vdin_dev_s *devp);
 extern void set_chroma_regs(unsigned int offset, unsigned int h_active,unsigned int v_active);
+extern void vdin_set_cm2(unsigned int offset,unsigned int index);
 #endif
