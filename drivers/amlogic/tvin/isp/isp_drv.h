@@ -46,6 +46,7 @@
 #define ISP_FLAG_BLNR				0x00000400
 #define ISP_FLAG_SET_COMB4			0x00000800
 #define ISP_TEST_FOR_AF_WIN			0x00001000	
+#define ISP_FLAG_TOUCH_AF			0x00002000
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	unsigned int h_active;
@@ -81,13 +82,21 @@ typedef struct af_debug_s {
 	unsigned int	post_threshold;
 	isp_blnr_stat_t data[1024];	
 } af_debug_t;
+/*for af test debug*/
+typedef struct af_debug_test_s {
+	unsigned int cnt;
+	unsigned int max;
+	struct isp_af_stat_s *af_win;
+	struct isp_blnr_stat_s *af_bl;
+	struct isp_ae_stat_s  *ae_win;
+} af_debug_test_t;
 
 typedef struct isp_af_info_s {
 	unsigned int great_step;
 	unsigned int cur_step;
 	unsigned int cur_index;
-	unsigned long long last_h_fv;
-	unsigned long long last_v_fv;
+	unsigned long long fv_aft_af;
+	unsigned long long fv_bf_af;
 	unsigned int last_ave_ac;
 	unsigned int last_ave_dc;
 	isp_blnr_stat_t *f;
@@ -97,27 +106,30 @@ typedef struct isp_af_info_s {
 	//unsigned char af_delay;
 	atomic_t writeable;
 }isp_af_info_t;
-
+#if 0
 typedef struct xml_algorithm_t_af_s {
     /*for climbing algorithm*/
-	unsigned int step[FOCUS_GRIDS];
+	unsigned int               step[FOCUS_GRIDS];
+	unsigned int 		   af_retry_cnt;
+	unsigned int		   af_retry_max;
 	unsigned int		   step_min;
 	unsigned int		   step_max;
-	unsigned int           f_thr_p;
+	unsigned int               f_thr_p;
 	unsigned int 		   f_thr_n;
-	unsigned int 	       step_coarse;
-	unsigned int	       step_fine;
+	unsigned int 	           step_coarse;
+	unsigned int	           step_fine;
 	unsigned int 		   jump_offset;
 	unsigned int		   field_delay;
 	unsigned int		   detect_step;
-	unsigned int           deta_ave_ratio;//10bits/1024
+	unsigned int               deta_ave_ratio;//10bits/1024
 	unsigned int		   deta_last_ave;//10bits/1024
+	unsigned int               af_fail_ratio;//x/100
 	unsigned int		   window_l_ratio;//10bits/1024
 	unsigned int		   window_r_ratio;//10bits/1024
 	unsigned int		   window_t_ratio;//10bits/1024
 	unsigned int		   window_b_ratio;//10bits/1024
 } xml_algorithm_t_af_t;
-
+#endif
 /*for debug cmd*/
 typedef struct debug_s {
 	unsigned int comb4_mode;
@@ -147,16 +159,14 @@ typedef struct isp_dev_s{
 	cam_parameter_t *cam_param;
 	xml_algorithm_ae_t *isp_ae_parm;
 	xml_algorithm_awb_t *isp_awb_parm;
-	xml_algorithm_t_af_t *isp_af_parm;
+	xml_algorithm_af_t *isp_af_parm;
 	xml_capture_t *capture_parm;
 	wave_t        *wave;
 	flash_property_t flash;
 	af_debug_t      *af_dbg;
 	debug_t         debug;
-	/*test for af win*/
-	unsigned int cnt;
-	unsigned int max;
-	struct isp_af_stat_s *af_win;
+	/*test for af test win*/
+	af_debug_test_t af_test;
 }isp_dev_t;
 
 typedef enum data_type_e{

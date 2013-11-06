@@ -424,16 +424,29 @@ typedef struct xml_algorithm_awb_s {
 #define FOCUS_GRIDS 16
 
 typedef struct xml_algorithm_af_s {
-    // normalization: f0_coef0+...+f0_coef7 = 256
     /*for climbing algorithm*/
-	unsigned int step[FOCUS_GRIDS];
-	unsigned int		   step_min;
-	unsigned int		   step_max;
+	unsigned int           step[FOCUS_GRIDS];
+	unsigned int 	       af_retry_cnt;
+	unsigned int	       af_retry_max;
+	unsigned int	       step_min;
+	unsigned int	       step_max;
 	unsigned int           f_thr_p;
-	unsigned int 		   f_thr_n;
+	unsigned int 	       f_thr_n;
 	unsigned int 	       step_coarse;
 	unsigned int	       step_fine;
-	unsigned int           stable_timeout;//ms
+	unsigned int 	       jump_offset;
+	unsigned int	       field_delay;
+	unsigned int	       detect_step;
+	unsigned int           deta_ave_ratio;//10bits/1024
+	unsigned int	       deta_last_ave;//10bits/1024
+	unsigned int           af_fail_ratio;//x/100
+	unsigned int	       window_l_ratio;//10bits/1024
+	unsigned int	       window_r_ratio;//10bits/1024
+	unsigned int	       window_t_ratio;//10bits/1024
+	unsigned int	       window_b_ratio;//10bits/1024
+	unsigned int	       x;//x coord of touch focus win
+	unsigned int	       y;//y coord of touch focus win
+	unsigned int           radius;//radius of touch focus win
 } xml_algorithm_af_t;
 
 #define XML_LUT_LS 1024 // 32*32 32-bit

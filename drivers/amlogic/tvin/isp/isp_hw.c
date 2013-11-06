@@ -259,7 +259,7 @@ void isp_set_af_stat(xml_af_t *afs,unsigned int w,unsigned int h)
 /*
 *reg 0xac~0xae
 */
-void isp_set_blenr_stat(unsigned int w,unsigned int h)
+void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned int y1)
 {
 	#if 0
 	int i = 0;
@@ -270,14 +270,14 @@ void isp_set_blenr_stat(unsigned int w,unsigned int h)
 	}
 	#endif
 	/*set lpf according to sd or hd*/
-	if(h > 720)
+	if((y1-y0) > 720)
 		WR_BITS(ISP_BLNR_CTRL,3,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
 	else
 		WR_BITS(ISP_BLNR_CTRL,1,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
 	/*set ac adaptive*/
 	WR_BITS(ISP_BLNR_CTRL,1,BLNR_AC_ADAPTIVE_BIT,BLNR_AC_ADAPTIVE_WID);
-	WR(ISP_BLNR_WIND_LR, w-1);
-	WR(ISP_BLNR_WIND_TB, h-1);
+	WR(ISP_BLNR_WIND_LR, x1|x0<<16);
+	WR(ISP_BLNR_WIND_TB, y1|y0<<16);
 	WR_BITS(ISP_BLNR_CTRL,1,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
 	
 }
@@ -345,7 +345,7 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	isp_set_matrix(NULL,h);
 	isp_set_sharpness(&regs->sharp);
 	isp_set_nr(&regs->nr);
-	isp_set_blenr_stat(w,h);
+	isp_set_blenr_stat(0,0,w-1,h-1);
 	isp_set_awb_stat(&regs->awb_reg,w,h);
 	isp_set_ae_stat(&regs->ae_reg,w,h);
 	isp_set_af_stat(&regs->af_reg,w,h);

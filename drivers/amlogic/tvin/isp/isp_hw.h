@@ -90,7 +90,7 @@ extern void isp_set_nr(xml_nr_t *nr);
 extern void isp_set_awb_stat(xml_awb_t *awb,unsigned int w,unsigned int h);
 extern void isp_set_ae_stat(xml_ae_t *ae,unsigned int w,unsigned int h);
 extern void isp_set_af_stat(xml_af_t *af,unsigned int w,unsigned int h);
-extern void isp_set_blenr_stat(unsigned int w,unsigned int h);
+extern void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned int y1);
 extern void isp_set_dbg(xml_dbg_t *dbg);
 extern void isp_set_lnsd_mode(unsigned int mode);
 extern void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h);

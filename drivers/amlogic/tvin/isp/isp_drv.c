@@ -100,7 +100,7 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 	}else if(!strcmp(parm[0],"flag")){
 		data = simple_strtol(parm[1],NULL,16);
 		devp->flag = data;
-		isp_sm_init(devp);
+		af_sm_init(devp);
 	}else if(!strcmp(parm[0],"lenc-mode")){
 		devp->debug.comb4_mode = simple_strtol(parm[1],NULL,10);
 		devp->flag |= ISP_FLAG_SET_COMB4;
@@ -224,6 +224,55 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		else
 			devp->vs_cnt = 4;
 		devp->flag |= ISP_FLAG_BLNR;
+	}else if(!strcmp(parm[0],"af_test")){
+		devp->af_test.max = simple_strtol(parm[1],NULL,10);
+		if(devp->af_test.af_win)
+			kfree(devp->af_test.af_win);
+		if(devp->af_test.af_bl)
+			kfree(devp->af_test.af_bl);
+		if(devp->af_test.ae_win)
+			kfree(devp->af_test.ae_win);
+		devp->af_test.af_win = kmalloc(sizeof(isp_af_stat_t)*devp->af_test.max,GFP_KERNEL);
+		devp->af_test.af_bl = kmalloc(sizeof(isp_blnr_stat_t)*devp->af_test.max,GFP_KERNEL);
+		devp->af_test.ae_win = kmalloc(sizeof(isp_ae_stat_t)*devp->af_test.max,GFP_KERNEL);
+		devp->af_test.cnt = 0;
+		devp->flag |= ISP_TEST_FOR_AF_WIN;
+	}else if(!strcmp(parm[0],"af_print")){
+		int i = 0;
+		/*unsigned long long sum_ac,sum_dc;
+		pr_info("sum_ac sum_dc win0_dc win1_dc win2_dc win3_dc win4_dc win5_dc\n");
+		for(i=0;i<devp->af_test.cnt;i++){
+			sum_ac  = (unsigned long long)devp->af_test.af_bl[i].ac[0];
+			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[1];
+			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[2];
+			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[3];
+			sum_dc  = (unsigned long long)devp->af_test.af_bl[i].dc[0];
+			sum_dc  = (unsigned long long)devp->af_test.af_bl[i].dc[0];
+			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[1];
+			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[2];
+			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[3];
+			pr_info("%llu %llu %u %u %u %u %u\n",sum_ac,sum_dc,devp->af_test.af_win[i].luma_win[0],
+					devp->af_test.af_win[i].luma_win[2],devp->af_test.af_win[i].luma_win[4],devp->af_test.af_win[i].luma_win[6],
+					devp->af_test.af_win[i].luma_win[8]);
+		}*/
+		pr_info("win0 win1 win2 win3 win4 win5 win6 win7 win8 win9 win10 win11 win12 win13 win14 win15\n");
+		for(i=0;i<devp->af_test.cnt;i++){
+			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",devp->af_test.ae_win[i].luma_win[0],
+				devp->af_test.ae_win[i].luma_win[1],devp->af_test.ae_win[i].luma_win[2],
+				devp->af_test.ae_win[i].luma_win[3],devp->af_test.ae_win[i].luma_win[4],
+				devp->af_test.ae_win[i].luma_win[5],devp->af_test.ae_win[i].luma_win[6],
+				devp->af_test.ae_win[i].luma_win[7],devp->af_test.ae_win[i].luma_win[8],
+				devp->af_test.ae_win[i].luma_win[9],devp->af_test.ae_win[i].luma_win[10],
+				devp->af_test.ae_win[i].luma_win[11],devp->af_test.ae_win[i].luma_win[12],
+				devp->af_test.ae_win[i].luma_win[13],devp->af_test.ae_win[i].luma_win[14],
+				devp->af_test.ae_win[i].luma_win[15]);
+		}
+		kfree(devp->af_test.af_bl);
+		kfree(devp->af_test.af_win);
+		kfree(devp->af_test.ae_win);
+		devp->af_test.af_bl = NULL;
+		devp->af_test.af_win = NULL;
+		devp->af_test.ae_win = NULL;
 	}
 	
 	kfree(buf_orig);
@@ -646,6 +695,9 @@ static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
         else
                 return -1;
 }
+static unsigned int ratio = 200;
+module_param(ratio,uint,0664);
+MODULE_PARM_DESC(ratio,"\n debug flag for ae.\n");
 
 static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {        
@@ -677,9 +729,12 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
-		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_t_af_t),GFP_KERNEL);
+		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->detect_step = 16;
+		devp->isp_af_parm->deta_ave_ratio = ratio;
+		devp->isp_af_parm->af_fail_ratio = 20;
+		devp->isp_af_parm->af_retry_max = 3;
 		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step,GFP_KERNEL);
 		devp->isp_af_parm->step[0] = 100;
 		devp->isp_af_parm->step[1] = 150;
@@ -696,7 +751,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
                 devp->isp_af_parm->step[12] = 520;
                 devp->isp_af_parm->step[13] = 530;
                 devp->isp_af_parm->step[14] = 540;
-		devp->isp_af_parm->step[15] = 0;
+		devp->isp_af_parm->step[15] = 550;
 		devp->isp_af_parm->jump_offset = 100;
 		devp->isp_af_parm->field_delay = 1;
 	}
@@ -752,6 +807,7 @@ static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 }
 static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 {
+	unsigned int x0,y0,x1,y1;
 	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	cam_parameter_t *param = (cam_parameter_t *)arg;
 	enum cam_command_e cmd;
@@ -811,6 +867,14 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 		        break;
                 case CAM_COMMAND_TOUCH_WINDOW:
+			devp->isp_af_parm = &param->xml_scenes->af;
+			x0 = devp->isp_af_parm->x - devp->isp_af_parm->radius>>1;
+			y0 = devp->isp_af_parm->y - devp->isp_af_parm->radius>>1;
+			x1 = x0 + devp->isp_af_parm->radius;
+			y1 = y0 + devp->isp_af_parm->radius;
+			isp_set_blenr_stat(x0,y0,x1,y1);
+			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
+			af_sm_init(devp);
 		        break;
                 case CAM_COMMAND_TOUCH_FOCUS_ON:
 		        break;
@@ -859,7 +923,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	if(af_enable){
 	if(devp->flag & ISP_FLAG_AF)
 	        isp_get_blnr_stat(&af_info->f[af_info->cur_index]);
-			isp_get_af_stat(&af_info->af_wind[af_info->cur_index]);
+			//isp_get_af_stat(&af_info->af_wind[af_info->cur_index]);
 	}
 	if(devp->flag & ISP_FLAG_SET_EFFECT){
 		csc = &(devp->cam_param->xml_effect_manual->csc);
@@ -882,10 +946,12 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		}
 	}
 	if(devp->flag & ISP_TEST_FOR_AF_WIN){
-		isp_get_af_stat(&devp->af_win[devp->cnt]);
-		if(devp->cnt++ > devp->max){
+		isp_get_blnr_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
+		isp_get_af_stat(&devp->af_test.af_win[devp->af_test.cnt]);
+		isp_get_ae_stat(&devp->af_test.ae_win[devp->af_test.cnt]);
+		if(devp->af_test.cnt++ > devp->af_test.max){
 			devp->flag &=(~ISP_TEST_FOR_AF_WIN);
-			pr_info("get af win info end.\n");
+			pr_info("get af win,ae win&blnr info end.\n");
 		}
 	}
 	if(devp->flag&ISP_FLAG_MWB){

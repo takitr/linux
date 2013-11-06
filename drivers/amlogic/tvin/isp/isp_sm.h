@@ -84,6 +84,7 @@ typedef enum af_state_e {
 	AF_GET_STEPS_INFO,
 	AF_GET_STATUS,
 	AF_INIT,
+	AF_GET_OLD_FV,
 	AF_GET_COARSE_INFO,
 	AF_CALC_GREAT,
 	AF_GET_FINE_INFO,
@@ -214,6 +215,7 @@ typedef struct isp_ae_to_sensor_s {
 } isp_ae_to_sensor_t;
 
 extern void isp_sm_init(isp_dev_t *devp);
+extern void af_sm_init(isp_dev_t *devp);
 extern void isp_set_flash_mode(isp_dev_t *devp);
 extern void isp_ae_sm(isp_dev_t *devp);
 extern void isp_awb_sm(isp_dev_t *devp);
