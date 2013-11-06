@@ -1,5 +1,5 @@
 /*
- * Driver for the amlogic pin controller
+ * Driver for the amlogic vpu controller
  *
  *
  */
@@ -14,13 +14,51 @@
 #include <plat/io.h>
 #include <mach/am_regs.h>
 #include <mach/vpu.h>
+#include <mach/smp.h>
 #include <linux/amlogic/vout/vinfo.h>
 
-#define VPU_VERION	"v02"
+#define VPU_VERION	"v03"
 
 //#define LIMIT_VPU_CLK_LOW
 static spinlock_t vpu_lock;
 static spinlock_t vpu_mem_lock;
+static DEFINE_MUTEX(vpu_mutex);
+
+static const char* vpu_mod_table[]={
+	"viu_osd1",
+	"viu_osd2",
+	"viu_vd1",
+	"viu_vd2",
+	"viu_chroma",
+	"viu_ofifo",
+	"viu_scale",
+	"viu_osd_scale",
+	"viu_vdin0",
+	"viu_vdin1",
+	"pic_rot1",
+	"pic_rot2",
+	"pic_rot3",
+	"di_pre",
+	"di_post",
+	"viu2_osd1",
+	"viu2_osd2",
+	"viu2_vd1",
+	"viu2_chroma",
+	"viu2_ofifo",
+	"viu2_scale",
+	"viu2_osd_scale",
+	"vencp",
+	"vencl",
+	"venci",
+	"isp",
+	"none",
+};
+
+typedef struct {
+	unsigned mem_pd0;
+	unsigned mem_pd1;
+	unsigned int clk_level;
+}VPU_Conf_t;
 
 #define CLK_LEVEL_DFT		4
 #define CLK_LEVEL_MAX		8	//limit max clk to 364M
@@ -70,48 +108,49 @@ static unsigned int vpu_clk_vmod[] = {
 	0,	//VPU_MAX,
 };
 
+static int dft_clk_level;
 static VPU_Conf_t vpu_config = {
-	.h_res = 2048,
-	.v_res = 1536,
-	.refresh_rate = 60,	//Hz
+	.mem_pd0 = 0,
+	.mem_pd1 = 0,
 	.clk_level = CLK_LEVEL_DFT,
 };
-
-static int dft_clk_level;
 
 static vpu_mod_t get_vpu_mod(unsigned int vmod)
 {
 	unsigned int vpu_mod;
-	
+
 	if (vmod < VPU_MOD_START) {
-	switch (vmod) {
-		case VMODE_480P:
-		case VMODE_576P:
-		case VMODE_720P:
-		case VMODE_1080I:
-		case VMODE_1080P:
-		case VMODE_720P_50HZ:
-		case VMODE_1080I_50HZ:
-		case VMODE_1080P_50HZ:
-		case VMODE_1080P_24HZ:
-		case VMODE_4K2K_24HZ:
-		case VMODE_VGA:
-		case VMODE_SVGA:
-		case VMODE_XGA:
-		case VMODE_SXGA:
+		switch (vmod) {
+			case VMODE_480P:
+			case VMODE_576P:
+			case VMODE_720P:
+			case VMODE_1080I:
+			case VMODE_1080P:
+			case VMODE_720P_50HZ:
+			case VMODE_1080I_50HZ:
+			case VMODE_1080P_50HZ:
+			case VMODE_1080P_24HZ:
+			case VMODE_4K2K_30HZ:
+			case VMODE_4K2K_25HZ:
+			case VMODE_4K2K_24HZ:
+			case VMODE_4K2K_SMPTE:
+			case VMODE_VGA:
+			case VMODE_SVGA:
+			case VMODE_XGA:
+			case VMODE_SXGA:
 				vpu_mod = VPU_VENCP;
-			break;
+				break;
 			case VMODE_480I:
 			case VMODE_576I:
-		case VMODE_480CVBS:
-		case VMODE_576CVBS:
+			case VMODE_480CVBS:
+			case VMODE_576CVBS:
 				vpu_mod = VPU_VENCI;
-			break;
-		case VMODE_LCD:
-		case VMODE_LVDS_1080P:
-		case VMODE_LVDS_1080P_50HZ:
+				break;
+			case VMODE_LCD:
+			case VMODE_LVDS_1080P:
+			case VMODE_LVDS_1080P_50HZ:
 				vpu_mod = VPU_VENCL;
-			break;
+				break;
 			default:
 				vpu_mod = VPU_MAX;
 				break;
@@ -127,7 +166,6 @@ static vpu_mod_t get_vpu_mod(unsigned int vmod)
 	return vpu_mod;
 } 
 
-#ifdef CONFIG_VPU_DYNAMIC_ADJ
 static unsigned int get_vpu_clk_level_max_vmod(void)
 {
 	unsigned int max_level;
@@ -138,9 +176,9 @@ static unsigned int get_vpu_clk_level_max_vmod(void)
 		if (vpu_clk_vmod[i-VPU_MOD_START] > max_level)
 			max_level = vpu_clk_vmod[i-VPU_MOD_START];
 	}
+	
 	return max_level;
 }
-#endif
 
 static unsigned int get_vpu_clk_level(unsigned int video_clk)
 {
@@ -188,12 +226,26 @@ static unsigned int get_vpu_clk(void)
 	return clk_freq;
 }
 
+static int adjust_vpu_clk(VPU_Conf_t *vconf)
+{
+	unsigned int clk_level;
+	unsigned long flags = 0;
+	spin_lock_irqsave(&vpu_lock, flags);
+	
+	clk_level = vconf->clk_level;
+	aml_write_reg32(P_HHI_VPU_CLK_CNTL, ((1 << 8) | (vpu_clk_setting[clk_level][1] << 9) | (vpu_clk_setting[clk_level][2] << 0)));
+	printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
+
+	spin_unlock_irqrestore(&vpu_lock, flags);
+
+	return 0;
+}
+
 static int set_vpu_clk(unsigned int vclk)
 {
 	int ret = 0;
 	unsigned clk_level;
-	unsigned long flags = 0;
-	spin_lock_irqsave(&vpu_lock, flags);
+	mutex_lock(&vpu_mutex);
 	
 	if (vclk >= 100) {	//regard as vpu_clk
 		clk_level = get_vpu_clk_level(vclk);
@@ -209,50 +261,49 @@ static int set_vpu_clk(unsigned int vclk)
 	}
 #ifdef LIMIT_VPU_CLK_LOW
 	else if (clk_level < dft_clk_level) {
-		ret = 2;
+		ret = 3;
 		printk("set vpu clk less than system default\n");
 		goto set_vpu_clk_limit;
 	}
 #endif
 	
 	if ((((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 9) & 0x7) != vpu_clk_setting[clk_level][1]) || (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 0) & 0x7f) != vpu_clk_setting[clk_level][2])) {
-		aml_write_reg32(P_HHI_VPU_CLK_CNTL, ((1 << 8) | (vpu_clk_setting[clk_level][1] << 9) | (vpu_clk_setting[clk_level][2] << 0)));
 		vpu_config.clk_level = clk_level;
-		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
+		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
 	}
 	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
 		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 
 set_vpu_clk_limit:
-	spin_unlock_irqrestore(&vpu_lock, flags);
+	mutex_unlock(&vpu_mutex);
 	return ret;
 }
 
+//***********************************************//
+//VPU_CLK control
+//***********************************************//
 /*
  *  Function: get_vpu_clk_vmod
- *      Get vpu clk holding frequency with specified vomd
+ *      Get vpu clk holding frequency with specified vmod
  *
  *	Parameters:
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE supported by VOUT
- *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
- *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
- *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
+ *                 VMODE, VMODE is supported by VOUT
+ *                 VPU_MOD, supported by vpu_mod_t
  *
  *  Returns:
  *      unsigned int, vpu clk frequency unit in Hz
  * 
  *	Example:
  *      video_clk = get_vpu_clk_vmod(VMODE_720P);
- *      video_clk = get_vpu_clk_vmod(VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
+ *      video_clk = get_vpu_clk_vmod(VPU_VIU_OSD1);
  *
 */
 unsigned int get_vpu_clk_vmod(unsigned int vmod)
 {
 	unsigned int vpu_mod;
 	unsigned int vpu_clk;
-	unsigned long flags = 0;
-	spin_lock_irqsave(&vpu_lock, flags);
+	mutex_lock(&vpu_mutex);
 	
 	vpu_mod = get_vpu_mod(vmod);
 	if ((vpu_mod >= VPU_MOD_START) && (vpu_mod < VPU_MAX)) {
@@ -264,29 +315,27 @@ unsigned int get_vpu_clk_vmod(unsigned int vmod)
 		printk("unsupport vmod\n");
 	}
 	
-	spin_unlock_irqrestore(&vpu_lock, flags);
+	mutex_unlock(&vpu_mutex);
 	return vpu_clk;
 }
 
 /*
- *  Function: request_vpu_clk_vomd
- *      Request a new vpu clk holding frequency with specified vomd
+ *  Function: request_vpu_clk_vmod
+ *      Request a new vpu clk holding frequency with specified vmod
  *      Will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level
  *
  *	Parameters:
  *      vclk - unsigned int, vpu clk frequency unit in Hz
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE supported by VOUT
- *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
- *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
- *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
+ *                 VMODE, VMODE is supported by VOUT
+ *                 VPU_MOD, supported by vpu_mod_t
  *
  *  Returns:
  *      int, 0 for success, 1 for failed
  * 
  *	Example:
- *      ret = request_vpu_clk_vomd(100000000, VMODE_720P);
- *      ret = request_vpu_clk_vomd(300000000, VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
+ *      ret = request_vpu_clk_vmod(100000000, VMODE_720P);
+ *      ret = request_vpu_clk_vmod(300000000, VPU_VIU_OSD1);
  *
 */
 int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
@@ -294,8 +343,7 @@ int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
 	int ret = 0;
 	unsigned clk_level;
 	unsigned vpu_mod;
-	unsigned long flags = 0;
-	spin_lock_irqsave(&vpu_lock, flags);
+	mutex_lock(&vpu_mutex);
 	
 	if (vclk >= 100) {	//regard as vpu_clk
 		clk_level = get_vpu_clk_level(vclk);
@@ -311,72 +359,83 @@ int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
 	}
 	
 	vpu_mod = get_vpu_mod(vmod);
+	if (vpu_mod == VPU_MAX) {
+		ret = 2;
+		printk("unsupport vmod\n");
+		goto request_vpu_clk_limit;
+	}
+	
 	vpu_clk_vmod[vpu_mod - VPU_MOD_START] = clk_level;
 	printk("request vpu clk holdings: %s %uHz\n", vpu_mod_table[vpu_mod - VPU_MOD_START], vpu_clk_setting[clk_level][0]);
-#ifdef CONFIG_VPU_DYNAMIC_ADJ
+
 	clk_level = get_vpu_clk_level_max_vmod();
-	if (clk_level > vpu_config.clk_level) {
-		aml_write_reg32(P_HHI_VPU_CLK_CNTL, ((1 << 8) | (vpu_clk_setting[clk_level][1] << 9) | (vpu_clk_setting[clk_level][2] << 0)));
+#ifdef CONFIG_VPU_DYNAMIC_ADJ
+	if (clk_level != vpu_config.clk_level) {
 		vpu_config.clk_level = clk_level;
-		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
+		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
 	}
-	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
-		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 #endif
 
 request_vpu_clk_limit:
-	spin_unlock_irqrestore(&vpu_lock, flags);
+	mutex_unlock(&vpu_mutex);
 	return ret;
 }
 
 /*
- *  Function: release_vpu_clk_vomd
- *      Release vpu clk holding frequency to 0 with specified vomd
+ *  Function: release_vpu_clk_vmod
+ *      Release vpu clk holding frequency to 0 with specified vmod
  *      Will change vpu clk if the max level in all vmod vpu clk holdings is unequal to current vpu clk level
  *
  *	Parameters:
  *      vmod - unsigned int, must be one of the following constants:
- *                 VMODE supported by VOUT
- *                 VPU_MODE_VIDEO | VPU_MODE_BIT_MASK
- *                 VPU_MODE_OSD | VPU_MODE_BIT_MASK
- *                 VPU_MODE_VPP | VPU_MODE_BIT_MASK
+ *                 VMODE, VMODE is supported by VOUT
+ *                 VPU_MOD, supported by vpu_mod_t
  *
  *  Returns:
  *      int, 0 for success, 1 for failed
  * 
  *	Example:
- *      ret = release_vpu_clk_vomd(VMODE_720P);
- *      ret = release_vpu_clk_vomd(VPU_MODE_VIDEO | VPU_MODE_BIT_MASK);
+ *      ret = release_vpu_clk_vmod(VMODE_720P);
+ *      ret = release_vpu_clk_vmod(VPU_VIU_OSD1);
  *
 */
 int release_vpu_clk_vmod(unsigned int vmod)
 {
+	int ret = 0;
 	unsigned clk_level;
 	unsigned vpu_mod;
-	unsigned long flags = 0;
-	spin_lock_irqsave(&vpu_lock, flags);
+	mutex_lock(&vpu_mutex);
 	
 	clk_level = 0;
 	
 	vpu_mod = get_vpu_mod(vmod);
+	if (vpu_mod == VPU_MAX) {
+		ret = 2;
+		printk("unsupport vmod\n");
+		goto release_vpu_clk_limit;
+	}
+	
 	vpu_clk_vmod[vpu_mod - VPU_MOD_START] = clk_level;
 	printk("release vpu clk holdings: %s\n", vpu_mod_table[vpu_mod - VPU_MOD_START]);
-#ifdef CONFIG_VPU_DYNAMIC_ADJ
+
 	clk_level = get_vpu_clk_level_max_vmod();
-	if (clk_level > vpu_config.clk_level) {
-		aml_write_reg32(P_HHI_VPU_CLK_CNTL, ((1 << 8) | (vpu_clk_setting[clk_level][1] << 9) | (vpu_clk_setting[clk_level][2] << 0)));
+#ifdef CONFIG_VPU_DYNAMIC_ADJ
+	if (clk_level != vpu_config.clk_level) {
 		vpu_config.clk_level = clk_level;
-		printk("set vpu clk: %uHz, readback: %uHz(0x%x)\n", vpu_clk_setting[clk_level][0], get_vpu_clk(), (aml_read_reg32(P_HHI_VPU_CLK_CNTL)));
+		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
 	}
-	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
-		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
 #endif
-	spin_unlock_irqrestore(&vpu_lock, flags);
-	return 0;
+
+release_vpu_clk_limit:
+	mutex_unlock(&vpu_mutex);
+	return ret;
 }
 
 //***********************************************//
+//VPU_MEM_PD control
+//***********************************************//
 #define VPU_MEM_PD_MASK		0x3
+
 /*
  *  Function: switch_vpu_mem_pd_vmod
  *      switch vpu memory power down by specified vmod
@@ -433,6 +492,11 @@ void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag)
 	printk("switch_vpu_mem_pd: %s %s\n", vpu_mod_table[vpu_mod - VPU_MOD_START], ((flag > 0) ? "OFF" : "ON"));
 	spin_unlock_irqrestore(&vpu_mem_lock, flags);
 }
+//***********************************************//
+
+//***********************************************//
+//VPU sysfs function
+//***********************************************//
 static const char * vpu_usage_str =
 {"Usage:\n"
 "	echo get > clk ; print current vpu clk\n"
@@ -532,12 +596,15 @@ static void vpu_driver_init(void)
 	set_vpu_clk(vpu_config.clk_level);
 	
 	//VPU MEM_PD, need to modify
-	aml_write_reg32(P_HHI_VPU_MEM_PD_REG0, 0x00000000);
-    aml_write_reg32(P_HHI_VPU_MEM_PD_REG1, 0x00000000);
+	aml_write_reg32(P_HHI_VPU_MEM_PD_REG0, vpu_config.mem_pd0);
+    aml_write_reg32(P_HHI_VPU_MEM_PD_REG1, vpu_config.mem_pd1);
 }
 
 static void vpu_driver_disable(void)
 {
+	vpu_config.mem_pd0 = aml_read_reg32(P_HHI_VPU_MEM_PD_REG0);
+	vpu_config.mem_pd1 = aml_read_reg32(P_HHI_VPU_MEM_PD_REG1);
+	
 	aml_write_reg32(P_HHI_VPU_MEM_PD_REG0, 0xffffffff);
     aml_write_reg32(P_HHI_VPU_MEM_PD_REG1, 0xffffffff);
 	
@@ -610,7 +677,9 @@ static int vpu_probe(struct platform_device *pdev)
 	
 	printk("VPU driver version: %s\n", VPU_VERION);
 	get_vpu_config(pdev);
-	vpu_driver_init();
+#ifndef CONFIG_VPU_DYNAMIC_ADJ
+	set_vpu_clk(vpu_config.clk_level);
+#endif
 	
 	ret = class_register(&aml_vpu_debug_class);
 	if(ret){
