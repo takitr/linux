@@ -194,6 +194,8 @@ static u32 next_peek_underflow;
          CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
            VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
          VD1_MEM_POWER_OFF(); \
+         video_angle = 0; \
+         video_prot.angle_changed |= 0x1; \
          if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
             printk("DisableVideoLayer()\n"); \
          } \
@@ -1824,13 +1826,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             }
 #endif
             vf = video_vf_get();
-            force_blackout = 0;
-
-#ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
-            video_3d_format = vf->trans_fmt;
-#endif
-
-            vsync_toggle_frame(vf);
 #ifdef USE_PROT
             if (video_prot.video_started) {
                 video_prot_init(&video_prot, vf);
@@ -1838,6 +1833,13 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 video_prot.video_started = 0;
             }
 #endif
+            force_blackout = 0;
+
+#ifdef CONFIG_POST_PROCESS_MANAGER_3D_PROCESS
+            video_3d_format = vf->trans_fmt;
+#endif
+
+            vsync_toggle_frame(vf);
             if (trickmode_fffb == 1) {
 #ifdef CONFIG_VSYNC_RDMA
                 if((VSYNC_RD_MPEG_REG(DI_IF1_GEN_REG)&0x1)==0){
@@ -4172,7 +4174,7 @@ static int __init video_early_init(void)
 #else
    	WRITE_VCBUS_REG_BITS(VPP2_OFIFO_SIZE, 0x780,
                         VPP_OFIFO_SIZE_BIT, VPP_OFIFO_SIZE_WID);
-#endif                        
+#endif
    	//WRITE_VCBUS_REG_BITS(VPU_OSD3_MMC_CTRL, 1, 12, 2); //select vdisp_mmc_arb for VIU2_OSD1 request
    	WRITE_VCBUS_REG_BITS(VPU_OSD3_MMC_CTRL, 2, 12, 2); // select vdin_mmc_arb for VIU2_OSD1 request
 #endif
