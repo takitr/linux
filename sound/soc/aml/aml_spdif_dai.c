@@ -91,6 +91,7 @@ special call by the audiodsp,add these code,as there are three cases for 958 s/p
 2)PCM  output for  all audio, when pcm mode is selected by user .
 3)PCM  output for audios except ac3/dts,when raw output mode is selected by user
 */
+static unsigned set_clock = 0;
 static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 {
 	ALSA_DEBUG();
@@ -156,7 +157,11 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 	//audio_set_clk(sample_rate, AUDIO_CLK_256FS);
 	//audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);	
 	//audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
-	audio_set_958_clk(sample_rate, AUDIO_CLK_256FS);
+    printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
+    if(set_clock != sample_rate){
+        set_clock = sample_rate;
+        audio_set_958_clk(sample_rate, AUDIO_CLK_256FS);
+    }
 	//audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	audio_util_set_dac_958_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 

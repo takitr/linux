@@ -141,7 +141,11 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 		s->device_type = AML_AUDIO_I2SIN;		
 	}
 	else{
-		audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
+        printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
+        if(set_clock != sample_rate ){
+            set_clock = sample_rate;
+            audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
+        }
 		audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);	
 		
 		s->device_type = AML_AUDIO_I2SOUT;

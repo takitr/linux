@@ -37,6 +37,7 @@
 #include "aml_pcm.h"
 #include "aml_audio_hw.h"
 #include "../codecs/aml_m8_codec.h"
+#include <mach/register.h>
 
 #ifdef CONFIG_USE_OF
 #include <linux/of.h>
@@ -47,6 +48,7 @@
 #include <plat/io.h>
 #endif
 
+#define USE_EXTERNAL_DAC 0
 #define DRV_NAME "aml_snd_m8"
 #define HP_DET                  1
 struct aml_audio_private_data {
@@ -296,6 +298,34 @@ static struct snd_soc_ops aml_asoc_ops = {
     .hw_params = aml_asoc_hw_params,
 };
 
+
+struct aml_audio_private_data *p_audio;
+
+static int aml_m8_spk_enabled;
+
+static int aml_m8_set_spk(struct snd_kcontrol *kcontrol,
+    struct snd_ctl_elem_value *ucontrol)
+{
+    aml_m8_spk_enabled = ucontrol->value.integer.value[0];
+    printk(KERN_INFO "aml_m8_set_spk: aml_m8_spk_enabled=%d\n",aml_m8_spk_enabled);
+
+    msleep(10);
+    amlogic_set_value(p_audio->gpio_mute, aml_m8_spk_enabled, "mute_spk");
+
+    if(aml_m8_spk_enabled ==1)
+        msleep(100);
+
+    return 0;
+}
+
+static int aml_m8_get_spk(struct snd_kcontrol *kcontrol,
+    struct snd_ctl_elem_value *ucontrol)
+{
+    //printk("***aml_m8_get_spk****aml_m8_spk_enabled=%d**\n",aml_m8_spk_enabled);
+    ucontrol->value.integer.value[0] = aml_m8_spk_enabled;
+    return 0;
+}
+
 static int aml_set_bias_level(struct snd_soc_card *card,
         struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
 {
@@ -312,10 +342,6 @@ static int aml_set_bias_level(struct snd_soc_card *card,
     case SND_SOC_BIAS_ON:
         break;
     case SND_SOC_BIAS_PREPARE:
-        if(hp_state==0){
-            amlogic_set_value(p_aml_audio->gpio_mute, 1, "mute_spk");
-            printk("enter %s : unmute spk \n",__func__);
-        }
         /* clock enable */
         if (!p_aml_audio->clock_en) {
             aml_set_clock(1);
@@ -329,10 +355,6 @@ static int aml_set_bias_level(struct snd_soc_card *card,
 
         break;
     case SND_SOC_BIAS_STANDBY:
-        if(hp_state==0){
-            amlogic_set_value(p_aml_audio->gpio_mute, 0, "mute_spk");
-            printk("enter %s : mute spk \n",__func__);
-        }
         /* clock disable */
         if (p_aml_audio->clock_en) {
             aml_set_clock(0);
@@ -396,6 +418,17 @@ static struct snd_soc_jack_pin jack_pins[] = {
     }
 };
 
+static const struct snd_kcontrol_new aml_m8_controls[] = {
+
+    SOC_SINGLE_BOOL_EXT("Amp Spk enable", 0,
+        aml_m8_get_spk,
+        aml_m8_set_spk),
+/*
+    SOC_SINGLE_BOOL_EXT("Audio MPLL9 Switch", 0,
+    aml_m8_get_MPLL9,
+    aml_m8_set_MPLL9),
+    */
+};
 static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_card *card = rtd->card;
@@ -407,6 +440,10 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
 	
     printk(KERN_DEBUG "enter %s \n", __func__);
 	p_aml_audio = snd_soc_card_get_drvdata(card);
+    ret = snd_soc_add_card_controls(codec->card, aml_m8_controls,
+                ARRAY_SIZE(aml_m8_controls));
+    if (ret)
+       return ret;
 
     /* Add specific widgets */
     //snd_soc_dapm_new_controls(dapm, aml_asoc_dapm_widgets,
@@ -501,7 +538,10 @@ static void aml_m8_pinmux_init(struct snd_soc_card *card)
 	p_aml_audio = snd_soc_card_get_drvdata(card);   
     p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
     
-
+    p_audio = p_aml_audio;
+ #if USE_EXTERNAL_DAC
+    aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+ #endif
 	ret = of_property_read_string(card->dev->of_node, "mute_gpio", &str);
 	if (ret < 0) {
 		printk("aml_snd_m8: faild to get mute_gpio!\n");

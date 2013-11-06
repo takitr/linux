@@ -476,8 +476,8 @@ static int aml_pcm_open(struct snd_pcm_substream *substream)
 		goto out;
 	}
 
-	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);			
-	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
+	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);			
+	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
 	prtd->substream = substream;
 #if USE_HRTIMER == 0    
 	prtd->timer.function = &aml_pcm_timer_callback;
@@ -503,8 +503,10 @@ static int aml_pcm_close(struct snd_pcm_substream *substream)
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
 	audio_stream_t *s = &prtd->s;	
 	ALSA_TRACE();
-	if(s->device_type == AML_AUDIO_SPDIFOUT)
-		WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);			
+	if(s->device_type == AML_AUDIO_SPDIFOUT){
+	//	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);
+
+    }			
 #if USE_HRTIMER == 0
 	del_timer_sync(&prtd->timer);
 #else

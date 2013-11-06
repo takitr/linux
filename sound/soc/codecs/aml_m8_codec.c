@@ -265,7 +265,7 @@ static int aml_m8_set_bias_level(struct snd_soc_codec *codec,
     case SND_SOC_BIAS_PREPARE:
         switch (codec->dapm.bias_level) {
         case SND_SOC_BIAS_STANDBY:
-	     WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);			
+	    // WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);			
             adac_wr_reg(89,0x0101);
             adac_wr_reg(24,adac_rd_reg(24) | 0x3); // power on the DAC
             break;
@@ -278,21 +278,21 @@ static int aml_m8_set_bias_level(struct snd_soc_codec *codec,
     case SND_SOC_BIAS_STANDBY:
         switch (codec->dapm.bias_level) {
         case SND_SOC_BIAS_PREPARE:
-	     WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
+	   //  WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
             adac_wr_reg(89,0x0000); 
             adac_wr_reg(24,adac_rd_reg(24) & 0xfc); //power down the DAC
-	     WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);
+	    // WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);
             break;
 
         default:
-	     WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);			
+	    // WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);			
             break;
         }
 
         break;
         
     case SND_SOC_BIAS_OFF:
-	 WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);
+	// WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 0,14, 1);
         break;
     default:
         break;
@@ -1162,7 +1162,7 @@ static int aml_m8_soc_resume(struct snd_soc_codec *codec){
 	printk("aml_m8_codec resume\n");
 
 	aml_m8_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);	
+	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);	
     return 0;
 }
 
