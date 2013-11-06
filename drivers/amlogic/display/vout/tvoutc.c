@@ -285,9 +285,9 @@ int tvoutc_setmode(tvmode_t mode)
 		case TVMODE_480CVBS:
 		case TVMODE_576I:
 		case TVMODE_576CVBS:
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 1, 0, 2); //reg0x271a, select ENCI to VIU1
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 1, 4, 4); //reg0x271a, Select encI clock to VDIN            
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 1, 8, 4); //reg0x271a,Enable VIU of ENC_I domain to VDIN;
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 1, 0, 2); //reg0x271a, select ENCI to VIU1
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 1, 4, 4); //reg0x271a, Select encI clock to VDIN
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 1, 8, 4); //reg0x271a,Enable VIU of ENC_I domain to VDIN;
 			  break;
 		case TVMODE_480P:
 		case TVMODE_576P:
@@ -302,9 +302,9 @@ int tvoutc_setmode(tvmode_t mode)
         case TVMODE_4K2K_25HZ:
         case TVMODE_4K2K_24HZ:
         case TVMODE_4K2K_SMPTE:
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 0, 2); //reg0x271a, select ENCP to VIU1
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 4, 4); //reg0x271a, Select encP clock to VDIN            
-        WRITE_CBUS_REG_BITS(VPU_VIU_VENC_MUX_CTRL, 2, 8, 4); //reg0x271a,Enable VIU of ENC_P domain to VDIN;
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 2, 0, 2); //reg0x271a, select ENCP to VIU1
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 2, 4, 4); //reg0x271a, Select encP clock to VDIN
+        aml_set_reg32_bits(P_VPU_VIU_VENC_MUX_CTRL, 2, 8, 4); //reg0x271a,Enable VIU of ENC_P domain to VDIN;
         break;		    
 		default:
 			printk(KERN_ERR "unsupport tv mode,video clk is not set!!\n");	

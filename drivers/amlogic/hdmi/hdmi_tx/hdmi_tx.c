@@ -202,8 +202,8 @@ return value: 1, vout; 2, vout2;
 //         0=No connection, 1=ENCI, 2=ENCP, 3=ENCT.
 // [ 1: 0] cntl_viu1_sel_venc. Select which one of the encI/P/T that VIU1 connects to:
 //         0=No connection, 1=ENCI, 2=ENCP, 3=ENCT.
-        int viu2_sel = (READ_MPEG_REG(VPU_VIU_VENC_MUX_CTRL)>>2)&0x3;
-        int viu1_sel = READ_MPEG_REG(VPU_VIU_VENC_MUX_CTRL)&0x3;
+        int viu2_sel = (aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)>>2)&0x3;
+        int viu1_sel = aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
         if(((viu2_sel==1)||(viu2_sel==2))&&
             (viu1_sel!=1)&&(viu1_sel!=2)){
             vout_index = 2;    

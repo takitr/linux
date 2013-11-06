@@ -159,7 +159,7 @@ typedef  struct {
 #define  FBIOGET_OSD_FLUSH_RATE	0x4514
 #define  FBIOPUT_OSD_REVERSE		0x4515
 #define  FBIOPUT_OSD_ROTATE_ON   	0x4516
-#define	 FBIOPUT_OSD_ROTATE_ANGLE	0x4517
+#define  FBIOPUT_OSD_ROTATE_ANGLE	0x4517
 
 #define  OSD_INVALID_INFO   		0xffffffff
 

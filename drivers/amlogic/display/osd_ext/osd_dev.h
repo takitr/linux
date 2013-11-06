@@ -82,6 +82,10 @@ extern void osddev_ext_get_free_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1,
 extern void osddev_ext_set_free_scale_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
 extern void osddev_ext_get_scale_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
 extern void osddev_ext_set_scale_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
+extern void osddev_ext_get_free_scale_mode(u32 index, u32 *freescale_mode);
+extern void osddev_ext_free_scale_mode(u32 index ,u32 freescale_mode);
+extern void osddev_ext_get_window_axis(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1);
+extern void osddev_ext_set_window_axis(u32 index, s32 x0, s32 y0, s32 x1, s32 y1);
 extern void osddev_ext_get_osd_ext_info(u32 index, s32(*posdval)[4], u32(*posdreq)[5], s32 info_flag);
 extern void osddev_ext_get_block_windows(u32 index, u32 *windows);
 extern void osddev_ext_set_block_windows(u32 index, u32 *windows);
@@ -90,6 +94,12 @@ extern void osddev_ext_set_block_mode(u32 index, u32 mode);
 extern int osddev_ext_select_mode(struct myfb_dev *fbdev);
 extern void osddev_ext_enable_3d_mode(u32 index , u32 enable);
 extern void osddev_ext_set_2x_scale(u32 index, u16 h_scale_enable, u16 v_scale_enable);
+extern void osddev_ext_get_osd_ext_rotate_on(u32 index, u32 *on_off);
+extern void osddev_ext_set_osd_ext_rotate_on(u32 index, u32 on_off);
+extern void osddev_ext_get_osd_ext_rotate_angle(u32 index, u32 *angle);
+extern void osddev_ext_set_osd_ext_rotate_angle(u32 index, u32 angle);
+extern void osddev_ext_get_prot_canvas(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);
+extern void osddev_ext_set_prot_canvas(u32 index, s32 x_start, s32 y_start, s32 x_end, s32 y_end);
 extern void osddev_ext_set(struct myfb_dev *fbdev);
 extern void osddev_ext_update_disp_axis(struct myfb_dev *fbdev, int  mode_change) ;
 extern int osddev_ext_setcolreg(unsigned regno, u16 red, u16 green, u16 blue,

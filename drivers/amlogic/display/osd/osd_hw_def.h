@@ -135,14 +135,14 @@ typedef  struct {
 	u32				scan_mode;
 	u32				osd_order;
 	osd_3d_mode_t	mode_3d[HW_OSD_COUNT];
-	u32			updated[HW_OSD_COUNT];	
-	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
+	u32			updated[HW_OSD_COUNT];
 	u32 			block_windows[HW_OSD_COUNT][HW_OSD_BLOCK_REG_COUNT];
 	u32 			block_mode[HW_OSD_COUNT];
 	u32			free_scale_mode[HW_OSD_COUNT];
 	u32			osd_reverse[HW_OSD_COUNT];
 	osd_rotate_t		rotate[HW_OSD_COUNT];
 	pandata_t	rotation_pandata[HW_OSD_COUNT];
+	hw_list_t	 	reg[HW_OSD_COUNT][HW_REG_INDEX_MAX];
 	u32			field_out_en;
 }hw_para_t;
 

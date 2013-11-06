@@ -39,12 +39,18 @@ static int   get_queue_member_count(struct list_head  *head)
 ssize_t work_queue_status_show(struct class *cla,struct class_attribute *attr,char *buf)
 {
 	ge2d_context_t *wq=ge2d_manager.current_wq;
-     	return snprintf(buf,40,"cmd count in queue:%d\n",get_queue_member_count(&wq->work_queue));
+	if (wq == 0) {
+		return 0;
+	}
+	return snprintf(buf,40,"cmd count in queue:%d\n",get_queue_member_count(&wq->work_queue));
 }
 ssize_t free_queue_status_show(struct class *cla,struct class_attribute *attr, char *buf)
 {
 	ge2d_context_t *wq=ge2d_manager.current_wq;
-     	return snprintf(buf, 40, "free space :%d\n",get_queue_member_count(&wq->free_queue));
+	if (wq == 0) {
+		return 0;
+	}
+	return snprintf(buf, 40, "free space :%d\n",get_queue_member_count(&wq->free_queue));
 }
 
 static inline  int  work_queue_no_space(ge2d_context_t* queue)
@@ -446,7 +452,7 @@ setup_display_property(src_dst_para_t *src_dst,int index)
 
 	index=(index==OSD1_CANVAS_INDEX?0:1);
 	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"osd%d ",index);
-	data32=READ_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
+	data32=aml_read_reg32(P_VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET*index);
 	index=(data32>>8) & 0xf;
 	bpp=block_mode[index];  //OSD_BLK_MODE[8..11]
 	amlog_mask_level(LOG_MASK_CONFIG,LOG_LEVEL_HIGH,"%d bpp \n",bpp);
