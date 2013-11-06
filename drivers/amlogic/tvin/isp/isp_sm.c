@@ -409,12 +409,12 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						newstep = (aepa->cur_step*lpfcoef + targstep*(256-lpfcoef))>>8;
 						if(ae_debug1)
 						printk("newstep =%d,lpf =%d,%d\n",newstep,lpfcoef,aepa->cur_step);
-						if(newstep >= aepa->max_step - 1)
+						if((newstep >= aepa->max_step - 1)||(newstep == aepa->cur_step)||(newstep == 0))
 						{
 							sm_state.status = ISP_AE_STATUS_STABLE;
 							step = AE_SUCCESS;
 						}
-						else if(newstep > aepa->cur_step)
+						else if((newstep > aepa->cur_step)&&ae_debug3)
 							step = AE_MAX_CHECK_STOP;
 						else
 							step = AE_SET_NEWSTEP;
@@ -718,7 +718,7 @@ void isp_awb_base_sm(isp_dev_t *devp)
 						step = AWB_TEMP_CHECK;
 						break;
 					case AWB_TEMP_CHECK:
-						if(g[4] == 0)
+						if((g[4] == 0)||(r[4] == 0)||(b[4] == 0))
 						{
 							step = AWB_SUCCESS;
 							break;
