@@ -1055,16 +1055,14 @@ void isp_af_sm(isp_dev_t *devp)
 			break;
 		case AF_SUCCESS:
 			if(af_delay >= 2){
-				/*enable awb,enable af*/
-				devp->flag |=flag;
-		        /* get last fv */
-		        af_info->fv_aft_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
-				if(af_sm_dg&0x2){
-					pr_info("%s:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",__func__,
-						af_info->af_data[af_info->cur_index].ac[0],af_info->af_data[af_info->cur_index].ac[1],
-						af_info->af_data[af_info->cur_index].ac[2],af_info->af_data[af_info->cur_index].ac[3],
-						af_info->af_data[af_info->cur_index].dc[0],af_info->af_data[af_info->cur_index].dc[1],
-						af_info->af_data[af_info->cur_index].dc[2],af_info->af_data[af_info->cur_index].dc[3],af_info->fv_aft_af);
+		                /* get last fv */
+		                af_info->fv_aft_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
+			        if(af_sm_dg&0x2){
+				        pr_info("%s:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",__func__,
+				                af_info->af_data[af_info->cur_index].ac[0],af_info->af_data[af_info->cur_index].ac[1],
+				                af_info->af_data[af_info->cur_index].ac[2],af_info->af_data[af_info->cur_index].ac[3],
+					        af_info->af_data[af_info->cur_index].dc[0],af_info->af_data[af_info->cur_index].dc[1],
+					        af_info->af_data[af_info->cur_index].dc[2],af_info->af_data[af_info->cur_index].dc[3],af_info->fv_aft_af);
 				}
 				fv_delta = af_info->fv_aft_af>af_info->fv_bf_af?(af_info->fv_aft_af-af_info->fv_bf_af):(af_info->fv_bf_af-af_info->fv_aft_af);
 				fv_delta = fv_delta*100;
@@ -1079,6 +1077,8 @@ void isp_af_sm(isp_dev_t *devp)
 						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_alg->af_retry_cnt);
 				} else if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt > af_alg->af_retry_max)){
 		        	/*af failed over max times,force to step 0*/
+		                        /*enable awb,enable af*/
+				        devp->flag |=flag;
 					af_info->cur_step = 0;
 					atomic_set(&af_info->writeable,1);
 					if(af_sm_dg&0x4)
@@ -1086,6 +1086,8 @@ void isp_af_sm(isp_dev_t *devp)
 					af_alg->af_retry_cnt = 0;
 					sm_state.af_state = AF_NULL;
 				} else {/*af success*/
+					/*enable awb,enable af*/
+				        devp->flag |=flag;
 					af_alg->af_retry_cnt = 0;
 					sm_state.af_state = AF_NULL;
 				}
