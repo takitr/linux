@@ -732,14 +732,10 @@ int  amlogic_pmx_probe(struct platform_device *pdev,struct amlogic_pinctrl_soc_d
 	amlogic_pmx_desc.npins = apmx->soc->npins;
 
 	apmx->pctl = pinctrl_register(&amlogic_pmx_desc, &pdev->dev, apmx);
-	if (ret) {
-		dev_err(&pdev->dev, "dt probe failed: %d\n", ret);
-		goto err;
-	}
-	
+
 	if (!apmx->pctl) {
 		dev_err(&pdev->dev, "Couldn't register pinctrl driver\n");
-		return -ENODEV;
+		goto err;
 	}
 	pinctrl_add_gpio_range(apmx->pctl, &amlogic_gpio_ranges);
 	pctdev_name=dev_name(&pdev->dev);
