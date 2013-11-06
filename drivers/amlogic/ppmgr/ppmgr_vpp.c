@@ -484,7 +484,7 @@ void vf_ppmgr_unreg_provider(void)
     dec_vfp = NULL;
 
     ppmgr_device.started = 0;
-    ppmgr_device.use_prot = 0;
+    //ppmgr_device.use_prot = 0;
 
     mutex_unlock(&ppmgr_mutex);
 }
@@ -2343,7 +2343,7 @@ static int ppmgr_task(void *data)
             platform_type_t plarform_type;
             vf = ppmgr_vf_get_dec();
             if (ppmgr_device.started) {
-                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE)) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot) {
                     ppmgr_device.use_prot = 0;
                     set_video_angle(0);
                     _ppmgr_angle_write(ppmgr_device.global_angle);
@@ -2377,7 +2377,7 @@ static int ppmgr_task(void *data)
             int ret = 0;
             vf = ppmgr_vf_get_dec();
             if (ppmgr_device.started) {
-                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE)) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot) {
                     ppmgr_device.use_prot = 0;
                     set_video_angle(0);
                     _ppmgr_angle_write(ppmgr_device.global_angle);

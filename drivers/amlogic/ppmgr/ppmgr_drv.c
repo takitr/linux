@@ -296,22 +296,21 @@ int get_use_prot(void) {
 }
 EXPORT_SYMBOL(get_use_prot);
 
-#ifdef USE_PROT_CONTROL
-static ssize_t use_prot_show(struct class *cla, struct class_attribute *attr, char *buf) {
-    return snprintf(buf, 40, "%d\n", ppmgr_device.use_prot);
+static ssize_t disable_prot_show(struct class *cla, struct class_attribute *attr, char *buf) {
+    return snprintf(buf, 40, "%d\n", ppmgr_device.disable_prot);
 }
 
-static ssize_t use_prot_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count) {
+static ssize_t disable_prot_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count) {
     size_t r;
     u32 s_value;
     r = sscanf(buf, "%d", &s_value);
     if (s_value != 0 && s_value != 1) {
         return -EINVAL;
     }
-    ppmgr_device.use_prot = s_value;
+    ppmgr_device.disable_prot = s_value;
     return strnlen(buf, count);
 }
-#endif
+
 static ssize_t orientation_read(struct class *cla,struct class_attribute *attr,char *buf)
 {
     //ppmgr_device_t* ppmgr_dev=(ppmgr_device_t*)cla;
@@ -946,12 +945,10 @@ static struct class_attribute ppmgr_class_attrs[] = {
            mirror_read,
            mirror_write),
     __ATTR_RO(ppmgr_vframe_states),
-#ifdef USE_PROT_CONTROL
-    __ATTR(use_prot,
+    __ATTR(disable_prot,
            S_IRUGO | S_IWUSR,
-           use_prot_show,
-           use_prot_store),
-#endif
+           disable_prot_show,
+           disable_prot_store),
     __ATTR_NULL
 };
 
@@ -1151,6 +1148,7 @@ int  init_ppmgr_device(void)
     if(ppmgr_buffer_init(0) < 0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
     ppmgr_device.use_prot = 1;
+    ppmgr_device.disable_prot = 0;
     ppmgr_device.global_angle = 0;
     ppmgr_device.started = 0;
     return 0;

@@ -43,6 +43,7 @@ typedef  struct {
 	int display_mode;
 	int mirror_flag;
 	int use_prot;
+	int disable_prot;
 	int started;
 	int global_angle;
 }ppmgr_device_t;
