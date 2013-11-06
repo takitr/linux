@@ -752,7 +752,7 @@ void of_amlsd_xfer_pre(struct amlsd_platform* pdata)
     }
 
     for (i = 0; i < 100; i++) {
-        ppin = devm_pinctrl_get_select(&pdata->host->pdev->dev, p);
+        ppin = devm_pinctrl_get_select(&pdata->host->pdev->dev, pinctrl);
         if(!IS_ERR(ppin)) {
             pdata->host->pinctrl = ppin;
             break;

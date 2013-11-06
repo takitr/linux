@@ -1222,6 +1222,18 @@ static ssize_t store_rotate_on(struct device *device, struct device_attribute *a
         return count;
 }
 
+static ssize_t show_prot_state(struct device *device, struct device_attribute *attr,
+                        char *buf)
+{
+	int pos=0;
+	unsigned int osd_rotate = 0;
+	struct fb_info *fb_info = dev_get_drvdata(device);
+
+	osddev_get_osd_rotate_on(fb_info->node, &osd_rotate);
+	pos += snprintf(buf+pos, PAGE_SIZE, "%d", osd_rotate);
+	return pos;
+}
+
 static ssize_t show_rotate_angle(struct device *device, struct device_attribute *attr,
                         char *buf)
 {
@@ -1401,6 +1413,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(prot_angle, S_IRUGO|S_IWUSR, show_rotate_angle, store_rotate_angle),
 	__ATTR(prot_canvas, S_IRUGO|S_IWUSR, show_prot_canvas, store_prot_canvas),
 	__ATTR(osd_reverse, S_IRUGO|S_IWUSR, show_osd_reverse, store_osd_reverse),
+	__ATTR(prot_state, S_IRUGO|S_IWUSR, show_prot_state, NULL),
 };		
 
 #ifdef  CONFIG_PM

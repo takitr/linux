@@ -419,32 +419,33 @@ int aml_sdio_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq)
 		pdata->is_fir_init = false;
     }
 
-    if ((pdata->is_fir_init) && (mmc->caps & MMC_CAP_NONREMOVABLE)) { // init for the first time
-        if (aml_card_type_sdio(pdata)) {
-            if (mrq->cmd->opcode == SD_IO_RW_DIRECT
-                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED
-                    || mrq->cmd->opcode == SD_SEND_IF_COND) { // filter cmd 52/53/8 for a sdio device before init
-                return aml_cmd_invalid(mmc, mrq);
-            }
-        } else if (aml_card_type_mmc(pdata)) {
-            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
-                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
-                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED
-                    || mrq->cmd->opcode == SD_SEND_IF_COND
-                    || mrq->cmd->opcode == MMC_APP_CMD) { // filter cmd 5/52/53/8/55 for an mmc device before init
-                return aml_cmd_invalid(mmc, mrq);
-            }
-        } else if (aml_card_type_sd(pdata) || aml_card_type_non_sdio(pdata)) {
-            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
-                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
-                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED) { // filter cmd 5/52/53 for a sd card before init
-                return aml_cmd_invalid(mmc, mrq);
+    if (mmc->caps & MMC_CAP_NONREMOVABLE) { // nonremovable device
+        if (pdata->is_fir_init) { // init for the first time
+            if (aml_card_type_sdio(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                        || mrq->cmd->opcode == SD_SEND_IF_COND) { // filter cmd 52/53/8 for a sdio device before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
+            } else if (aml_card_type_mmc(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                        || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                        || mrq->cmd->opcode == SD_SEND_IF_COND
+                        || mrq->cmd->opcode == MMC_APP_CMD) { // filter cmd 5/52/53/8/55 for an mmc device before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
+            } else if (aml_card_type_sd(pdata) || aml_card_type_non_sdio(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                        || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED) { // filter cmd 5/52/53 for a sd card before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
             }
         }
-    } else {
-        // filter cmd 5/52/53 for a non-sdio & nonremovable device
-        if (!(mmc->caps & MMC_CAP_NONREMOVABLE) 
-                && (!aml_card_type_sdio(pdata) && !aml_card_type_unknown(pdata))) {
+    } else { // removable device
+        // filter cmd 5/52/53 for a non-sdio device
+        if (!aml_card_type_sdio(pdata) && !aml_card_type_unknown(pdata)) {
             if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
                     || mrq->cmd->opcode == SD_IO_RW_DIRECT
                     || mrq->cmd->opcode == SD_IO_RW_EXTENDED) {
