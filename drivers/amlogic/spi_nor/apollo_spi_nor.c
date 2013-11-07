@@ -502,7 +502,7 @@ static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 	struct spi_transfer	*t;
 	unsigned command_index = 0;
 	amlogic_spi = spi_master_get_devdata(spi->master);
-	spin_lock_irqsave(&amlogic_spi->lock, flags);
+	spin_lock(&amlogic_spi->lock);
 	m->actual_length = 0;
 	m->status = 0;
 	memset(&amlogic_hw_ctl, 0x0, sizeof(struct amlogic_spi_user_crtl));
@@ -567,24 +567,26 @@ static int amlogic_spi_transfer(struct spi_device *spi, struct spi_message *m)
 	if ((amlogic_hw_ctl.rx_data_len > 0) && (amlogic_hw_ctl.tx_data_len > 0)) {
 		printk("can`t do read and write simultaneous\n");
 		BUG();
-		spin_unlock_irqrestore(&amlogic_spi->lock, flags);
+	    spin_unlock(&amlogic_spi->lock);
 		return -1;
 	}
 
 #if (defined(CONFIG_ARCH_MESON6) || defined(CONFIG_ARCH_MESON8))
-	spin_unlock_irqrestore(&amlogic_spi->lock, flags);
+	spin_unlock(&amlogic_spi->lock);
 #endif
 	//spin_lock_irqsave(&amlogic_spi->lock, flags);
 	spi_hw_enable(amlogic_spi);
 #if (defined(CONFIG_ARCH_MESON6) || defined(CONFIG_ARCH_MESON8))
-	spin_lock_irqsave(&amlogic_spi->lock, flags);
+	spin_lock(&amlogic_spi->lock);
 #endif
 	if (amlogic_hw_ctl.cmd_have_data_in)
 		spi_receive_cycle(amlogic_spi, &amlogic_hw_ctl);
 	else
 		spi_transmit_cycle(amlogic_spi, &amlogic_hw_ctl);
+
+	spin_unlock(&amlogic_spi->lock);
+
 	spi_hw_disable(amlogic_spi);
-	spin_unlock_irqrestore(&amlogic_spi->lock, flags);
 
 	return 0;
 }
