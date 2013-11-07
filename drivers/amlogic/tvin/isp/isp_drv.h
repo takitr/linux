@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.07a"
+#define ISP_VER					"2013.11.07b"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -92,6 +92,7 @@ typedef struct af_debug_test_s {
 } af_debug_test_t;
 
 typedef struct isp_af_info_s {
+	unsigned int flag_bk;
 	unsigned int great_step;
 	unsigned int cur_step;
 	unsigned int cur_index;

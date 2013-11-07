@@ -270,7 +270,8 @@ void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned
 	}
 	#endif
 	/*set lpf according to sd or hd*/
-	if((y1-y0) > 720)
+	WR_BITS(ISP_BLNR_CTRL,0,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
+	if(abs(y1-y0) > 720)
 		WR_BITS(ISP_BLNR_CTRL,3,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
 	else
 		WR_BITS(ISP_BLNR_CTRL,1,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);

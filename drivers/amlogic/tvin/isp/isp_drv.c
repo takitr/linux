@@ -866,10 +866,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
                 case CAM_COMMAND_TOUCH_WINDOW:
 			devp->isp_af_parm = &param->xml_scenes->af;
-			x0 = devp->isp_af_parm->x - devp->isp_af_parm->radius>>1;
-			y0 = devp->isp_af_parm->y - devp->isp_af_parm->radius>>1;
-			x1 = x0 + devp->isp_af_parm->radius;
-			y1 = y0 + devp->isp_af_parm->radius;
+			x0 = devp->isp_af_parm->x>devp->isp_af_parm->radius?devp->isp_af_parm->x-devp->isp_af_parm->radius:0;
+			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y>devp->isp_af_parm->radius:0;
+			x1 = devp->isp_af_parm->x + devp->isp_af_parm->radius;
+			y1 = devp->isp_af_parm->y + devp->isp_af_parm->radius;
 			isp_set_blenr_stat(x0,y0,x1,y1);
 			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
 			af_sm_init(devp);
