@@ -128,6 +128,7 @@ void isp_sm_init(isp_dev_t *devp)
 	sm_state.isp_ae_parm.isp_ae_enh_state = AE_ENH_INIT;
 	sm_state.isp_awb_parm.isp_awb_state = AWB_INIT;
 	sm_state.env = ENV_NULL;
+	sm_state.ae_down = true;
 	/*init for af*/
 	/*init for wave*/
 	sm_state.cap_sm.fr_time = devp->wave->flash_rising_time;
@@ -137,6 +138,8 @@ void isp_sm_init(isp_dev_t *devp)
 void af_sm_init(isp_dev_t *devp)
 {
 	/*init for af*/
+	if(sm_state.af_state)
+		devp->flag |= devp->af_info.flag_bk;
 	if(devp->flag & ISP_FLAG_TOUCH_AF){
     	sm_state.af_state = AF_INIT;
 		devp->af_info.f = devp->af_info.af_data;
@@ -144,7 +147,6 @@ void af_sm_init(isp_dev_t *devp)
 		sm_state.af_state = AF_DETECT_INIT;
 		devp->af_info.f = devp->af_info.af_detect;
 	}
-	
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
 }
@@ -996,7 +998,6 @@ void isp_af_sm(isp_dev_t *devp)
 	struct xml_algorithm_af_s *af_alg = devp->isp_af_parm;
 	struct isp_af_info_s *af_info = &devp->af_info;
 	struct isp_af_sm_s *sm = &sm_state.af_sm;
-	static unsigned int flag = 0;
 	unsigned long long fv_delta;
 	af_delay++;
 	
@@ -1004,9 +1005,9 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_INIT:
 			if((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down)){
 			/*awb brake,ae brake*/
-			flag = (devp->flag&ISP_FLAG_AWB)+(devp->flag&ISP_FLAG_AE);
+			af_info->flag_bk = (devp->flag&ISP_FLAG_AWB)+(devp->flag&ISP_FLAG_AE);
 			if(af_sm_dg&0x1)
-				pr_info("%s:ae,awb flag status 0x%x.\n",__func__,flag);
+				pr_info("%s:ae,awb flag status 0x%x.\n",__func__,af_info->flag_bk);
 			devp->flag &=(~ISP_FLAG_AWB);
 			devp->flag &=(~ISP_FLAG_AE);
 			af_info->f = af_info->af_data;
@@ -1072,13 +1073,13 @@ void isp_af_sm(isp_dev_t *devp)
 					pr_info("[af_sm..]:fv_delta %llu,fv_bf_af %llu.\n",fv_delta,af_info->fv_bf_af);
 				}
 				if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt++ < af_alg->af_retry_max)){
-					sm_state.af_state = AF_INIT;
+					sm_state.af_state = AF_GET_OLD_FV;
 					if(af_sm_dg&0x4)
 						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_alg->af_retry_cnt);
 				} else if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt > af_alg->af_retry_max)){
 		        	/*af failed over max times,force to step 0*/
 		                        /*enable awb,enable af*/
-				        devp->flag |=flag;
+				        devp->flag |= af_info->flag_bk;
 					af_info->cur_step = 0;
 					atomic_set(&af_info->writeable,1);
 					if(af_sm_dg&0x4)
@@ -1087,7 +1088,7 @@ void isp_af_sm(isp_dev_t *devp)
 					sm_state.af_state = AF_NULL;
 				} else {/*af success*/
 					/*enable awb,enable af*/
-				        devp->flag |=flag;
+				        devp->flag |= af_info->flag_bk;
 					af_alg->af_retry_cnt = 0;
 					sm_state.af_state = AF_NULL;
 				}

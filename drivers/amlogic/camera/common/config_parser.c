@@ -1133,7 +1133,7 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
         scene = para->xml_scenes;
         memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
         memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 97,104*sizeof(unsigned int));
-        memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
+       // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
     }else{
         para->xml_scenes = NULL;
     }

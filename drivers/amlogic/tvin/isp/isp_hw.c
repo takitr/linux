@@ -11,12 +11,17 @@
  */
 #include <mach/am_regs.h>
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/err.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include "isp_regs.h"
 #include "isp_hw.h"
 
 #define DEVICE_NAME "isp"
+
+static unsigned int gamma_enable = 1;
+module_param(gamma_enable,uint,0664);
+MODULE_PARM_DESC(gamma_enable,"\n enable/disable for gamma.\n");
 
 /*
 *reg 0x00~0x07
@@ -270,7 +275,8 @@ void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned
 	}
 	#endif
 	/*set lpf according to sd or hd*/
-	if((y1-y0) > 720)
+	WR_BITS(ISP_BLNR_CTRL,0,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
+	if(abs(y1-y0) > 720)
 		WR_BITS(ISP_BLNR_CTRL,3,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
 	else
 		WR_BITS(ISP_BLNR_CTRL,1,BLNR_LPF_MODE_BIT,BLNR_LPF_MODE_WID);
@@ -713,7 +719,7 @@ void set_isp_gamma_table(unsigned short *gamma,unsigned int type)
 	unsigned int flag = 0,i = 0; 
 
         // store gamma table enable/disable status
-        flag = RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+        flag = (RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID))|gamma_enable;
 
         // gamma table disable, gamma table vbus mode
         WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);

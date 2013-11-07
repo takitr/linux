@@ -28,7 +28,7 @@
 /* Amlogic Headers */
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
-
+#include <mach/vpu.h>
 /* Local Headers */
 #include "../tvin_global.h"
 #include "../tvin_frontend.h"
@@ -644,11 +644,15 @@ static int isp_thread(isp_dev_t *devp) {
 	}
 	if(ae_sens.send)
 	{
-		ae_sens.send = 0;
 		if(isp_debug)
 		printk("set new step %d \n",ae_sens.new_step);
 		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);		
+		{
+		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+		ae_sens.send = 0;
+		}
+		else
+		printk("set_aet_new_step fail!!!!!!!!!!!!!!\n");
 	}
 	if(devp->flag&ISP_FLAG_AF_DBG){
 		af_stat(devp->af_dbg,func);
@@ -714,6 +718,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		pr_info("[%s..]%s:get %s frontend error.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));		
 	}       
 	/*open the isp to vdin path,power on the isp hw module*/
+	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_ON);
         devp->cam_param = (cam_parameter_t*)parm->reserved;
 	if(IS_ERR_OR_NULL(devp->cam_param)){
 		pr_err("[%s..]%s camera parameter error use default 720x480 test pattern config.\n",DEVICE_NAME,__func__);
@@ -759,6 +764,7 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
+	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
         memset(&devp->info,0,sizeof(isp_info_t));
         /*close the isp to vdin path*/
 
@@ -864,10 +870,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
                 case CAM_COMMAND_TOUCH_WINDOW:
 			devp->isp_af_parm = &param->xml_scenes->af;
-			x0 = devp->isp_af_parm->x - devp->isp_af_parm->radius>>1;
-			y0 = devp->isp_af_parm->y - devp->isp_af_parm->radius>>1;
-			x1 = x0 + devp->isp_af_parm->radius;
-			y1 = y0 + devp->isp_af_parm->radius;
+			x0 = devp->isp_af_parm->x>devp->isp_af_parm->radius?devp->isp_af_parm->x-devp->isp_af_parm->radius:0;
+			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y>devp->isp_af_parm->radius:0;
+			x1 = devp->isp_af_parm->x + devp->isp_af_parm->radius;
+			y1 = devp->isp_af_parm->y + devp->isp_af_parm->radius;
 			isp_set_blenr_stat(x0,y0,x1,y1);
 			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
 			af_sm_init(devp);

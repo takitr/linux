@@ -121,6 +121,8 @@ static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
+static int capture_delay = 1500;
+module_param(capture_delay,int,0664);
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {
 	{
@@ -228,20 +230,28 @@ static struct v4l2_queryctrl ov5647_qctrl[] = {
 		.name		= "Rotate",
 		.minimum	= 0,
 		.maximum	= 270,
-		.step		= 90,
-		.default_value	= 0,
-		.flags         = V4L2_CTRL_FLAG_SLIDER,
-	},{
+        .step		= 90,
+        .default_value	= 0,
+        .flags         = V4L2_CTRL_FLAG_SLIDER,
+    },{
         .id            = V4L2_CID_AUTO_FOCUS_STATUS,
-        .type          = 8,//V4L2_CTRL_TYPE_BITMASK,
-        .name          = "focus status",
-        .minimum       = 0,
-        .maximum       = ~3,
-        .step          = 0x1,
-        .default_value = V4L2_AUTO_FOCUS_STATUS_IDLE,
-        .flags         = V4L2_CTRL_FLAG_READ_ONLY,
-	}
-
+            .type          = 8,//V4L2_CTRL_TYPE_BITMASK,
+            .name          = "focus status",
+            .minimum       = 0,
+            .maximum       = ~3,
+            .step          = 0x1,
+            .default_value = V4L2_AUTO_FOCUS_STATUS_IDLE,
+            .flags         = V4L2_CTRL_FLAG_READ_ONLY,
+    },{
+        .id		= V4L2_CID_FOCUS_ABSOLUTE,
+            .type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "focus center",
+		.minimum	= 0,
+		.maximum	= ((2000) << 16) | 2000,
+		.step		= 1,
+		.default_value	= (1000 << 16) | 1000,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+ 	}
 };
 
 static struct v4l2_frmivalenum ov5647_frmivalenum[]={
@@ -2239,6 +2249,53 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     OV5647_set_new_format(ov5647_h_active,ov5647_v_active,current_fr);// should set new para
 }    /* OV5647_set_resolution */
 
+static int set_focus_zone(struct ov5647_device *dev, int value)
+{
+	int xc, yc;
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	int retry_count = 10;
+	int ret = -1;
+	
+	xc = ((value >> 16) & 0xffff) * 80 / 2000;
+	yc = (value & 0xffff) * 60 / 2000;
+	printk("xc = %d, yc = %d\n", xc, yc);
+	
+	dev->cam_para->xml_scenes->af.x = xc;
+	dev->cam_para->xml_scenes->af.y = yc;	
+	dev->cam_para->xml_scenes->af.radius = 40;
+	dev->cam_para->xml_scenes->af.detect_step = 16;
+	dev->cam_para->xml_scenes->af.deta_ave_ratio = 10;
+	dev->cam_para->xml_scenes->af.af_fail_ratio = 20;
+	dev->cam_para->xml_scenes->af.af_retry_max = 2;
+	dev->cam_para->xml_scenes->af.step[0] = 100;
+	dev->cam_para->xml_scenes->af.step[1] = 150;
+	dev->cam_para->xml_scenes->af.step[2] = 200;
+	dev->cam_para->xml_scenes->af.step[3] = 250;
+	dev->cam_para->xml_scenes->af.step[4] = 290;
+	dev->cam_para->xml_scenes->af.step[5] = 330;
+	dev->cam_para->xml_scenes->af.step[6] = 370;
+	dev->cam_para->xml_scenes->af.step[7] = 400;		
+	dev->cam_para->xml_scenes->af.step[8] = 430;		
+	dev->cam_para->xml_scenes->af.step[9] = 460;
+	dev->cam_para->xml_scenes->af.step[10] = 480;		
+    dev->cam_para->xml_scenes->af.step[11] = 500;
+    dev->cam_para->xml_scenes->af.step[12] = 520;
+    dev->cam_para->xml_scenes->af.step[13] = 530;
+    dev->cam_para->xml_scenes->af.step[14] = 540;
+    dev->cam_para->xml_scenes->af.step[15] = 550;
+	dev->cam_para->xml_scenes->af.jump_offset = 100;
+	dev->cam_para->xml_scenes->af.field_delay = 1;
+	
+	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_WINDOW;
+	dev->fe_arg.port = TVIN_PORT_ISP;
+	dev->fe_arg.index = 0;
+	dev->fe_arg.arg = (void *)(dev->cam_para);
+	if(dev->vops != NULL){
+	  dev->vops->tvin_fe_func(0,&dev->fe_arg);
+	}
+	return 0;
+}
+
 unsigned char v4l_2_ov5647(int val)
 {
 	int ret=val/0x20;
@@ -2308,6 +2365,14 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 		if(ov5647_qctrl[11].default_value!=value){
 			ov5647_qctrl[11].default_value=value;
 			printk(" set camera  rotate =%d. \n ",value);
+		}
+		break;
+	case V4L2_CID_FOCUS_ABSOLUTE:
+		printk("V4L2_CID_FOCUS_ABSOLUTE\n");
+		if(ov5647_qctrl[13].default_value!=value){
+			ov5647_qctrl[13].default_value=value;
+			printk(" set camera  focus zone =%d. \n ",value);
+			set_focus_zone(dev, value);
 		}
 		break;
   case V4L2_CID_PRIVACY:       
@@ -2841,7 +2906,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.fmt = TVIN_SIG_FMT_MAX;
     para.frame_rate = ov5647_frmintervals_active.denominator;
     para.h_active = ov5647_h_active;
-    para.v_active = ov5647_v_active;
+    para.v_active = ov5647_v_active;// delete the last two line data
     if(is_capture == 0){
    		para.dest_hactive = dest_hactive;
    		para.dest_vactive = dest_vactive;
@@ -2871,8 +2936,8 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
     dev->cam_para->cam_mode = CAMERA_PREVIEW;	
 
-    printk("ov5647,h=%d, v=%d, frame_rate=%d\n", 
-            ov5647_h_active, ov5647_v_active, ov5647_frmintervals_active.denominator);
+    printk("ov5647,h=%d, v=%d, dest_h:%d, dest_v:%d,frame_rate=%d,\n", 
+            ov5647_h_active, ov5647_v_active, para.dest_hactive,para.dest_vactive,ov5647_frmintervals_active.denominator);
     ret =  videobuf_streamon(&fh->vb_vidq);
     if(ret == 0){
         dev->vops->start_tvin_service(0,&para);
@@ -2881,6 +2946,8 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
     OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
     OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
+    if(is_capture == 1)
+    	msleep(capture_delay);
     return ret;
 }
 

@@ -188,8 +188,8 @@ unsigned long   dest_addr )
                (post_endian<<4)  |
                (keytype<<8)  |
                (cryptodir<<10)|
-               (((mode==0)?0:1)<<11)|
-               (mode<<12);
+               (((restart)?1:0)<<11)|
+               (mode<<12);		
             break;    
         default:
             *p++ = 0;
@@ -365,9 +365,17 @@ static void set_aes_iv(unsigned long *iv)
     Wr(NDMA_AES_IV_2, *(iv+2));
     Wr(NDMA_AES_IV_3, *(iv+3));
 }
+
+static void set_aes_iv_big_endian(unsigned long *iv)
+{
+    Wr(NDMA_AES_IV_3, swap_ulong32(*iv));
+    Wr(NDMA_AES_IV_2, swap_ulong32(*(iv+1)));
+    Wr(NDMA_AES_IV_1, swap_ulong32(*(iv+2)));
+    Wr(NDMA_AES_IV_0, swap_ulong32(*(iv+3)));
+}
 //now only support decrypto
 unsigned int
-aml_aes_crypt(struct aml_crypto_ctx *op)
+aml_aes_crypt(struct aml_crypto_ctx *op, unsigned long restart)
 {
     unsigned long iflags;
     unsigned int tab_start;
@@ -399,8 +407,11 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     spin_lock_irqsave(&lock, iflags);
 
     set_aes_key(op->key, op->key_len);
-    if((op->mode == MODE_CBC )||(op->mode == MODE_CTR))
+    if (op->mode == MODE_CBC)
     	set_aes_iv(op->iv);
+    else if (op->mode == MODE_CTR) {
+        set_aes_iv_big_endian(op->iv);
+    }
     	                    	
     init_table_addr(op->threadidx);
 
@@ -416,7 +427,7 @@ aml_aes_crypt(struct aml_crypto_ctx *op)
     NDMA_add_descriptor_1d(
                         op->threadidx,              // unsigned long    thread_num
                         0,              // unsigned long   irq,
-                        0,              // unsigned long   restart
+                        restart,              // unsigned long   restart
                         0,              // 0 unsigned long   pre_endian,
                         0,              // unsigned long   post_endian,
                         type,              // unsigned long   keytype + cryptodir,
@@ -716,7 +727,7 @@ aml_ecb_aes_encrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_ENCRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, 0);
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);
@@ -753,7 +764,7 @@ aml_ecb_aes_decrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_DECRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, 0);
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);
@@ -823,6 +834,7 @@ aml_cbc_aes_encrypt(struct blkcipher_desc *desc,
     struct aml_crypto_ctx *op = crypto_blkcipher_ctx(desc->tfm);
     struct blkcipher_walk walk;
     int err=0, ret;
+    unsigned long restart = 1;
 
     if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
         printk("aml_cbc_aes key len is wrong.\n");
@@ -838,7 +850,8 @@ aml_cbc_aes_encrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_ENCRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, restart);
+        restart = 0;
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);
@@ -860,6 +873,7 @@ aml_cbc_aes_decrypt(struct blkcipher_desc *desc,
     struct aml_crypto_ctx *op = crypto_blkcipher_ctx(desc->tfm);
     struct blkcipher_walk walk;
     int err=0, ret;
+    unsigned long restart = 1;
 
     if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
         printk("aml_cbc_aes key len is wrong.\n");
@@ -875,7 +889,8 @@ aml_cbc_aes_decrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_DECRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, restart);
+        restart = 0;
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);
@@ -945,6 +960,7 @@ aml_ctr_aes_encrypt(struct blkcipher_desc *desc,
     struct blkcipher_walk walk;
     int err=0, ret;
 
+    unsigned long restart = 1;
     if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
         printk("aml_cbc_aes key len is wrong.\n");
         return 1;
@@ -959,7 +975,8 @@ aml_ctr_aes_encrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_ENCRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, restart);
+        restart = 0;
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);
@@ -981,6 +998,7 @@ aml_ctr_aes_decrypt(struct blkcipher_desc *desc,
     struct aml_crypto_ctx *op = crypto_blkcipher_ctx(desc->tfm);
     struct blkcipher_walk walk;
     int err=0, ret;
+    unsigned long restart = 1;
 
     if (op->key_len != AES_KEYSIZE_192 && op->key_len != AES_KEYSIZE_256 && op->key_len != AES_KEYSIZE_128) {
         printk("aml_cbc_aes key len is wrong.\n");
@@ -996,7 +1014,8 @@ aml_ctr_aes_decrypt(struct blkcipher_desc *desc,
         op->len = nbytes - (nbytes % AES_BLOCK_SIZE);
         op->dir = DIR_DECRYPT;
         op->threadidx = 0;
-        ret = aml_aes_crypt(op);
+        ret = aml_aes_crypt(op, restart);
+        restart = 0;
 
         nbytes -= ret;
         err = blkcipher_walk_done(desc, &walk, nbytes);

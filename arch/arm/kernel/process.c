@@ -80,7 +80,7 @@ void arch_trigger_all_cpu_backtrace(void)
 
 extern void call_with_stack(void (*fn)(void *), void *arg, void *sp);
 typedef void (*phys_reset_t)(unsigned long);
-
+#define CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART
 #ifdef CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART
 void arm_machine_flush_console(void)
 {
@@ -661,7 +661,7 @@ int in_gate_area_no_mm(unsigned long addr)
 {
 	return in_gate_area(NULL, addr);
 }
-#define is_gate_vma(vma)	((vma) = &gate_vma)
+#define is_gate_vma(vma)	((vma) == &gate_vma)
 #else
 #define is_gate_vma(vma)	0
 #endif
