@@ -80,7 +80,7 @@ void arch_trigger_all_cpu_backtrace(void)
 
 extern void call_with_stack(void (*fn)(void *), void *arg, void *sp);
 typedef void (*phys_reset_t)(unsigned long);
-
+#define CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART
 #ifdef CONFIG_ARM_FLUSH_CONSOLE_ON_RESTART
 void arm_machine_flush_console(void)
 {
