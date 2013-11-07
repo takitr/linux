@@ -28,7 +28,7 @@
 /* Amlogic Headers */
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
-
+#include <mach/vpu.h>
 /* Local Headers */
 #include "../tvin_global.h"
 #include "../tvin_frontend.h"
@@ -714,6 +714,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		pr_info("[%s..]%s:get %s frontend error.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));		
 	}       
 	/*open the isp to vdin path,power on the isp hw module*/
+	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_ON);
         devp->cam_param = (cam_parameter_t*)parm->reserved;
 	if(IS_ERR_OR_NULL(devp->cam_param)){
 		pr_err("[%s..]%s camera parameter error use default 720x480 test pattern config.\n",DEVICE_NAME,__func__);
@@ -759,6 +760,7 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
+	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
         memset(&devp->info,0,sizeof(isp_info_t));
         /*close the isp to vdin path*/
 
