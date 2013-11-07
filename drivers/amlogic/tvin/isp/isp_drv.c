@@ -644,11 +644,15 @@ static int isp_thread(isp_dev_t *devp) {
 	}
 	if(ae_sens.send)
 	{
-		ae_sens.send = 0;
 		if(isp_debug)
 		printk("set new step %d \n",ae_sens.new_step);
 		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);		
+		{
+		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+		ae_sens.send = 0;
+		}
+		else
+		printk("set_aet_new_step fail!!!!!!!!!!!!!!\n");
 	}
 	if(devp->flag&ISP_FLAG_AF_DBG){
 		af_stat(devp->af_dbg,func);
