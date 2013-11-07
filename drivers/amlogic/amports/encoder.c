@@ -1015,20 +1015,26 @@ static s32 avc_poweron(void)
 	udelay(10);
 	// Powerup HCODEC
 	data32 = READ_AOREG(AO_RTI_GEN_PWR_SLEEP0); // [1:0] HCODEC
-	data32 = data32 & (~0x3);
+	data32 = data32 & (~0x3); 
 	WRITE_AOREG(AO_RTI_GEN_PWR_SLEEP0, data32);
 	udelay(10);
 #endif
+
+	WRITE_VREG(DOS_SW_RESET1, 0xffffffff);
+	WRITE_VREG(DOS_SW_RESET1, 0);
+
 	// Enable Dos internal clock gating
 	hvdec_clock_enable();
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	//Powerup HCODEC memories
+	WRITE_VREG(DOS_MEM_PD_HCODEC, 0x0);
+
 	// Remove HCODEC ISO
-	data32 = READ_AOREG(AO_RTI_GEN_PWR_ISO0);
+	data32 = READ_AOREG(AO_RTI_GEN_PWR_ISO0); 
 	data32 = data32 & (~(0x30));
 	WRITE_AOREG(AO_RTI_GEN_PWR_ISO0, data32);
 	udelay(10);
-	//Powerup HCODEC memories
-	WRITE_VREG(DOS_MEM_PD_HCODEC, 0x0);
+
 	// Disable auto-clock gate
 	data32 = READ_VREG(DOS_GEN_CTRL0);
 	data32 = data32 | 0x1;
@@ -1037,6 +1043,7 @@ static s32 avc_poweron(void)
 	data32 = data32 & 0xFFFFFFFE;
 	WRITE_VREG(DOS_GEN_CTRL0, data32);
 #endif
+	mdelay(10);
 	return 0;
 }
 

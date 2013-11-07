@@ -126,8 +126,19 @@ static struct v4l2_fract amlvideo2_frmintervals_active = {
 
 static struct vdin_v4l2_ops_s vops;
 /* supported controls */
-//static struct v4l2_queryctrl amlvideo2_node_qctrl[] = {
-//};
+static struct v4l2_queryctrl amlvideo2_node_qctrl[] = {
+	{
+		.id		= V4L2_CID_ROTATE,
+		.type		= V4L2_CTRL_TYPE_INTEGER,
+		.name		= "Rotate",
+		.minimum	= 0,
+		.maximum	= 270,
+		.step		= 90,
+		.default_value	= 0,
+		.flags         = V4L2_CTRL_FLAG_SLIDER,
+	}
+};
+
 static struct v4l2_frmivalenum amlvideo2_frmivalenum[]={
     {
         .index      = 0,
@@ -294,7 +305,8 @@ struct amlvideo2_node {
 	struct amlvideo2_node_dmaqueue       vidq;
 
 	/* Control 'registers' */
-	//int 			   qctl_regs[ARRAY_SIZE(amlvideo2_node_qctrl[0])];
+	int 			   qctl_regs[ARRAY_SIZE(amlvideo2_node_qctrl)];
+
 	struct videobuf_res_privdata res;
 	struct vframe_receiver_s recv;
 	//struct vframe_provider_s * provider;
@@ -324,6 +336,7 @@ struct amlvideo2_output {
 	int width;
 	int height;
 	u32 v4l2_format;
+	int angle;
 };
 
 static struct v4l2_frmsize_discrete amlvideo2_prev_resolution[]= 
@@ -543,7 +556,7 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 	src_height = vf->height;
 
 	current_mirror = 0;
-	cur_angle = 0;
+	cur_angle = output->angle;
 	if(current_mirror == 1)
 		cur_angle = (360 - cur_angle%360);
 	else
@@ -754,6 +767,7 @@ static int amlvideo2_fillbuff(struct amlvideo2_fh *fh, struct amlvideo2_node_buf
 	output.width = buf->vb.width;
 	output.height = buf->vb.height;
 	output.canvas_id = buf->canvas_id;
+	output.angle = node->qctl_regs[0];
 
 	magic = MAGIC_RE_MEM;
 	switch(magic){
@@ -1530,56 +1544,67 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id *i)
 }
 
 /* --- controls ---------------------------------------------- */
+
+static int amlvideo2_setting(struct amlvideo2_node *node,int PROP_ID,int value,int index) 
+{
+	int ret=0;
+	switch(PROP_ID)  {
+	case V4L2_CID_ROTATE:
+		if(node->qctl_regs[index]!=value){
+			node->qctl_regs[index]=value;
+		}
+		break;
+	default:
+		ret=-1;
+		break;
+	}
+	return ret;
+    
+}
+
 static int vidioc_queryctrl(struct file *file, void *priv,
 			    struct v4l2_queryctrl *qc)
 {
-	//int i;
-	//struct amlvideo2_fh  *fh  = priv;
-	//struct amlvideo2_node *node = fh->node;
-#if 0
-	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl[0]); i++)
-		if (qc->id && qc->id == amlvideo2_node_qctrl[node->vid][i].id) {
-			memcpy(qc, &(amlvideo2_node_qctrl[node->vid][i]),
+	int i;
+	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl); i++)
+		if (qc->id && qc->id == amlvideo2_node_qctrl[i].id) {
+			memcpy(qc, &(amlvideo2_node_qctrl[i]),
 				sizeof(*qc));
 			return (0);
 		}
-#endif
 	return -EINVAL;
 }
 
 static int vidioc_g_ctrl(struct file *file, void *priv,
 			 struct v4l2_control *ctrl)
 {
-	//int i;
-	//struct amlvideo2_fh  *fh  = priv;
-	//struct amlvideo2_node *node = fh->node;
-#if 0
-	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl[0]); i++)
-		if (ctrl->id == amlvideo2_node_qctrl[node->vid][i].id) {
+	int i;
+	struct amlvideo2_fh  *fh  = priv;
+	struct amlvideo2_node *node = fh->node;
+	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl); i++)
+		if (ctrl->id == amlvideo2_node_qctrl[i].id) {
 			ctrl->value = node->qctl_regs[i];
 			return 0;
 		}
-#endif
 	return -EINVAL;
 }
 
 static int vidioc_s_ctrl(struct file *file, void *priv,
 				struct v4l2_control *ctrl)
 {
-	//int i;
-	//struct amlvideo2_fh  *fh  = priv;
-	//struct amlvideo2_node *node = fh->node;
-#if 0
-	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl[0]); i++)
-		if (ctrl->id == amlvideo2_node_qctrl[node->vid][i].id) {
-			if (ctrl->value < amlvideo2_node_qctrl[node->vid][i].minimum ||
-			    ctrl->value > amlvideo2_node_qctrl[node->vid][i].maximum) {
+	int i;
+	struct amlvideo2_fh  *fh  = priv;
+	struct amlvideo2_node *node = fh->node;
+	for (i = 0; i < ARRAY_SIZE(amlvideo2_node_qctrl); i++)
+		if (ctrl->id == amlvideo2_node_qctrl[i].id) {
+			if (ctrl->value < amlvideo2_node_qctrl[i].minimum ||
+			    ctrl->value > amlvideo2_node_qctrl[i].maximum||
+			    amlvideo2_setting(node,ctrl->id,ctrl->value,i)<0)  {
 				return -ERANGE;
 			}
-			node->qctl_regs[i] = ctrl->value;
+			//node->qctl_regs[i] = ctrl->value;
 			return 0;
 		}
-#endif
 	return -EINVAL;
 }
 
@@ -1786,7 +1811,7 @@ static int amlvideo2_release_node(struct amlvideo2_device *vid_dev)
 
 static int amlvideo2_create_node(struct platform_device *pdev)
 {
-	int ret = 0, i = 0;
+	int ret = 0, i = 0, j = 0;
 	struct video_device *vfd = NULL;
 	struct amlvideo2_node* vid_node = NULL;
 	struct resource *res = NULL;
@@ -1847,8 +1872,8 @@ static int amlvideo2_create_node(struct platform_device *pdev)
 		video_set_drvdata(vfd, vid_node);
 
 		/* Set all controls to their default value. */
-		//for (j = 0; j < ARRAY_SIZE(amlvideo2_node_qctrl[0]); j++)
-		//	vid_node->qctl_regs[i] = amlvideo2_node_qctrl[i][j].default_value;
+		for (j = 0; j < ARRAY_SIZE(amlvideo2_node_qctrl); j++)
+			vid_node->qctl_regs[j] = amlvideo2_node_qctrl[j].default_value;
 
 		vid_node->vfd = vfd;
 		vid_node->vid = i;
