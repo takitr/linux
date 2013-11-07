@@ -9,7 +9,7 @@
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 
 #define EFFECT_MAX 16
-#define AET_MAX 16
+#define AET_MAX 32
 #define HW_MAX 16
 #define WB_MAX 9
 #define CAPTURE_MAX 5
