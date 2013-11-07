@@ -121,7 +121,7 @@ static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
-static int capture_delay = 1000;
+static int capture_delay = 1500;
 module_param(capture_delay,int,0664);
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {
@@ -2906,7 +2906,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.fmt = TVIN_SIG_FMT_MAX;
     para.frame_rate = ov5647_frmintervals_active.denominator;
     para.h_active = ov5647_h_active;
-    para.v_active = ov5647_v_active - 2;// delete the last two line data
+    para.v_active = ov5647_v_active;// delete the last two line data
     if(is_capture == 0){
    		para.dest_hactive = dest_hactive;
    		para.dest_vactive = dest_vactive;
@@ -2936,8 +2936,8 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
     dev->cam_para->cam_mode = CAMERA_PREVIEW;	
 
-    printk("ov5647,h=%d, v=%d, frame_rate=%d\n", 
-            ov5647_h_active, ov5647_v_active, ov5647_frmintervals_active.denominator);
+    printk("ov5647,h=%d, v=%d, dest_h:%d, dest_v:%d,frame_rate=%d,\n", 
+            ov5647_h_active, ov5647_v_active, para.dest_hactive,para.dest_vactive,ov5647_frmintervals_active.denominator);
     ret =  videobuf_streamon(&fh->vb_vidq);
     if(ret == 0){
         dev->vops->start_tvin_service(0,&para);
