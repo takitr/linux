@@ -229,12 +229,9 @@ static int aml_sensor_probe(struct platform_device *pdev)
             sensor_pdata[curr_idx++].client = i2c_new_device(adapter, &i2c_info);
             if(sensor_pdata[curr_idx-1].client == 0)
             {
-                pr_err("chris failed to create new i2c dev %s\n", i2c_info.type);
+                pr_err("Failed to create new i2c dev %s\n", i2c_info.type);
             }
-            else
-            {
-                pr_info("chris creating i2c dev %s\n", i2c_info.type);
-            }
+
             if(curr_idx>=MAX_SENSOR_ONBOARD)
             {
                pr_err("%s: Warning!!! Not enough slots in sensor_pdata array\n", __func__);

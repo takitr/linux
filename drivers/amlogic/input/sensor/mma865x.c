@@ -436,7 +436,6 @@ static int mma865x_probe(struct i2c_client *client,
 	struct input_polled_dev *poll_dev;
 
 
-    pr_info(" ######################### chris probing 865x");
 	adapter = to_i2c_adapter(client->dev.parent);
 	result = i2c_check_functionality(adapter,
 					 I2C_FUNC_SMBUS_BYTE |
