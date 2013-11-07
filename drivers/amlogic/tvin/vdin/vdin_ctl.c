@@ -2396,7 +2396,8 @@ static struct vdin_cm2_s vdin_cm2_table[CM2_REG_NUM] = {
 void vdin_set_cm2(unsigned int offset,unsigned int index)
 {
 	unsigned int i=0,cursor=0;
-	pr_info("%s:vdin cm2 use %s configuration.\n",index?"optimize":"enhancement");
+	pr_info("%s:vdin.%u cm2 use %s configuration.\n",__func__,offset,index?"optimize":"enhancement");
+	WR_BITS(VDIN_CM_BRI_CON_CTRL,0,CM_TOP_EN_BIT,CM_TOP_EN_WID);
 	for(i=0;i<CM2_REG_NUM;i++){
 		cursor = i+index*CM2_REG_NUM;
 		WR(VDIN_CHROMA_ADDR_PORT,vdin_cm2_table[cursor].addr);

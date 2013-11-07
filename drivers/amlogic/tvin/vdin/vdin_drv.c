@@ -46,6 +46,7 @@
 #include <linux/amlogic/aml_common.h>
 #include <mach/irqs.h>
 #include <mach/mod_gate.h>
+#include <mach/vpu.h>
 /* Local Headers */
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"
@@ -527,12 +528,14 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	        sm_ops = devp->frontend->sm_ops;
 	        sm_ops->get_sig_propery(devp->frontend, &devp->prop);
         }
+	
 	vdin_get_format_convert(devp);
 	devp->curr_wr_vfe = NULL;
 	/* h_active/v_active will be recalculated by bellow calling */
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
 	vdin_set_hvscale(devp);
+	vdin_set_cm2(devp->addr_offset,0);
         /*reverse / disable reverse write buffer*/
         vdin_wr_reverse(devp->addr_offset,reverse_flag,reverse_flag);
 
@@ -583,6 +586,9 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
         devp->curr_field_type = vdin_get_curr_field_type(devp);
 	//pr_info("start clean_counter is %d\n",clean_counter);
 	/* configure regs and enable hw */
+	#ifdef CONFIG_ARCH_MESON8
+	switch_vpu_mem_pd_vmod(devp->addr_offset?VPU_VIU_VDIN1:VPU_VIU_VDIN0,VPU_MEM_POWER_ON);
+	#endif
 	vdin_hw_enable(devp->addr_offset);
 	vdin_set_all_regs(devp);
 
@@ -628,8 +634,10 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 	vdin_hw_disable(devp->addr_offset);
 	disable_irq_nosync(devp->irq);
 	/* reset default canvas  */
-	vdin_set_def_wr_canvas(devp);
-
+	vdin_set_def_wr_canvas(devp);	
+	#ifdef CONFIG_ARCH_MESON8
+	switch_vpu_mem_pd_vmod(devp->addr_offset?VPU_VIU_VDIN1:VPU_VIU_VDIN0,VPU_MEM_POWER_DOWN);
+	#endif
 	memset(&devp->prop, 0, sizeof(struct tvin_sig_property_s));
 	ignore_frames = 0;
 	devp->cycle = 0;
@@ -2507,7 +2515,11 @@ static ssize_t vdin_cm2_store(struct device *dev,
 	}else if(!strcmp(parm[0],"config")){
 		val = simple_strtol(parm[1],NULL,10);
 		vdin_set_cm2(devp->addr_offset,val);
-	}else {
+	} else if (!strcmp(parm[0],"enable")){
+		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,1,CM_TOP_EN_BIT,CM_TOP_EN_WID);
+	}else if (!strcmp(parm[0],"disable")){
+		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,0,CM_TOP_EN_BIT,CM_TOP_EN_WID);
+	} else {
 		pr_info("invalid command\n");
 		pr_info("please: cat /sys/class/vdin/vdin0/bit");
 	}
