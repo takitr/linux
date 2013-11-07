@@ -48,6 +48,7 @@ static void meson_map_board_io(void);
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 extern void __init meson_timer_init(void);
+void backup_cpu_entry_code(void);
 
 static __init void meson8_reserve(void)
 {
@@ -95,6 +96,7 @@ static __init void meson_init_machine_devicetree(void)
 #ifdef CONFIG_OF_LM
 	of_lm_populate(NULL,m8_of_lm_bus_ids,NULL,NULL);
 #endif
+
 }
 
 int meson_cache_of_init(void);
@@ -120,6 +122,7 @@ static __init void meson_init_early(void)
 static void __init meson_init_irq(void)
 {
 	meson_init_gic_irq();
+	backup_cpu_entry_code();
 }
 static const char *m8_common_board_compat[] __initdata = {
 	"AMLOGIC,8726_M8",

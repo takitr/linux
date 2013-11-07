@@ -29,11 +29,44 @@
 
 static DEFINE_SPINLOCK(boot_lock);
 
+static unsigned int cpu_entry_code[16];
 /*
  * Write pen_release in a way that is guaranteed to be visible to all
  * observers, irrespective of whether they're taking part in coherency
  * or not.  This is necessary for the hotplug code to work reliably.
  */
+void __init backup_cpu_entry_code(void)
+{
+	unsigned int* p = 0xc0000000;
+	unsigned int i;
+	unsigned int count = sizeof(cpu_entry_code)/sizeof(cpu_entry_code[0]);
+	for(i=0; i<count; i++)
+		cpu_entry_code[i] = p[i];
+}
+
+static void check_and_rewrite_cpu_entry(void)
+{
+	unsigned int i;
+	unsigned int *p=0xc0000000;
+	int changed=0;
+	unsigned int count=sizeof(cpu_entry_code)/sizeof(cpu_entry_code[0]);
+	for(i=0; i<count; i++){
+		if(cpu_entry_code[i] != p[i]){
+			changed=1;
+			break;
+		}
+	}
+	if(changed != 0){
+		printk("!!!CPU boot warning: cpu entry code has been changed!\n");
+		for(i=0, p=0xc0000000; i<count; i++)
+			p[i]=cpu_entry_code[i];
+
+		smp_wmb();
+		__cpuc_flush_dcache_area((void *)p, sizeof(cpu_entry_code));
+		outer_clean_range(__pa(p), __pa(p+count));
+	}
+}
+
 static void write_pen_release(int val)
 {
 	pen_release = val;
@@ -97,6 +130,7 @@ int __cpuinit meson_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	printk("write pen_release: %d\n",cpu_logical_map(cpu));
 	write_pen_release(cpu_logical_map(cpu));
 
+	check_and_rewrite_cpu_entry();
 	meson_set_cpu_power_ctrl(cpu, 1);
 	meson_secondary_set(cpu);
 	dsb_sev();
