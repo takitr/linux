@@ -190,7 +190,7 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 	int i;
 
 	if (!all_cpus) {
-		__gov_queue_work(smp_processor_id(), dbs_data, delay);
+		__gov_queue_work(policy->cpu, dbs_data, delay);
 	} else {
 		for_each_cpu(i, policy->cpus)
 			__gov_queue_work(i, dbs_data, delay);
@@ -207,6 +207,9 @@ static inline void gov_cancel_work(struct dbs_data *dbs_data,
 	for_each_cpu(i, policy->cpus) {
 		cdbs = dbs_data->cdata->get_cpu_cdbs(i);
 		cancel_delayed_work_sync(&cdbs->work);
+		if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			break;
+		}
 	}
 }
 
@@ -390,8 +393,13 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 					kcpustat_cpu(j).cpustat[CPUTIME_NICE];
 
 			mutex_init(&j_cdbs->timer_mutex);
-			INIT_DEFERRABLE_WORK(&j_cdbs->work,
-					     dbs_data->cdata->gov_dbs_timer);
+			if(dbs_data->cdata->governor == GOV_HOTPLUG){
+				if(j == policy->cpu)
+					INIT_DEFERRABLE_WORK(&j_cdbs->work,
+								 dbs_data->cdata->gov_dbs_timer);
+			}else
+				INIT_DEFERRABLE_WORK(&j_cdbs->work,
+							 dbs_data->cdata->gov_dbs_timer);
 		}
 
 		/*
@@ -426,9 +434,14 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 
 		/* Initiate timer time stamp */
 		cpu_cdbs->time_stamp = ktime_get();
+		if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			gov_queue_work(dbs_data, policy,
+					delay_for_sampling_rate(sampling_rate), false);
+		}
+		else
+			gov_queue_work(dbs_data, policy,
+					delay_for_sampling_rate(sampling_rate), true);
 
-		gov_queue_work(dbs_data, policy,
-				delay_for_sampling_rate(sampling_rate), true);
 		break;
 
 	case CPUFREQ_GOV_STOP:
