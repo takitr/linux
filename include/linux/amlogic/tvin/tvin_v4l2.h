@@ -335,10 +335,10 @@ typedef struct xml_algorithm_ae_s {
         unsigned int  targetmid;  // 0 ~ 255
         unsigned int  targetlow;  // 0 ~ 255
         unsigned int  radium_inner_h;  // 0 ~ 255
-        unsigned int  radium_outer_h;  // 0 ~ 255
         unsigned int  radium_inner_m;  // 0 ~ 255
-        unsigned int  radium_outer_m;  // 0 ~ 255
         unsigned int  radium_inner_l;  // 0 ~ 255
+        unsigned int  radium_outer_h;  // 0 ~ 255
+        unsigned int  radium_outer_m;  // 0 ~ 255
         unsigned int  radium_outer_l;  // 0 ~ 255
         unsigned int  flash_thr;       // 0 ~ 255 
 
