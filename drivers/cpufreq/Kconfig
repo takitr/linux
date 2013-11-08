@@ -181,6 +181,7 @@ config CPU_FREQ_GOV_HOTPLUG
 	depends on SMP
 	default y
 	help
+
 config CPU_FREQ_GOV_INTERACTIVE
 	tristate "'interactive' cpufreq policy governor"
 	help

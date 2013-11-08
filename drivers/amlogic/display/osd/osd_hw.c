@@ -1049,10 +1049,12 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 		if(index == OSD1){
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
 			VSYNCOSD_CLR_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
+			VSYNCOSD_SET_MPEG_REG_MASK(VIU_OSD1_FIFO_CTRL_STAT, 1<<0);
 			memcpy(&osd_hw.dispdata[index],&save_disp_data,sizeof(dispdata_t));
 		}else{
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_SW_RESET, 1<<1);
 			VSYNCOSD_CLR_MPEG_REG_MASK(VIU_SW_RESET, 1<<1);
+			VSYNCOSD_SET_MPEG_REG_MASK(VIU_OSD2_FIFO_CTRL_STAT, 1<<0);
 			memcpy(&osd_hw.dispdata[index],&save_disp_data2,sizeof(dispdata_t));
 		}
 	}

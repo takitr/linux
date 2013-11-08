@@ -1286,7 +1286,7 @@ static inline ulong vdin_reg_limit(ulong val, ulong wid)
 
 void vdin_set_all_regs(struct vdin_dev_s *devp)
 {
-	unsigned int offset = devp->addr_offset;
+
 	/* matrix sub-module */
 	vdin_set_color_matrix0(devp->addr_offset, devp->fmt_info_p, devp->format_convert);
 
@@ -1308,8 +1308,6 @@ void vdin_set_all_regs(struct vdin_dev_s *devp)
 	/*  */
 
 	vdin_set_meas_mux(devp->addr_offset, devp->parm.port);
-	if(devp->parm.port == TVIN_PORT_ISP)
-		WR_BITS(VDIN_WR_V_START_END, 2, WR_VSTART_BIT, WR_VSTART_WID);
 
 }
 

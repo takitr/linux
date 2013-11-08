@@ -531,9 +531,6 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	
 	vdin_get_format_convert(devp);
 	devp->curr_wr_vfe = NULL;
-	if(devp->parm.port == TVIN_PORT_ISP){
-		devp->v_active -= 2;
-	}
 	/* h_active/v_active will be recalculated by bellow calling */
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
@@ -541,6 +538,7 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_set_cm2(devp->addr_offset,0);
         /*reverse / disable reverse write buffer*/
         vdin_wr_reverse(devp->addr_offset,reverse_flag,reverse_flag);
+
 	/* h_active/v_active will be used by bellow calling */
 	if (canvas_config_mode == 1) {
 		vdin_canvas_start_config(devp);

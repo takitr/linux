@@ -943,10 +943,12 @@ void osd_ext_set_osd_ext_rotate_on_hw(u32 index, u32 on_off)
 		if(index == OSD1){
 			aml_set_reg32_mask(P_VIU2_SW_RESET, 1<<0);
 			aml_clr_reg32_mask(P_VIU2_SW_RESET, 1<<0);
+			aml_set_reg32_mask(P_VIU2_OSD1_FIFO_CTRL_STAT, 1<<0);
 			memcpy(&osd_ext_hw.dispdata[index],&save_disp_data,sizeof(dispdata_t));
 		}else{
 			aml_set_reg32_mask(P_VIU2_SW_RESET, 1<<1);
 			aml_clr_reg32_mask(P_VIU2_SW_RESET, 1<<1);
+			aml_set_reg32_mask(P_VIU2_OSD1_FIFO_CTRL_STAT, 1<<0);
 			memcpy(&osd_ext_hw.dispdata[index],&save_disp_data2,sizeof(dispdata_t));
 		}
 	}
