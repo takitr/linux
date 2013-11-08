@@ -1167,6 +1167,7 @@ sdio{
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_U32 = "address"
 //$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_U32 = "acc_dir"
         mma8452{
             dev_name = "mma8452";
             status = "okay";
@@ -1179,6 +1180,7 @@ sdio{
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_U32 = "address"
 //$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_U32 = "acc_dir"
         mma865x{
             dev_name = "mma865x";
             status = "okay";
