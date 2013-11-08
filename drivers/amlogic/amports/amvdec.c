@@ -138,7 +138,7 @@ static void amvdec2_pg_enable(bool enable)
 {
     ulong timeout;
     if(!vdec_on(VDEC_2))
-        return 0;
+        return;
     if (enable) {
 //        WRITE_VREG(VDEC2_GCLK_EN, 0x3ff);
     } else {
