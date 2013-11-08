@@ -557,13 +557,21 @@ const u32 fix_mc[] __attribute__ ((aligned (8))) = {
     0x0809c05a, 0x06696000, 0x0c780000, 0x00000000
 };
 
-static void vdec_dos_top_reg_fix(void)
+void vdec_dos_top_reg_fix(void)
 {
+    bool hcodec_on = vdec_on(VDEC_HCODEC);
+
+    if ((hcodec_on) && (READ_VREG(HCODEC_MPSR) & 1)) {
+        return;
+    }
+
     /* this function should be called only once after power on
      * to work around a HW bug for dual video decoders access
      * DOS top level CBUS registers
      */
-    vdec_poweron(VDEC_HCODEC);
+    if (!hcodec_on) {
+        vdec_poweron(VDEC_HCODEC);
+    }
 
     amhcodec_loadmc(fix_mc);
 
@@ -573,7 +581,9 @@ static void vdec_dos_top_reg_fix(void)
 
     amhcodec_stop();
 
-    vdec_poweroff(VDEC_HCODEC);
+    if (!hcodec_on) {
+        vdec_poweroff(VDEC_HCODEC);
+    }
 }
 #endif
 

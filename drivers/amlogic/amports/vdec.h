@@ -44,6 +44,7 @@ extern void vdec2_power_mode(int level);
 extern void vdec_poweron(vdec_type_t core);
 extern void vdec_poweroff(vdec_type_t core);
 extern bool vdec_on(vdec_type_t core);
+extern void vdec_dos_top_reg_fix(void);
 #else
 #define vdec_poweron(core)
 #define vdec_poweroff(core)

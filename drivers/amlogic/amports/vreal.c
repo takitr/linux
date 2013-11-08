@@ -31,6 +31,7 @@
 #include <plat/io.h>
 #include <linux/dma-mapping.h>
 #include <linux/amlogic/amports/amstream.h>
+#include <linux/amlogic/amports/vformat.h>
 #include <linux/amlogic/amports/ptsserv.h>
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
@@ -40,6 +41,7 @@
 
 #include <asm/uaccess.h>
 
+#include "vdec.h"
 #include "vdec_reg.h"
 #include "vreal.h"
 #include "amvdec.h"
@@ -848,6 +850,10 @@ static int amvdec_real_remove(struct platform_device *pdev)
     }
 
     amvdec_disable();
+
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    vdec_dos_top_reg_fix();
+#endif
 
     printk("frame duration %d, frames %d\n", frame_dur, frame_count);
     return 0;
