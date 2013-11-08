@@ -707,9 +707,13 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 	//disable cut window?
 	devp->parm.cutwin.he = 0;
 	devp->parm.cutwin.hs = 0;
-	devp->parm.cutwin.ve = 0;
-	devp->parm.cutwin.vs = 0;
-        
+	if(para->port == TVIN_PORT_ISP) {
+		devp->parm.cutwin.ve = 2;
+		devp->parm.cutwin.vs = 2;
+	} else {
+		devp->parm.cutwin.ve = 0;
+		devp->parm.cutwin.vs = 0;
+	}
         /*add for scaler down*/
 	devp->scaler4w = para->dest_hactive;
 	devp->scaler4h = para->dest_vactive;
