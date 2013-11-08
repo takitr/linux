@@ -48,12 +48,13 @@ int32_t nand_secure_write(struct amlnand_chip * aml_chip, char *buf,int len)
 		return -EFAULT;
 	}
 	
-	amlnand_get_device(aml_chip, CHIP_READING);
 	secure_ptr = kzalloc(CONFIG_SECURE_SIZE, GFP_KERNEL);
 	if(secure_ptr == NULL)
 		return -ENOMEM;
+	
 	memset(secure_ptr,0,CONFIG_SECURE_SIZE);
 	memcpy(secure_ptr->data + 0, buf, len);
+	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	error = amlnand_save_info_by_name(aml_chip, &(aml_chip->nand_secure),secure_ptr,SECURE_INFO_HEAD_MAGIC, CONFIG_SECURE_SIZE);
 	if (error) 

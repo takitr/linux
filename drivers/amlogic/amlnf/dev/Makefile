@@ -4,6 +4,7 @@ obj-$(CONFIG_AML_NEXT_GEN_NAND)	+= amlnf_api.o
 amlnf_api-objs =
 amlnf_api-objs += amlnf_ctrl.o
 amlnf_api-objs += amlnf_dev.o
+amlnf_api-objs += amlnf_env.o
 amlnf_api-objs += phydev.o
 
 

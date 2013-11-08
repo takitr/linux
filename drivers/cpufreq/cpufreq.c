@@ -821,10 +821,10 @@ static int cpufreq_add_policy_cpu(unsigned int cpu, unsigned int sibling,
 	policy = cpufreq_cpu_get(sibling);
 	WARN_ON(!policy);
 
+	lock_policy_rwsem_write(sibling);
 	if (has_target)
 		__cpufreq_governor(policy, CPUFREQ_GOV_STOP);
 
-	lock_policy_rwsem_write(sibling);
 
 	write_lock_irqsave(&cpufreq_driver_lock, flags);
 

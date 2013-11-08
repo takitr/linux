@@ -444,6 +444,8 @@ static int amlnf_init(struct platform_device *pdev)
 		return 0;
 	}
 
+    INIT_LIST_HEAD (&nphy_dev_list);
+    
 #ifdef CONFIG_OF
 
 	pdev->dev.platform_data = aml_get_driver_data(pdev);

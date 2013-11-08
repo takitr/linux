@@ -574,19 +574,19 @@ void vdin_set_cutwin(struct vdin_dev_s *devp)
 	unsigned int offset = devp->addr_offset;
 	unsigned int he = 0,ve = 0;
 
-#if 0
-	if (0)/*((devp->parm.cutwin.hs) ||
+#if 1
+	if (((devp->parm.cutwin.hs) ||
 				(devp->parm.cutwin.he) ||
 				(devp->parm.cutwin.vs) ||
 				(devp->parm.cutwin.ve)
 	    )                                                                     &&
-			((devp->h_active - devp->parm.cutwin.hs - devp->parm.cutwin.he) > 0) &&
-			((devp->v_active - devp->parm.cutwin.vs - devp->parm.cutwin.ve) > 0) &&
-			(devp->parm.info.fmt > TVIN_SIG_FMT_VGA_MAX)
-	   )*/
+			(devp->h_active > (devp->parm.cutwin.hs + devp->parm.cutwin.he)) &&
+			(devp->v_active > (devp->parm.cutwin.vs + devp->parm.cutwin.ve)) &&
+			(devp->parm.port == TVIN_PORT_ISP)
+	   )
 	{
-		devp->h_active -= devp->parm.cutwin.he + devp->parm.cutwin.hs;
-		devp->v_active -= devp->parm.cutwin.ve + devp->parm.cutwin.vs;
+		devp->h_active -= (devp->parm.cutwin.he + devp->parm.cutwin.hs);
+		devp->v_active -= (devp->parm.cutwin.ve + devp->parm.cutwin.vs);
 		he = devp->parm.cutwin.hs + devp->h_active - 1;
 		ve = devp->parm.cutwin.vs + devp->v_active - 1;
 #ifdef TVAFE_SET_CVBS_MANUAL_FMT_POS
@@ -616,9 +616,10 @@ void vdin_set_cutwin(struct vdin_dev_s *devp)
 		pr_info("%s enable cutwin hs = %d, he = %d,  vs = %d, ve = %d\n", __func__,
 				devp->parm.cutwin.hs, devp->parm.cutwin.he, devp->parm.cutwin.vs, devp->parm.cutwin.ve);
 	}
-	else
+	else{
 		pr_info("%s disable cutwin!!! hs = %d, he = %d,  vs = %d, ve = %d\n", __func__,
 				devp->parm.cutwin.hs, devp->parm.cutwin.he, devp->parm.cutwin.vs, devp->parm.cutwin.ve);
+	}
 #endif
 }
 
@@ -1286,7 +1287,7 @@ static inline ulong vdin_reg_limit(ulong val, ulong wid)
 
 void vdin_set_all_regs(struct vdin_dev_s *devp)
 {
-	unsigned int offset = devp->addr_offset;
+
 	/* matrix sub-module */
 	vdin_set_color_matrix0(devp->addr_offset, devp->fmt_info_p, devp->format_convert);
 
@@ -1308,8 +1309,6 @@ void vdin_set_all_regs(struct vdin_dev_s *devp)
 	/*  */
 
 	vdin_set_meas_mux(devp->addr_offset, devp->parm.port);
-	if(devp->parm.port == TVIN_PORT_ISP)
-		WR_BITS(VDIN_WR_V_START_END, 2, WR_VSTART_BIT, WR_VSTART_WID);
 
 }
 
