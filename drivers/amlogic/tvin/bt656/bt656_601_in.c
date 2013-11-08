@@ -394,6 +394,7 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			|(1 << BT_CAMERA_MODE)     // enable camera mode
 			|(1 << BT_656CLOCK_RESET) 
 			|(1 << BT_SYSCLOCK_RESET) 
+			|(1<<27)				//enable raw data to isp
 			;
 	}
 	if(devp->para.bt_path == BT_PATH_GPIO) {
