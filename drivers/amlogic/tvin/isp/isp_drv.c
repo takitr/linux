@@ -51,7 +51,7 @@ static unsigned int ae_enable = 1;
 static unsigned int awb_enable = 1;
 static unsigned int af_enable = 1;
 static unsigned int af_pr = 0;
-
+static unsigned int ioctl_debug = 0;
 static volatile unsigned int ae_flag = 0;
 static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
@@ -239,24 +239,15 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		devp->flag |= ISP_TEST_FOR_AF_WIN;
 	}else if(!strcmp(parm[0],"af_print")){
 		int i = 0;
-		/*unsigned long long sum_ac,sum_dc;
-		pr_info("sum_ac sum_dc win0_dc win1_dc win2_dc win3_dc win4_dc win5_dc\n");
-		for(i=0;i<devp->af_test.cnt;i++){
-			sum_ac  = (unsigned long long)devp->af_test.af_bl[i].ac[0];
-			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[1];
-			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[2];
-			sum_ac += (unsigned long long)devp->af_test.af_bl[i].ac[3];
-			sum_dc  = (unsigned long long)devp->af_test.af_bl[i].dc[0];
-			sum_dc  = (unsigned long long)devp->af_test.af_bl[i].dc[0];
-			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[1];
-			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[2];
-			sum_dc += (unsigned long long)devp->af_test.af_bl[i].dc[3];
-			pr_info("%llu %llu %u %u %u %u %u\n",sum_ac,sum_dc,devp->af_test.af_win[i].luma_win[0],
-					devp->af_test.af_win[i].luma_win[2],devp->af_test.af_win[i].luma_win[4],devp->af_test.af_win[i].luma_win[6],
-					devp->af_test.af_win[i].luma_win[8]);
-		}*/
+		unsigned long long sum_ac,sum_dc;
+		pr_info("ac0 ac1 ac2 ac3 dc0 dc1 dc2 dc3 ");
 		pr_info("win0 win1 win2 win3 win4 win5 win6 win7 win8 win9 win10 win11 win12 win13 win14 win15\n");
 		for(i=0;i<devp->af_test.cnt;i++){
+			pr_info("%u %u %u %u %u %u %u %u ", devp->af_test.af_bl[i].ac[0],
+					devp->af_test.af_bl[i].ac[1],devp->af_test.af_bl[i].ac[2],
+					devp->af_test.af_bl[i].ac[3],devp->af_test.af_bl[i].dc[0],
+					devp->af_test.af_bl[i].dc[1],devp->af_test.af_bl[i].dc[2],
+					devp->af_test.af_bl[i].dc[3]);
 			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",devp->af_test.ae_win[i].luma_win[0],
 				devp->af_test.ae_win[i].luma_win[1],devp->af_test.ae_win[i].luma_win[2],
 				devp->af_test.ae_win[i].luma_win[3],devp->af_test.ae_win[i].luma_win[4],
@@ -266,6 +257,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 				devp->af_test.ae_win[i].luma_win[11],devp->af_test.ae_win[i].luma_win[12],
 				devp->af_test.ae_win[i].luma_win[13],devp->af_test.ae_win[i].luma_win[14],
 				devp->af_test.ae_win[i].luma_win[15]);
+			msleep(1);
 		}
 		kfree(devp->af_test.af_bl);
 		kfree(devp->af_test.af_win);
@@ -819,7 +811,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
         }
 	cmd = param->cam_command;
 	devp->cam_param = param;
-	if(isp_debug)	 	
+	if(ioctl_debug)	 	
 	 	pr_info("[%s..]%s:cmd: %s .\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd));	 
 	switch(cmd) {
                 case CAM_COMMAND_INIT:
@@ -871,9 +863,12 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_TOUCH_WINDOW:
 			devp->isp_af_parm = &param->xml_scenes->af;
 			x0 = devp->isp_af_parm->x>devp->isp_af_parm->radius?devp->isp_af_parm->x-devp->isp_af_parm->radius:0;
-			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y>devp->isp_af_parm->radius:0;
+			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y-devp->isp_af_parm->radius:0;
 			x1 = devp->isp_af_parm->x + devp->isp_af_parm->radius;
 			y1 = devp->isp_af_parm->y + devp->isp_af_parm->radius;
+			if(ioctl_debug)
+				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
+					devp->isp_af_parm->y,x0,y0,x1,y1);
 			isp_set_blenr_stat(x0,y0,x1,y1);
 			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
 			af_sm_init(devp);
@@ -1200,6 +1195,9 @@ MODULE_PARM_DESC(af_pr,"\n debug flag for af print.\n");
 
 module_param(ae_new_step,uint,0664);
 MODULE_PARM_DESC(ae_new_step,"\n debug flag for ae_new_step.\n");
+
+module_param(ioctl_debug,uint,0664);
+MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
 
 MODULE_VERSION(ISP_VER);
 module_init(isp_init_module);

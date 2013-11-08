@@ -90,9 +90,9 @@ MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
 #define AF_FLAG_AE			0x00000002
 #define AF_FLAG_AWB			0x00000004
 
+static unsigned int best_step_debug = 0;
+
 static unsigned int af_sm_dg = 0;
-module_param(af_sm_dg,uint,0664);
-MODULE_PARM_DESC(af_sm_dg,"\n debug flag for auto focus.\n");
 
 
 volatile struct isp_ae_to_sensor_s ae_sens;
@@ -854,14 +854,16 @@ unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
         unsigned int i = 0, cur_grid = 0, max_grid = 0, best_step = 0;
         unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, moment = 0, sum_fv = 0;
 
+		if(best_step_debug)				
+			pr_info("%s ac[0] ac[1] ac[2] ac[3] dc[0] dc[1] dc[2] dc[3]\n", __func__);
         for (i = 0; i < FOCUS_GRIDS; i++){
                 if (i && (step[i]==0)){
                         break;
                 }
                 max_grid = i;
                 fv[i] = get_fv_base_blnr(&blnr[i]);
-	        if(af_sm_dg&0x1)
-                        pr_info("%s ac:%u %u %u %u dc:%u %u %u %u\n", __func__, blnr[i].ac[0], blnr[i].ac[1], blnr[i].ac[2], blnr[i].ac[3], blnr[i].dc[0], blnr[i].dc[1], blnr[i].dc[2], blnr[i].dc[3]);
+	        if(best_step_debug)
+                        pr_info("%s %u %u %u %u %u %u %u %u\n", __func__, blnr[i].ac[0], blnr[i].ac[1], blnr[i].ac[2], blnr[i].ac[3], blnr[i].dc[0], blnr[i].dc[1], blnr[i].dc[2], blnr[i].dc[3]);
                 if (max_fv < fv[i]){
 		        max_fv = fv[i];
 		        cur_grid = i;
@@ -899,6 +901,8 @@ unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
                 sum_fv += fv[cur_grid + 2];
                 best_step = (unsigned int)div64(moment,sum_fv);
 	}
+	if(best_step_debug)
+		pr_info("%s:get best step %u.\n",__func__,best_step);
 	return best_step;
 }
 static unsigned int jitter = 5;
@@ -1040,8 +1044,6 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_CALC_GREAT:
 			af_info->great_step = get_best_step(af_info->af_data,af_alg->step);
 			af_info->cur_step = af_info->great_step - af_alg->jump_offset;
-			if(af_sm_dg&0x1)
-				pr_info("%s:get best step %u.\n",__func__,af_info->great_step);
 			atomic_set(&af_info->writeable,1);
 			af_delay = 0;
 			sm_state.af_state = AF_GET_FINE_INFO;
@@ -1658,5 +1660,11 @@ void isp_awb_sm(isp_dev_t *devp)
 	else
 		isp_awb_base_sm(devp);
 }
+
+module_param(best_step_debug,uint,0664);
+MODULE_PARM_DESC(best_step_debug,"\n debug flag for calc best focus position.\n");
+
+module_param(af_sm_dg,uint,0664);
+MODULE_PARM_DESC(af_sm_dg,"\n debug flag for auto focus.\n");
 
 
