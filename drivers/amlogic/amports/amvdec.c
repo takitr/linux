@@ -29,6 +29,7 @@
 #include <linux/amlogic/amports/vformat.h>
 #include <linux/module.h>
 #include <linux/delay.h>
+#include "vdec.h"
 
 #ifdef CONFIG_PM
 #include <linux/pm.h>
@@ -136,7 +137,8 @@ static void amvdec_pg_enable(bool enable)
 static void amvdec2_pg_enable(bool enable)
 {
     ulong timeout;
-
+    if(!vdec_on(VDEC_2))
+        return 0;
     if (enable) {
 //        WRITE_VREG(VDEC2_GCLK_EN, 0x3ff);
     } else {
