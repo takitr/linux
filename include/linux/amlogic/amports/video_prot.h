@@ -35,6 +35,7 @@ typedef struct {
     u32 src_vframe_width;
     u32 src_vframe_height;
     u32 src_vframe_ratio;
+    u32 src_vframe_orientation;
 } video_prot_t;
 
 //extern void early_init_prot();

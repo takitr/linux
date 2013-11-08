@@ -1055,7 +1055,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         VSYNC_WR_MPEG_REG_BITS(VD1_IF0_GEN_REG2 + cur_dev->viu_off, 0,0,1);
     }
 #ifdef USE_PROT
-    if (video_prot.angle == 2) {
+    if ((video_prot.angle + video_prot.src_vframe_orientation) % 4 == 2) {
         VSYNC_WR_MPEG_REG_BITS(VD1_IF0_GEN_REG2 + cur_dev->viu_off, 0xf, 2, 4);
     } else {
         VSYNC_WR_MPEG_REG_BITS(VD1_IF0_GEN_REG2 + cur_dev->viu_off, 0, 2, 4);
@@ -1133,6 +1133,9 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         VSYNC_WR_MPEG_REG_BITS(VIU_VD1_FMT_CTRL + cur_dev->viu_off, 0, VFORMATTER_INIPHASE_BIT, 4);
         VSYNC_WR_MPEG_REG_BITS(VIU_VD1_FMT_CTRL + cur_dev->viu_off, 0, 16, 1);
         VSYNC_WR_MPEG_REG_BITS(VIU_VD1_FMT_CTRL + cur_dev->viu_off, 1, 17, 1);
+        VSYNC_WR_MPEG_REG_BITS(VIU_VD2_FMT_CTRL + cur_dev->viu_off, 0, VFORMATTER_INIPHASE_BIT, 4);
+        VSYNC_WR_MPEG_REG_BITS(VIU_VD2_FMT_CTRL + cur_dev->viu_off, 0, 16, 1);
+        VSYNC_WR_MPEG_REG_BITS(VIU_VD2_FMT_CTRL + cur_dev->viu_off, 1, 17, 1);
     }
 #endif
 
@@ -1729,7 +1732,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 #ifdef USE_PROT
     if (video_prot.angle_changed & 0x2) {
-        if (video_prot.angle == 1 || video_prot.angle == 3) {
+        if ((video_prot.angle + video_prot.src_vframe_orientation) % 4 == 1 || (video_prot.angle + video_prot.src_vframe_orientation) % 4 == 3) {
             PROT2_MEM_POWER_ON();
             PROT3_MEM_POWER_ON();
             video_prot.power_down = 0;

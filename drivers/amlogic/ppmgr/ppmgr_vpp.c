@@ -1272,12 +1272,12 @@ static void process_vf_rotate(vframe_t *vf, ge2d_context_t *context, config_para
     cur_angle = (ppmgr_device.videoangle + vf->orientation)%4;
 #ifdef CONFIG_V4L_AMLOGIC_VIDEO
 	if(ppmgr_device.receiver==0) {
-	    pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0 && ppmgr_device.mirror_flag == 0)) ? vf : NULL;
+	    pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0 && ppmgr_device.mirror_flag == 0) || ppmgr_device.use_prot) ? vf : NULL;
 	}else{
 	    pp_vf->dec_frame = NULL;
 	}
 #else
-	pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0 && ppmgr_device.mirror_flag == 0)) ? vf : NULL;
+	pp_vf->dec_frame = (ppmgr_device.bypass || (cur_angle == 0 && ppmgr_device.mirror_flag == 0) || ppmgr_device.use_prot) ? vf : NULL;
 #endif
 
 #ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
@@ -2343,7 +2343,14 @@ static int ppmgr_task(void *data)
             platform_type_t plarform_type;
             vf = ppmgr_vf_get_dec();
             if (ppmgr_device.started) {
-                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+                || amvideo_get_scaler_mode()
+#endif
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO
+                || ppmgr_device.receiver
+#endif
+                ) {
                     ppmgr_device.use_prot = 0;
                     set_video_angle(0);
                     _ppmgr_angle_write(ppmgr_device.global_angle);
@@ -2377,7 +2384,14 @@ static int ppmgr_task(void *data)
             int ret = 0;
             vf = ppmgr_vf_get_dec();
             if (ppmgr_device.started) {
-                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot) {
+                if (!(vf->type & (VIDTYPE_VIU_422 | VIDTYPE_VIU_444 | VIDTYPE_VIU_NV21)) || (vf->type & VIDTYPE_INTERLACE) || ppmgr_device.disable_prot
+#ifdef CONFIG_POST_PROCESS_MANAGER_PPSCALER
+                || amvideo_get_scaler_mode()
+#endif
+#ifdef CONFIG_V4L_AMLOGIC_VIDEO
+                || ppmgr_device.receiver
+#endif
+                ) {
                     ppmgr_device.use_prot = 0;
                     set_video_angle(0);
                     _ppmgr_angle_write(ppmgr_device.global_angle);
