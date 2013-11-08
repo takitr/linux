@@ -63,6 +63,10 @@ static unsigned int use_frame_rate = 1;
 module_param(use_frame_rate,uint,0644);
 MODULE_PARM_DESC(use_frame_rate,"use frame rate to cal duraton");
 
+static bool cm_enable = 1;
+module_param(cm_enable, bool, 0644);
+MODULE_PARM_DESC(cm_enable,"cm_enable");
+
 
 /***************************Local defines**********************************/
 #define BBAR_BLOCK_THR_FACTOR           3
@@ -2404,4 +2408,6 @@ void vdin_set_cm2(unsigned int offset,unsigned int index)
 		WR(VDIN_CHROMA_ADDR_PORT,vdin_cm2_table[cursor].addr);
 		WR(VDIN_CHROMA_DATA_PORT,(vdin_cm2_table[cursor].mask & vdin_cm2_table[cursor].value));
 	}
+	if (cm_enable)
+	    WR_BITS(VDIN_CM_BRI_CON_CTRL, 1, CM_TOP_EN_BIT,CM_TOP_EN_WID);
 }
