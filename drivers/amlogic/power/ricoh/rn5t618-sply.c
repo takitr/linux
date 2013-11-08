@@ -66,6 +66,8 @@ extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
 extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
 #endif
 
+static int rn5t618_update_state(struct aml_charger *charger);
+
 int rn5t618_get_battery_voltage(void)
 {
     uint8_t val[2];
@@ -786,8 +788,10 @@ static void rn5t618_otg_work_fun(struct work_struct *work)
     }
     msleep(10);
     rn5t618_read(0xB3, &val);
-    printk("regist 0xB3:%x\n", val);
+    printk("register 0xB3:%02x\n", val);
     rn5t618_otg_value = -1;
+    rn5t618_update_state(&g_rn5t618_supply->aml_charger);
+    power_supply_changed(&g_rn5t618_supply->batt);
 }
 
 static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)

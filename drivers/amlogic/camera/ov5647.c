@@ -2814,12 +2814,12 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
             printk("error, resolution param not get\n");
             goto out;
         }
+        set_resolution_param(dev, res_param);
         /** set target ***/
         if(t_index == -1){
-            dest_hactive = res_param->active_frmsize.width;
-            dest_vactive = res_param->active_frmsize.height;
+            dest_hactive = 0;
+            dest_vactive = 0;
         }
-        set_resolution_param(dev, res_param);
     }
 	ret = 0;
 out:
@@ -3016,6 +3016,7 @@ static ssize_t manual_format_store(struct class *cls,struct class_attribute *att
 	res_param = &prev_resolution_array[t_index];	
 	dest_hactive = res_param->active_frmsize.width;
     dest_vactive = res_param->active_frmsize.height;
+    printk("d_h:%d,d_v:%d\n",dest_hactive,dest_vactive);
     return len;
 }
 
