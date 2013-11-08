@@ -1005,7 +1005,7 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_INIT:
 			if((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down)){
 			/*awb brake,ae brake*/
-			af_info->flag_bk = (devp->flag&ISP_FLAG_AWB)+(devp->flag&ISP_FLAG_AE);
+			af_info->flag_bk = (devp->flag&ISP_FLAG_AWB)|(devp->flag&ISP_FLAG_AE);
 			if(af_sm_dg&0x1)
 				pr_info("%s:ae,awb flag status 0x%x.\n",__func__,af_info->flag_bk);
 			devp->flag &=(~ISP_FLAG_AWB);
@@ -1021,6 +1021,9 @@ void isp_af_sm(isp_dev_t *devp)
 			break;
 		case AF_GET_OLD_FV:
 			af_info->fv_bf_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
+			if(af_sm_dg&0x1){
+				pr_info("[af_sm..]:fv_bf_af %llu.\n",af_info->fv_bf_af);
+			}
 			af_info->cur_index = 0;
 			af_info->cur_step = af_alg->step[af_info->cur_index];
 			atomic_set(&af_info->writeable,1);
@@ -1030,6 +1033,7 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_GET_COARSE_INFO:
 			if((af_info->cur_index >= FOCUS_GRIDS)||(af_alg->step[af_info->cur_index]==0)){
 				sm_state.af_state = AF_CALC_GREAT;
+				af_info->cur_index = 0;
 			} else if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
 				af_info->cur_step = af_alg->step[af_info->cur_index];
 				af_info->cur_index++;
@@ -1067,12 +1071,12 @@ void isp_af_sm(isp_dev_t *devp)
 				fv_delta = fv_delta*100;
 				fv_delta = div64(fv_delta,af_alg->af_fail_ratio);
 				/*af failed return to af init,retry*/
-				if(af_sm_dg&0x4){
-					pr_info("[af_sm..]:fv_delta %llu,fv_bf_af %llu.\n",fv_delta,af_info->fv_bf_af);
+				if(af_sm_dg&0x1){
+					pr_info("[af_sm..]:fv_delta %llu,fv_aft_af %llu.\n",fv_delta,af_info->fv_aft_af);
 				}
 				if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt++ < af_alg->af_retry_max)){
 					sm_state.af_state = AF_GET_OLD_FV;
-					if(af_sm_dg&0x4)
+					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_alg->af_retry_cnt);
 				} else if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt > af_alg->af_retry_max)){
 		        	/*af failed over max times,force to step 0*/
@@ -1080,14 +1084,18 @@ void isp_af_sm(isp_dev_t *devp)
 				        devp->flag |= af_info->flag_bk;
 					af_info->cur_step = 0;
 					atomic_set(&af_info->writeable,1);
-					if(af_sm_dg&0x4)
+					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u over,force to step 0.\n",af_alg->af_fail_ratio);
 					af_alg->af_retry_cnt = 0;
+					devp->flag &=(~ISP_FLAG_AF);
+					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_NULL;
 				} else {/*af success*/
 					/*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
 					af_alg->af_retry_cnt = 0;
+					devp->flag &=(~ISP_FLAG_AF);
+					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_NULL;
 				}
 			}

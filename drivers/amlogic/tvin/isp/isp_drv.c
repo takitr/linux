@@ -240,23 +240,25 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 	}else if(!strcmp(parm[0],"af_print")){
 		int i = 0;
 		unsigned long long sum_ac,sum_dc;
-		pr_info("ac0 ac1 ac2 ac3 dc0 dc1 dc2 dc3 ");
+		pr_info("ac0 ac1 ac2 ac3 dc0 dc1 dc2 dc3\n");
+		for(i=0;i<devp->af_test.cnt;i++){
+			pr_info("%u %u %u %u %u %u %u %u\n", devp->af_test.af_bl[i].ac[0],
+				devp->af_test.af_bl[i].ac[1],devp->af_test.af_bl[i].ac[2],
+				devp->af_test.af_bl[i].ac[3],devp->af_test.af_bl[i].dc[0],
+				devp->af_test.af_bl[i].dc[1],devp->af_test.af_bl[i].dc[2],
+				devp->af_test.af_bl[i].dc[3]);
+		}		
 		pr_info("win0 win1 win2 win3 win4 win5 win6 win7 win8 win9 win10 win11 win12 win13 win14 win15\n");
 		for(i=0;i<devp->af_test.cnt;i++){
-			pr_info("%u %u %u %u %u %u %u %u ", devp->af_test.af_bl[i].ac[0],
-					devp->af_test.af_bl[i].ac[1],devp->af_test.af_bl[i].ac[2],
-					devp->af_test.af_bl[i].ac[3],devp->af_test.af_bl[i].dc[0],
-					devp->af_test.af_bl[i].dc[1],devp->af_test.af_bl[i].dc[2],
-					devp->af_test.af_bl[i].dc[3]);
-			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",devp->af_test.ae_win[i].luma_win[0],
-				devp->af_test.ae_win[i].luma_win[1],devp->af_test.ae_win[i].luma_win[2],
-				devp->af_test.ae_win[i].luma_win[3],devp->af_test.ae_win[i].luma_win[4],
-				devp->af_test.ae_win[i].luma_win[5],devp->af_test.ae_win[i].luma_win[6],
-				devp->af_test.ae_win[i].luma_win[7],devp->af_test.ae_win[i].luma_win[8],
-				devp->af_test.ae_win[i].luma_win[9],devp->af_test.ae_win[i].luma_win[10],
-				devp->af_test.ae_win[i].luma_win[11],devp->af_test.ae_win[i].luma_win[12],
-				devp->af_test.ae_win[i].luma_win[13],devp->af_test.ae_win[i].luma_win[14],
-				devp->af_test.ae_win[i].luma_win[15]);
+			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+				devp->af_test.ae_win[i].luma_win[0],devp->af_test.ae_win[i].luma_win[1],
+				devp->af_test.ae_win[i].luma_win[2],devp->af_test.ae_win[i].luma_win[3],
+				devp->af_test.ae_win[i].luma_win[4],devp->af_test.ae_win[i].luma_win[5],
+				devp->af_test.ae_win[i].luma_win[6],devp->af_test.ae_win[i].luma_win[7],
+				devp->af_test.ae_win[i].luma_win[8],devp->af_test.ae_win[i].luma_win[9],
+				devp->af_test.ae_win[i].luma_win[10],devp->af_test.ae_win[i].luma_win[11],
+				devp->af_test.ae_win[i].luma_win[12],devp->af_test.ae_win[i].luma_win[13],
+				devp->af_test.ae_win[i].luma_win[14],devp->af_test.ae_win[i].luma_win[15]);
 			msleep(1);
 		}
 		kfree(devp->af_test.af_bl);
