@@ -853,9 +853,9 @@ int amlnand_phydev_init(struct amlnand_chip *aml_chip)
 	else{
 		plane_num = 1;
 	}
-#ifndef AML_NAND_UBOOT	
-	INIT_LIST_HEAD (&nphy_dev_list);
-#endif
+//#ifndef AML_NAND_UBOOT	
+//	INIT_LIST_HEAD (&nphy_dev_list);
+//#endif
 	chip_size = (flash->chipsize*controller->chip_num);
 	chip_size = chip_size << 20;
 	if(config->dev_num == 0){

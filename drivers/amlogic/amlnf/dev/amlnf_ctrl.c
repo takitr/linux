@@ -480,6 +480,7 @@ int aml_sys_info_init(struct amlnand_chip *aml_chip)
 {
 	nand_arg_info * nand_key = &aml_chip->nand_key;  
 	nand_arg_info  * nand_secure= &aml_chip->nand_secure;
+	nand_arg_info *  uboot_env =  &aml_chip->uboot_env;
 
 	int ret =0;
 	
@@ -503,7 +504,15 @@ int aml_sys_info_init(struct amlnand_chip *aml_chip)
 		}
 #endif
 
-
+		
+	if((uboot_env->arg_valid == 0) && (boot_device_flag == 1)){
+		ret = aml_ubootenv_init(aml_chip);
+		if(ret < 0){
+			aml_nand_msg("nand uboot env init failed");
+			return ret;
+		}
+	}
+	
 	return ret;
 }
 

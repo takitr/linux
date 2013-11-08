@@ -81,9 +81,10 @@ static int32_t nand_key_write(aml_keybox_provider_t * provider, uint8_t *buf,int
 	key_ptr = kzalloc(CONFIG_KEYSIZE, GFP_KERNEL);
 	if(key_ptr == NULL)
 		return -ENOMEM;
-	amlnand_get_device(aml_chip, CHIP_READING);
+	
 	memset(key_ptr,0,CONFIG_KEYSIZE);
 	memcpy(key_ptr->data + 0, buf, len);
+	amlnand_get_device(aml_chip, CHIP_WRITING);
 
 	error = amlnand_save_info_by_name(aml_chip, &(aml_chip->nand_key),key_ptr,KEY_INFO_HEAD_MAGIC, CONFIG_KEYSIZE);
 	if (error) 
