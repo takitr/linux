@@ -2251,17 +2251,21 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
 
 static int set_focus_zone(struct ov5647_device *dev, int value)
 {
-	int xc, yc;
+	int xc, yc, tx, ty;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	int retry_count = 10;
 	int ret = -1;
 	
-	xc = ((value >> 16) & 0xffff) * 80 / 2000;
-	yc = (value & 0xffff) * 60 / 2000;
-	printk("xc = %d, yc = %d\n", xc, yc);
+	xc = (value >> 16) & 0xffff;
+	yc = (value & 0xffff);
+	if(xc == 1000 && yc == 1000)
+		return 0;
+	tx = xc * ov5647_h_active /2000;
+	ty = yc * ov5647_v_active /2000;
+	printk("xc = %d, yc = %d, tx = %d , ty = %d \n", xc, yc, tx, ty);
 	
-	dev->cam_para->xml_scenes->af.x = xc;
-	dev->cam_para->xml_scenes->af.y = yc;	
+	dev->cam_para->xml_scenes->af.x = tx;
+	dev->cam_para->xml_scenes->af.y = ty;	
 	dev->cam_para->xml_scenes->af.radius = 40;
 	dev->cam_para->xml_scenes->af.detect_step = 16;
 	dev->cam_para->xml_scenes->af.deta_ave_ratio = 10;
@@ -2906,7 +2910,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.fmt = TVIN_SIG_FMT_MAX;
     para.frame_rate = ov5647_frmintervals_active.denominator;
     para.h_active = ov5647_h_active;
-    para.v_active = ov5647_v_active;// delete the last two line data
+    para.v_active = ov5647_v_active;
     if(is_capture == 0){
    		para.dest_hactive = dest_hactive;
    		para.dest_vactive = dest_vactive;
