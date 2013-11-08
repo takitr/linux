@@ -727,10 +727,6 @@ void isp_awb_base_sm(isp_dev_t *devp)
 						}
 						rg = (r[4] << 10)/g[4];
 						bg = (b[4] << 10)/g[4];
-						awbp->inner_rg = 50;
-						awbp->inner_bg = 50;
-						awbp->outer_rg = 80;
-						awbp->outer_bg = 80;
 						if(awb_debug1)
 							printk("rg=%d,bg=%d\n",rg,bg);
 						if(((awba->status == ISP_AWB_STATUS_UNSTABLE) && ((rg > 1024 + awbp->inner_rg)||(rg < 1024 - awbp->inner_rg)))

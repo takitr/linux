@@ -121,7 +121,7 @@ static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
-static int capture_delay = 1500;
+static int capture_delay = 3500;
 module_param(capture_delay,int,0664);
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {

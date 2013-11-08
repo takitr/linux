@@ -375,8 +375,8 @@ typedef struct xml_algorithm_awb_s {
         unsigned int 	       coef_g[4];             // 0 ~ 255 
         unsigned int 	       coef_b[4];             // 0 ~ 255 
         unsigned int 	       inner_rg;          // 0 ~ 1023 
-        unsigned int 	       outer_rg;          // 0 ~ 1023
         unsigned int 	       inner_bg;          // 0 ~ 1023
+        unsigned int 	       outer_rg;          // 0 ~ 1023
         unsigned int 	       outer_bg;          // 0 ~ 1023
         unsigned int           r_max;             // 0 ~ 4095    
         unsigned int           r_min;             // 0 ~ 4095
