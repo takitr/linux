@@ -63,7 +63,7 @@ static unsigned int hispeed_freq = 816000;
 
 static cpumask_var_t new_mask;
 #ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_HOTPLUG
-static struct cpufreq_governor cpufreq_gov_hotplug;
+struct cpufreq_governor cpufreq_gov_hotplug;
 #endif
 static struct task_struct *cpu_hotplug_task;
 static int cpu_hotplug_flag = 0;
@@ -716,7 +716,7 @@ static void do_null_task()
 {
 	printk("---add for hotplug governor\n");
 }
-static struct cpufreq_governor cpufreq_gov_hotplug = {
+struct cpufreq_governor cpufreq_gov_hotplug = {
 	.name			= "hotplug",
 	.governor		= hg_cpufreq_governor_dbs,
 	.max_transition_latency	= TRANSITION_LATENCY_LIMIT,
