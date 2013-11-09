@@ -1443,7 +1443,13 @@ static resolution_param_t  prev_resolution_array[] = {
 		.active_fps			= 15,
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script			= OV5647_preview_1080P_script,
-	}
+	},{
+		.frmsize			= {2592, 1944},
+		.active_frmsize		        = {2592, 1944},
+		.active_fps			= 7.5,
+		.size_type			= SIZE_H1080P_2592X1944,
+		.reg_script			= OV5647_capture_5M_script,
+	},
 };
 	
 
@@ -2950,8 +2956,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
     OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
     OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
-    if(is_capture == 1)
-    	msleep(capture_delay);
     return ret;
 }
 
@@ -2979,6 +2983,7 @@ char *res_size[]={
 	"720p",
 	"960p",
 	"1080p",
+	"5m",
 };
 static int get_index(char *res){
 	int i = 0;

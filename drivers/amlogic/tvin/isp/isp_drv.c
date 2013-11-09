@@ -52,6 +52,7 @@ static unsigned int awb_enable = 1;
 static unsigned int af_enable = 1;
 static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
+static unsigned int isr_debug = 0;
 static volatile unsigned int ae_flag = 0;
 static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
@@ -702,7 +703,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	info->fe_port = parm->isp_fe_port;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
-	
+	info->skip_cnt = 0;
 	devp->isp_fe = tvin_get_frontend(info->fe_port, 0);		
 	if(devp->isp_fe && devp->isp_fe->dec_ops) {			
 		devp->isp_fe->private_data = fe->private_data;			
@@ -749,6 +750,8 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->step[15] = 550;
 		devp->isp_af_parm->jump_offset = 100;
 		devp->isp_af_parm->field_delay = 1;
+		if((info->h_active==2592)||(info->v_active==1944))
+			devp->flag |= ISP_FLAG_SKIP_BUF;
 	}
         return 0;
 }
@@ -964,11 +967,19 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->flag & ISP_FLAG_CAPTURE)
 		ret = isp_capture_sm(devp);
-
-	tasklet_schedule(&devp->isp_task);
-	
 	if(devp->isp_fe)
 		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
+	
+	if(devp->flag & ISP_FLAG_SKIP_BUF){
+		ret = TVIN_BUF_SKIP;
+		if(devp->info.skip_cnt++ > 40){
+			devp->flag &= (~ISP_FLAG_SKIP_BUF);
+		}
+		if(isr_debug)
+			pr_info("%s isp skip cnt %u %s 40.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>40?">":"<");
+	}
+	
+	tasklet_schedule(&devp->isp_task);
         return ret;        
 }
 
@@ -1200,6 +1211,10 @@ MODULE_PARM_DESC(ae_new_step,"\n debug flag for ae_new_step.\n");
 
 module_param(ioctl_debug,uint,0664);
 MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
+
+module_param(isr_debug,uint,0664);
+MODULE_PARM_DESC(isr_debug,"\n debug isr function.\n");
+
 
 MODULE_VERSION(ISP_VER);
 module_init(isp_init_module);

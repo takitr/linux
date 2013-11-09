@@ -47,10 +47,12 @@
 #define ISP_FLAG_SET_COMB4			0x00000800
 #define ISP_TEST_FOR_AF_WIN			0x00001000	
 #define ISP_FLAG_TOUCH_AF			0x00002000
+#define ISP_FLAG_SKIP_BUF			0x00004000
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	unsigned int h_active;
 	unsigned int v_active;
+	unsigned int skip_cnt;
 } isp_info_t;
 /*config in bsp*/
 typedef struct flash_property_s {
@@ -107,30 +109,7 @@ typedef struct isp_af_info_s {
 	//unsigned char af_delay;
 	atomic_t writeable;
 }isp_af_info_t;
-#if 0
-typedef struct xml_algorithm_t_af_s {
-    /*for climbing algorithm*/
-	unsigned int               step[FOCUS_GRIDS];
-	unsigned int 		   af_retry_cnt;
-	unsigned int		   af_retry_max;
-	unsigned int		   step_min;
-	unsigned int		   step_max;
-	unsigned int               f_thr_p;
-	unsigned int 		   f_thr_n;
-	unsigned int 	           step_coarse;
-	unsigned int	           step_fine;
-	unsigned int 		   jump_offset;
-	unsigned int		   field_delay;
-	unsigned int		   detect_step;
-	unsigned int               deta_ave_ratio;//10bits/1024
-	unsigned int		   deta_last_ave;//10bits/1024
-	unsigned int               af_fail_ratio;//x/100
-	unsigned int		   window_l_ratio;//10bits/1024
-	unsigned int		   window_r_ratio;//10bits/1024
-	unsigned int		   window_t_ratio;//10bits/1024
-	unsigned int		   window_b_ratio;//10bits/1024
-} xml_algorithm_t_af_t;
-#endif
+
 /*for debug cmd*/
 typedef struct debug_s {
 	unsigned int comb4_mode;

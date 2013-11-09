@@ -1335,6 +1335,8 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
                 devp->frontend->private_data = &curr_wr_vf->prop;
           	ret = decops->decode_isr(devp->frontend, devp->hcnt64);
 		if (ret == TVIN_BUF_SKIP) {
+			if(vdin_dbg_en)
+				pr_info("%s bufffer(%u) skiped.\n",__func__,curr_wr_vf->index);
 			goto irq_handled;
 		/*if the current buffer is reserved,recycle tmp list,put current buffer to tmp list*/
 		} else if(ret == TVIN_BUF_TMP) {
