@@ -607,7 +607,7 @@ static int encoder_status;
 static irqreturn_t enc_isr(int irq, void *dev_id)
 {
 	int temp_canvas;
-	WRITE_HREG(HCODEC_ASSIST_MBOX1_CLR_REG, 1);
+	WRITE_HREG(HCODEC_ASSIST_MBOX2_CLR_REG, 1);
 	encoder_status  = READ_HREG(ENCODER_STATUS);
 	if((encoder_status == ENCODER_IDR_DONE)
 	||(encoder_status == ENCODER_NON_IDR_DONE)
