@@ -171,6 +171,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	u8  targ;
 	int i;
 	static k = 0;
+	static h = 0;
 	int step = 0;
 	unsigned short targrate;
 	unsigned int targstep, newstep;
@@ -339,7 +340,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						break;
 					case AE_CALCULATE_LUMA_TARG:
 						avg_envo = (avg_env << 10)/aepa->cur_gain;
-						if(ae_debug)
+						if(ae_debug&0x1)
 						printk("avg=%d,avg_envo=%d,aepa->cur_gain=%d,avg_env=%d,avg_env_sum=%d,avg_sum=%d,luma_win[9]=%d,sub[9]=%d\n",avg,avg_envo,aepa->cur_gain,avg_env,avg_env_sum,avg_sum,ae->luma_win[9],sub_avg[9]);
 						if((avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
 						{
@@ -380,6 +381,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						}
 						else
 						{
+						if(ae_debug&0x10)
+							printk("ISP_AE_STATUS_STABLE\n");
 							sm_state.status = ISP_AE_STATUS_STABLE;
 							step = AE_SUCCESS;
 							//if(func->check_mains_freq)
@@ -389,7 +392,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						}				
 						break;
 					case AE_EXPOSURE_ADJUST:
-						sm_state.status = ISP_AE_STATUS_UNSTABLE;
 						if(avg == 0)
 						{
 							step = AE_SUCCESS;
@@ -414,6 +416,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						if((newstep >= aepa->max_step - 1)||(newstep == aepa->cur_step)||(newstep == 0))
 						{
 							sm_state.status = ISP_AE_STATUS_STABLE;
+							if(ae_debug&0x10)
+							printk("ISP_AE_STATUS_STABLE2\n");
 							step = AE_SUCCESS;
 						}
 						else if((newstep > aepa->cur_step)&&ae_debug3)
@@ -427,6 +431,9 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						ae_sens.shutter = 1;
 						ae_sens.gain = 1;
 						//printk("ae_sens.send \n");
+						sm_state.status = ISP_AE_STATUS_UNSTABLE;
+						if(ae_debug&0x10)
+						printk("ISP_AE_STATUS_UNSTABLE\n");
 						sm_state.ae_down = false;
 						sm_state.isp_ae_parm.isp_ae_state = AE_REST;
 						step = AE_SUCCESS;
@@ -473,6 +480,15 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			}
 			break;
     }
+	if(sm_state.status == ISP_AE_STATUS_STABLE){
+		h++;
+		if(h > 3){
+			h = 0;
+			devp->flag &= (~ISP_FLAG_SKIP_BUF);
+			if(ae_debug&0x8)
+				pr_info("%s transfer buff to behindend.\n",__func__);
+			}
+	}
 }
 
 // VDIN_MATRIX_YUV601_RGB
