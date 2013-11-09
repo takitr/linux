@@ -421,13 +421,15 @@ typedef struct xml_algorithm_awb_s {
 
 #define AF_PARM_NUM			19
 
-#define FOCUS_GRIDS 11
+#define FOCUS_GRIDS 16
 
 typedef struct xml_algorithm_af_s {
 	/*for lose focus*/
+	unsigned int	       enter_move_ratio;//10bit/1024
+	unsigned int	       enter_static_ratio;//10bit/1024
+	unsigned int	       detect_step_cnt;
+	unsigned int           fv_fail_ratio;//10bits/1024
 	unsigned int           deta_ave_ratio;//10bits/1024
-	unsigned int	       deta_last_ave;//10bits/1024
-
     /*for climbing algorithm*/
 	unsigned int           step[FOCUS_GRIDS];
 	unsigned int	       valid_step_cnt;

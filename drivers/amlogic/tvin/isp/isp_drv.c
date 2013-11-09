@@ -690,9 +690,13 @@ static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
         else
                 return -1;
 }
-static unsigned int ratio = 200;
-module_param(ratio,uint,0664);
-MODULE_PARM_DESC(ratio,"\n debug flag for ae.\n");
+static unsigned int dc_move_ratio = 50;
+module_param(dc_move_ratio,uint,0664);
+MODULE_PARM_DESC(dc_move_ratio,"\n debug flag for af.\n");
+
+static unsigned int fv_ratio = 200;
+module_param(fv_ratio,uint,0664);
+MODULE_PARM_DESC(fv_ratio,"\n debug flag for af.\n");
 
 static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {        
@@ -703,6 +707,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	info->fe_port = parm->isp_fe_port;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
+	info->frame_rate = parm->frame_rate;
 	info->skip_cnt = 0;
 	devp->isp_fe = tvin_get_frontend(info->fe_port, 0);		
 	if(devp->isp_fe && devp->isp_fe->dec_ops) {			
@@ -728,10 +733,8 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 16;
-		devp->isp_af_parm->deta_ave_ratio = ratio;
 		devp->isp_af_parm->af_fail_ratio = 20;
 		devp->isp_af_parm->af_retry_max = 3;
-		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->valid_step_cnt,GFP_KERNEL);
 		devp->isp_af_parm->step[0] = 100;
 		devp->isp_af_parm->step[1] = 150;
 		devp->isp_af_parm->step[2] = 200;
@@ -750,6 +753,15 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->step[15] = 550;
 		devp->isp_af_parm->jump_offset = 100;
 		devp->isp_af_parm->field_delay = 1;
+		
+		/*init for auto lose focus tell*/
+		devp->isp_af_parm->detect_step_cnt = 16;
+		devp->isp_af_parm->enter_move_ratio = dc_move_ratio;
+		devp->isp_af_parm->enter_static_ratio = 30;
+		devp->isp_af_parm->deta_ave_ratio = fv_ratio;
+		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
+		devp->af_info.fv = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
+		devp->af_info.v_dc = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		if((info->h_active==2592)||(info->v_active==1944))
 			devp->flag |= ISP_FLAG_SKIP_BUF;
 	}
@@ -759,6 +771,14 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 static void isp_fe_close(struct tvin_frontend_s *fe)
 {        
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
+		if(devp->af_info.af_detect)
+			kfree(devp->af_info.af_detect);
+		if(devp->af_info.fv)
+			kfree(devp->af_info.fv);
+		if(devp->af_info.v_dc)
+			kfree(devp->af_info.v_dc);
+		if(devp->isp_af_parm)
+			kfree(devp->isp_af_parm);
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
 	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
@@ -790,7 +810,6 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 	start_isp_thread(devp);
 	
         devp->flag |= ISP_FLAG_START;
-	
 	return;
 }
 static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
@@ -824,7 +843,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_SCENES:
 		        devp->isp_ae_parm = &param->xml_scenes->ae;
 		        devp->isp_awb_parm = &param->xml_scenes->awb;
-		        devp->isp_af_parm = &param->xml_scenes->af;
+		        //devp->isp_af_parm = &param->xml_scenes->af;
 		        devp->capture_parm = param->xml_capture;
 		        devp->flag |= ISP_FLAG_SET_SCENES;
 		        break;
@@ -866,7 +885,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 		        break;
                 case CAM_COMMAND_TOUCH_WINDOW:
-			devp->isp_af_parm = &param->xml_scenes->af;
+			//devp->isp_af_parm = &param->xml_scenes->af;
+			devp->isp_af_parm->x = param->xml_scenes->af.x;
+			devp->isp_af_parm->y = param->xml_scenes->af.y;
+			devp->isp_af_parm->radius = param->xml_scenes->af.radius;
 			x0 = devp->isp_af_parm->x>devp->isp_af_parm->radius?devp->isp_af_parm->x-devp->isp_af_parm->radius:0;
 			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y-devp->isp_af_parm->radius:0;
 			x1 = devp->isp_af_parm->x + devp->isp_af_parm->radius;
@@ -901,7 +923,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
 	        default:
 		        break;
-	}
+	}	
 	return 0;
 }
 static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
@@ -978,7 +1000,6 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		if(isr_debug)
 			pr_info("%s isp skip cnt %u %s 40.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>40?">":"<");
 	}
-	
 	tasklet_schedule(&devp->isp_task);
         return ret;        
 }

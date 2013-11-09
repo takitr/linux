@@ -679,8 +679,6 @@ void isp_get_af_stat(isp_af_stat_t * af_stat)
 void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
 {
 	int i = 0;
-	blnr_stat->ac_len = 4;
-	blnr_stat->dc_len = 4;
 	for(i=0;i<4;i++){
 		blnr_stat->dc[i] = isp_rd(ISP_RO_BLNR_GRBG_DCSUM0+i);
 		blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);

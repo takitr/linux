@@ -144,8 +144,8 @@ void af_sm_init(isp_dev_t *devp)
     	sm_state.af_state = AF_INIT;
 		devp->af_info.f = devp->af_info.af_data;
 	}else{
-		sm_state.af_state = AF_DETECT_INIT;
-		devp->af_info.f = devp->af_info.af_detect;
+		sm_state.af_state = AF_INIT;
+		devp->af_info.f = devp->af_info.af_data;
 	}
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
@@ -843,6 +843,7 @@ unsigned long long div64(unsigned long long n, unsigned long long d) // n for nu
     }
     return q;
 }
+
 static unsigned long long get_fv_base_blnr(isp_blnr_stat_t *blnr)
 {
 	unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0;
@@ -928,16 +929,47 @@ MODULE_PARM_DESC(delta,"\n debug flag for ae.\n");
 static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 {
 	unsigned long long *fv,sum_fv=0,ave_fv=0,delta_fv=0;
-	unsigned int i=0,step_cnt=0;
-	bool ret = false;
-	fv = kmalloc(sizeof(unsigned long long)*(af_alg->valid_step_cnt),GFP_KERNEL);
-
-	memset(fv,0,sizeof(unsigned long long)*(af_alg->valid_step_cnt));
-	
+	unsigned long long *v_dc,sum_vdc=0,ave_vdc=0,delta_dc=0,tmp_vdc1=0,tmp_vdc2=0;
+	unsigned int i=0,dc0,dc1,dc2,dc3;
+	bool ret=false,is_move=false,is_static=false;
+	fv = af_info->fv;
+	v_dc = af_info->v_dc;
+	/*calc v dc*/
+	dc0 = af_info->last_blnr.dc[0];
+	dc1 = af_info->last_blnr.dc[1];
+	dc2 = af_info->last_blnr.dc[2];
+	dc3 = af_info->last_blnr.dc[3];
+	for(i=0;i<af_alg->detect_step_cnt;i++){
+		delta_dc = dc0>af_info->af_detect[i].dc[0]?dc0-af_info->af_detect[i].dc[0]:af_info->af_detect[i].dc[0]-dc0;
+		v_dc[i]  = div64((unsigned long long)delta_dc*1024,dc0);
+		delta_dc = dc1>af_info->af_detect[i].dc[1]?dc1-af_info->af_detect[i].dc[1]:af_info->af_detect[i].dc[1]-dc1;
+		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc1);
+		delta_dc = dc2>af_info->af_detect[i].dc[2]?dc2-af_info->af_detect[i].dc[2]:af_info->af_detect[i].dc[2]-dc2;
+		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc2);
+		delta_dc = dc3>af_info->af_detect[i].dc[3]?dc3-af_info->af_detect[i].dc[3]:af_info->af_detect[i].dc[3]-dc3;
+		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc3);
+		sum_vdc += v_dc[i];
+		if(af_sm_dg&0x2)
+			pr_info("v_dc[%u]=%llu.\n",i,v_dc[i]);
+	}
+	ave_vdc = div64(sum_vdc,af_alg->detect_step_cnt);
+	for(i=0;i<af_alg->detect_step_cnt;i++){
+		delta_dc = v_dc[i]>ave_vdc?v_dc[i]-ave_vdc:ave_vdc-v_dc[i];
+		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
+		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
+		if(tmp_vdc1 > ave_vdc){
+			is_move = true;
+			break;
+		}
+	}
+	/*enter static view,calc fv*/
+	if(!is_move && i>= af_alg->detect_step_cnt)
+		return false;
+	sum_fv = 0;
 	for(i=0;i<af_alg->valid_step_cnt;i++){
 		fv[i] = get_fv_base_blnr(&af_info->af_detect[i]);
 		sum_fv += fv[i];
-		if(af_sm_dg&0x2){
+		if(af_sm_dg&0x4){
 			pr_info("step[%u]:ac0=%u ac1=%u ac2=%u ac3=%u ",i,
 					af_info->af_detect[i].ac[0],af_info->af_detect[i].ac[1],af_info->af_detect[i].ac[2],
 					af_info->af_detect[i].ac[3]);
@@ -946,8 +978,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 			pr_info("fv=%llu.\n",fv[i]);
 		}
 	}
-	step_cnt = af_alg->valid_step_cnt;
-	ave_fv = div64(sum_fv,step_cnt);
+	ave_fv = div64(sum_fv,af_alg->valid_step_cnt);
 	if(af_sm_dg&0x1)
 		pr_info("ave_fv %llu.\n",ave_fv);
 	delta_fv = ave_fv>af_info->fv_aft_af?(ave_fv-af_info->fv_aft_af):(af_info->fv_aft_af-ave_fv);
@@ -962,7 +993,6 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 			pr_info("2 delta_fv*1024/ave_ratio=%llu,last_ave_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
 	}
 
-	kfree(fv);
 
 	return ret;
 	
@@ -980,16 +1010,12 @@ void isp_af_detect(isp_dev_t *devp)
 			sm_state.af_state = AF_GET_STEPS_INFO;
 			break;
 		case AF_GET_STEPS_INFO:	
-			if(sm_state.status == ISP_AE_STATUS_STABLE){
-				if(af_info->cur_index++ >= af_alg->valid_step_cnt){
+			if(af_info->cur_index >= af_alg->detect_step_cnt){
 					af_info->cur_index = 0;
 					sm_state.af_state = AF_GET_STATUS;
-					pr_info("%s state get_status.\n",__func__);
-				}
-			}else{
-				sm_state.af_state = AF_DETECT_INIT;
-				if(af_sm_dg&0x1)
-					pr_info("%s ae unstable return to af init.\n",__func__);
+					pr_info("%s get info end.\n",__func__);
+			} else {
+				af_info->cur_index++;
 			}
 			break;
 		case AF_GET_STATUS:
@@ -998,9 +1024,10 @@ void isp_af_detect(isp_dev_t *devp)
 				if(af_sm_dg)
 					pr_info("[af_sm]:lost focus.\n");
 			}
-			af_info->cur_index++;
-			if(af_info->cur_index >= af_alg->valid_step_cnt){
+			if(af_info->cur_index >= af_alg->detect_step_cnt){
 				af_info->cur_index = 0;
+			}else{
+				af_info->cur_index++;
 			}
 			break;
 		default:
@@ -1047,7 +1074,7 @@ void isp_af_sm(isp_dev_t *devp)
 			sm_state.af_state = AF_GET_COARSE_INFO;
 			break;
 		case AF_GET_COARSE_INFO:
-			if((af_info->cur_index >= FOCUS_GRIDS)||(af_alg->step[af_info->cur_index]==0)){
+			if((af_info->cur_index >= af_alg->valid_step_cnt)||(af_alg->step[af_info->cur_index]==0)){
 				sm_state.af_state = AF_CALC_GREAT;
 				af_info->cur_index = 0;
 			} else if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
@@ -1074,10 +1101,19 @@ void isp_af_sm(isp_dev_t *devp)
 			break;
 		case AF_SUCCESS:
 			if(af_delay >= 2){
+				/*get last blnr*/
+				af_info->last_blnr.ac[0] = af_info->af_data[af_info->cur_index].ac[0];
+				af_info->last_blnr.ac[1] = af_info->af_data[af_info->cur_index].ac[1];
+				af_info->last_blnr.ac[2] = af_info->af_data[af_info->cur_index].ac[2];
+				af_info->last_blnr.ac[3] = af_info->af_data[af_info->cur_index].ac[3];
+				af_info->last_blnr.dc[0] = af_info->af_data[af_info->cur_index].dc[0];
+				af_info->last_blnr.dc[1] = af_info->af_data[af_info->cur_index].dc[1];
+				af_info->last_blnr.dc[2] = af_info->af_data[af_info->cur_index].dc[2];
+				af_info->last_blnr.dc[3] = af_info->af_data[af_info->cur_index].dc[3];
 		                /* get last fv */
 		                af_info->fv_aft_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
 			        if(af_sm_dg&0x2){
-				        pr_info("%s:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",__func__,
+				        pr_info("[af] last blnr:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",
 				                af_info->af_data[af_info->cur_index].ac[0],af_info->af_data[af_info->cur_index].ac[1],
 				                af_info->af_data[af_info->cur_index].ac[2],af_info->af_data[af_info->cur_index].ac[3],
 					        af_info->af_data[af_info->cur_index].dc[0],af_info->af_data[af_info->cur_index].dc[1],
@@ -1103,16 +1139,14 @@ void isp_af_sm(isp_dev_t *devp)
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u over,force to step 0.\n",af_alg->af_fail_ratio);
 					af_info->af_retry_cnt = 0;
-					devp->flag &=(~ISP_FLAG_AF);
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
-					sm_state.af_state = AF_NULL;
+					sm_state.af_state = AF_DETECT_INIT;
 				} else {/*af success*/
 					/*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
 					af_info->af_retry_cnt = 0;
-					devp->flag &=(~ISP_FLAG_AF);
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
-					sm_state.af_state = AF_NULL;
+					sm_state.af_state = AF_DETECT_INIT;
 				}
 			}
 			break;
@@ -1349,7 +1383,7 @@ int isp_capture_sm(isp_dev_t *devp)
 			break;
 		case CAPTURE_SINGLE:
 			if(cap_sm->adj_cnt < parm->sigle_count){
-				for(j=0;j<devp->blnr_stat.ac_len;j++)
+				for(j=0;j<4;j++)
 					cur_ac += devp->blnr_stat.ac[j];
 				if(cur_ac > cap_sm->max_ac_sum){
 					cap_sm->max_ac_sum = cur_ac;

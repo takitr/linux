@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.08a"
+#define ISP_VER					"2013.11.09a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -52,6 +52,7 @@ typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	unsigned int h_active;
 	unsigned int v_active;
+	unsigned int frame_rate;
 	unsigned int skip_cnt;
 } isp_info_t;
 /*config in bsp*/
@@ -94,15 +95,18 @@ typedef struct af_debug_test_s {
 } af_debug_test_t;
 
 typedef struct isp_af_info_s {
+	unsigned int cur_index;
+	/*for lose focus*/
+	unsigned int *fv;
+	unsigned int *v_dc;
+	isp_blnr_stat_t last_blnr;
+	/*for climbing algorithm*/
 	unsigned int flag_bk;
 	unsigned int great_step;
 	unsigned int cur_step;
-	unsigned int cur_index;
 	unsigned int af_retry_cnt;
 	unsigned long long fv_aft_af;
 	unsigned long long fv_bf_af;
-	unsigned int last_ave_ac;
-	unsigned int last_ave_dc;
 	isp_blnr_stat_t *f;
 	isp_blnr_stat_t *af_detect;
 	isp_blnr_stat_t af_data[FOCUS_GRIDS];
