@@ -98,6 +98,7 @@ typedef struct isp_af_info_s {
 	unsigned int great_step;
 	unsigned int cur_step;
 	unsigned int cur_index;
+	unsigned int af_retry_cnt;
 	unsigned long long fv_aft_af;
 	unsigned long long fv_bf_af;
 	unsigned int last_ave_ac;

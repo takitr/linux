@@ -272,15 +272,15 @@ typedef struct wave_s {
 	unsigned int torch_rising_time; 
 	unsigned int flash_rising_time; 
 	unsigned int torch_flash_ratio; 
-    unsigned int wave_clock_div;     // u16
-    unsigned int pulse_init_time;    // u11
-    unsigned int pulse_high_time;    // u11
-    unsigned int pulse_low_time;     // u11
-    unsigned int time_to_latch;      // u26
-    unsigned int latch_time;         // u26
-    unsigned int latch_time_timeout; // u26
-    unsigned int time_to_off;        // u11
-    unsigned int pulse_qty_max;      // u8
+        unsigned int wave_clock_div;     // u16
+        unsigned int pulse_init_time;    // u11
+        unsigned int pulse_high_time;    // u11
+        unsigned int pulse_low_time;     // u11
+        unsigned int time_to_latch;      // u26
+        unsigned int latch_time;         // u26
+        unsigned int latch_time_timeout; // u26
+        unsigned int time_to_off;        // u11
+        unsigned int pulse_qty_max;      // u8
 } wave_t;
 
 
@@ -297,7 +297,7 @@ typedef struct xml_algorithm_ae_s {
         unsigned int  ae_statistics[3];   //0: false, 1: true
         unsigned int  ae_exp[3];          //0: false, 1: true
         unsigned int  ae_ag[3];           //0: false, 1: true
-		unsigned int  ae_skip[3];         //0: false, 1: true
+	unsigned int  ae_skip[3];         //0: false, 1: true
         unsigned int  ratio_winl;      //0 ~ 1024
         unsigned int  ratio_winr;      //0 ~ 1024
         unsigned int  ratio_wint;      //0 ~ 1024
@@ -403,7 +403,7 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           thr_yl_h;          // 0 ~ 255
         unsigned int           thr_yl_m;          // 0 ~ 255
         unsigned int           thr_yl_l;          // 0 ~ 255
-		/*********************awb_enh****************/
+	/*********************awb_enh****************/
     	unsigned int           ratio_yuv;    
         unsigned int           slow_lpfcoef;    // 0 ~ 255
         unsigned int           fast_lpfcoef;    // 0 ~ 255
@@ -421,29 +421,21 @@ typedef struct xml_algorithm_awb_s {
 
 #define AF_PARM_NUM			19
 
-#define FOCUS_GRIDS 16
+#define FOCUS_GRIDS 11
 
 typedef struct xml_algorithm_af_s {
-    /*for climbing algorithm*/
-	unsigned int           step[FOCUS_GRIDS];
-	unsigned int 	       af_retry_cnt;
-	unsigned int	       af_retry_max;
-	unsigned int	       step_min;
-	unsigned int	       step_max;
-	unsigned int           f_thr_p;
-	unsigned int 	       f_thr_n;
-	unsigned int 	       step_coarse;
-	unsigned int	       step_fine;
-	unsigned int 	       jump_offset;
-	unsigned int	       field_delay;
-	unsigned int	       detect_step;
+	/*for lose focus*/
 	unsigned int           deta_ave_ratio;//10bits/1024
 	unsigned int	       deta_last_ave;//10bits/1024
+
+    /*for climbing algorithm*/
+	unsigned int           step[FOCUS_GRIDS];
+	unsigned int	       valid_step_cnt;
+	unsigned int	       af_retry_max;
+	unsigned int 	       jump_offset;
+	unsigned int	       field_delay;
 	unsigned int           af_fail_ratio;//x/100
-	unsigned int	       window_l_ratio;//10bits/1024
-	unsigned int	       window_r_ratio;//10bits/1024
-	unsigned int	       window_t_ratio;//10bits/1024
-	unsigned int	       window_b_ratio;//10bits/1024
+	/*window for touch focus*/
 	unsigned int	       x;//x coord of touch focus win
 	unsigned int	       y;//y coord of touch focus win
 	unsigned int           radius;//radius of touch focus win

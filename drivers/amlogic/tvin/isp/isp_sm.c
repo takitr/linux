@@ -930,11 +930,11 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 	unsigned long long *fv,sum_fv=0,ave_fv=0,delta_fv=0;
 	unsigned int i=0,step_cnt=0;
 	bool ret = false;
-	fv = kmalloc(sizeof(unsigned long long)*(af_alg->detect_step),GFP_KERNEL);
+	fv = kmalloc(sizeof(unsigned long long)*(af_alg->valid_step_cnt),GFP_KERNEL);
 
-	memset(fv,0,sizeof(unsigned long long)*(af_alg->detect_step));
+	memset(fv,0,sizeof(unsigned long long)*(af_alg->valid_step_cnt));
 	
-	for(i=0;i<af_alg->detect_step;i++){
+	for(i=0;i<af_alg->valid_step_cnt;i++){
 		fv[i] = get_fv_base_blnr(&af_info->af_detect[i]);
 		sum_fv += fv[i];
 		if(af_sm_dg&0x2){
@@ -946,7 +946,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 			pr_info("fv=%llu.\n",fv[i]);
 		}
 	}
-	step_cnt = af_alg->detect_step;
+	step_cnt = af_alg->valid_step_cnt;
 	ave_fv = div64(sum_fv,step_cnt);
 	if(af_sm_dg&0x1)
 		pr_info("ave_fv %llu.\n",ave_fv);
@@ -981,7 +981,7 @@ void isp_af_detect(isp_dev_t *devp)
 			break;
 		case AF_GET_STEPS_INFO:	
 			if(sm_state.status == ISP_AE_STATUS_STABLE){
-				if(af_info->cur_index++ >= af_alg->detect_step){
+				if(af_info->cur_index++ >= af_alg->valid_step_cnt){
 					af_info->cur_index = 0;
 					sm_state.af_state = AF_GET_STATUS;
 					pr_info("%s state get_status.\n",__func__);
@@ -999,7 +999,7 @@ void isp_af_detect(isp_dev_t *devp)
 					pr_info("[af_sm]:lost focus.\n");
 			}
 			af_info->cur_index++;
-			if(af_info->cur_index >= af_alg->detect_step){
+			if(af_info->cur_index >= af_alg->valid_step_cnt){
 				af_info->cur_index = 0;
 			}
 			break;
@@ -1090,11 +1090,11 @@ void isp_af_sm(isp_dev_t *devp)
 				if(af_sm_dg&0x1){
 					pr_info("[af_sm..]:fv_delta %llu,fv_aft_af %llu.\n",fv_delta,af_info->fv_aft_af);
 				}
-				if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt++ < af_alg->af_retry_max)){
+				if((fv_delta > af_info->fv_bf_af)&&(af_info->af_retry_cnt++ < af_alg->af_retry_max)){
 					sm_state.af_state = AF_GET_OLD_FV;
 					if(af_sm_dg&0x1)
-						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_alg->af_retry_cnt);
-				} else if((fv_delta > af_info->fv_bf_af)&&(af_alg->af_retry_cnt > af_alg->af_retry_max)){
+						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_info->af_retry_cnt);
+				} else if((fv_delta > af_info->fv_bf_af)&&(af_info->af_retry_cnt > af_alg->af_retry_max)){
 		        	/*af failed over max times,force to step 0*/
 		                        /*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
@@ -1102,14 +1102,14 @@ void isp_af_sm(isp_dev_t *devp)
 					atomic_set(&af_info->writeable,1);
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u over,force to step 0.\n",af_alg->af_fail_ratio);
-					af_alg->af_retry_cnt = 0;
+					af_info->af_retry_cnt = 0;
 					devp->flag &=(~ISP_FLAG_AF);
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_NULL;
 				} else {/*af success*/
 					/*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
-					af_alg->af_retry_cnt = 0;
+					af_info->af_retry_cnt = 0;
 					devp->flag &=(~ISP_FLAG_AF);
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_NULL;

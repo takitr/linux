@@ -2273,7 +2273,7 @@ static int set_focus_zone(struct ov5647_device *dev, int value)
 	dev->cam_para->xml_scenes->af.x = tx;
 	dev->cam_para->xml_scenes->af.y = ty;	
 	dev->cam_para->xml_scenes->af.radius = (ov5647_v_active>>5);
-	dev->cam_para->xml_scenes->af.detect_step = 16;
+	dev->cam_para->xml_scenes->af.valid_step_cnt = 16;
 	dev->cam_para->xml_scenes->af.deta_ave_ratio = 10;
 	dev->cam_para->xml_scenes->af.af_fail_ratio = 20;
 	dev->cam_para->xml_scenes->af.af_retry_max = 2;

@@ -727,11 +727,11 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
-		devp->isp_af_parm->detect_step = 16;
+		devp->isp_af_parm->valid_step_cnt = 16;
 		devp->isp_af_parm->deta_ave_ratio = ratio;
 		devp->isp_af_parm->af_fail_ratio = 20;
 		devp->isp_af_parm->af_retry_max = 3;
-		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step,GFP_KERNEL);
+		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->valid_step_cnt,GFP_KERNEL);
 		devp->isp_af_parm->step[0] = 100;
 		devp->isp_af_parm->step[1] = 150;
 		devp->isp_af_parm->step[2] = 200;
