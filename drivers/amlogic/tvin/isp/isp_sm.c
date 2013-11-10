@@ -170,8 +170,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	int avg, avgo;
 	u8  targ;
 	int i;
-	static k = 0;
-	static h = 0;
+	static int k = 0;
+	static int h = 0;
 	int step = 0;
 	unsigned short targrate;
 	unsigned int targstep, newstep;
@@ -185,6 +185,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 		case AE_IDLE:
 			break;
 		case AE_INIT:
+			k = 0;
+			h = 0;
 			aepa->win_l = (parm->h_active * aep->ratio_winl) >> 10;
 			aepa->win_r = ((parm->h_active * aep->ratio_winr) >> 10) - 1;
 			aepa->win_t = (parm->v_active * aep->ratio_wint) >> 10;
