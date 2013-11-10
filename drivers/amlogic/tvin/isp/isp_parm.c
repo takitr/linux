@@ -217,27 +217,23 @@ void set_af_parm(xml_algorithm_af_t *af_sw,char **parm)
 {
 	int len = AF_PARM_NUM;		
 	isp_param_t af[AF_PARM_NUM]={
-        #if 0
-		{"f0_coef0",      &af_sw->f0_coef0,      1, ISP_U32},
-		{"f0_coef1",      &af_sw->f0_coef1,      1, ISP_U32},
-		{"f0_coef2",      &af_sw->f0_coef2,      1, ISP_U32},
-		{"f0_coef3",      &af_sw->f0_coef3,      1, ISP_U32},
-		{"f0_coef4",      &af_sw->f0_coef4,      1, ISP_U32},
-		{"f0_coef5",      &af_sw->f0_coef5,      1, ISP_U32},
-		{"f0_coef6",      &af_sw->f0_coef6,      1, ISP_U32},
-		{"f0_coef7",      &af_sw->f0_coef7,      1, ISP_U32},		
-		{"f1_coef0",      &af_sw->f1_coef0,      1, ISP_U32},
-		{"f1_coef1",      &af_sw->f1_coef1,      1, ISP_U32},
-		{"f1_coef2",      &af_sw->f1_coef2,      1, ISP_U32},
-		{"f1_coef3",      &af_sw->f1_coef3,      1, ISP_U32},
-		{"f1_coef4",      &af_sw->f1_coef4,      1, ISP_U32},
-		{"f1_coef5",      &af_sw->f1_coef5,      1, ISP_U32},
-		{"f1_coef6",      &af_sw->f1_coef6,      1, ISP_U32},
-		{"f1_coef7",      &af_sw->f1_coef7,      1, ISP_U32},
-		{"f0_coef",       &af_sw->f0_coef,       1, ISP_U32},
-		{"f1_coef",       &af_sw->f1_coef,       1, ISP_U32},		
-		{"adapting_time", &af_sw->adapting_time, 1, ISP_U32},
-        #endif 
+		{"enter_move_ratio",      &af_sw->enter_move_ratio,        1, ISP_U32},
+		{"enter_static_ratio",    &af_sw->enter_static_ratio,      1, ISP_U32},
+		{"detect_step_cnt",       &af_sw->detect_step_cnt,         1, ISP_U32},
+		{"ave_vdc_thr",		  &af_sw->ave_vdc_thr,		   		   1, ISP_U32},
+		{"delta_fv_ratio",        &af_sw->delta_fv_ratio,          1, ISP_U32},
+		{"af_duration_time",	  &af_sw->af_duration_time, 	   1, ISP_U32},
+		{"af_duration_cnt",	  &af_sw->af_duration_cnt,	       1, ISP_U32},
+		{"win_ratio", 	  	  &af_sw->win_ratio,		   1, ISP_U32},
+		{"step",      		  &af_sw->step,           FOCUS_GRIDS, ISP_U32},
+		{"valid_step_cnt",        &af_sw->valid_step_cnt,          1, ISP_U32},
+		{"af_retry_max",          &af_sw->af_retry_max,            1, ISP_U32},		
+		{"jump_offset",           &af_sw->jump_offset,             1, ISP_U32},
+		{"field_delay",           &af_sw->field_delay,             1, ISP_U32},
+		{"af_fail_ratio",         &af_sw->af_fail_ratio,           1, ISP_U32},
+		{"x",                     &af_sw->x,      			       1, ISP_U32},
+		{"y",                     &af_sw->y,      			       1, ISP_U32},
+		{"radius",                &af_sw->radius,     		       1, ISP_U32},
 	};
 	
 	if(!strcmp(parm[0],"show")){

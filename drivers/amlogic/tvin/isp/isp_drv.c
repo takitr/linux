@@ -690,13 +690,6 @@ static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
         else
                 return -1;
 }
-static unsigned int dc_move_ratio = 50;
-module_param(dc_move_ratio,uint,0664);
-MODULE_PARM_DESC(dc_move_ratio,"\n debug flag for af.\n");
-
-static unsigned int fv_ratio = 200;
-module_param(fv_ratio,uint,0664);
-MODULE_PARM_DESC(fv_ratio,"\n debug flag for af.\n");
 
 static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {        
@@ -756,14 +749,25 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		
 		/*init for auto lose focus tell*/
 		devp->isp_af_parm->detect_step_cnt = 16;
-		devp->isp_af_parm->enter_move_ratio = dc_move_ratio;
-		devp->isp_af_parm->enter_static_ratio = 30;
-		devp->isp_af_parm->deta_ave_ratio = fv_ratio;
+		devp->isp_af_parm->enter_move_ratio = 55;
+		devp->isp_af_parm->enter_static_ratio = 35;
+		devp->isp_af_parm->ave_vdc_thr = 100;
+		devp->isp_af_parm->delta_fv_ratio = 0;
+		devp->isp_af_parm->af_duration_time = 1;//0.5s
+		/*window for full scan & detect*/
+		devp->isp_af_parm->win_ratio = 4;
+		devp->af_info.x0 = info->h_active/devp->isp_af_parm->win_ratio;
+		devp->af_info.y0 = info->v_active/devp->isp_af_parm->win_ratio;
+		devp->af_info.x1 = info->h_active - devp->af_info.x0;
+		devp->af_info.y1 = info->v_active - devp->af_info.y0;
 		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.fv = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.v_dc = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
-		if((info->h_active==2592)||(info->v_active==1944))
+		/*patch for capture*/
+		if((info->h_active==2592)||(info->v_active==1944)){
 			devp->flag |= ISP_FLAG_SKIP_BUF;
+			devp->flag &= (~ISP_FLAG_AF);
+		}
 	}
         return 0;
 }

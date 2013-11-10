@@ -419,17 +419,21 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           thr_v[20];       // 0 ~ 255
 } xml_algorithm_awb_t;
 
-#define AF_PARM_NUM			19
+#define AF_PARM_NUM			16
 
-#define FOCUS_GRIDS 16
+#define FOCUS_GRIDS 17
 
 typedef struct xml_algorithm_af_s {
 	/*for lose focus*/
 	unsigned int	       enter_move_ratio;//10bit/1024
 	unsigned int	       enter_static_ratio;//10bit/1024
 	unsigned int	       detect_step_cnt;
-	unsigned int           fv_fail_ratio;//10bits/1024
-	unsigned int           deta_ave_ratio;//10bits/1024
+	unsigned int           ave_vdc_thr;//the threshold of enter move
+	unsigned int           delta_fv_ratio;//100
+	unsigned int	       af_duration_time;// 0.1s
+	unsigned int	       af_duration_cnt;// calc base on duration time
+	/*full scan & detect window ratio*/
+	unsigned int	       win_ratio;//cut 4 border in top bottom left right widht=1/ratio
     /*for climbing algorithm*/
 	unsigned int           step[FOCUS_GRIDS];
 	unsigned int	       valid_step_cnt;
@@ -688,16 +692,6 @@ typedef enum bt_path_e {
 	BT_PATH_CSI2,
 } bt_path_t;
 
-typedef enum clk_channel_e {
-	CLK_CHANNEL_A=0,
-	CLK_CHANNEL_B,
-}clk_channel_t;
-
-typedef enum cam_interface_e {
-	CAM_DVP=0,
-	CAM_MIPI,
-}cam_interface_t;
-
 // ***************************************************************************
 // *** IOCTL command definitions *****************************************
 // ***************************************************************************
@@ -712,23 +706,7 @@ typedef enum cam_interface_e {
 #define CAMERA_IOC_START_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x05, struct camera_info_s)
 #define CAMERA_IOC_STOP_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x06, struct camera_info_s)
 
-typedef struct csi_parm_s {
-        //am_csi2_hw_t            *hw_info;
-        unsigned char lanes;
-        unsigned char channel;
-        unsigned char mode;
-        unsigned char clock_lane_mode; // 0 clock gate 1: always on
-        unsigned active_pixel;
-        unsigned active_line;
-        unsigned frame_size;
-        unsigned ui_val; //ns
-        unsigned hs_freq; //hz
-        unsigned urgent;
 
-        clk_channel_t           clk_channel;
-        unsigned int            skip_frames;
-        tvin_color_fmt_t        csi_ofmt;
-}csi_parm_t;
 
 //add for vdin called by backend driver
 typedef struct vdin_parm_s {
@@ -752,8 +730,6 @@ typedef struct vdin_parm_s {
 	unsigned short  dest_hactive;//for vdin scale down
 	unsigned short  dest_vactive;
 	unsigned short	skip_count;//for skip frame
-
-        struct csi_parm_s csi_hw_info;
 	/*for reserved*/
         unsigned int    reserved;
 } vdin_parm_t;

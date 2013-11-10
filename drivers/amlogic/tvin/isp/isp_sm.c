@@ -137,6 +137,7 @@ void isp_sm_init(isp_dev_t *devp)
 
 void af_sm_init(isp_dev_t *devp)
 {
+	unsigned int tmp = 0 ;
 	/*init for af*/
 	if(sm_state.af_state)
 		devp->flag |= devp->af_info.flag_bk;
@@ -149,6 +150,10 @@ void af_sm_init(isp_dev_t *devp)
 	}
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
+	devp->af_info.adj_duration_cnt = 0;
+	/*calc duration for detect lose focus*/
+	tmp = devp->isp_af_parm->af_duration_time*devp->info.frame_rate;
+	devp->isp_af_parm->af_duration_cnt = tmp/10;
 }
 void isp_ae_low_gain()
 {
@@ -932,7 +937,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 {
 	unsigned long long *fv,sum_fv=0,ave_fv=0,delta_fv=0;
 	unsigned long long *v_dc,sum_vdc=0,ave_vdc=0,delta_dc=0,tmp_vdc1=0,tmp_vdc2=0;
-	unsigned int i=0,dc0,dc1,dc2,dc3;
+	unsigned int i=0,dc0,dc1,dc2,dc3,static_cnt;
 	bool ret=false,is_move=false,is_static=false;
 	fv = af_info->fv;
 	v_dc = af_info->v_dc;
@@ -955,18 +960,39 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 			pr_info("v_dc[%u]=%llu.\n",i,v_dc[i]);
 	}
 	ave_vdc = div64(sum_vdc,af_alg->detect_step_cnt);
+	
+	static_cnt = 0;
 	for(i=0;i<af_alg->detect_step_cnt;i++){
 		delta_dc = v_dc[i]>ave_vdc?v_dc[i]-ave_vdc:ave_vdc-v_dc[i];
 		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
 		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
 		if(tmp_vdc1 > ave_vdc){
-			is_move = true;
+			if(ave_vdc > af_alg->ave_vdc_thr){
+			        is_move = true;
+			} else{
+                                if(af_sm_dg&0x1)
+				        pr_info("static ave_vdc=%llu.\n",ave_vdc);
 			break;
+		}else if(tmp_vdc2 < ave_vdc){
+			if(++static_cnt >= af_alg->detect_step_cnt)
+				is_static = true;
 		}
 	}
-	/*enter static view,calc fv*/
-	if(!is_move && i>= af_alg->detect_step_cnt)
+	/* enter move from static */
+	if(is_move){
+		if(af_sm_dg&0x1)
+			pr_info("0->1\n");
+		af_info->last_move = true;
 		return false;
+	/* during hysteresis ,still last state*/
+	}else if((!is_static&&!is_move)||!af_info->last_move){
+		return false;
+	}
+	if(af_sm_dg&0x1)
+		pr_info("1->0\n");
+	/*enter static from move,calc fv to telll if trigger full scan*/
+	if(af_alg->delta_fv_ratio == 0)
+		return true;
 	sum_fv = 0;
 	for(i=0;i<af_alg->valid_step_cnt;i++){
 		fv[i] = get_fv_base_blnr(&af_info->af_detect[i]);
@@ -983,16 +1009,15 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 	ave_fv = div64(sum_fv,af_alg->valid_step_cnt);
 	if(af_sm_dg&0x1)
 		pr_info("ave_fv %llu.\n",ave_fv);
-	delta_fv = ave_fv>af_info->fv_aft_af?(ave_fv-af_info->fv_aft_af):(af_info->fv_aft_af-ave_fv);
-	delta_fv = delta_fv*(unsigned long long)1024;
-	delta_fv = div64(delta_fv,af_alg->deta_ave_ratio);
-	if(delta_fv > af_info->fv_aft_af){
-		pr_info("1 delta_fv*1024/ave_ratio=%llu,last_ave_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
+	delta_fv = af_info->fv_aft_af*af_alg->delta_fv_ratio;
+	delta_fv = div64(delta_fv,100);
+	if(ave_fv < delta_fv){
+		pr_info("true: delta_fv=%llu,last_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
 		ret = true;
 	}else{
 		ret = false;
 		if(af_sm_dg&0x1)
-			pr_info("2 delta_fv*1024/ave_ratio=%llu,last_ave_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
+			pr_info("false: delta_fv=%llu,last_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
 	}
 
 
@@ -1007,17 +1032,21 @@ void isp_af_detect(isp_dev_t *devp)
 	
 	switch(sm_state.af_state){
 		case AF_DETECT_INIT:
+			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			af_info->f = af_info->af_detect;
 			af_info->cur_index = 0;
 			sm_state.af_state = AF_GET_STEPS_INFO;
 			break;
 		case AF_GET_STEPS_INFO:	
-			if(af_info->cur_index >= af_alg->detect_step_cnt){
+			if(af_info->adj_duration_cnt++ >= af_alg->af_duration_cnt){
+				af_info->adj_duration_cnt = af_alg->af_duration_cnt;
+				if(af_info->cur_index >= af_alg->detect_step_cnt){
 					af_info->cur_index = 0;
 					sm_state.af_state = AF_GET_STATUS;
-					pr_info("%s get info end.\n",__func__);
-			} else {
-				af_info->cur_index++;
+					pr_info("%s get info end duration cnt %u.\n",__func__,af_info->adj_duration_cnt);
+				} else {
+					af_info->cur_index++;
+				}
 			}
 			break;
 		case AF_GET_STATUS:
@@ -1141,14 +1170,20 @@ void isp_af_sm(isp_dev_t *devp)
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u over,force to step 0.\n",af_alg->af_fail_ratio);
 					af_info->af_retry_cnt = 0;
+					af_info->adj_duration_cnt = 0;
+					af_info->last_move = false;
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_DETECT_INIT;
+					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				} else {/*af success*/
 					/*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
 					af_info->af_retry_cnt = 0;
+					af_info->adj_duration_cnt = 0;
+					af_info->last_move = false;
 					devp->flag &=(~ISP_FLAG_TOUCH_AF);
 					sm_state.af_state = AF_DETECT_INIT;
+					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				}
 			}
 			break;
