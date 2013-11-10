@@ -972,6 +972,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 			} else{
                                 if(af_sm_dg&0x1)
 				        pr_info("static ave_vdc=%llu.\n",ave_vdc);
+			}
 			break;
 		}else if(tmp_vdc2 < ave_vdc){
 			if(++static_cnt >= af_alg->detect_step_cnt)
