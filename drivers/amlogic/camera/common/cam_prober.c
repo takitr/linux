@@ -340,10 +340,11 @@ int hm5065_v4l2_probe(struct i2c_adapter *adapter)
 int hi2056_v4l2_probe(struct i2c_adapter *adapter)
 {
 	int ret = 0;
-	unsigned char reg;   
-	reg = aml_i2c_get_byte_add8(adapter, 0x24, 0x00);
-	printk("reg=%x\n", reg);
-	//if (reg == 0x9b)//need test
+	unsigned char reg[2];
+	reg[0] = aml_i2c_get_byte(adapter, 0x24, 0x0001);
+	reg[1] = aml_i2c_get_byte(adapter, 0x24, 0x0002);
+        printk("reg[0]=%x, reg[1]=%x\n", reg[0], reg[1]);
+	if (reg[0] == 0x20 && reg[1] == 0x56)
 		ret = 1;
 	return ret;
 }
@@ -356,7 +357,7 @@ int ov5647_v4l2_probe(struct i2c_adapter *adapter)
 	unsigned char reg[2];  
 	reg[0] = aml_i2c_get_byte(adapter, 0x36, 0x300a);
 	reg[1] = aml_i2c_get_byte(adapter, 0x36, 0x300b);
-	printk("reg[0]:%d,reg[1]:%d\n",reg[0],reg[1]);
+	printk("reg[0]:%x,reg[1]:%x\n",reg[0],reg[1]);
 	if (reg[0] == 0x56 && reg[1] == 0x47)
 		ret = 1;
 	return ret;
@@ -528,7 +529,7 @@ static aml_cam_dev_info_t cam_devs[] = {
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI2056
 	{
-		.addr = 0x48,
+		.addr = 0x24,
 		.name = "mipi-hi2056",
 		.pwdn = 1,
 		.max_cap_size = SIZE_1600X1200,
@@ -719,6 +720,29 @@ static struct list_head cam_head = LIST_HEAD_INIT(cam_head);
 
 #define DEBUG_DUMP_CAM_INFO
 
+static int fill_csi_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
+{
+	const char* str;
+	int ret = 0;
+	aml_cam_dev_info_t* cam_info = NULL;
+	struct i2c_adapter *adapter;
+
+	ret = of_property_read_string(p_node, "clk_channel", &str);
+	if (ret) {
+		printk("failed to read clock channel, \"a or b\"\n");
+		cam_dev->clk_channel = CLK_CHANNEL_A;
+	} else {
+		printk("clock channel:clk %s\n", str);
+		if (strncmp("a", str, 1) == 0){
+                        cam_dev->clk_channel = CLK_CHANNEL_A;
+                }else{
+                        cam_dev->clk_channel = CLK_CHANNEL_B;
+                }
+	}
+
+    return ret;
+
+}
 static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 {
 	const char* str;
@@ -832,7 +856,25 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 		else
 			cam_dev->bt_path = BT_PATH_GPIO;
 	}
-	
+
+	ret = of_property_read_string(p_node, "interface", &str);
+	if (ret) {
+		printk("failed to read camera interface \"mipi or dvp\"\n");
+		cam_dev->interface = CAM_DVP;
+	} else {
+		printk("camera interface:%s\n", str);
+		if (strncmp("dvp", str, 1) == 0){
+                        cam_dev->interface = CAM_DVP;
+                }else{
+                        cam_dev->interface = CAM_MIPI;
+                }
+	}
+        if( CAM_MIPI == cam_dev->interface ){
+		ret = fill_csi_dev( p_node, cam_dev);
+                if ( ret < 0 )
+                        goto err_out;
+        }
+
 	ret = of_property_read_string(p_node, "config_path", &cam_dev->config);
 	// cam_dev->config = "/system/etc/myconfig";
 	//ret = 0;

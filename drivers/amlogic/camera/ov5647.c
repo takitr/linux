@@ -37,6 +37,7 @@
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
 
+#include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 
 #include <mach/am_regs.h>
@@ -535,7 +536,7 @@ typedef struct resolution_param {
 	struct v4l2_frmsize_discrete active_frmsize;
 	int active_fps;
 	resulution_size_type_t size_type;
-	struct aml_camera_i2c_fig_s* reg_script;
+	struct aml_camera_i2c_fig_s *reg_script[2]; //0:dvp, 1:mipi
 } resolution_param_t;
 
 static LIST_HEAD(ov5647_devicelist);
@@ -611,6 +612,105 @@ static struct aml_camera_i2c_fig_s OV5647_script[] = {
 	{0xffff, 0xff}
 };
 
+struct aml_camera_i2c_fig_s OV5647_VGA_script_mipi[] = {
+          {0x4800, 0x24},
+          {0x0100, 0x00},
+          {0x0103, 0x01},
+          {0x3035, 0x11},
+          {0x3036, 0x46},
+          {0x303c, 0x11},
+          {0x3821, 0x07},
+          {0x3820, 0x41},
+          {0x370c, 0x0f},
+          {0x3612, 0x59},
+          {0x3618, 0x00},
+          {0x5000, 0x06},
+
+          {0x5000, 0x86},
+          {0x5001, 0x00},
+          {0x5002, 0x41},
+          {0x5003, 0x08},
+          {0x5a00, 0x08},
+          {0x3000, 0xff},
+          {0x3001, 0xff},
+          {0x3002, 0xff},
+          {0x301d, 0xf0},
+          {0x3a18, 0x00},
+          {0x3a19, 0xf8},
+          {0x3c01, 0x80},
+          {0x3b07, 0x0c},
+          {0x380c, 0x07},
+          {0x380d, 0x3c},
+          {0x380e, 0x03},
+          {0x380f, 0xf0},
+          {0x3814, 0x71},
+          {0x3815, 0x71},
+          {0x3708, 0x64},
+          {0x3709, 0x52},
+          {0x3808, 0x02},
+          {0x3809, 0x80},
+          {0x380a, 0x01},
+          {0x380b, 0xe0},
+          {0x3800, 0x00},
+          {0x3801, 0x10},
+          {0x3802, 0x00},
+          {0x3803, 0x00},
+          {0x3804, 0x0a},
+          {0x3805, 0x2f},
+          {0x3806, 0x07},
+          {0x3807, 0x9f},
+          {0x3630, 0x2e},
+          {0x3632, 0xe2},
+          {0x3633, 0x23},
+          {0x3634, 0x44},
+          {0x3620, 0x64},
+          {0x3621, 0xe0},
+          {0x3600, 0x37},
+          {0x3704, 0xa0},
+          {0x3703, 0x5a},
+          {0x3715, 0x78},
+          {0x3717, 0x01},
+          {0x3731, 0x02},
+          {0x370b, 0x60},
+          {0x3705, 0x1a},
+          {0x3f05, 0x02},
+          {0x3f06, 0x10},
+          {0x3f01, 0x0a},
+          {0x3503, 0x03},
+          {0x3a08, 0x01},
+          {0x3a09, 0x2e},
+          {0x3a0a, 0x00},
+          {0x3a0b, 0xfb},
+          {0x3a0d, 0x02},
+          {0x3a0e, 0x01},
+          {0x3a0f, 0x58},
+          {0x3a10, 0x50},
+          {0x3a1b, 0x58},
+          {0x3a1e, 0x50},
+          {0x3a11, 0x60},
+          {0x3a1f, 0x28},
+          {0x4001, 0x02},
+          {0x4004, 0x02},
+          {0x4000, 0x09},
+          {0x4050, 0x6e},
+          {0x4051, 0x8f},
+          {0x0100, 0x01},
+          {0x3000, 0x00},
+          {0x3001, 0x00},
+          {0x3002, 0x00},
+          {0x3017, 0xe0},
+          {0x301c, 0xfc},
+          {0x3636, 0x06},
+          {0x3016, 0x08},
+          {0x3827, 0xec},
+          {0x4800, 0x24},
+          {0x3018, 0x44},
+          {0x3035, 0x21},
+          {0x3106, 0xf5},
+          {0x3034, 0x1a},
+          {0x301c, 0xf8},
+          {0xffff, 0xff},
+};
 struct aml_camera_i2c_fig_s OV5647_preview_VGA_script[] = {
 	{0x0100,0x00},
 	{0x0103,0x01},
@@ -773,6 +873,106 @@ struct aml_camera_i2c_fig_s OV5647_preview_VGA_script[] = {
 	{0xffff,0xff},  
 };
 
+struct aml_camera_i2c_fig_s OV5647_720P_script_mipi[] = {
+          {0x4800, 0x24},
+          {0x0100, 0x00},
+          {0x0103, 0x01},
+          {0x3035, 0x11},
+          {0x3036, 0x64},
+          {0x303c, 0x11},
+          {0x3821, 0x07},
+          {0x3820, 0x41},
+          {0x370c, 0x0f},
+          {0x3612, 0x59},
+          {0x3618, 0x00},
+          {0x5000, 0x06},
+
+          {0x5000, 0x86},
+          {0x5001, 0x00},
+          {0x5002, 0x41},
+
+          {0x5003, 0x08},
+          {0x5a00, 0x08},
+          {0x3000, 0xff},
+          {0x3001, 0xff},
+          {0x3002, 0xff},
+          {0x301d, 0xf0},
+          {0x3a18, 0x00},
+          {0x3a19, 0xf8},
+          {0x3c01, 0x80},
+          {0x3b07, 0x0c},
+          {0x380c, 0x07},
+          {0x380d, 0x00},
+          {0x380e, 0x05},
+          {0x380f, 0xd0},
+          {0x3814, 0x31},
+          {0x3815, 0x31},
+          {0x3708, 0x64},
+          {0x3709, 0x52},
+          {0x3808, 0x05},
+          {0x3809, 0x00},
+          {0x380a, 0x02},
+          {0x380b, 0xd0},
+          {0x3800, 0x00},
+          {0x3801, 0x18},
+          {0x3802, 0x00},
+          {0x3803, 0xf8},
+          {0x3804, 0x0a},
+          {0x3805, 0x27},
+          {0x3806, 0x06},
+          {0x3807, 0xa7},
+          {0x3630, 0x2e},
+          {0x3632, 0xe2},
+          {0x3633, 0x23},
+          {0x3634, 0x44},
+          {0x3620, 0x64},
+          {0x3621, 0xe0},
+          {0x3600, 0x37},
+          {0x3704, 0xa0},
+          {0x3703, 0x5a},
+          {0x3715, 0x78},
+          {0x3717, 0x01},
+          {0x3731, 0x02},
+          {0x370b, 0x60},
+          {0x3705, 0x1a},
+          {0x3f05, 0x02},
+          {0x3f06, 0x10},
+          {0x3f01, 0x0a},
+          {0x3503, 0x03},
+          {0x3a08, 0x01},
+          {0x3a09, 0xbe},
+          {0x3a0a, 0x01},
+          {0x3a0b, 0x74},
+          {0x3a0d, 0x02},
+          {0x3a0e, 0x01},
+          {0x3a0f, 0x58},
+          {0x3a10, 0x50},
+          {0x3a1b, 0x58},
+          {0x3a1e, 0x50},
+          {0x3a11, 0x60},
+          {0x3a1f, 0x28},
+          {0x4001, 0x02},
+          {0x4004, 0x02},
+          {0x4000, 0x09},
+          {0x4050, 0x6e},
+          {0x4051, 0x8f},
+          {0x0100, 0x01},
+          {0x3000, 0x00},
+          {0x3001, 0x00},
+          {0x3002, 0x00},
+          {0x3017, 0xe0},
+          {0x301c, 0xfc},
+          {0x3636, 0x06},
+          {0x3016, 0x08},
+          {0x3827, 0xec},
+          {0x4800, 0x24},
+          {0x3018, 0x44},
+          {0x3035, 0x21},
+          {0x3106, 0xf5},
+          {0x3034, 0x1a},
+          {0x301c, 0xf8},
+	  {0xffff, 0xff},
+};
 struct aml_camera_i2c_fig_s OV5647_preview_720P_script[] = {
 	{0x0100,0x00},
 	{0x0103,0x01},
@@ -935,6 +1135,10 @@ struct aml_camera_i2c_fig_s OV5647_preview_720P_script[] = {
 	{0xffff, 0xff},
 };
 
+struct aml_camera_i2c_fig_s OV5647_960P_script_mipi[] = {
+        {0x4800, 0x24},
+	{0xffff, 0xff},
+};
 struct aml_camera_i2c_fig_s OV5647_preview_960P_script[] = {
 	{0x0100,0x00},  
 	{0x0103,0x01},  
@@ -1088,6 +1292,107 @@ struct aml_camera_i2c_fig_s OV5647_preview_960P_script[] = {
 	{0xffff, 0xff},
 };
 
+struct aml_camera_i2c_fig_s OV5647_1080P_script_mipi[] = {
+          {0x4800, 0x24},
+          {0x0100, 0x00},
+          {0x0103, 0x01},
+          {0x3035, 0x11},
+          {0x3036, 0x64},
+          {0x303c, 0x11},
+          {0x3821, 0x06},
+          {0x3820, 0x00},
+          {0x370c, 0x0f},
+          {0x3612, 0x5b},
+          {0x3618, 0x04},
+          {0x5000, 0x06},
+
+          {0x5000, 0x86},
+          {0x5001, 0x00},
+          {0x5002, 0x41},
+
+          {0x5003, 0x08},
+          {0x5a00, 0x08},
+          {0x3000, 0xff},
+          {0x3001, 0xff},
+          {0x3002, 0xff},
+          {0x301d, 0xf0},
+          {0x3a18, 0x00},
+          {0x3a19, 0xf8},
+          {0x3c01, 0x80},
+          {0x3b07, 0x0c},
+          {0x380c, 0x09},
+          {0x380d, 0x70},
+          {0x380e, 0x04},
+          {0x380f, 0x50},
+          {0x3814, 0x11},
+          {0x3815, 0x11},
+          {0x3708, 0x64},
+          {0x3709, 0x12},
+          {0x3808, 0x07},
+          {0x3809, 0x80},
+          {0x380a, 0x04},
+          {0x380b, 0x38},
+          {0x3800, 0x01},
+          {0x3801, 0x5c},
+          {0x3802, 0x01},
+          {0x3803, 0xb2},
+          {0x3804, 0x08},
+          {0x3805, 0xe3},
+          {0x3806, 0x05},
+          {0x3807, 0xf1},
+          {0x3630, 0x2e},
+          {0x3632, 0xe2},
+          {0x3633, 0x23},
+          {0x3634, 0x44},
+          {0x3620, 0x64},
+          {0x3621, 0xe0},
+          {0x3600, 0x37},
+          {0x3704, 0xa0},
+          {0x3703, 0x5a},
+          {0x3715, 0x78},
+          {0x3717, 0x01},
+          {0x3731, 0x02},
+          {0x370b, 0x60},
+          {0x3705, 0x1a},
+          {0x3f05, 0x02},
+          {0x3f06, 0x10},
+          {0x3f01, 0x0a},
+          {0x3503, 0x03},
+          {0x3a08, 0x01},
+          {0x3a09, 0x4b},
+          {0x3a0a, 0x01},
+          {0x3a0b, 0x13},
+          {0x3a0d, 0x04},
+          {0x3a0e, 0x03},
+          {0x3a0f, 0x58},
+          {0x3a10, 0x50},
+          {0x3a1b, 0x58},
+          {0x3a1e, 0x50},
+          {0x3a11, 0x60},
+          {0x3a1f, 0x28},
+          {0x4001, 0x02},
+          {0x4004, 0x04},
+          {0x4000, 0x09},
+          {0x4050, 0x6e},
+          {0x4051, 0x8f},
+          {0x0100, 0x01},
+          {0x3000, 0x00},
+          {0x3001, 0x00},
+          {0x3002, 0x00},
+          {0x3017, 0xe0},
+          {0x301c, 0xfc},
+          {0x3636, 0x06},
+          {0x3016, 0x08},
+          {0x3827, 0xec},
+          {0x4800, 0x24},
+          {0x3018, 0x44},
+          {0x3035, 0x21},
+          {0x3106, 0xf5},
+          {0x3034, 0x1a},
+          {0x301c, 0xf8},
+
+	  {0xffff, 0xff},
+};
 struct aml_camera_i2c_fig_s OV5647_preview_1080P_script[] = {
 	{0x0100,0x00},
 	{0x0103,0x01},
@@ -1250,6 +1555,104 @@ struct aml_camera_i2c_fig_s OV5647_preview_1080P_script[] = {
 	{0xffff, 0xff},
 };
 
+struct aml_camera_i2c_fig_s OV5647_5M_script_mipi[] = {
+          {0x0100, 0x00},
+          {0x0103, 0x01},
+          {0x3035, 0x11},
+          {0x3036, 0x64},
+          {0x303c, 0x11},
+          {0x3821, 0x06},
+          {0x3820, 0x00},
+          {0x370c, 0x0f},
+          {0x3612, 0x5b},
+          {0x3618, 0x04},
+          {0x5000, 0x06},
+
+          {0x5000, 0x86},
+          {0x5001, 0x00},
+          {0x5002, 0x41},
+          {0x5003, 0x08},
+          {0x5a00, 0x08},
+          {0x3000, 0xff},
+          {0x3001, 0xff},
+          {0x3002, 0xff},
+          {0x301d, 0xf0},
+          {0x3a18, 0x00},
+          {0x3a19, 0xf8},
+          {0x3c01, 0x80},
+          {0x3b07, 0x0c},
+          {0x380c, 0x0a},
+          {0x380d, 0x8c},
+          {0x380e, 0x07},
+          {0x380f, 0xb6},
+          {0x3814, 0x11},
+          {0x3815, 0x11},
+          {0x3708, 0x64},
+          {0x3709, 0x12},
+          {0x3808, 0x0a},
+          {0x3809, 0x20},
+          {0x380a, 0x07},
+          {0x380b, 0x98},
+          {0x3800, 0x00},
+          {0x3801, 0x0c},
+          {0x3802, 0x00},
+          {0x3803, 0x04},
+          {0x3804, 0x0a},
+          {0x3805, 0x33},
+          {0x3806, 0x07},
+          {0x3807, 0xa3},
+          {0x3630, 0x2e},
+          {0x3632, 0xe2},
+          {0x3633, 0x23},
+          {0x3634, 0x44},
+          {0x3620, 0x64},
+          {0x3621, 0xe0},
+          {0x3600, 0x37},
+          {0x3704, 0xa0},
+          {0x3703, 0x5a},
+          {0x3715, 0x78},
+          {0x3717, 0x01},
+          {0x3731, 0x02},
+          {0x370b, 0x60},
+          {0x3705, 0x1a},
+          {0x3f05, 0x02},
+          {0x3f06, 0x10},
+          {0x3f01, 0x0a},
+          {0x3503, 0x03},
+          {0x3a08, 0x01},
+          {0x3a09, 0x28},
+          {0x3a0a, 0x00},
+          {0x3a0b, 0xf6},
+          {0x3a0d, 0x08},
+          {0x3a0e, 0x06},
+          {0x3a0f, 0x58},
+          {0x3a10, 0x50},
+          {0x3a1b, 0x58},
+          {0x3a1e, 0x50},
+          {0x3a11, 0x60},
+          {0x3a1f, 0x28},
+          {0x4001, 0x02},
+          {0x4004, 0x04},
+          {0x4000, 0x09},
+          {0x4050, 0x6e},
+          {0x4051, 0x8f},
+          {0x0100, 0x01},
+          {0x3000, 0x00},
+          {0x3001, 0x00},
+          {0x3002, 0x00},
+          {0x3017, 0xe0},
+          {0x301c, 0xfc},
+          {0x3636, 0x06},
+          {0x3016, 0x08},
+          {0x3827, 0xec},
+          {0x4800, 0x24},
+          {0x3018, 0x44},
+          {0x3035, 0x21},
+          {0x3106, 0xf5},
+          {0x3034, 0x1a},
+          {0x301c, 0xf8},
+	  {0xffff, 0xff},
+};
 struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
   {0x0100,0x00},
 	{0x0103,0x01},
@@ -1418,37 +1821,42 @@ static resolution_param_t  prev_resolution_array[] = {
 		.active_frmsize		= {352, 288},
 		.active_fps			= 30,
 		.size_type			= SIZE_CIF_352X288,
-		.reg_script			= OV5647_preview_VGA_script,
+		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {640, 480},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
 		.size_type			= SIZE_VGA_640X480,
-		.reg_script			= OV5647_preview_VGA_script,
+		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
 		.size_type			= SIZE_720P_1280X720,
-		.reg_script			= OV5647_preview_720P_script,
+		.reg_script[0]			= OV5647_preview_720P_script,
+		.reg_script[1]			= OV5647_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
 		.size_type			= SIZE_960P_1280X960,
-		.reg_script			= OV5647_preview_960P_script,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
 		.active_frmsize		= {1920, 1080},
 		.active_fps			= 15,
 		.size_type			= SIZE_1080P_1920X1080,
-		.reg_script			= OV5647_preview_1080P_script,
+		.reg_script[0]			= OV5647_preview_1080P_script,
+		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},{
 		.frmsize			= {2592, 1944},
 		.active_frmsize		        = {2592, 1944},
 		.active_fps			= 7.5,
-		.size_type			= SIZE_H1080P_2592X1944,
-		.reg_script			= OV5647_capture_5M_script,
+		.reg_script[0]			= OV5647_capture_5M_script,
+		.reg_script[1]			= OV5647_5M_script_mipi,
 	},
 };
 	
@@ -1459,7 +1867,8 @@ static resolution_param_t  capture_resolution_array[] = {
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
 		.size_type			= SIZE_H1080P_2592X1944,
-		.reg_script			= OV5647_capture_5M_script,
+		.reg_script[0]			= OV5647_capture_5M_script,
+		.reg_script[1]			= OV5647_5M_script_mipi,
 	},
 };
 
@@ -1672,6 +2081,7 @@ static ssize_t i2c_debug_store(struct class *cls,struct class_attribute *attr, c
 {
 	char cmd;
 	int addr,value;
+    int endaddr;
 	struct i2c_adapter *adapter;
 	char *param[3] = {NULL};
 
@@ -1679,14 +2089,31 @@ static ssize_t i2c_debug_store(struct class *cls,struct class_attribute *attr, c
 	sscanf(param[0],"%c",&cmd);
 	printk("cmd:%c\n",cmd);
 	adapter = i2c_get_adapter(4);
-	if(cmd == 'w'){
-		sscanf(param[1],"%x",&addr);
-		sscanf(param[2],"%x",&value);
-		my_i2c_put_byte(adapter,0x36,addr,value);
-	}else{
-		sscanf(param[1],"%x",&addr);
-		value = my_i2c_get_byte(adapter,0x36,addr);
-		printk("reg:%x,value:%x\n",addr,value);
+    switch( cmd ){
+    	case 'w':
+			sscanf(param[1],"%x",&addr);
+			sscanf(param[2],"%x",&value);
+			my_i2c_put_byte(adapter,0x36,addr,value);
+                break;
+
+        case 'r':
+			sscanf(param[1],"%x",&addr);
+			value = my_i2c_get_byte(adapter,0x36,addr);
+			printk("reg:%x,value:%x\n",addr,value);
+                break;
+
+        case 'd':
+			sscanf(param[1],"%x",&addr);
+			sscanf(param[2],"%x",&endaddr);
+                        for( ;addr <= endaddr; addr++)
+                        {
+                                value = my_i2c_get_byte(adapter,0x36,addr);
+                                printk("[0x%04x]=0x%08x\n",addr,value);
+                        }
+                break;
+
+        default :
+                break;
 	}
 	
 	return len;
@@ -2230,19 +2657,20 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     int rc = -1;
     int i=0;
+    unsigned char t = dev->cam_info.interface;
     if(i_index != -1 && is_capture == 0){
         res_param = &prev_resolution_array[i_index];
     }
-    if (!res_param->reg_script) {
+    if (!res_param->reg_script[t]) {
         printk("error, resolution reg script is NULL\n");
         return;
     }
     while(1){
-        if (res_param->reg_script[i].val==0xff&&res_param->reg_script[i].addr==0xffff) {
+        if (res_param->reg_script[t][i].val==0xff&&res_param->reg_script[t][i].addr==0xffff) {
             printk("setting resolutin param complete\n");
             break;
         }
-        if((i2c_put_byte(client,res_param->reg_script[i].addr, res_param->reg_script[i].val)) < 0) {
+        if((i2c_put_byte(client,res_param->reg_script[t][i].addr, res_param->reg_script[t][i].val)) < 0) {
             printk("fail in setting resolution param. i=%d\n",i);
             break;
         }
@@ -2911,7 +3339,12 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 
     memset( &para, 0, sizeof( para ));
     //para.port  = TVIN_PORT_CAMERA;
-    para.isp_fe_port  = TVIN_PORT_CAMERA;    
+
+    if (CAM_MIPI == dev->cam_info.interface) {
+            para.isp_fe_port  = TVIN_PORT_MIPI;
+    } else {
+            para.isp_fe_port  = TVIN_PORT_CAMERA;
+    }
     para.port  = TVIN_PORT_ISP;    
     para.fmt = TVIN_SIG_FMT_MAX;
     para.frame_rate = ov5647_frmintervals_active.denominator;
@@ -2945,6 +3378,19 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
     dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
     dev->cam_para->cam_mode = CAMERA_PREVIEW;	
+    if (CAM_MIPI == dev->cam_info.interface)
+    {
+            para.csi_hw_info.lanes = 2;
+            para.csi_hw_info.channel = 1;
+            para.csi_hw_info.mode = 1;
+            para.csi_hw_info.clock_lane_mode = 1; // 0 clock gate 1: always on
+            para.csi_hw_info.active_pixel = ov5647_h_active;
+            para.csi_hw_info.active_line = ov5647_v_active;
+            para.csi_hw_info.frame_size=0;
+            para.csi_hw_info.ui_val = 2; //ns
+            para.csi_hw_info.urgent = 1;
+            para.csi_hw_info.clk_channel = dev->cam_info.clk_channel; //clock channel a or b
+    }
 
     printk("ov5647,h=%d, v=%d, dest_h:%d, dest_v:%d,frame_rate=%d,\n", 
             ov5647_h_active, ov5647_v_active, para.dest_hactive,para.dest_vactive,ov5647_frmintervals_active.denominator);

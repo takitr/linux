@@ -36,6 +36,7 @@
 
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
+#include <media/amlogic/aml_camera.h>
 #include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <mach/am_regs.h>
@@ -337,7 +338,7 @@ struct hi2056_device {
 	int			   input;
 
 	/* platform device data from board initting. */
-	aml_plat_cam_data_t platform_dev_data;
+    aml_cam_info_t  cam_info;
 	
 	/* wake lock */
 	struct wake_lock	wake_lock;
@@ -2098,10 +2099,7 @@ static int hi2056_open(struct file *file)
 	switch_mod_gate_by_name("ge2d", 1);
 	switch_mod_gate_by_name("mipi", 1);
 #endif
-	if(dev->platform_dev_data.device_init) {
-		dev->platform_dev_data.device_init();
-		printk("+++found a init function, and run it..\n");
-	}
+	aml_cam_init(&dev->cam_info);
 	hi2056_h_active=0;
  	hi2056_v_active=0;
 	hi2056_h_output=0;
@@ -2225,10 +2223,7 @@ static int hi2056_close(struct file *file)
 	power_down_hi2056(dev);
 
 	msleep(10);
-	if(dev->platform_dev_data.device_uninit) {
-		dev->platform_dev_data.device_uninit();
-		printk("+++found a uninit function, and run it..\n");
-	}
+    aml_cam_uninit(&dev->cam_info);
 
 	msleep(10);
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -2326,7 +2321,7 @@ static int hi2056_probe(struct i2c_client *client,
 	int err;
 	struct hi2056_device *t;
 	struct v4l2_subdev *sd;
-	aml_plat_cam_data_t* plat_dat;
+    aml_cam_info_t* plat_dat;
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 	t = kzalloc(sizeof(*t), GFP_KERNEL);
@@ -2334,6 +2329,7 @@ static int hi2056_probe(struct i2c_client *client,
 		return -ENOMEM;
 	sd = &t->sd;
 	v4l2_i2c_subdev_init(sd, client, &hi2056_ops);
+    plat_dat = (aml_cam_info_t*)client->dev.platform_data;
 	mutex_init(&t->mutex);
 
 	/* Now create a video4linux device */
@@ -2350,13 +2346,16 @@ static int hi2056_probe(struct i2c_client *client,
 	wake_lock_init(&(t->wake_lock),WAKE_LOCK_SUSPEND, "hi2056");
 
 	/* Register it */
-	plat_dat= (aml_plat_cam_data_t*)client->dev.platform_data;
 	if (plat_dat) {
-		t->platform_dev_data.device_init=plat_dat->device_init;
-		t->platform_dev_data.device_uninit=plat_dat->device_uninit;
-		t->platform_dev_data.device_disable=plat_dat->device_disable;
-		if(plat_dat->video_nr>=0)  video_nr=plat_dat->video_nr;
-	}
+    	memcpy(&t->cam_info, plat_dat, sizeof(aml_cam_info_t));
+        if (plat_dat->front_back >=0)  
+        	video_nr = plat_dat->front_back;
+    } else {
+    	printk("camera hi2056: have no platform data\n");
+        kfree(t);
+        kfree(client);
+        return -1;
+    }
 	err = video_register_device(t->vdev, VFL_TYPE_GRABBER, video_nr);
 	if (err < 0) {
 		video_device_release(t->vdev);
@@ -2380,19 +2379,15 @@ static int hi2056_remove(struct i2c_client *client)
 }
 
 static const struct i2c_device_id hi2056_id[] = {
-	{ "hi2056", 0 },
+	{ "mipi-hi2056", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, hi2056_id);
 
-static struct i2c_driver hi2056_i2c_driver = {
-	.driver = {
-		.name = "mipi-hi2056",
-	},
+static struct v4l2_i2c_driver_data v4l2_i2c_data = {
+	.name = "mipi-hi2056",
 	.probe = hi2056_probe,
 	.remove = hi2056_remove,
 	.id_table = hi2056_id,
 };
-
-module_i2c_driver(hi2056_i2c_driver);
 

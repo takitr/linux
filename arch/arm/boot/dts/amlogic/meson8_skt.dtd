@@ -997,6 +997,8 @@ void root_func(){
 //$$ L2 PROP_U32 = "mirror_flip"
 //$$ L2 PROP_U32 = "vertical_flip"
 //$$ L2 PROP_STR = "bt_path"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_STR = "clk_channel"
 		cam_1{
 			cam_name = "ov5647";
 			front_back = <0>;
@@ -1007,6 +1009,8 @@ void root_func(){
 			vertical_flip = <0>;	
 			config_path = "/system/etc/myconfig";
 			bt_path = "csi";
+			interface = "dvp";
+			clk_channel = "b";
 			status = "okay";
 		};
 	};	

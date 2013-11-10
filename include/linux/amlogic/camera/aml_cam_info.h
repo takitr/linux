@@ -76,6 +76,8 @@ typedef struct {
 	unsigned flash_support;
 	unsigned flash_ctrl_level;
 	bt_path_t bt_path;
+    cam_interface_t         interface;
+    clk_channel_t           clk_channel;
 	gpio_t pwdn_pin;
 	gpio_t rst_pin;
 	gpio_t flash_ctrl_pin;

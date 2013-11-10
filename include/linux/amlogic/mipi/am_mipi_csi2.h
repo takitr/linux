@@ -12,6 +12,8 @@
 #ifndef AM_MIPI_CSI2
 #define AM_MIPI_CSI2
 
+#include <mach/io.h>
+#include <linux/amlogic/tvin/tvin_v4l2.h>
 #define CSI2_BUF_POOL_SIZE    6
 #define CSI2_OUTPUT_BUF_POOL_SIZE   1
 
@@ -124,6 +126,13 @@ typedef struct am_csi2_hw_s {
 }am_csi2_hw_t;
 
 struct am_csi2_s{
+    char* name;
+
+    enum am_csi2_mode mode;
+    unsigned char lanes;	    /* 0..3 */
+    unsigned char channel;    /* bitmask[3:0] */
+    int vdin_num;
+
     int id;	
     struct platform_device *pdev;
     struct am_csi2_client_config *client;
@@ -156,31 +165,52 @@ struct am_csi2_s{
 #endif
 #define mipi_error(fmt, args...) printk(fmt,## args)
 
+#define CSI_ADPT_START_REG      CSI2_CLK_RESET//MIPI CSI2 ADAPTOR Registers
+#define CSI_ADPT_END_REG        CSI2_GEN_CTRL1//
+
+#define CSI_PHY_START_REG      MIPI_PHY_CTRL           //MIPI CSI2 PHY Registers
+#define CSI_PHY_END_REG        MIPI_PHY_DDR_STS        //
+
+#define CSI_HST_START_REG       MIPI_CSI2_HOST_VERSION          //MIPI CSI2 HOST Registers
+#define CSI_HST_END_REG         MIPI_CSI2_HOST_PHY_TST_CTRL1    //
+
+#define CSI_ADPT_REG_BASE_ADDR			IO_VPU_BUS_BASE
+#define CSI_PHY_REG_BASE_ADDR		        IO_MIPI_PHY_BASE
+#define CSI_HST_REG_BASE_ADDR		        IO_MIPI_HOST_BASE
+
+////MIPI CSI2 ADAPTOR Registers
+#define CSI_ADPT_REG_OFFSET(reg)		(reg << 2)
+#define CSI_ADPT_REG_ADDR(reg)			(CSI_ADPT_REG_BASE_ADDR + CSI_ADPT_REG_OFFSET(reg))
+
+#define WRITE_CSI_ADPT_REG(reg, val) 				aml_write_reg32(CSI_ADPT_REG_ADDR(reg), (val))
+#define READ_CSI_ADPT_REG(reg) 					aml_read_reg32(CSI_ADPT_REG_ADDR(reg))
+#define WRITE_CSI_ADPT_REG_BITS(reg, val, start, len) 	        aml_set_reg32_bits(CSI_ADPT_REG_ADDR(reg), (val),start,len)
+#define CLR_CSI_ADPT_REG_MASK(reg, mask)   		        aml_clr_reg32_mask(CSI_ADPT_REG_ADDR(reg), (mask))
+#define SET_CSI_ADPT_REG_MASK(reg, mask)     			aml_set_reg32_mask(CSI_ADPT_REG_ADDR(reg), (mask))
+////MIPI CSI2 PHY Registers
+#define CSI_PHY_REG_OFFSET(reg)		        (reg << 2)
+#define CSI_PHY_REG_ADDR(reg)			(CSI_PHY_REG_BASE_ADDR + CSI_PHY_REG_OFFSET(reg))
+
+#define WRITE_CSI_PHY_REG(reg, val) 				aml_write_reg32(CSI_PHY_REG_ADDR(reg), (val))
+#define READ_CSI_PHY_REG(reg) 					aml_read_reg32(CSI_PHY_REG_ADDR(reg))
+#define WRITE_CSI_PHY_REG_BITS(reg, val, start, len) 	        aml_set_reg32_bits(CSI_PHY_REG_ADDR(reg), (val),start,len)
+#define CLR_CSI_PHY_REG_MASK(reg, mask)   		        aml_clr_reg32_mask(CSI_PHY_REG_ADDR(reg), (mask))
+#define SET_CSI_PHY_REG_MASK(reg, mask)     			aml_set_reg32_mask(CSI_PHY_REG_ADDR(reg), (mask))
+
+////MIPI CSI2 HOST Registers
+#define CSI_HST_REG_OFFSET(reg)		        (reg << 2)
+#define CSI_HST_REG_ADDR(reg)			(CSI_HST_REG_BASE_ADDR + CSI_HST_REG_OFFSET(reg))
+
+#define WRITE_CSI_HST_REG(reg, val) 				aml_write_reg32(CSI_HST_REG_ADDR(reg), (val))
+#define READ_CSI_HST_REG(reg) 					aml_read_reg32(CSI_HST_REG_ADDR(reg))
+#define WRITE_CSI_HST_REG_BITS(reg, val, start, len) 	        aml_set_reg32_bits(CSI_HST_REG_ADDR(reg), (val),start,len)
+#define CLR_CSI_HST_REG_MASK(reg, mask)   		        aml_clr_reg32_mask(CSI_HST_REG_ADDR(reg), (mask))
+#define SET_CSI_HST_REG_MASK(reg, mask)     			aml_set_reg32_mask(CSI_HST_REG_ADDR(reg), (mask))
 //struct device;
 //struct v4l2_device;
 
-#define mipi_csi2_wr_reg(addr, data) *((volatile unsigned long *) (addr)) = data;
-
-//#define MIPI_CSI2_HOST_BASE_ADDR    0xc8008000
-#define MIPI_CSI2_HOST_BASE_ADDR    APB_REG_ADDR(0x8000)//0xf3008000
-
-// MIPI-CSI2 host registers
-#define MIPI_CSI2_HOST_VERSION          (MIPI_CSI2_HOST_BASE_ADDR+0x000) 
-#define MIPI_CSI2_HOST_N_LANES          (MIPI_CSI2_HOST_BASE_ADDR+0x004) 
-#define MIPI_CSI2_HOST_PHY_SHUTDOWNZ    (MIPI_CSI2_HOST_BASE_ADDR+0x008) 
-#define MIPI_CSI2_HOST_DPHY_RSTZ        (MIPI_CSI2_HOST_BASE_ADDR+0x00c) 
-#define MIPI_CSI2_HOST_CSI2_RESETN      (MIPI_CSI2_HOST_BASE_ADDR+0x010) 
-#define MIPI_CSI2_HOST_PHY_STATE        (MIPI_CSI2_HOST_BASE_ADDR+0x014) 
-#define MIPI_CSI2_HOST_DATA_IDS_1       (MIPI_CSI2_HOST_BASE_ADDR+0x018) 
-#define MIPI_CSI2_HOST_DATA_IDS_2       (MIPI_CSI2_HOST_BASE_ADDR+0x01c) 
-#define MIPI_CSI2_HOST_ERR1             (MIPI_CSI2_HOST_BASE_ADDR+0x020) 
-#define MIPI_CSI2_HOST_ERR2             (MIPI_CSI2_HOST_BASE_ADDR+0x024) 
-#define MIPI_CSI2_HOST_MASK1            (MIPI_CSI2_HOST_BASE_ADDR+0x028) 
-#define MIPI_CSI2_HOST_MASK2            (MIPI_CSI2_HOST_BASE_ADDR+0x02c) 
-#define MIPI_CSI2_HOST_PHY_TST_CTRL0    (MIPI_CSI2_HOST_BASE_ADDR+0x030) 
-#define MIPI_CSI2_HOST_PHY_TST_CTRL1    (MIPI_CSI2_HOST_BASE_ADDR+0x034) 
-
 //#define CSI2_CLK_RESET                             0x2a00
+#define CSI2_CFG_CLK_ENABLE_DWC         3 
 #define CSI2_CFG_CLK_AUTO_GATE_OFF     2
 #define CSI2_CFG_CLK_ENABLE                    1
 #define CSI2_CFG_SW_RESET                       0
@@ -216,7 +246,7 @@ struct am_csi2_s{
 
 extern int start_mipi_csi2_service(struct am_csi2_camera_para *para);
 extern int stop_mipi_csi2_service(struct am_csi2_camera_para *para);
-extern void am_mipi_csi2_init(am_csi2_hw_t* info);
+extern void am_mipi_csi2_init(csi_parm_t* info);
 extern void am_mipi_csi2_uninit(void);
 extern void init_am_mipi_csi2_clock(void);
 

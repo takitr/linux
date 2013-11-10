@@ -688,6 +688,16 @@ typedef enum bt_path_e {
 	BT_PATH_CSI2,
 } bt_path_t;
 
+typedef enum clk_channel_e {
+	CLK_CHANNEL_A=0,
+	CLK_CHANNEL_B,
+}clk_channel_t;
+
+typedef enum cam_interface_e {
+	CAM_DVP=0,
+	CAM_MIPI,
+}cam_interface_t;
+
 // ***************************************************************************
 // *** IOCTL command definitions *****************************************
 // ***************************************************************************
@@ -702,7 +712,23 @@ typedef enum bt_path_e {
 #define CAMERA_IOC_START_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x05, struct camera_info_s)
 #define CAMERA_IOC_STOP_CAPTURE_PARA     _IOR(CAMERA_IOC_MAGIC, 0x06, struct camera_info_s)
 
+typedef struct csi_parm_s {
+        //am_csi2_hw_t            *hw_info;
+        unsigned char lanes;
+        unsigned char channel;
+        unsigned char mode;
+        unsigned char clock_lane_mode; // 0 clock gate 1: always on
+        unsigned active_pixel;
+        unsigned active_line;
+        unsigned frame_size;
+        unsigned ui_val; //ns
+        unsigned hs_freq; //hz
+        unsigned urgent;
 
+        clk_channel_t           clk_channel;
+        unsigned int            skip_frames;
+        tvin_color_fmt_t        csi_ofmt;
+}csi_parm_t;
 
 //add for vdin called by backend driver
 typedef struct vdin_parm_s {
@@ -726,6 +752,8 @@ typedef struct vdin_parm_s {
 	unsigned short  dest_hactive;//for vdin scale down
 	unsigned short  dest_vactive;
 	unsigned short	skip_count;//for skip frame
+
+        struct csi_parm_s csi_hw_info;
 	/*for reserved*/
         unsigned int    reserved;
 } vdin_parm_t;
