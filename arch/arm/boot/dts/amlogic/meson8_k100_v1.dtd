@@ -77,8 +77,8 @@ void root_func(){
 	memory{
 		device_type = "memory";
 		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x289fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x28a00000 0x57600000>;
+		aml_reserved_end = <0x25efffff>;/**reserved memory end */
+		linux,usable-memory = <0x00000000 0x04000000 0x25f00000 0x5a100000>;//0x25f00000+0x5a100000=0x80000000 2GB DDR
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -175,7 +175,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reg = <	0x1a300000 0x03f00000>;
+		reg = <	0x1a300000 0x01400000>;
 	};
 
 /// ***************************************************************************************
@@ -188,7 +188,7 @@ void root_func(){
 		compatible = "amlogic,amvenc_avc";
 		dev_name = "amvenc_avc.0";
 		status = "okay";
-		reg = <0x1e200000 0x00f00000>;
+		reg = <0x1b700000 0x00f00000>;
 	};
 	
 /// ***************************************************************************************
@@ -201,7 +201,7 @@ void root_func(){
 		compatible = "amlogic,amvdec_656in";
 		dev_name = "amvdec_656in";
 		status = "ok";
-		reg = <0x28900000 0x00100000>;
+		reg = <0x1c600000 0x00100000>;
 	};
 	
 /// ***************************************************************************************
@@ -216,7 +216,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin0";
         status = "ok";
-	        reg = <	0x1f100000 0x04000000>;
+	        reg = <	0x1c700000 0x04000000>;
         irq = <115>;
         vdin_id = <0>;
 	};
@@ -230,7 +230,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin1";
         status = "ok";
-		reg = <0x23100000 0x04000000>;
+		reg = <0x20700000 0x04000000>;
         irq = <117>;
         vdin_id = <1>;
 	};
@@ -245,7 +245,7 @@ void root_func(){
 		compatible = "amlogic,amlvideo2";
 		dev_name = "amlvideo2.0";
 		status = "okay";
-		reg = <0x27100000 0x01800000>;
+		reg = <0x24700000 0x01800000>;
 	};
 
 /// ***************************************************************************************
