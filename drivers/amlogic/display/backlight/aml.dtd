@@ -19,10 +19,10 @@
 		bl_level_default=<102>;	/** default brightness level */
 		
 		/* backlight power ctrl */
-		bl_ctrl_method=<1>;	/** backlight control method(0 for gpio, 1 for pwm_negative, 2 for pwm_positive. decided by hardware design) */
+		bl_ctrl_method=<1>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive. decided by hardware design) */
 		bl_gpio_port="GPIODV_28";	/** backlight control gpio port */
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
-		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0 for use pwm_port only, 1 for use bl_gpio_port to control on/off) */
+		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
 		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
 		bl_pwm_duty_max_min=<100 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
 	};

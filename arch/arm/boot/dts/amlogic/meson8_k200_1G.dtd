@@ -707,7 +707,7 @@ interrupts = <0     137     0x04
 		model_name="LP097QX1";	/** lcd model name */
 		interface="edp";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<197 147>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<8 0>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		lcd_bits_option=<8 0>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 		
 		resolution=<2048 1536>;	/** horizontal resolution, vertical resolution */
 		period=<2219 1560>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -715,7 +715,7 @@ interrupts = <0     137     0x04
 		clock_hz_pol=<207700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<5 120>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<1 22>;	/** vsync_width, vsync_backporch(include vsync_width) */
-		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_B080XAN01>
@@ -738,7 +738,7 @@ interrupts = <0     137     0x04
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<119 159>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<6 1>;		/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		lcd_bits_option=<6 1>;		/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 
 		resolution=<768 1024>;	/** horizontal resolution, vertical resolution */
 		period=<948 1140>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -746,7 +746,7 @@ interrupts = <0     137     0x04
 		clock_hz_pol=<64843200 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
-		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
                 dsi_clk = <250 280 1>;  /** min_clk, max_clk, scaler**/
 
                 lane_num=<4>;//lane num
@@ -770,7 +770,7 @@ interrupts = <0     137     0x04
 		model_name="CLAP070NJ02";	/** lcd model name */
 		interface="ttl";			/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<154 86>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<8 1>;		/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		lcd_bits_option=<8 1>;		/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 		
 		resolution=<1024 600>;	/** horizontal resolution, vertical resolution */
 		period=<1344 635>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -778,7 +778,7 @@ interrupts = <0     137     0x04
 		clock_hz_pol=<42700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<10 160>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
-		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_TN070TN92>
@@ -796,7 +796,7 @@ interrupts = <0     137     0x04
 		model_name="TN070TN92";	/** lcd model name */
 		interface="ttl";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<154 86>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<8 1>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		lcd_bits_option=<8 1>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 		
 		resolution=<800 480>;	/** horizontal resolution, vertical resolution */
 		period=<1056 525>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -804,7 +804,7 @@ interrupts = <0     137     0x04
 		clock_hz_pol=<33300000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<10 46>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
-		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_LP097X02>
@@ -822,7 +822,7 @@ interrupts = <0     137     0x04
 		model_name="LP097X02";	/** lcd model name */
 		interface="lvds";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<197 147>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<6 0>;	/** lcd_bits(6,8), bits_option(0 for only support one mode as lcd_bits define, 1 for both support 6/8bit) */
+		lcd_bits_option=<6 0>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 		
 		resolution=<1024 768>;	/** horizontal resolution, vertical resolution */
 		period=<2084 810>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -830,7 +830,7 @@ interrupts = <0     137     0x04
 		clock_hz_pol=<85700000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<10 70>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<3 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
-		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0 for negative, 1 for positive) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
 /// ***************************************************************************************
