@@ -441,6 +441,7 @@ static int dwc_otg_hcd_rem_wakeup_cb(void *p)
 
 	if (hcd->core_if->lx_state == DWC_OTG_L2) {
 		hcd->flags.b.port_suspend_change = 1;
+		dwc_otg_hcd_start_cb(p);
 	}
 #ifdef CONFIG_USB_DWC_OTG_LPM
 	else {
@@ -479,18 +480,32 @@ void dwc_otg_hcd_stop(dwc_otg_hcd_t * hcd)
 
 	dwc_mdelay(1);
 }
+static void dwc_otg_hcd_power_save(dwc_otg_hcd_t * hcd, int power_on)
+{
+	usb_dbg_uart_data_t uart = {.d32 = 0 };
+	pcgcctl_data_t pcgcctl = {.d32 = 0 };
 
+	uart.d32 = DWC_READ_REG32(&hcd->core_if->usb_peri_reg->dbg_uart);
+	pcgcctl.d32 = DWC_READ_REG32(&hcd->core_if->pcgcctl);
 
+	if(power_on){
+		pcgcctl.b.stoppclk = 0;
+		uart.b.set_iddq = 0;
+	}else{
+		pcgcctl.b.stoppclk = 1;
+		uart.b.set_iddq = 1;
+	}
+	
+	DWC_WRITE_REG32(&hcd->core_if->pcgcctl, pcgcctl.d32);
+//	DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
+}
 /** dwc_otg_hcd suspend */
 int dwc_otg_hcd_suspend(dwc_otg_hcd_t * hcd)
 {
-	usb_dbg_uart_data_t uart = {.d32 = 0 };
 
+	hcd->core_if->suspend_mode = 1;
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD SUSPEND\n");
-
-	uart.d32 = DWC_READ_REG32(&hcd->core_if->usb_peri_reg->dbg_uart);
-	uart.b.set_iddq = 1;
-	DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
+	dwc_otg_hcd_power_save(hcd, 0);
 
  	return 0;
 }
@@ -499,19 +514,18 @@ extern void dwc_otg_power_notifier_call(char is_power_on);
 /** dwc_otg_hcd resume  */
 int dwc_otg_hcd_resume(dwc_otg_hcd_t *hcd)
 {
-	usb_dbg_uart_data_t uart = {.d32 = 0 };
-	
+
 	DWC_DEBUGPL(DBG_HCD, "DWC OTG HCD RESUME\n");
 
 	hcd->ssplit_lock = 0;
-	if (hcd->core_if->vbus_power_pin!=-1)
+	if (hcd->core_if->vbus_power_pin != -1)
 	{
 		if(dwc_otg_is_host_mode(hcd->core_if))
 			dwc_otg_power_notifier_call(1);
 	}
-	uart.d32 = DWC_READ_REG32(&hcd->core_if->usb_peri_reg->dbg_uart);
-	uart.b.set_iddq = 0;
-	DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
+
+	hcd->core_if->suspend_mode = 0;
+	dwc_otg_hcd_power_save(hcd, 1);
 	return 0;
 }
 
@@ -1083,7 +1097,8 @@ static void dwc_otg_hcd_reinit(dwc_otg_hcd_t * hcd)
 	dwc_hc_t *channel;
 	dwc_hc_t *channel_tmp;
 
-	hcd->flags.d32 = 0;
+	if(!hcd->core_if->suspend_mode)
+		hcd->flags.d32 = 0;
 
 	hcd->non_periodic_qh_ptr = &hcd->non_periodic_sched_active;
 	hcd->non_periodic_channels = 0;

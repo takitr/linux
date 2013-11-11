@@ -366,6 +366,9 @@ int32_t dwc_otg_hcd_handle_port_intr(dwc_otg_hcd_t * dwc_otg_hcd)
 				hprt0.b.prtrst = 0;
 				DWC_WRITE_REG32(dwc_otg_hcd->core_if->host_if->hprt0, hprt0.d32);
 			}
+			if(dwc_otg_hcd->core_if->suspend_mode == 1){
+				cil_hcd_start(dwc_otg_hcd->core_if);
+			}
 	
 			/* B-Device has connected, Delete the connection timer. */
 			DWC_TIMER_CANCEL(dwc_otg_hcd->conn_timer);

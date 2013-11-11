@@ -1011,6 +1011,9 @@ struct dwc_otg_core_if {
 	/** ADP structure object */
 	dwc_otg_adp_t adp;
 
+	/** suspend mode */
+	int suspend_mode;
+
 	/** hibernation/suspend flag */
 	int hibernation_suspend;
 
