@@ -79,6 +79,9 @@ void __efuse_debug_init(void)
 static void __efuse_write_byte( unsigned long addr, unsigned long data )
 {
 	unsigned long auto_wr_is_enabled = 0;
+#ifdef CONFIG_ARCH_MESON8
+	unsigned int byte_sel;
+#endif
 
 	//set efuse PD=0
 	aml_set_reg32_bits( P_EFUSE_CNTL1, 0, 27, 1);
@@ -92,7 +95,7 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 	}
 
 #ifdef CONFIG_ARCH_MESON8
-	unsigned int byte_sel = addr % 4;
+	byte_sel = addr % 4;
 	addr = addr / 4;
 
 	/* write the address */
@@ -277,11 +280,102 @@ static int cpu_is_before_m6(void)
 	return ((val & 0x40000000) == 0x40000000);
 }
 
+//#define SOC_CHIP_TYPE_TEST
+#ifdef SOC_CHIP_TYPE_TEST
+static char *soc_chip[]={
+	{"efuse soc chip m0"},
+	{"efuse soc chip m1"},
+	{"efuse soc chip m3"},
+	{"efuse soc chip m6"},
+	{"efuse soc chip m6tv"},
+	{"efuse soc chip m8"},
+	{"efuse soc chip unknow"},
+};
+#endif
+static efuse_socchip_type_e efuse_get_socchip_type(void)
+{
+	efuse_socchip_type_e type;
+	unsigned int __iomem *bootrom_base;
+	//unsigned int *pID1 =(unsigned int *)0xd9040004;//phy address
+	//unsigned int *pID2 =(unsigned int *)0xd904002c;
+	unsigned int __iomem *pID1,*pID2;
+	bootrom_base = (void __iomem *)IO_BOOTROM_BASE;
+	pID1 = (unsigned int __iomem *)(IO_BOOTROM_BASE + 0x4);
+	pID2 = (unsigned int __iomem *)(IO_BOOTROM_BASE + 0x2c);
+	type = EFUSE_SOC_CHIP_UNKNOW;
+	if(cpu_is_before_m6()){
+		type = EFUSE_SOC_CHIP_M3;
+	}
+	else if(0xe2000003 == *pID1 && 0x00000bbb == *pID2){
+		//M6 Rev-B
+		type = EFUSE_SOC_CHIP_M6;
+	}
+	else if(0x00000d67 == *pID1 && 0xe3a01000 == *pID2){
+		//M6 Rev-D
+		type = EFUSE_SOC_CHIP_M6;
+	}
+	else if(0x00001435 == *pID1 && 0x0e3a01000 == *pID2)
+	{	//M6TV
+		type = EFUSE_SOC_CHIP_M6TV;
+	}
+	else if(0x000025e2 == *pID1 && 0xe3a01000 == *pID2){
+		type = EFUSE_SOC_CHIP_M8;
+	}
+#ifdef SOC_CHIP_TYPE_TEST
+	printk("%s \n",soc_chip[type]);
+#endif
+	return type;
+}
+
+static int efuse_checkversion(char *buf)
+{
+	efuse_socchip_type_e soc_type;
+	int i;
+	int ver = buf[0];
+	for(i=0; i<efuseinfo_num; i++){
+		if(efuseinfo[i].version == ver){
+			soc_type = efuse_get_socchip_type();
+			switch(soc_type){
+				case EFUSE_SOC_CHIP_M3:
+					if(ver != 1){
+						ver = -1;
+					}
+					break;
+				case EFUSE_SOC_CHIP_M6:
+					if((ver != 2) && ((ver != 4))){
+						ver = -1;
+					}
+					break;
+				case EFUSE_SOC_CHIP_M6TV:
+					if(ver != 2){
+						ver = -1;
+					}
+					break;
+				case EFUSE_SOC_CHIP_M8:
+					if(ver != 5){
+						ver = -1;
+					}
+					break;
+				case EFUSE_SOC_CHIP_UNKNOW:
+				default:
+					printk("%s:%d soc is unknow\n",__func__,__LINE__);
+					ver = -1;
+					break;
+			}
+			return ver;
+		}
+	}
+	return -1;
+}
+
+
 static void efuse_set_versioninfo(efuseinfo_item_t *info)
 {
+	efuse_socchip_type_e soc_type;
 	strcpy(info->title, "version");		
 	info->id = EFUSE_VERSION_ID;
 	info->bch_reverse = 0;
+#if 0
 	if(cpu_is_before_m6()){
 			info->offset = EFUSE_VERSION_OFFSET; //380;		
 			info->data_len = EFUSE_VERSION_DATA_LEN; //3;	
@@ -294,6 +388,34 @@ static void efuse_set_versioninfo(efuseinfo_item_t *info)
 			info->enc_len = V2_EFUSE_VERSION_ENC_LEN; //1;
 			info->bch_en = V2_EFUSE_VERSION_BCH_EN; //0;
 		}
+#else
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			info->offset = EFUSE_VERSION_OFFSET; //380;		
+			info->data_len = EFUSE_VERSION_DATA_LEN; //3;	
+			info->enc_len = EFUSE_VERSION_ENC_LEN; //4;
+			info->bch_en = EFUSE_VERSION_BCH_EN; //1;		
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			info->offset = V2_EFUSE_VERSION_OFFSET; //3;		
+			info->data_len = V2_EFUSE_VERSION_DATA_LEN; //1;		
+			info->enc_len = V2_EFUSE_VERSION_ENC_LEN; //1;
+			info->bch_en = V2_EFUSE_VERSION_BCH_EN; //0;
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			info->offset = M8_EFUSE_VERSION_OFFSET; //509
+			info->data_len = M8_EFUSE_VERSION_DATA_LEN;
+			info->enc_len = M8_EFUSE_VERSION_ENC_LEN;
+			info->bch_en = M8_EFUSE_VERSION_BCH_EN;
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			printk("%s:%d chip is unkow\n",__func__,__LINE__);
+			break;
+	}
+#endif
 }
 
 
@@ -302,7 +424,7 @@ static int efuse_readversion(void)
 
 	char ver_buf[4], buf[4];
 	efuseinfo_item_t info;
-	
+	int ret;
 	if(efuse_active_version != -1)
 		return efuse_active_version;
 	
@@ -318,6 +440,24 @@ static int efuse_readversion(void)
 	else
 		memcpy(ver_buf, buf, sizeof(buf));
 	
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON1   //version=0
+	if(ver_buf[0] == 0){
+		efuse_active_version = ver_buf[0];
+		return ver_buf[0];
+	}
+	else
+		return -1;
+#elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON3
+	ret = efuse_checkversion(ver_buf);   //m3,m6,m8
+	if((ret > 0) && (ver_buf[0] != 0)){
+		efuse_active_version = ver_buf[0];
+		return ver_buf[0];  // version right
+	}
+	return -1; //version err
+#else
+	return -1;
+#endif
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6   //version=2
 	if(ver_buf[0] == 2){
 		efuse_active_version = ver_buf[0];
@@ -354,12 +494,34 @@ static int efuse_getinfo_byPOS(unsigned pos, efuseinfo_item_t *info)
 	efuseinfo_item_t *item = NULL;
 	int size;
 	int ret = -1;		
+	efuse_socchip_type_e soc_type;
 	
 	unsigned versionPOS;
+#if 0
 	if(cpu_is_before_m6())
 		versionPOS = EFUSE_VERSION_OFFSET; //380;
 	else
 		versionPOS = V2_EFUSE_VERSION_OFFSET; //3;
+#else
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			versionPOS = EFUSE_VERSION_OFFSET; //380;
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			versionPOS = V2_EFUSE_VERSION_OFFSET; //3;
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			versionPOS = M8_EFUSE_VERSION_OFFSET; //509
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			printk("%s:%d chip is unkow\n",__func__,__LINE__);
+			return -1;
+			//break;
+	}
+#endif
 	if(pos == versionPOS){
 		efuse_set_versioninfo(info);
 		return 0;
@@ -671,6 +833,10 @@ int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 		printk("not found the position:%d.\n", pos);
 		return -1;
 	}
+	if(strcmp(info.title, "version") == 0){
+		printk("prohibit write version in kernel\n");
+		return 0;
+	}
 	
 	if(count>info.data_len){
 		printk("data length: %d is out of EFUSE layout!\n", count);
@@ -735,16 +901,82 @@ int efuse_write_item(char *buf, size_t count, loff_t *ppos)
 		
 	return enc_len ;		
 }
+
+/* function: efuse_read_intlItem
+ * intl_item: item name,name is [temperature]
+ * buf:  output para
+ * size: buf size
+ * */
+int efuse_read_intlItem(char *intl_item,char *buf,int size)
+{
+	efuse_socchip_type_e soc_type;
+	loff_t pos;
+	int len;
+	int ret=-1;
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			//pos = ;
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			//pos = ; 
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			if(strcmp(intl_item,"temperature") == 0){
+				pos = 510;
+				len = 2;
+				if(size <= 0){
+					printk("input size:%d is error\n",size);
+					return -1;
+				}
+				if(len > size){
+					len = size;
+				}
+				ret = __efuse_read( buf, len, &pos );
+				return ret;
+			}
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			printk("%s:%d chip is unkow\n",__func__,__LINE__);
+			//return -1;
+			break;
+	}
+	return ret;
+}
+
 static uint32_t __v3_get_gap_start(uint32_t id)
 {
-
+#if 0
     if(cpu_is_before_m6())///M3
     {
 
         return id*36 + 112;
     }
     return id*36 + 136; ///M6
-
+#else
+	uint32_t offset;
+	efuse_socchip_type_e soc_type;
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			offset = id*36 + 112;
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			offset = id*36 + 136; ///M6
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			offset = -1; // error position
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			offset = -1; // error position
+			break;
+	}
+	return offset;
+#endif
 }
 
 static uint32_t __v3_check_dirty(size_t count, loff_t pos )
@@ -777,6 +1009,7 @@ static uint32_t __v3_check_dirty(size_t count, loff_t pos )
 
 int32_t __v3_read_hash(uint32_t id,char * buf)
 {
+	efuse_socchip_type_e soc_type;
     loff_t off;
     char  temp[36];
 #ifdef CONFIG_EFUSE_LAYOUT_VERSION
@@ -790,6 +1023,7 @@ int32_t __v3_read_hash(uint32_t id,char * buf)
         return -EINVAL;
 #endif
     off=__v3_get_gap_start(id);
+#if 0
     if(cpu_is_before_m6())
     {
         __efuse_read(temp,36,&off);
@@ -801,6 +1035,27 @@ int32_t __v3_read_hash(uint32_t id,char * buf)
     }else{
         __efuse_read(buf,34,&off);
     }
+#else
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			__efuse_read(temp,36,&off);
+			if(efuse_bch_dec(temp,18,buf,0)<0)
+				return -ENOMEM;
+			if(efuse_bch_dec(&temp[18],18,&buf[17],0)<0)
+				return -ENOMEM;
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			__efuse_read(buf,34,&off);
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			break;
+	}
+#endif
     /**
      * @todo EFUSE Not Implement
      */
@@ -808,6 +1063,7 @@ int32_t __v3_read_hash(uint32_t id,char * buf)
 }
 int32_t __v3_write_hash(uint32_t id,char * buf)
 {
+	efuse_socchip_type_e soc_type;
     loff_t off;
     char temp[36];
     int error=0;
@@ -825,6 +1081,7 @@ int32_t __v3_write_hash(uint32_t id,char * buf)
      * @todo EFUSE Not Implement
      */
     off=__v3_get_gap_start(id);
+#if 0
     if (cpu_is_before_m6()) {
         if(efuse_bch_enc(buf, 17, temp, 0)<0)
 			return -ENOMEM;
@@ -850,6 +1107,43 @@ int32_t __v3_write_hash(uint32_t id,char * buf)
             error = -1;
         }
     }
+#else
+	soc_type = efuse_get_socchip_type();
+	switch(soc_type){
+		case EFUSE_SOC_CHIP_M3:
+			if(efuse_bch_enc(buf, 17, temp, 0)<0)
+				return -ENOMEM;
+			if(efuse_bch_enc(&buf[17], 17, &temp[18], 0)<0)
+				return -ENOMEM;
+			if(!__v3_check_dirty(36, off ))
+			{
+				__efuse_write(temp, 36, &off);
+			}
+			else
+			{
+				printk("efuse write fail\n");
+				error = -1;
+			}
+			break;
+		case EFUSE_SOC_CHIP_M6:
+		case EFUSE_SOC_CHIP_M6TV:
+			if(!__v3_check_dirty(34, off ))
+			{
+				__efuse_write(buf, 34, &off);
+			}
+			else
+			{
+				printk("efuse write fail\n");
+				error = -1;
+			}
+			break;
+		case EFUSE_SOC_CHIP_M8:
+			break;
+		case EFUSE_SOC_CHIP_UNKNOW:
+		default:
+			break;
+	}
+#endif
     return error;
 }
 int32_t __v3_check_key_installed(uint32_t id)

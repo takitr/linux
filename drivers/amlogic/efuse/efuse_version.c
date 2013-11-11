@@ -396,6 +396,83 @@ static efuseinfo_item_t efuseinfo_v2[] =
 		.bch_reverse = 0, //0,
 	},
 };
+
+static efuseinfo_item_t efuseinfo_M8_v5[] = 
+{
+	{
+		.title = "licence",
+		.id = EFUSE_LICENCE_ID,
+		.offset = 0,
+		.enc_len = 4,
+		.data_len = 4,		
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "nandextcmd",
+		.id = EFUSE_NANDEXTCMD_ID,
+		.offset = 4,
+		.enc_len = 16,
+		.data_len = 16,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac",  //for the main network interface
+		.id = EFUSE_MAC_ID,
+		.offset = 436,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac_bt",  //for the second network interface or bt
+		.id = EFUSE_MAC_BT_ID,
+		.offset = 442,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac_wifi", //for the second network interface or bt
+		.id = EFUSE_MAC_WIFI_ID,
+		.offset = 448,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "usid",
+		.id = EFUSE_USID_ID,
+		.offset = 454,
+		.enc_len = 48,
+		.data_len = 48,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "machineid",
+		.id = EFUSE_MACHINEID_ID,
+		.offset = 502,
+		.enc_len = 4,
+		.data_len = 4,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "version",
+		.id = EFUSE_VERSION_ID,
+		.offset = M8_EFUSE_VERSION_OFFSET, //509
+		.enc_len = M8_EFUSE_VERSION_ENC_LEN,
+		.data_len = M8_EFUSE_VERSION_DATA_LEN,
+		.bch_en = M8_EFUSE_VERSION_BCH_EN,
+		.bch_reverse = M8_EFUSE_VERSION_BCH_REVERSE,
+	},
+};
+
 efuseinfo_t efuseinfo[] = 
 {
 	{
@@ -414,10 +491,15 @@ efuseinfo_t efuseinfo[] =
 		.version =2,		
 	},
 	{
-	        .efuseinfo_version = efuseinfo_v3,
-	        .size = sizeof(efuseinfo_v3)/sizeof(efuseinfo_item_t),
-	        .version =3,
-	    },
+		.efuseinfo_version = efuseinfo_v3,
+		.size = sizeof(efuseinfo_v3)/sizeof(efuseinfo_item_t),
+		.version =3,
+	},
+	{
+		.efuseinfo_version = efuseinfo_M8_v5,
+		.size = sizeof(efuseinfo_M8_v5)/sizeof(efuseinfo_item_t),
+		.version =5,
+	},
 };
 
 int efuseinfo_num = sizeof(efuseinfo)/sizeof(efuseinfo_t);

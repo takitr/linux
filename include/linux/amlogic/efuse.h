@@ -41,6 +41,7 @@
 #define EFUSE_RSA_KEY_ID		8
 #define EFUSE_CUSTOMER_ID		9
 #define EFUSE_MACHINEID_ID		10
+#define EFUSE_NANDEXTCMD_ID		11
 
 int efuse_bch_enc(const char *ibuf, int isize, char *obuf, int reverse);
 int efuse_bch_dec(const char *ibuf, int isize, char *obuf, int reverse);
@@ -91,6 +92,20 @@ static int32_t __v3_read_hash(uint32_t id,char * buf)
 	return -EINVAL;
 }
 static int32_t __v3_write_hash(uint32_t id,char * buf)
+{
+	return -EINVAL;
+}
+#endif
+
+#ifdef CONFIG_EFUSE
+/* function: efuse_read_intlItem
+ * intl_item: item name, name is:[temperature]
+ * buf:  output para
+ * size: buf size
+ * */
+extern int efuse_read_intlItem(char *intl_item,char *buf,int size);
+#else
+int efuse_read_intlItem(char *intl_item,char *buf,int size)
 {
 	return -EINVAL;
 }
