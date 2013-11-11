@@ -677,9 +677,7 @@ static int vpu_probe(struct platform_device *pdev)
 	
 	printk("VPU driver version: %s\n", VPU_VERION);
 	get_vpu_config(pdev);
-#ifndef CONFIG_VPU_DYNAMIC_ADJ
 	set_vpu_clk(vpu_config.clk_level);
-#endif
 	
 	ret = class_register(&aml_vpu_debug_class);
 	if(ret){
