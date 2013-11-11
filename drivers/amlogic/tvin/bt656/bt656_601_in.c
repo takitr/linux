@@ -130,7 +130,7 @@ static void reinit_bt656in_dec(struct am656in_dev_s *devp)
 	//there is no use anci in m2
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
 	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
+	WR(BT_ANCIEADR, 0); //devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
@@ -213,7 +213,7 @@ static void reinit_bt601in_dec(struct am656in_dev_s *devp)
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
 	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
+	WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
@@ -313,7 +313,7 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
 	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
+	WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
