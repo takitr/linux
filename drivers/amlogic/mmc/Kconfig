@@ -12,5 +12,9 @@ config MMC_AML
 	select MMC
 	select MMC_BLOCK
 	select MMC_BLOCK_BOUNCE
-	
+    
+config MMC_AML_DEBUG
+    bool "Amlogic Multimedia Card Debug support"
+	default n
+    
 endmenu

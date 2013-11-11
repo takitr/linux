@@ -406,46 +406,6 @@ bool is_emmc_exist (struct amlsd_host* host) // is eMMC/tSD exist
     return false;
 }
 
-/*-------------------debug---------------------*/
-
-unsigned int sdhc_debug=0x0; // 0xffffffff;
-
-static int __init sdhc_debug_setup(char *str)
-{
-	sdhc_debug = simple_strtol(str, NULL, 0);
-	return 1;
-}
-__setup("sdhc_debug=", sdhc_debug_setup);
-
-
-unsigned int sdio_debug=0x000000; // 0xffffff; // 
-
-static int __init sdio_debug_setup(char *str)
-{
-	sdio_debug = simple_strtol(str, NULL, 0);
-	return 1;
-}
-__setup("sdio_debug=", sdio_debug_setup);
-
-void aml_dbg_print_pinmux (void)
-{
-    printk("Pinmux: REG2=0x%08x, REG3=0x%08x, REG4=0x%08x, REG5=0x%08x, REG6=0x%08x, REG8=0x%08x\n", 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_2), 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_3), 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_4), 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_5), 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_6), 
-            READ_CBUS_REG(PERIPHS_PIN_MUX_8));
-}
-
-// void aml_dbg_print_pull_up (struct amlsd_host* host)
-// {
-    // printk("Pull-up: CMD%d, PAD_PULL_UP_REG3=%#08x\n", 
-            // host->opcode, 
-            // READ_CBUS_REG(PAD_PULL_UP_REG3));
-// }
-
-
 /*----sdhc----*/
 
 void aml_sdhc_print_reg(struct amlsd_host* host)
@@ -674,7 +634,7 @@ int of_amlsd_detect(struct amlsd_platform* pdata)
 	int ret=0;
 	if(pdata->gpio_cd)
 		ret = amlogic_get_value(pdata->gpio_cd, MODULE_NAME);
-	// printk(" of_amlsd_detect port %d ret %d\n", pdata->port, ret);
+    // printk("\033[0;40;32m of_amlsd_detect port %d, card %s \033[0m\n", pdata->port, ret?"OUT":"in");
 	return ret;
 }
 
@@ -890,7 +850,6 @@ int aml_is_sduart(struct amlsd_platform * pdata)
 }
 
 
-extern struct pinctrl* g_uart_pinctrl;
 
 // int n=0;
 int aml_uart_switch(struct amlsd_platform* pdata, bool on)
@@ -954,6 +913,126 @@ int aml_uart_switch(struct amlsd_platform* pdata, bool on)
     pdata->uart_ao_pinctrl);
 #endif
 }
+
+/*-------------------debug---------------------*/
+
+unsigned int sdhc_debug=0x0; // 0xffffffff;
+
+static int __init sdhc_debug_setup(char *str)
+{
+	sdhc_debug = simple_strtol(str, NULL, 0);
+	return 1;
+}
+__setup("sdhc_debug=", sdhc_debug_setup);
+
+
+unsigned int sdio_debug=0x000000; // 0xffffff; // 
+
+static int __init sdio_debug_setup(char *str)
+{
+	sdio_debug = simple_strtol(str, NULL, 0);
+	return 1;
+}
+__setup("sdio_debug=", sdio_debug_setup);
+
+void aml_dbg_print_pinmux (void)
+{
+    printk("Pinmux: REG2=0x%08x, REG3=0x%08x, REG4=0x%08x, REG5=0x%08x, REG6=0x%08x, REG8=0x%08x\n", 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_2), 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_3), 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_4), 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_5), 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_6), 
+            READ_CBUS_REG(PERIPHS_PIN_MUX_8));
+}
+
+#ifdef      CONFIG_MMC_AML_DEBUG
+
+#define     CARD_PULL_UP_REG            PAD_PULL_UP_REG2
+#define     EMMC_PULL_UP_REG            PAD_PULL_UP_REG2
+#define     SDIO_PULL_UP_REG            PAD_PULL_UP_REG4
+
+#define     CARD_PULL_UP_REG_EN         PAD_PULL_UP_EN_REG2
+#define     EMMC_PULL_UP_REG_EN         PAD_PULL_UP_EN_REG2
+#define     SDIO_PULL_UP_REG_EN         PAD_PULL_UP_EN_REG4
+
+#define     CARD_PULL_UP_REG_MASK       0x03f00000 // card[5:0], REG2
+#define     EMMC_PULL_UP_REG_MASK       0x0003000f // boot[17:16, 3:0], REG2
+#define     SDIO_PULL_UP_REG_MASK       0x0000030f // gpioX[9:8, 3:0], REG4
+void aml_dbg_verify_pull_up (struct amlsd_platform * pdata)
+{
+    int reg;
+    int reg_en;
+    int reg_mask;
+
+    if (pdata->port == PORT_SDIO_A) {
+        reg = READ_CBUS_REG(SDIO_PULL_UP_REG);
+        reg_en = READ_CBUS_REG(SDIO_PULL_UP_REG_EN);
+        reg_mask = SDIO_PULL_UP_REG_MASK;
+    } else if (pdata->port == PORT_SDIO_B) {
+        reg = READ_CBUS_REG(CARD_PULL_UP_REG);
+        reg_en = READ_CBUS_REG(CARD_PULL_UP_REG_EN);
+        reg_mask = CARD_PULL_UP_REG_MASK;
+    } else if (pdata->port == PORT_SDIO_C) {
+        reg = READ_CBUS_REG(EMMC_PULL_UP_REG);
+        reg_en = READ_CBUS_REG(EMMC_PULL_UP_REG_EN);
+        reg_mask = EMMC_PULL_UP_REG_MASK;
+    }
+
+    if ((reg&reg_mask) != reg_mask) {
+        sdio_err(" %s pull-up error: CMD%d, reg=%#08x, reg_mask=%#x\n", 
+                mmc_hostname(pdata->mmc), pdata->host->opcode, reg, reg_mask);
+    }
+    if ((reg_en&reg_mask) != reg_mask) {
+        sdio_err(" %s pull-up error: CMD%d, reg_en=%#08x, reg_mask=%#x\n", 
+                mmc_hostname(pdata->mmc), pdata->host->opcode, reg_en, reg_mask);
+    }
+}
+
+#define     CARD_PINMUX_REG             PERIPHS_PIN_MUX_2
+#define     EMMC_PINMUX_REG             PERIPHS_PIN_MUX_6
+#define     SDIO_PINMUX_REG             PERIPHS_PIN_MUX_8
+int aml_dbg_verify_pinmux (struct amlsd_platform * pdata)
+{
+    int reg;
+    int reg_mask;
+
+    if (pdata->port == PORT_SDIO_A) {
+        reg = SDIO_PINMUX_REG;
+        if (pdata->mmc->ios.chip_select == MMC_CS_DONTCARE) {
+            reg_mask = 0x0000003f; // all pin
+        } else { // MMC_CS_HIGH
+            reg_mask = 0x00000003; // clk & cmd
+        }
+    } else if (pdata->port == PORT_SDIO_B) {
+        reg = CARD_PINMUX_REG;
+        if (pdata->mmc->ios.chip_select == MMC_CS_DONTCARE) {
+            if(pdata->mmc->caps & MMC_CAP_4_BIT_DATA){
+                reg_mask = 0x0000fc00; // all pin
+            }else{
+                reg_mask = 0x00008c00; // 1 bit
+            }
+        } else { // MMC_CS_HIGH
+            reg_mask = 0x00000c00; // clk & cmd
+        }
+    } else if (pdata->port == PORT_SDIO_C) {
+        reg = EMMC_PINMUX_REG;
+        if (pdata->mmc->ios.chip_select == MMC_CS_DONTCARE) {
+            reg_mask = 0x3f000000; // all pin
+        } else { // MMC_CS_HIGH
+            reg_mask = 0x03000000; // clk & cmd
+        }
+    }
+
+    reg = READ_CBUS_REG(reg);
+    if ((reg&reg_mask) != reg_mask) {
+        sdio_err(" %s pinmux error: CMD%d, reg=%#08x, reg_mask=%#x\n", 
+                mmc_hostname(pdata->mmc), pdata->host->opcode, reg, reg_mask);
+    }
+
+    return 0;
+}
+#endif // #ifdef      CONFIG_MMC_AML_DEBUG
 
 #ifndef CONFIG_AM_WIFI_SD_MMC
 int wifi_setup_dt()

@@ -2716,8 +2716,11 @@ int mmc_suspend_host(struct mmc_host *host)
 	}
 	mmc_bus_put(host);
 
-	if (!err && !mmc_card_keep_power(host))
+	if (!err && !mmc_card_keep_power(host)) {
 		mmc_power_off(host);
+    } else {
+        printk("[%s] keep power:%s, err=%d", __FUNCTION__, mmc_card_keep_power(host)?"yes":"NO", err);
+    }
 
 out:
 	return err;

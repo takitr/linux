@@ -118,5 +118,10 @@ bool is_emmc_exist (struct amlsd_host* host); // is eMMC/tSD exist
 void aml_dbg_print_pinmux (void);
 // void of_init_pins (struct amlsd_platform* pdata);
 
+#ifdef      CONFIG_MMC_AML_DEBUG
+void aml_dbg_verify_pull_up (struct amlsd_platform * pdata);
+int aml_dbg_verify_pinmux (struct amlsd_platform * pdata);
+#endif
+
 #endif
 

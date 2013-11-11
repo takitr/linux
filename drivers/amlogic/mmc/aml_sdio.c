@@ -284,6 +284,13 @@ void aml_sdio_request_done(struct mmc_host *mmc, struct mmc_request *mrq)
         sdio_dbg(AMLSD_DBG_RESP,"Cmd %d ,Resp 0x%x\n", cmd->opcode, cmd->resp[0]);
     }
 
+#ifdef      CONFIG_MMC_AML_DEBUG
+	host->req_cnt--;
+
+    aml_dbg_verify_pinmux(pdata);
+    aml_dbg_verify_pull_up(pdata);
+#endif
+
     if (pdata->xfer_post)
         pdata->xfer_post(pdata);
 
@@ -301,7 +308,7 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
     sdio_err("%s: %s, Cmd%d arg %08x Xfer %d Bytes, "
             "host->xfer_step=%d, host->cmd_is_stop=%d, pdata->port=%d, "
             "virqs=%#0x, virqc=%#0x, conf->cmd_clk_divide=%#x, pdata->clkc=%d, "
-            "conf->bus_width=%d, pdata->width=%d\n",
+            "conf->bus_width=%d, pdata->width=%d, clock=%d\n",
             mmc_hostname(host->mmc),
             msg,
             host->mrq->cmd->opcode,
@@ -314,7 +321,8 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
             conf->cmd_clk_divide,
             pdata->clkc,
             conf->bus_width,
-            pdata->width);    
+            pdata->width,
+            pdata->mmc->actual_clock);    
 }
 
 /*setup delayed workstruct in aml_sdio_request*/
@@ -328,6 +336,9 @@ static void aml_sdio_timeout(struct work_struct *data)
     struct sdio_status_irq* irqs = (void*)&virqs;
     u32 virqc =readl(host->base + SDIO_IRQC);
     struct sdio_irq_config* irqc = (void*)&virqc;
+#ifdef      CONFIG_MMC_AML_DEBUG
+    struct amlsd_platform * pdata = mmc_priv(host->mmc);
+#endif
 
     spin_lock_irqsave(&host->mrq_lock, flags);
 	if(host->xfer_step == XFER_FINISHED){
@@ -347,6 +358,10 @@ static void aml_sdio_timeout(struct work_struct *data)
 		return;
 	}
 
+    if (!(irqc->arc_cmd_int_en)) {
+        sdio_err("%s: arc_cmd_int_en is not enable\n",  mmc_hostname(host->mmc));
+    }
+
     /* Disable Command-Done-Interrupt to avoid irq occurs
      * It will be enabled again in the next cmd.
      */
@@ -363,9 +378,14 @@ static void aml_sdio_timeout(struct work_struct *data)
         // if ((pdata->port == MESON_SDIO_PORT_B) && (pdata->gpio_power != 0))
             // sdio_err("power_on_pin=%d\n", amlogic_get_value(pdata->gpio_power, MODULE_NAME));
 // #endif
-        // aml_dbg_print_pinmux();
-        // aml_sdio_print_reg(host);
     // }
+
+#ifdef      CONFIG_MMC_AML_DEBUG
+    aml_dbg_verify_pinmux(pdata);
+    aml_dbg_verify_pull_up(pdata);
+    aml_sdio_print_reg(host);
+    // aml_dbg_print_pinmux();
+#endif
 
     host->xfer_step = XFER_TIMEDOUT;
 
@@ -478,6 +498,14 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
     if(aml_sdio_check_unsupport_cmd(mmc, mrq))
         return;
+
+#ifdef      CONFIG_MMC_AML_DEBUG
+    if (host->req_cnt) {
+        sdio_err("Reentry error! host->req_cnt=%d\n", host->req_cnt);
+    }
+	host->req_cnt++;
+#endif
+
 	if(pdata->eject){
         mrq->cmd->error = -ENOMEDIUM;
         mmc_request_done(mmc, mrq);
@@ -503,6 +531,11 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	/*clear pinmux & set pinmux*/
 	if(pdata->xfer_pre)
 		pdata->xfer_pre(pdata);
+
+#ifdef      CONFIG_MMC_AML_DEBUG
+    aml_dbg_verify_pull_up(pdata);
+    aml_dbg_verify_pinmux(pdata);
+#endif
 
 	if(!mrq->data)
 		timeout = 100; //mod_timer(&host->timeout_tlist, jiffies + 100);
@@ -714,6 +747,8 @@ static void aml_sdio_set_clk_rate(struct amlsd_platform* pdata, u32 clk_ios)
 
 	sdio_dbg(AMLSD_DBG_IOS, "Clk IOS %d, Clk Src %d, Host Max Clk %d, clk_divide=%d\n",
         	clk_ios, (clk_rate*2), pdata->f_max, clk_div);
+	// sdio_err("Clk IOS %d, Clk Src %d, Host Max Clk %d, clk_divide=%d, actual_clock=%d\n",
+            // clk_ios, (clk_rate*2), pdata->f_max, clk_div, pdata->mmc->actual_clock);
 }
 
 static void aml_sdio_set_bus_width(struct amlsd_platform* pdata, u32 busw_ios)
@@ -988,6 +1023,10 @@ static struct amlsd_host* aml_sdio_init_host(void)
     
     host->version = AML_MMC_VERSION;
     host->storage_flag = storage_flag;
+
+#ifdef      CONFIG_MMC_AML_DEBUG
+	host->req_cnt = 0;
+#endif
 	return host;
 }
 

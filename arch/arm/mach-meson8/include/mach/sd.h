@@ -182,7 +182,11 @@ struct amlsd_host {
     u32			opcode; // add by gch for debug
 	u32			arg; // add by gch for debug
     u32         time_req_sta; // request start time
-
+    
+#ifdef      CONFIG_MMC_AML_DEBUG
+    u32         req_cnt;
+#endif
+    
     struct pinctrl *pinctrl;
     int storage_flag; // used for judging if there is a tsd/emmc
 
