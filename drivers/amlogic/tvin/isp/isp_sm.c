@@ -896,7 +896,7 @@ static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
 		if(i>=1)
 			fv_diff_sum += isp_abs64(fv[i-1],fv[i]);
         }
-		diff_fv_parm = div64((fv_diff_sum*multi_factor),(max_fv-min_fv));
+		diff_fv_parm = div64((fv_diff_sum*1024),(max_fv-min_fv));
 		if(best_step_debug)
 			pr_info("%s diff_fv_parm %llu,fv_diff_sum %llu,fv_fall %llu.\n",__func__,diff_fv_parm,fv_diff_sum,(max_fv-min_fv));
 		if(diff_fv_parm > max_vibrate){
