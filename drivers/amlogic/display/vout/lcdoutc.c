@@ -71,8 +71,8 @@ extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 #endif
 
 #define PANEL_NAME		"panel"
-#define DRIVER_DATE		"20131012"
-#define DRIVER_VER		"38"
+#define DRIVER_DATE		"20131111"
+#define DRIVER_VER		"310"
 
 //#define LCD_DEBUG_INFO
 #ifdef LCD_DEBUG_INFO
@@ -625,6 +625,7 @@ static void write_tcon_double(MLVDS_Tcon_Config_t *mlvds_tcon)
 static void set_tcon_lcd(Lcd_Config_t *pConf)
 {
 	Lcd_Timing_t *tcon_adr = &(pConf->lcd_timing);
+	unsigned hs_pol, vs_pol;
 	
 	DBG_PRINT("%s\n", __FUNCTION__);
 	
@@ -637,8 +638,6 @@ static void set_tcon_lcd(Lcd_Config_t *pConf)
 
 	WRITE_LCD_REG(L_RGB_BASE_ADDR, pConf->lcd_effect.rgb_base_addr);
 	WRITE_LCD_REG(L_RGB_COEFF_ADDR, pConf->lcd_effect.rgb_coeff_addr);
-	WRITE_LCD_REG(L_POL_CNTL_ADDR,   ((1 << LCD_TCON_DE_SEL) | (1 << LCD_TCON_VS_SEL) | (1 << LCD_TCON_HS_SEL))); //enable tcon DE, Hsync, Vsync
-	SET_LCD_REG_MASK(L_POL_CNTL_ADDR, ((0 << LCD_DE_POL) | (1 << LCD_VS_POL) | (1 << LCD_HS_POL)));	//adjust hvsync pol
 	
 	if (pConf->lcd_effect.dith_user) {
 		WRITE_LCD_REG(L_DITH_CNTL_ADDR,  pConf->lcd_effect.dith_cntl_addr);
@@ -649,6 +648,12 @@ static void set_tcon_lcd(Lcd_Config_t *pConf)
 		else
 			WRITE_LCD_REG(L_DITH_CNTL_ADDR,  0x600);
 	}
+	
+	hs_pol = ((pConf->lcd_timing.pol_cntl_addr >> LCD_HS_POL) & 1);	//0 for low active, 1 for high active
+	vs_pol = ((pConf->lcd_timing.pol_cntl_addr >> LCD_VS_POL) & 1);	//0 for low active, 1 for high active
+	
+	WRITE_LCD_REG(L_POL_CNTL_ADDR,   ((1 << LCD_TCON_DE_SEL) | (1 << LCD_TCON_VS_SEL) | (1 << LCD_TCON_HS_SEL))); //enable tcon DE, Hsync, Vsync
+	SET_LCD_REG_MASK(L_POL_CNTL_ADDR, ((0 << LCD_DE_POL) | (vs_pol << LCD_VS_POL) | (hs_pol << LCD_HS_POL)));
 	
 	//DE signal
 	WRITE_LCD_REG(L_DE_HS_ADDR,		tcon_adr->oeh_hs_addr);
@@ -678,6 +683,7 @@ static void set_tcon_lcd(Lcd_Config_t *pConf)
 static void set_tcon_ttl(Lcd_Config_t *pConf)
 {
 	Lcd_Timing_t *tcon_adr = &(pConf->lcd_timing);
+	unsigned hs_pol, vs_pol;
 	
 	DBG_PRINT("%s.\n", __FUNCTION__);	
 
@@ -702,21 +708,36 @@ static void set_tcon_ttl(Lcd_Config_t *pConf)
 			WRITE_LCD_REG(DITH_CNTL_ADDR,  0x600);
 	}
 	
-    WRITE_LCD_REG(STH1_HS_ADDR,    tcon_adr->sth1_hs_addr);
-    WRITE_LCD_REG(STH1_HE_ADDR,    tcon_adr->sth1_he_addr);
+	hs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_HS_POL) & 1;
+	vs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_VS_POL) & 1;
+	
+	if (hs_pol) {
+		WRITE_LCD_REG(STH1_HS_ADDR,    tcon_adr->sth1_hs_addr);
+		WRITE_LCD_REG(STH1_HE_ADDR,    tcon_adr->sth1_he_addr);
+	}
+	else {
+		WRITE_LCD_REG(STH1_HS_ADDR,    tcon_adr->sth1_he_addr);
+		WRITE_LCD_REG(STH1_HE_ADDR,    tcon_adr->sth1_hs_addr);
+	}
     WRITE_LCD_REG(STH1_VS_ADDR,    tcon_adr->sth1_vs_addr);
     WRITE_LCD_REG(STH1_VE_ADDR,    tcon_adr->sth1_ve_addr);
 
     WRITE_LCD_REG(OEH_HS_ADDR,     tcon_adr->oeh_hs_addr);
     WRITE_LCD_REG(OEH_HE_ADDR,     tcon_adr->oeh_he_addr);
-    WRITE_LCD_REG(OEH_VS_ADDR,     tcon_adr->oeh_vs_addr);
-    WRITE_LCD_REG(OEH_VE_ADDR,     tcon_adr->oeh_ve_addr);
+	WRITE_LCD_REG(OEH_VS_ADDR,     tcon_adr->oeh_vs_addr);
+	WRITE_LCD_REG(OEH_VE_ADDR,     tcon_adr->oeh_ve_addr);
 
     WRITE_LCD_REG(STV1_HS_ADDR,    tcon_adr->stv1_hs_addr);
     WRITE_LCD_REG(STV1_HE_ADDR,    tcon_adr->stv1_he_addr);
-    WRITE_LCD_REG(STV1_VS_ADDR,    tcon_adr->stv1_vs_addr);
-    WRITE_LCD_REG(STV1_VE_ADDR,    tcon_adr->stv1_ve_addr);
-
+	if (vs_pol) {
+		WRITE_LCD_REG(STV1_VS_ADDR,    tcon_adr->stv1_vs_addr);
+		WRITE_LCD_REG(STV1_VE_ADDR,    tcon_adr->stv1_ve_addr);
+	}
+	else {
+		WRITE_LCD_REG(STV1_VS_ADDR,    tcon_adr->stv1_ve_addr);
+		WRITE_LCD_REG(STV1_VE_ADDR,    tcon_adr->stv1_vs_addr);	
+	}
+	
     WRITE_LCD_REG(INV_CNT_ADDR,			tcon_adr->inv_cnt_addr);
     WRITE_LCD_REG(TCON_MISC_SEL_ADDR,	tcon_adr->tcon_misc_sel_addr);
 
@@ -729,6 +750,7 @@ static void set_tcon_ttl(Lcd_Config_t *pConf)
 static void set_tcon_ttl(Lcd_Config_t *pConf)
 {
 	Lcd_Timing_t *tcon_adr = &(pConf->lcd_timing);
+	unsigned hs_pol, vs_pol;
 	
 	DBG_PRINT("%s.\n", __FUNCTION__);	
 
@@ -753,8 +775,17 @@ static void set_tcon_ttl(Lcd_Config_t *pConf)
 			WRITE_LCD_REG(L_DITH_CNTL_ADDR,  0x600);
 	}
 	
-    WRITE_LCD_REG(L_STH1_HS_ADDR,    tcon_adr->sth1_hs_addr);
-    WRITE_LCD_REG(L_STH1_HE_ADDR,    tcon_adr->sth1_he_addr);
+	hs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_HS_POL) & 1;
+	vs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_VS_POL) & 1;
+	
+	if (hs_pol) {
+		WRITE_LCD_REG(L_STH1_HS_ADDR,    tcon_adr->sth1_hs_addr);
+		WRITE_LCD_REG(L_STH1_HE_ADDR,    tcon_adr->sth1_he_addr);
+	}
+	else {
+		WRITE_LCD_REG(L_STH1_HS_ADDR,    tcon_adr->sth1_he_addr);
+		WRITE_LCD_REG(L_STH1_HE_ADDR,    tcon_adr->sth1_hs_addr);
+	}
     WRITE_LCD_REG(L_STH1_VS_ADDR,    tcon_adr->sth1_vs_addr);
     WRITE_LCD_REG(L_STH1_VE_ADDR,    tcon_adr->sth1_ve_addr);
 
@@ -765,8 +796,14 @@ static void set_tcon_ttl(Lcd_Config_t *pConf)
 
     WRITE_LCD_REG(L_STV1_HS_ADDR,    tcon_adr->stv1_hs_addr);
     WRITE_LCD_REG(L_STV1_HE_ADDR,    tcon_adr->stv1_he_addr);
-    WRITE_LCD_REG(L_STV1_VS_ADDR,    tcon_adr->stv1_vs_addr);
-    WRITE_LCD_REG(L_STV1_VE_ADDR,    tcon_adr->stv1_ve_addr);
+	if (vs_pol) {
+		WRITE_LCD_REG(L_STV1_VS_ADDR,    tcon_adr->stv1_vs_addr);
+		WRITE_LCD_REG(L_STV1_VE_ADDR,    tcon_adr->stv1_ve_addr);
+	}
+	else {
+		WRITE_LCD_REG(L_STV1_VS_ADDR,    tcon_adr->stv1_ve_addr);
+		WRITE_LCD_REG(L_STV1_VE_ADDR,    tcon_adr->stv1_vs_addr);
+	}
 
     WRITE_LCD_REG(L_INV_CNT_ADDR,		tcon_adr->inv_cnt_addr);
     WRITE_LCD_REG(L_TCON_MISC_SEL_ADDR,	tcon_adr->tcon_misc_sel_addr);
@@ -2419,13 +2456,9 @@ static void lcd_sync_duration(Lcd_Config_t *pConf)
 
 static void lcd_tcon_config(Lcd_Config_t *pConf)
 {
-	unsigned short hs_pol, vs_pol;
 	unsigned short hstart, hend, vstart, vend;
 	unsigned short h_delay = 0;
 	unsigned short h_offset = 0, v_offset = 0;
-	
-	hs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_HS_POL) & 1;
-	vs_pol = (pConf->lcd_timing.pol_cntl_addr >> LCD_VS_POL) & 1;
 	
 	switch (pConf->lcd_basic.lcd_type) {
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
@@ -2460,29 +2493,17 @@ static void lcd_tcon_config(Lcd_Config_t *pConf)
 	
 	hstart = (pConf->lcd_timing.de_hstart + pConf->lcd_basic.h_period - pConf->lcd_timing.hsync_bp) % pConf->lcd_basic.h_period;
 	hend = (pConf->lcd_timing.de_hstart + pConf->lcd_basic.h_period - pConf->lcd_timing.hsync_bp + pConf->lcd_timing.hsync_width) % pConf->lcd_basic.h_period;	
-	if (hs_pol) {
-		pConf->lcd_timing.sth1_hs_addr = hstart;
-		pConf->lcd_timing.sth1_he_addr = hend;
-	}
-	else {
-		pConf->lcd_timing.sth1_he_addr = hstart;
-		pConf->lcd_timing.sth1_hs_addr = hend;
-	}
+	pConf->lcd_timing.sth1_hs_addr = hstart;
+	pConf->lcd_timing.sth1_he_addr = hend;
 	pConf->lcd_timing.sth1_vs_addr = 0;
 	pConf->lcd_timing.sth1_ve_addr = pConf->lcd_basic.v_period - 1;
 	
 	vstart = (pConf->lcd_timing.de_vstart + pConf->lcd_basic.v_period - pConf->lcd_timing.vsync_bp) % pConf->lcd_basic.v_period;
-	vend = (pConf->lcd_timing.de_vstart + pConf->lcd_basic.v_period - pConf->lcd_timing.vsync_bp + pConf->lcd_timing.vsync_width - 1) % pConf->lcd_basic.v_period;
-	if (vs_pol) {
-		pConf->lcd_timing.stv1_vs_addr = vstart;
-		pConf->lcd_timing.stv1_ve_addr = vend;
-	}
-	else {
-		pConf->lcd_timing.stv1_ve_addr = vstart;
-		pConf->lcd_timing.stv1_vs_addr = vend;
-	}
-	pConf->lcd_timing.stv1_hs_addr = 0;
-	pConf->lcd_timing.stv1_he_addr = pConf->lcd_basic.h_period - 1;
+	vend = (pConf->lcd_timing.de_vstart + pConf->lcd_basic.v_period - pConf->lcd_timing.vsync_bp + pConf->lcd_timing.vsync_width) % pConf->lcd_basic.v_period;
+	pConf->lcd_timing.stv1_vs_addr = vstart;
+	pConf->lcd_timing.stv1_ve_addr = vend;
+	pConf->lcd_timing.stv1_hs_addr = hstart;
+	pConf->lcd_timing.stv1_he_addr = hstart;
 	
 	pConf->lcd_timing.de_hstart = pConf->lcd_timing.de_hstart;
 	pConf->lcd_timing.de_vstart = pConf->lcd_timing.de_vstart;
@@ -3347,22 +3368,23 @@ static const char * lcd_usage_str =
 "    <xx_valid>	: 0 for disable, 1 for enable\n"
 "\n"
 "    echo swap <rb_swap> <bit_swap> > debug ; write ttl RGB swap config\n"
-"    echo offset <h_sign> <h_offset> <v_sign> <v_offset> > debug ; write ttl display offset\n"
-"    echo lvds <lvds_repack> <pn_swap> > debug ; write lvds config\n"
+"    echo lvds <vswing_level> <lvds_repack> <pn_swap> > debug ; write lvds config\n"
 "    echo edp <link_rate> <lane_count> > debug ; write edp config\n"
-"    echo phy <phy_ctrl> > debug ; write lvds phy config\n"
+//"    echo phy <phy_ctrl> > debug ; write lvds phy config\n"
 "data format:\n"
 "    <xx_swap>	: 0 for normal, 1 for swap\n"
-"    <xx_sign>	: 0 for negative, 1 for positive\n"
+"    <vswing_level>	: support 5 levels such as 0,1,2,3,4. Default is 1\n"
 "    <lvds_repack>  : 0 for JEIDA mode, 1 for VESA mode\n"
 "    <pn_swap>  	: 0 for normal, 1 for swap lvds p/n channels\n"
 "    <link_rate>  	: 0 for 1.62G, 1 for 2.7G\n"
-"    <phy_ctrl> 	: lvds phy control in Hex\n"
+//"    <phy_ctrl> 	: lvds phy control in Hex\n"
 "\n"
+"    echo offset <h_sign> <h_offset> <v_sign> <v_offset> > debug ; write ttl display offset\n"
 "    echo video <video_on_pixel> <video_on_line> > debug ; write video on pixel/line config\n"
 "    echo dither <dither_user> <dither_ctrl> > debug ; write user dither ctrl config\n"
 "    echo vadj <brightness> <contrast> <saturation> > debug ; write video adjust config\n"
 "data format:\n"
+"    <xx_sign>	: 0 for negative, 1 for positive\n"
 "    <dither_user>  : 0 for disable user control, 1 for enable user control\n"
 "    <dither_ctrl>  : dither ctrl in Hex, such as 0x400 or 0x600\n"
 "    <brightness>: negative 0x1ff~0x101, positive 0x0~0xff, signed value in Hex, default is 0x0\n"
@@ -3408,8 +3430,8 @@ static void read_current_lcd_config(Lcd_Config_t *pConf)
 			printk("rb_swap	%u\nbit_swap	%u\n", pConf->lcd_control.ttl_config->rb_swap, pConf->lcd_control.ttl_config->bit_swap);
 			break;
 		case LCD_DIGITAL_LVDS:
-			printk("lvds_repack	%u\npn_swap	%u\n", pConf->lcd_control.lvds_config->lvds_repack, pConf->lcd_control.lvds_config->pn_swap);
-			printk("phy_ctrl	0x%x\n", pConf->lcd_control.dphy_config->phy_ctrl);
+			printk("vswing_level	%u\nlvds_repack	%u\npn_swap	%u\n", pConf->lcd_control.lvds_config->lvds_vswing, pConf->lcd_control.lvds_config->lvds_repack, pConf->lcd_control.lvds_config->pn_swap);
+			//printk("phy_ctrl	0x%x\n", pConf->lcd_control.dphy_config->phy_ctrl);
 			break;
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 		case LCD_DIGITAL_MIPI:
@@ -3632,7 +3654,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			pDev->pConf->lcd_timing.lcd_clk = t[0];
 			pDev->pConf->lcd_timing.clk_ctrl = ((pDev->pConf->lcd_timing.clk_ctrl & ~(0xf << CLK_CTRL_SS)) | ((t[1] << CLK_CTRL_SS) | (1 << CLK_CTRL_AUTO)));
 			pDev->pConf->lcd_timing.pol_cntl_addr = ((pDev->pConf->lcd_timing.pol_cntl_addr & ~(1 << LCD_CPH1_POL)) | (t[2] << LCD_CPH1_POL));
-			printk("lcd_clk=%dHz, ss_level=%d, clk_pol=%s\n", t[0], t[1], ((t[2] == 1) ? "positive" : "negative"));
+			printk("lcd_clk=%dHz, ss_level=%d, clk_pol=%s\n", t[0], t[1], ((t[2] == 0) ? "negative" : "positive"));
 			break;
 		case 's':
 			if (buf[1] == 'y') {	//sync
@@ -3648,7 +3670,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				pDev->pConf->lcd_timing.vsync_width = t[3];
 				pDev->pConf->lcd_timing.vsync_bp = t[4];
 				pDev->pConf->lcd_timing.pol_cntl_addr = ((pDev->pConf->lcd_timing.pol_cntl_addr & ~((1 << LCD_HS_POL) | (1 << LCD_VS_POL))) | ((t[2] << LCD_HS_POL) | (t[5] << LCD_VS_POL)));
-				printk("hs_width=%d, hs_bp=%d, hs_pol=%s, vs_width=%d, vs_bp=%d, vs_pol=%s\n", t[0], t[1], ((t[2] == 1) ? "positive" : "negative"), t[3], t[4], ((t[5] == 1) ? "positive" : "negative"));
+				printk("hs_width=%d, hs_bp=%d, hs_pol=%s, vs_width=%d, vs_bp=%d, vs_pol=%s\n", t[0], t[1], ((t[2] == 0) ? "negative" : "positive"), t[3], t[4], ((t[5] == 0) ? "negative" : "positive"));
 			}
 			else {	//swap
 				t[0] = 0;
@@ -3656,7 +3678,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				ret = sscanf(buf, "swap %d %d", &t[0], &t[1]);
 				pDev->pConf->lcd_control.ttl_config->rb_swap = t[0];
 				pDev->pConf->lcd_control.ttl_config->bit_swap = t[1];
-				printk("rb_swap: %s, bit_swap: %s\n", ((t[0] == 1) ? "enable" : "disable"), ((t[1] == 1) ? "enable" : "disable"));
+				printk("rb_swap: %s, bit_swap: %s\n", ((t[0] == 0) ? "disable" : "enable"), ((t[1] == 0) ? "disable" : "enable"));
 			}			
 			break;
 		case 'v':
@@ -3668,7 +3690,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 					ret = sscanf(buf, "valid %d %d", &t[0], &t[1]);
 					pDev->pConf->lcd_timing.hvsync_valid = t[0];
 					pDev->pConf->lcd_timing.de_valid = t[1];
-					printk("hvsync: %s, de: %s\n", ((t[0] == 1) ? "enable" : "disable"), ((t[1] == 1) ? "enable" : "disable"));
+					printk("hvsync: %s, de: %s\n", ((t[0] == 0) ? "disable" : "enable"), ((t[1] == 0) ? "disable" : "enable"));
 				}
 				else if (buf[2] == 'd') {	//vadj
 					t[0] = 0x0;
@@ -3702,21 +3724,23 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			break;
 		case 'l':	//write lvds config		//lvds_repack, pn_swap
 			t[0] = 1;
-			t[1] = 0;
-			ret = sscanf(buf, "lvds %d %d", &t[0], &t[1]);
-			pDev->pConf->lcd_control.lvds_config->lvds_repack = t[0];
-			pDev->pConf->lcd_control.lvds_config->pn_swap = t[1];
-			printk("lvds_repack: %s, rb_swap: %s\n", ((t[0] == 1) ? "VESA mode" : "JEIDA mode"), ((t[1] == 1) ? "enable" : "disable"));
+			t[1] = 1;
+			t[2] = 0;
+			ret = sscanf(buf, "lvds %d %d %d", &t[0], &t[1], &t[2]);
+			pDev->pConf->lcd_control.lvds_config->lvds_vswing = t[0];
+			pDev->pConf->lcd_control.lvds_config->lvds_repack = t[1];
+			pDev->pConf->lcd_control.lvds_config->pn_swap = t[2];
+			printk("vswing_level: %u, lvds_repack: %s, rb_swap: %s\n", t[0], ((t[1] == 1) ? "VESA mode" : "JEIDA mode"), ((t[2] == 0) ? "disable" : "enable"));
 			break;
 		case 'm':	//write mlvds config
 			//to do
 			break;
-		case 'p':
-			t[0] = 0xaf40;
-			ret = sscanf(buf, "phy %d", &t[0]);
-			pDev->pConf->lcd_control.dphy_config->phy_ctrl = t[0];
-			printk("lvds phy_ctrl = 0x%x\n", t[0]);
-			break;
+		// case 'p':
+			// t[0] = 0xaf40;
+			// ret = sscanf(buf, "phy %d", &t[0]);
+			// pDev->pConf->lcd_control.dphy_config->phy_ctrl = t[0];
+			// printk("lvds phy_ctrl = 0x%x\n", t[0]);
+			// break;
 		case 'd':
 			if (buf[2] == 't') {
 				t[0] = 0;
@@ -3724,7 +3748,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				ret = sscanf(buf, "dither %d %x", &t[0], &t[1]);
 				pDev->pConf->lcd_effect.dith_user = t[0];
 				pDev->pConf->lcd_effect.dith_cntl_addr = t[1];
-				printk("dither user_ctrl: %s, 0x%x\n", ((t[0] == 1) ? "enable" : "disable"), t[1]);
+				printk("dither user_ctrl: %s, 0x%x\n", ((t[0] == 0) ? "disable" : "enable"), t[1]);
 			}
 			else {
 				printk("power off lcd.\n");
@@ -4282,7 +4306,7 @@ static inline int _get_lcd_power_config(struct platform_device *pdev)
 				DBG_PRINT("faild to get %s\n", propname);
 				break;
 			}
-			else if (strcasecmp(str, "null") == 0) {
+			else if ((strcasecmp(str, "null") == 0) || ((strcasecmp(str, "n") == 0))) {
 				break;
 			}
 			else {
@@ -4316,13 +4340,13 @@ static inline int _get_lcd_power_config(struct platform_device *pdev)
 						printk("faild to get %s\n", propname);
 					}
 					else {					
-						if (strcasecmp(str, "output_low") == 0) {
+						if ((strcasecmp(str, "output_low") == 0) || (strcasecmp(str, "0") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_on_config[i].value = LCD_POWER_GPIO_OUTPUT_LOW;
 						}
-						else if (strcasecmp(str, "output_high") == 0) {
+						else if ((strcasecmp(str, "output_high") == 0) || (strcasecmp(str, "1") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_on_config[i].value = LCD_POWER_GPIO_OUTPUT_HIGH;
 						}
-						else if (strcasecmp(str, "input") == 0) {
+						else if ((strcasecmp(str, "input") == 0) || (strcasecmp(str, "2") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_on_config[i].value = LCD_POWER_GPIO_INPUT;
 						}
 					}
@@ -4350,7 +4374,7 @@ static inline int _get_lcd_power_config(struct platform_device *pdev)
 				DBG_PRINT("faild to get %s index 0\n", propname);
 				break;
 			}
-			else if (strcasecmp(str, "null") == 0) {
+			else if ((strcasecmp(str, "null") == 0) || ((strcasecmp(str, "n") == 0))) {
 				break;
 			}
 			else {	
@@ -4380,13 +4404,13 @@ static inline int _get_lcd_power_config(struct platform_device *pdev)
 						printk("faild to get %s index 2\n", propname);
 					}
 					else {					
-						if (strcasecmp(str, "output_low") == 0) {
+						if ((strcasecmp(str, "output_low") == 0) || (strcasecmp(str, "0") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_off_config[i].value = LCD_POWER_GPIO_OUTPUT_LOW;
 						}
-						else if (strcasecmp(str, "output_high") == 0) {
+						else if ((strcasecmp(str, "output_high") == 0) || (strcasecmp(str, "1") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_off_config[i].value = LCD_POWER_GPIO_OUTPUT_HIGH;
 						}
-						else if (strcasecmp(str, "input") == 0) {
+						else if ((strcasecmp(str, "input") == 0) || (strcasecmp(str, "2") == 0)) {
 							pDev->pConf->lcd_power_ctrl.power_off_config[i].value = LCD_POWER_GPIO_INPUT;
 						}
 					}
@@ -4452,7 +4476,7 @@ static inline struct aml_lcd_platform *lcd_get_driver_data(struct platform_devic
 	const struct of_device_id *match;
 	
 	if(pdev->dev.of_node) {
-		DBG_PRINT("***of_device: get lcd driver data.***\n");		
+		//DBG_PRINT("***of_device: get lcd driver data.***\n");		
 		match = of_match_node(lcd_dt_match, pdev->dev.of_node);
 		return (struct aml_lcd_platform *)match->data;
 	}
