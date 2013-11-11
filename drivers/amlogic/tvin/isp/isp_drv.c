@@ -998,11 +998,11 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	
 	if(devp->flag & ISP_FLAG_SKIP_BUF){
 		ret = TVIN_BUF_SKIP;
-		if(devp->info.skip_cnt++ > 26){
+		if(devp->info.skip_cnt++ > 25){
 			devp->flag &= (~ISP_FLAG_SKIP_BUF);
 		}
 		if(isr_debug)
-			pr_info("%s isp skip cnt %u %s 26.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>26?">":"<");
+			pr_info("%s isp skip cnt %u %s 25.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>25?">":"<");
 	}
 	tasklet_schedule(&devp->isp_task);
         return ret;        
