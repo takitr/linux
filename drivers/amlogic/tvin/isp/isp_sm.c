@@ -141,12 +141,8 @@ void af_sm_init(isp_dev_t *devp)
 	/*init for af*/
 	if(sm_state.af_state)
 		devp->flag |= devp->af_info.flag_bk;
-	if(devp->flag & ISP_FLAG_TOUCH_AF){
-    	sm_state.af_state = AF_INIT;
-		devp->af_info.f = devp->af_info.af_data;
-	}else{
-		sm_state.af_state = AF_INIT;
-		devp->af_info.f = devp->af_info.af_data;
+	if(devp->flag & ISP_FLAG_AF){
+    	        sm_state.af_state = AF_INIT;
 	}
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
@@ -850,7 +846,10 @@ unsigned long long div64(unsigned long long n, unsigned long long d) // n for nu
     }
     return q;
 }
-
+static unsigned long long isp_abs64(unsigned long long a,unsigned long long b)
+{
+	return (a>b?(a-b):(b-a));
+}
 static unsigned long long get_fv_base_blnr(isp_blnr_stat_t *blnr)
 {
 	unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0;
@@ -869,12 +868,16 @@ static unsigned long long get_fv_base_blnr(isp_blnr_stat_t *blnr)
 	return div64(mul_ac,sum_dc);
 	
 }
-unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
+static unsigned int max_vibrate = 2000;
+module_param(max_vibrate,uint,0664);
+MODULE_PARM_DESC(max_vibrate,"\n threshold for vibrate sum.\n");
+
+static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
 {
         unsigned int i = 0, cur_grid = 0, max_grid = 0, best_step = 0;
-        unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, moment = 0, sum_fv = 0;
-
-		if(best_step_debug)				
+        unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, min_fv = 0xffffffffffffffff, sum_fv = 0,moment = 0;
+		unsigned long long fv_diff_sum=0,fv_ave=0,fv_sum=0,diff_fv_parm;
+		if(best_step_debug&0x2)				
 			pr_info("%s ac[0] ac[1] ac[2] ac[3] dc[0] dc[1] dc[2] dc[3]\n", __func__);
         for (i = 0; i < FOCUS_GRIDS; i++){
                 if (i && (step[i]==0)){
@@ -882,13 +885,24 @@ unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
                 }
                 max_grid = i;
                 fv[i] = get_fv_base_blnr(&blnr[i]);
-	        if(best_step_debug)
+	        if(best_step_debug&0x2)
                         pr_info("%s %u %u %u %u %u %u %u %u\n", __func__, blnr[i].ac[0], blnr[i].ac[1], blnr[i].ac[2], blnr[i].ac[3], blnr[i].dc[0], blnr[i].dc[1], blnr[i].dc[2], blnr[i].dc[3]);
                 if (max_fv < fv[i]){
 		        max_fv = fv[i];
 		        cur_grid = i;
 	        }
+		if(min_fv > fv[i])
+			min_fv = fv[i];
+		if(i>=1)
+			fv_diff_sum += isp_abs64(fv[i-1],fv[i]);
         }
+		diff_fv_parm = div64((fv_diff_sum*multi_factor),(max_fv-min_fv));
+		if(best_step_debug)
+			pr_info("%s diff_fv_parm %llu,fv_diff_sum %llu,fv_fall %llu.\n",__func__,diff_fv_parm,fv_diff_sum,(max_fv-min_fv));
+		if(diff_fv_parm > max_vibrate){
+			pr_info("%s diff_fv_parm %llu>%u, return 0.\n",__func__,diff_fv_parm,max_vibrate);
+			return 0;
+		}
 	// too less stroke, for power saving
         if (!cur_grid) {
 	        best_step = 0;
@@ -1027,20 +1041,20 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 }
 void isp_af_detect(isp_dev_t *devp)
 {
-	static unsigned int start_jf,af_delay=0;
 	struct xml_algorithm_af_s *af_alg = devp->isp_af_parm;
 	struct isp_af_info_s *af_info = &devp->af_info;
-	
+
 	switch(sm_state.af_state){
 		case AF_DETECT_INIT:
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-			af_info->f = af_info->af_detect;
+			//af_info->f = af_info->af_detect;
 			af_info->cur_index = 0;
 			sm_state.af_state = AF_GET_STEPS_INFO;
 			break;
 		case AF_GET_STEPS_INFO:	
 			if(++af_info->adj_duration_cnt >= af_alg->af_duration_cnt){
 				af_info->adj_duration_cnt = af_alg->af_duration_cnt;
+				memcpy(&af_info->af_detect[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 				if(++af_info->cur_index >= af_alg->detect_step_cnt){
 					pr_info("%s get info end index=%u duration cnt=%u.\n",__func__,af_info->cur_index,af_info->adj_duration_cnt);
 					af_info->cur_index = 0;
@@ -1081,7 +1095,7 @@ void isp_af_sm(isp_dev_t *devp)
 				pr_info("%s:ae,awb flag status 0x%x.\n",__func__,af_info->flag_bk);
 			devp->flag &=(~ISP_FLAG_AWB);
 			devp->flag &=(~ISP_FLAG_AE);
-			af_info->f = af_info->af_data;
+			//af_info->f = af_info->af_data;
 			af_info->cur_index = 0;
 			start_jf = jiffies;
 			sm_state.af_state = AF_GET_OLD_FV;
@@ -1103,6 +1117,7 @@ void isp_af_sm(isp_dev_t *devp)
 			break;
 		case AF_GET_COARSE_INFO:
 			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
+				memcpy(&af_info->af_data[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 				if(++af_info->cur_index >= af_alg->valid_step_cnt){
 				        sm_state.af_state = AF_CALC_GREAT;
 				        af_info->cur_index = 0;
@@ -1155,7 +1170,7 @@ void isp_af_sm(isp_dev_t *devp)
 				if(af_sm_dg&0x1){
 					pr_info("[af_sm..]:fv_delta %llu,fv_aft_af %llu.\n",fv_delta,af_info->fv_aft_af);
 				}
-				if((fv_delta > af_info->fv_bf_af)&&(af_info->af_retry_cnt++ < af_alg->af_retry_max)){
+				if((fv_delta > af_info->fv_bf_af)&&(++af_info->af_retry_cnt < af_alg->af_retry_max)){
 					sm_state.af_state = AF_GET_OLD_FV;
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_info->af_retry_cnt);

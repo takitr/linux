@@ -419,9 +419,9 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           thr_v[20];       // 0 ~ 255
 } xml_algorithm_awb_t;
 
-#define AF_PARM_NUM			16
+#define AF_PARM_NUM			17
 
-#define FOCUS_GRIDS 17
+#define FOCUS_GRIDS 16
 
 typedef struct xml_algorithm_af_s {
 	/*for lose focus*/

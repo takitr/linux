@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.10a"
+#define ISP_VER					"2013.11.11a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -109,10 +109,8 @@ typedef struct isp_af_info_s {
 	unsigned int af_retry_cnt;
 	unsigned long long fv_aft_af;
 	unsigned long long fv_bf_af;
-	isp_blnr_stat_t *f;
 	isp_blnr_stat_t *af_detect;
 	isp_blnr_stat_t af_data[FOCUS_GRIDS];
-	isp_af_stat_t af_wind[FOCUS_GRIDS];
 	//unsigned char af_delay;
 	atomic_t writeable;
 	/*window for full scan&detect*/
@@ -120,6 +118,8 @@ typedef struct isp_af_info_s {
 	unsigned int y0;
 	unsigned int x1;
 	unsigned int y1;
+	/* blnr tmp for isr*/
+	isp_blnr_stat_t isr_af_data;
 }isp_af_info_t;
 
 /*for debug cmd*/

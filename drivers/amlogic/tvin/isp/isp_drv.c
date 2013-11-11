@@ -727,7 +727,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 16;
 		devp->isp_af_parm->af_fail_ratio = 20;
-		devp->isp_af_parm->af_retry_max = 3;
+		devp->isp_af_parm->af_retry_max = 2;
 		devp->isp_af_parm->step[0] = 100;
 		devp->isp_af_parm->step[1] = 150;
 		devp->isp_af_parm->step[2] = 200;
@@ -748,7 +748,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->field_delay = 1;
 		
 		/*init for auto lose focus tell*/
-		devp->isp_af_parm->detect_step_cnt = 16;
+		devp->isp_af_parm->detect_step_cnt = 5;
 		devp->isp_af_parm->enter_move_ratio = 55;
 		devp->isp_af_parm->enter_static_ratio = 35;
 		devp->isp_af_parm->ave_vdc_thr = 100;
@@ -950,8 +950,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(af_enable){
 	if(devp->flag & ISP_FLAG_AF)
-	        isp_get_blnr_stat(&af_info->f[af_info->cur_index]);
-			//isp_get_af_stat(&af_info->af_wind[af_info->cur_index]);
+	        isp_get_blnr_stat(&af_info->isr_af_data);
 	}
 	if(devp->flag & ISP_FLAG_SET_EFFECT){
 		csc = &(devp->cam_param->xml_effect_manual->csc);
@@ -1002,7 +1001,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 			devp->flag &= (~ISP_FLAG_SKIP_BUF);
 		}
 		if(isr_debug)
-			pr_info("%s isp skip cnt %u %s 25.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>25?">":"<");
+			pr_info("%s isp skip cnt %u %s 40.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>40?">":"<");
 	}
 	tasklet_schedule(&devp->isp_task);
         return ret;        
