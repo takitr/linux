@@ -1039,14 +1039,12 @@ void isp_af_detect(isp_dev_t *devp)
 			sm_state.af_state = AF_GET_STEPS_INFO;
 			break;
 		case AF_GET_STEPS_INFO:	
-			if(af_info->adj_duration_cnt++ >= af_alg->af_duration_cnt){
+			if(++af_info->adj_duration_cnt >= af_alg->af_duration_cnt){
 				af_info->adj_duration_cnt = af_alg->af_duration_cnt;
-				if(af_info->cur_index >= af_alg->detect_step_cnt){
+				if(++af_info->cur_index >= af_alg->detect_step_cnt){
+					pr_info("%s get info end index=%u duration cnt=%u.\n",__func__,af_info->cur_index,af_info->adj_duration_cnt);
 					af_info->cur_index = 0;
 					sm_state.af_state = AF_GET_STATUS;
-					pr_info("%s get info end duration cnt %u.\n",__func__,af_info->adj_duration_cnt);
-				} else {
-					af_info->cur_index++;
 				}
 			}
 			break;
@@ -1056,10 +1054,8 @@ void isp_af_detect(isp_dev_t *devp)
 				if(af_sm_dg)
 					pr_info("[af_sm]:lost focus.\n");
 			}
-			if(af_info->cur_index >= af_alg->detect_step_cnt){
+			if(++af_info->cur_index >= af_alg->detect_step_cnt){
 				af_info->cur_index = 0;
-			}else{
-				af_info->cur_index++;
 			}
 			break;
 		default:
@@ -1106,14 +1102,15 @@ void isp_af_sm(isp_dev_t *devp)
 			sm_state.af_state = AF_GET_COARSE_INFO;
 			break;
 		case AF_GET_COARSE_INFO:
-			if((af_info->cur_index >= af_alg->valid_step_cnt)||(af_alg->step[af_info->cur_index]==0)){
-				sm_state.af_state = AF_CALC_GREAT;
-				af_info->cur_index = 0;
-			} else if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
-				af_info->cur_step = af_alg->step[af_info->cur_index];
-				af_info->cur_index++;
-				atomic_set(&af_info->writeable,1);
-				af_delay = 0;
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
+				if(++af_info->cur_index >= af_alg->valid_step_cnt){
+				        sm_state.af_state = AF_CALC_GREAT;
+				        af_info->cur_index = 0;
+				}else{	
+					af_info->cur_step = af_alg->step[af_info->cur_index];
+				        atomic_set(&af_info->writeable,1);
+				        af_delay = 0;
+				}
 			} 
 			break;
 		case AF_CALC_GREAT:
