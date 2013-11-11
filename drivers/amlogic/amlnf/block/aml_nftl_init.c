@@ -43,16 +43,16 @@ void aml_nftl_free(const void *ptr);
 
 static ssize_t show_part_struct(struct class *class,struct class_attribute *attr,char *buf);
 static ssize_t show_list(struct class *class, struct class_attribute *attr, const char *buf);
-static ssize_t do_gc_all(struct class *class, struct class_attribute *attr, const char *buf);
-static ssize_t do_gc_one(struct class *class, struct class_attribute *attr, const char *buf);
+static ssize_t do_gc_all(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
+static ssize_t do_gc_one(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
 static ssize_t do_test(struct class *class, struct class_attribute *attr,	const char *buf, size_t count);
 
 static struct class_attribute nftl_class_attrs[] = {
 //    __ATTR(part_struct,  S_IRUGO | S_IWUSR, show_logic_block_table,    show_address_map_table),
     __ATTR(part,  S_IRUGO , show_part_struct,    NULL),
     __ATTR(list,  S_IRUGO , show_list,    NULL),
-    __ATTR(gcall,  S_IRUGO , do_gc_all,    NULL),
-    __ATTR(gcone,  S_IRUGO , do_gc_one,    NULL),
+    __ATTR(gcall,  S_IRUGO , NULL,    do_gc_all),
+    __ATTR(gcone,  S_IRUGO , NULL,    do_gc_one),
     __ATTR(test,  S_IRUGO | S_IWUSR , NULL,    do_test),
 //    __ATTR(cache_struct,  S_IRUGO , show_logic_block_table,    NULL),
 //    __ATTR(table,  S_IRUGO | S_IWUSR , NULL,    show_logic_page_table),
@@ -300,7 +300,7 @@ static ssize_t show_list(struct class *class, struct class_attribute *attr, cons
 *Return       :
 *Note         :
 *****************************************************************************/
-static ssize_t do_gc_all(struct class *class, struct class_attribute *attr, const char *buf)
+static ssize_t do_gc_all(struct class *class, struct class_attribute *attr,	const char *buf, size_t count)
 {
     struct aml_nftl_dev *nftl_dev = container_of(class, struct aml_nftl_dev, debug);
 
@@ -315,7 +315,7 @@ static ssize_t do_gc_all(struct class *class, struct class_attribute *attr, cons
 *Return       :
 *Note         :
 *****************************************************************************/
-static ssize_t do_gc_one(struct class *class, struct class_attribute *attr, const char *buf)
+static ssize_t do_gc_one(struct class *class, struct class_attribute *attr,	const char *buf, size_t count)
 {
     struct aml_nftl_dev *nftl_dev = container_of(class, struct aml_nftl_dev, debug);
 
