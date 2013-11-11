@@ -73,7 +73,7 @@ static unsigned debug;
 //module_param(debug, uint, 0644);
 //MODULE_PARM_DESC(debug, "activates debug info");
 
-static unsigned int vid_limit = 32;
+static unsigned int vid_limit = 16;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
@@ -745,7 +745,7 @@ static struct aml_camera_i2c_fig_s OV5640_script[] = {
 	{0x530b, 0x04},  
 	{0x530c, 0x06},     
 	{0x5580, 0x06},  
-	{0x5583, 0x40}, 
+	{0x5583, 0x10}, 
 	{0x5584, 0x10}, 
 	{0x5589, 0x10}, 
 	{0x558a, 0x00}, 
@@ -1136,7 +1136,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_1080P_script[] = {
 	{0x548f, 0xea},
 	{0x5490, 0x1d},
 	{0x5580, 0x02},
-	{0x5583, 0x40},
+	{0x5583, 0x10},
 	{0x5584, 0x10},
 	{0x5589, 0x10},
 	{0x558a, 0x00},
@@ -1406,7 +1406,7 @@ static struct aml_camera_i2c_fig_s OV5640_preview_960P_script[] = {
 	{0x530b, 0x04},  
 	{0x530c, 0x06},     
 	{0x5580, 0x06},  
-	{0x5583, 0x40}, 
+	{0x5583, 0x10}, 
 	{0x5584, 0x10}, 
 	{0x5589, 0x10}, 
 	{0x558a, 0x00}, 
@@ -2009,14 +2009,16 @@ static struct aml_camera_i2c_fig_s OV5640_capture_2M_script[] = {
 };
 
 static resolution_param_t  prev_resolution_array[] = {
-	#if 1
+	#if 0
 	{
 		.frmsize			= {1920, 1080},
 		.active_frmsize			= {1280, 718},
 		.active_fps			= 30,
 		.size_type			= SIZE_1920X1080,
 		.reg_script			= OV5640_preview_720P_script,
-	},{
+	},
+	#endif
+	{
 		.frmsize			= {1024, 768},
 		.active_frmsize			= {1280, 958},
 		.active_fps			= 30,
@@ -2029,7 +2031,6 @@ static resolution_param_t  prev_resolution_array[] = {
 		.size_type			= SIZE_1280X720,
 		.reg_script			= OV5640_preview_720P_script,
 	},
-	#endif
 	/*{
 		.frmsize			= {1024, 768},
 		.active_frmsize			= {1280, 958},
@@ -2045,6 +2046,12 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script			= OV5640_preview_VGA_script,
 	},{
 		.frmsize			= {320, 240},
+		.active_frmsize			= {320, 240},
+		.active_fps			= 30,
+		.size_type			= SIZE_320X240,
+		.reg_script			= OV5640_preview_QVGA_script,
+	},{
+		.frmsize			= {352, 288},
 		.active_frmsize			= {320, 240},
 		.active_fps			= 30,
 		.size_type			= SIZE_320X240,
