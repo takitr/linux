@@ -77,8 +77,8 @@ void root_func(){
 	memory{
 		device_type = "memory";
 		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x288fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x28900000 0x57700000>;
+		aml_reserved_end = <0x289fffff>;/**reserved memory end */
+		linux,usable-memory = <0x00000000 0x04000000 0x28a00000 0x57600000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -190,7 +190,20 @@ void root_func(){
 		status = "okay";
 		reg = <0x1e200000 0x00f00000>;
 	};
-
+	
+/// ***************************************************************************************
+///	-	DISP&MM-BT656
+//$$ MODULE = "DISP&MM-BT656"
+//$$ DEVICE="amvdec_656in"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 2 = "reg"
+    amvdec_656in{
+		compatible = "amlogic,amvdec_656in";
+		dev_name = "amvdec_656in";
+		status = "ok";
+		reg = <0x28900000 0x00100000>;
+	};
+	
 /// ***************************************************************************************
 ///	-	DISP&MM-VDIN
 //$$ MODULE = "DISP&MM-VDIN"

@@ -45,6 +45,8 @@ typedef struct am656in_dev_s{
         enum am656_status_e     dec_status;
         struct vdin_parm_s      para;
         struct tvin_frontend_s  frontend; 
+        unsigned int            mem_start;
+	    unsigned int            mem_size;
 }am656in_dev_t;
 #endif
 

@@ -28,6 +28,7 @@
 #include <asm/atomic.h>
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/platform_device.h>
 
 #include <linux/amlogic/amports/amstream.h>
 #include <linux/amlogic/amports/ptsserv.h>
@@ -128,8 +129,8 @@ static void reinit_bt656in_dec(struct am656in_dev_s *devp)
 	WR(BT_LINECTRL , 0)  ;
 	//there is no use anci in m2
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	//    WRITE_CBUS_REG(BT_ANCISADR, devp->pbufAddr);
-	//   WRITE_CBUS_REG(BT_ANCIEADR, devp->pbufAddr + BT656IN_ANCI_DATA_SIZE);
+	WR(BT_ANCISADR, devp->mem_start);
+	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
@@ -211,8 +212,8 @@ static void reinit_bt601in_dec(struct am656in_dev_s *devp)
 			220 )  ;
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	//WRITE_CBUS_REG(BT_ANCISADR, devp->pbufAddr);
-	//WRITE_CBUS_REG(BT_ANCIEADR, devp->pbufAddr + BT656IN_ANCI_DATA_SIZE);
+	WR(BT_ANCISADR, devp->mem_start);
+	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
@@ -311,8 +312,8 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			hs_bp);//horizontal active data start offset
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	//WRITE_CBUS_REG(BT_ANCISADR, devp->pbufAddr);
-	//WRITE_CBUS_REG(BT_ANCIEADR, devp->pbufAddr + BT656IN_ANCI_DATA_SIZE);
+	WR(BT_ANCISADR, devp->mem_start);
+	WR(BT_ANCIEADR, devp->mem_start + devp->mem_size);
 
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
@@ -394,7 +395,6 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			|(1 << BT_CAMERA_MODE)     // enable camera mode
 			|(1 << BT_656CLOCK_RESET) 
 			|(1 << BT_SYSCLOCK_RESET) 
-			|(1<<27)				//enable raw data to isp
 			;
 	}
 	if(devp->para.bt_path == BT_PATH_GPIO) {
@@ -661,6 +661,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct am656in_dev_s *devp;
+	struct resource *res;
 	ret = 0;
 
 	//malloc dev
@@ -685,17 +686,36 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 		ret = PTR_ERR(devp->dev);
 		goto fail_create_device;
 	}
-
+	/* get device memory */
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		pr_err("%s: can't get memory resource........................................\n", __func__);
+		ret = -EFAULT;
+		goto fail_get_resource_mem;
+	} else {
+	    devp->mem_start = res->start;
+	    devp->mem_size = res->end - res->start + 1;
+	    pr_info("%s: mem_start: 0x%x, mem_size: 0x%x ............................... \n", __func__,
+			    devp->mem_start,
+			    devp->mem_size);
+    }
+    
+    
 	/*register frontend */
-        sprintf(devp->frontend.name, "%s", DEV_NAME);
-	tvin_frontend_init(&devp->frontend, &am656_decoder_ops_s, &am656_machine_ops, pdev->id);
-	tvin_reg_frontend(&devp->frontend);
+    sprintf(devp->frontend.name, "%s", DEV_NAME);
+	//tvin_frontend_init(&devp->frontend, &am656_decoder_ops_s, &am656_machine_ops, pdev->id);
+    if(!tvin_frontend_init(&devp->frontend,&am656_decoder_ops_s,&am656_machine_ops, 0)) {
+        if(tvin_reg_frontend(&devp->frontend))
+            printk(" %s register frontend error........................\n",__func__);
+    }        
+
 	/*set pinmux for ITU601 A and ITU601 B*/
 	/* set drvdata */
 	dev_set_drvdata(devp->dev, devp);
 	platform_set_drvdata(pdev, devp);
 	printk("amvdec_656in probe ok.\n");
 	return ret;
+fail_get_resource_mem:
 fail_create_device:
 	cdev_del(&devp->cdev);
 fail_add_cdev:
@@ -719,12 +739,20 @@ static int amvdec_656in_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);       
 	return 0;
 }
-
+#ifdef CONFIG_OF
+static const struct of_device_id bt656_dt_match[]={
+        {       .compatible = "amlogic,amvdec_656in",   },
+        {},
+};
+#else
+#define bt656_dt_match NULL
+#endif
 static struct platform_driver amvdec_656in_driver = {
 	.probe      = amvdec_656in_probe,
 	.remove     = amvdec_656in_remove,
 	.driver     = {
 		.name   = DRV_NAME,
+		.of_match_table = bt656_dt_match,
 	}
 };
 
@@ -745,6 +773,7 @@ static int __init amvdec_656in_init_module(void)
                 printk("%s:failed to create class\n",__func__);
                 goto fail_class_create;
         }
+#if 0
         pdev = platform_device_alloc(DEV_NAME,0);
         if(IS_ERR(pdev)){
                 printk("[bt656..]%s alloc platform device error.\n", __func__);
@@ -754,6 +783,7 @@ static int __init amvdec_656in_init_module(void)
                 printk("[bt656..]%s failed register platform device.\n", __func__);
                 goto fail_pdev_register;
         }
+#endif
         if (0 != platform_driver_register(&amvdec_656in_driver)){
                 printk("failed to register amvdec_656in driver\n");
                 goto fail_pdrv_register;
