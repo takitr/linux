@@ -250,7 +250,13 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	unsigned int odd_or_even_line;
 	unsigned int scan_line_number = 0;
 	unsigned char output_type=0;
-
+	u32 data32 = 0;
+	if (osd_ext_hw.rotate[OSD1].on_off > 0 && osd_ext_hw.rotate[OSD1].angle > 0){
+		data32 = ((osd_ext_hw.rotation_pandata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
+				| ((osd_ext_hw.rotation_pandata[OSD1].y_end  + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
+		aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
+		//aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
+	}
 	output_type=aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
 	osd_ext_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
 	switch(output_type)
@@ -316,7 +322,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	//go through update list
 	walk_through_update_list();
 	osd_ext_update_3d_mode(osd_ext_hw.mode_3d[OSD1].enable, osd_ext_hw.mode_3d[OSD2].enable);
-
+	if (osd_ext_hw.rotate[OSD1].on_off > 0 && osd_ext_hw.rotate[OSD1].angle > 0){
+		aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
+	}
 	if (!vsync_hit) {
 #ifdef FIQ_VSYNC
 		fiq_bridge_pulse_trigger(&osd_ext_hw.fiq_handle_item);
@@ -1857,8 +1865,8 @@ static void osd1_update_disp_geometry(void)
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W1,data32);
 			data32 = ((osd_ext_hw.rotation_pandata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_ext_hw.rotation_pandata[OSD1].y_end  + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
-			aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
-			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
+			//aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
+			//aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
 		}else if (osd_hw.rotate[OSD1].on_off > 0
 				&& osd_hw.rotate[OSD1].angle > 0){
 			data32 = (osd_ext_hw.rotation_pandata[OSD1].x_start & 0x1fff) | (osd_ext_hw.rotation_pandata[OSD1].x_end & 0x1fff) << 16;
