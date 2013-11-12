@@ -2636,11 +2636,12 @@ static void lcd_config_init(Lcd_Config_t *pConf)
 	if (pConf->lcd_timing.clk_ctrl & (1 << CLK_CTRL_AUTO)) {
 		printk("\nAuto generate clock parameters.\n");
 		generate_clk_parameter(pConf);
+		DBG_PRINT("pll_ctrl=0x%x, div_ctrl=0x%x, clk_ctrl=0x%x.\n", pConf->lcd_timing.pll_ctrl, pConf->lcd_timing.div_ctrl, pConf->lcd_timing.clk_ctrl);
 	}
 	else {
 		printk("\nCustome clock parameters.\n");
+		printk("pll_ctrl=0x%x, div_ctrl=0x%x, clk_ctrl=0x%x.\n", pConf->lcd_timing.pll_ctrl, pConf->lcd_timing.div_ctrl, pConf->lcd_timing.clk_ctrl);
 	}
-	printk("pll_ctrl=0x%x, div_ctrl=0x%x, clk_ctrl=0x%x.\n", pConf->lcd_timing.pll_ctrl, pConf->lcd_timing.div_ctrl, pConf->lcd_timing.clk_ctrl);
 	lcd_sync_duration(pConf);
 	lcd_tcon_config(pConf);
 }
@@ -3361,40 +3362,40 @@ static const char * lcd_usage_str =
 "    echo sync <hs_width> <hs_backporch> <hs_pol> <vs_width> <vs_backporch> <vs_pol> > debug ; write lcd sync timing\n"
 "    echo valid <hvsync_valid> <de_valid> > debug ; enable lcd sync signals\n"
 "data format:\n"
-"    <lcd_type>	: 0 for mipi, 1 for lvds, 2 for edp, 3 for ttl\n"
-"    <lcd_bits>	: 6 for 6bit(RGB18bit), 8 for 8bit(RGB24bit)\n"
-"    <ss_level>	: lcd clock spread spectrum level, 0~5, 0 for disable\n"
-"    <xx_pol>	: 0 for negative, 1 for positive\n"
-"    <xx_valid>	: 0 for disable, 1 for enable\n"
+"    <lcd_type> : 0=mipi, 1=lvds, 2=edp, 3=ttl\n"
+"    <lcd_bits> : 6=6bit(RGB18bit), 8=8bit(RGB24bit)\n"
+"    <ss_level> : lcd clock spread spectrum level, 0~5, 0 for disable\n"
+"    <xx_pol>   : 0=negative, 1=positive\n"
+"    <xx_valid> : 0=disable, 1=enable\n"
 "\n"
 "    echo swap <rb_swap> <bit_swap> > debug ; write ttl RGB swap config\n"
 "    echo lvds <vswing_level> <lvds_repack> <pn_swap> > debug ; write lvds config\n"
 "    echo edp <link_rate> <lane_count> > debug ; write edp config\n"
 //"    echo phy <phy_ctrl> > debug ; write lvds phy config\n"
 "data format:\n"
-"    <xx_swap>	: 0 for normal, 1 for swap\n"
-"    <vswing_level>	: support 5 levels such as 0,1,2,3,4. Default is 1\n"
-"    <lvds_repack>  : 0 for JEIDA mode, 1 for VESA mode\n"
-"    <pn_swap>  	: 0 for normal, 1 for swap lvds p/n channels\n"
-"    <link_rate>  	: 0 for 1.62G, 1 for 2.7G\n"
-//"    <phy_ctrl> 	: lvds phy control in Hex\n"
+"    <xx_swap>      : 0=normal, 1=swap\n"
+"    <vswing_level> : support 5 levels such as 0,1,2,3,4. Default is 1\n"
+"    <lvds_repack>  : 0=JEIDA mode, 1=VESA mode\n"
+"    <pn_swap>      : 0=normal, 1=swap lvds p/n channels\n"
+"    <link_rate>    : 0=1.62G, 1=2.7G\n"
+//"    <phy_ctrl>   : lvds phy control in Hex\n"
 "\n"
 "    echo offset <h_sign> <h_offset> <v_sign> <v_offset> > debug ; write ttl display offset\n"
 "    echo video <video_on_pixel> <video_on_line> > debug ; write video on pixel/line config\n"
 "    echo dither <dither_user> <dither_ctrl> > debug ; write user dither ctrl config\n"
 "    echo vadj <brightness> <contrast> <saturation> > debug ; write video adjust config\n"
 "data format:\n"
-"    <xx_sign>	: 0 for negative, 1 for positive\n"
-"    <dither_user>  : 0 for disable user control, 1 for enable user control\n"
-"    <dither_ctrl>  : dither ctrl in Hex, such as 0x400 or 0x600\n"
-"    <brightness>: negative 0x1ff~0x101, positive 0x0~0xff, signed value in Hex, default is 0x0\n"
-"    <contrast>	: 0x0~0xff, unsigned value in Hex, default is 0x80\n"
-"    <saturation>: 0x0~0x1ff, unsigned value in Hex, default is 0x100\n"
+"    <xx_sign>     : 0=negative, 1=positive\n"
+"    <dither_user> : 0=disable user control, 1=enable user control\n"
+"    <dither_ctrl> : dither ctrl in Hex, such as 0x400 or 0x600\n"
+"    <brightness>  : negative 0x1ff~0x101, positive 0x0~0xff, signed value in Hex, default is 0x0\n"
+"    <contrast>    : 0x0~0xff, unsigned value in Hex, default is 0x80\n"
+"    <saturation>  : 0x0~0x1ff, unsigned value in Hex, default is 0x100\n"
 "\n"
 "    echo write > debug ; update lcd driver\n"
 "    echo reset > debug ; reset lcd config & driver\n"
 "    echo read > debug ; read current lcd config\n"
-"    echo test <num> > debug ; bist pattern test, num 0 for off, 1,2,3 for different pattern \n"
+"    echo test <num> > debug ; bist pattern test, 0=pattern off, 1,2,3=different pattern \n"
 "\n"
 "    echo disable > debug ; power off lcd \n"
 "    echo enable > debug ; power on lcd \n"
@@ -3422,7 +3423,7 @@ static void read_current_lcd_config(Lcd_Config_t *pConf)
 	printk("hs_width	%d\nhs_backporch	%d\nhs_pol		%d\n", pConf->lcd_timing.hsync_width, pConf->lcd_timing.hsync_bp, (pConf->lcd_timing.pol_cntl_addr >> LCD_HS_POL) & 1);
 	printk("vs_width	%d\nvs_backporch	%d\nvs_pol		%d\n", pConf->lcd_timing.vsync_width, pConf->lcd_timing.vsync_bp, (pConf->lcd_timing.pol_cntl_addr >> LCD_VS_POL) & 1);
 	printk("hvsync_valid	%d\nde_valid	%d\n", pConf->lcd_timing.hvsync_valid, pConf->lcd_timing.de_valid);
-	printk("h_offset	%s%d\nv_offset	%s%d\n", (h_adj ? "+" : "-"), (pConf->lcd_timing.h_offset & 0xffff), (v_adj ? "+" : "-"), (pConf->lcd_timing.v_offset & 0xffff));
+	printk("h_offset	%s%d\nv_offset	%s%d\n", (h_adj ? "" : "-"), (pConf->lcd_timing.h_offset & 0xffff), (v_adj ? "" : "-"), (pConf->lcd_timing.v_offset & 0xffff));
 	printk("video_on_pixel	%d\nvideo_on_line	%d\n\n", pConf->lcd_timing.video_on_pixel, pConf->lcd_timing.video_on_line);
 	
 	switch (pConf->lcd_basic.lcd_type) {
@@ -3438,7 +3439,7 @@ static void read_current_lcd_config(Lcd_Config_t *pConf)
             //to do
 			break;
 		case LCD_DIGITAL_EDP:
-			printk("link_rate	0x%x,\nlane_count	%u\n", pConf->lcd_control.edp_config->link_rate, pConf->lcd_control.edp_config->lane_count);
+			printk("link_rate	%s\nlane_count	%u\n", (pConf->lcd_control.edp_config->link_rate == VAL_EDP_TX_LINK_BW_SET_162) ? "1.62G" : "2.7G", pConf->lcd_control.edp_config->lane_count);
 			printk("link_adaptive	%u\nvswing		%u\n", pConf->lcd_control.edp_config->link_adaptive, pConf->lcd_control.edp_config->vswing);
 			break;
 #endif
@@ -3857,7 +3858,7 @@ static inline int _get_lcd_model_timing(struct platform_device *pdev)
 			printk("lcd: faild to get lcd_model_name!\n");
 		}
 		else {
-			printk("lcd: load model %s typical timing.\n", str);
+			printk("load lcd model in dtb: %s\n", str);
 		}
 		ret = of_property_read_string(lcd_model_node, "interface", &str);
 		if (ret) {
@@ -4041,7 +4042,10 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 		else {
 			pDev->pConf->lcd_control.ttl_config->rb_swap = (unsigned char)(lcd_para[0]);
 			pDev->pConf->lcd_control.ttl_config->bit_swap = (unsigned char)(lcd_para[1]);
-			DBG_PRINT("ttl rb_swap = %u, bit_swap = %u\n", pDev->pConf->lcd_control.ttl_config->rb_swap, pDev->pConf->lcd_control.ttl_config->bit_swap);
+			if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_TTL)
+				printk("ttl rb_swap = %u, bit_swap = %u\n", pDev->pConf->lcd_control.ttl_config->rb_swap, pDev->pConf->lcd_control.ttl_config->bit_swap);
+			else
+				DBG_PRINT("ttl rb_swap = %u, bit_swap = %u\n", pDev->pConf->lcd_control.ttl_config->rb_swap, pDev->pConf->lcd_control.ttl_config->bit_swap);
 		}		
 		ret = of_property_read_u32(pdev->dev.of_node,"lvds_channel_pn_swap",&val);
 		if(ret){
@@ -4049,7 +4053,10 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 		}
 		else {
 			pDev->pConf->lcd_control.lvds_config->pn_swap = val;
-			DBG_PRINT("lvds_pn_swap = %u\n", pDev->pConf->lcd_control.lvds_config->pn_swap);
+			if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_LVDS)
+				printk("lvds_pn_swap = %u\n", pDev->pConf->lcd_control.lvds_config->pn_swap);
+			else
+				DBG_PRINT("lvds_pn_swap = %u\n", pDev->pConf->lcd_control.lvds_config->pn_swap);
 		}
 
 		//recommend setting
@@ -4071,8 +4078,8 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 		else {
 			pDev->pConf->lcd_timing.h_offset = ((lcd_para[0] << 31) | ((lcd_para[1] & 0xffff) << 0));
 			pDev->pConf->lcd_timing.v_offset = ((lcd_para[2] << 31) | ((lcd_para[3] & 0xffff) << 0));
-			DBG_PRINT("h_offset = %s%u, ", (((pDev->pConf->lcd_timing.h_offset >> 31) & 1) ? "+" : "-"), (pDev->pConf->lcd_timing.h_offset & 0xffff));
-			DBG_PRINT("v_offset = %s%u\n", (((pDev->pConf->lcd_timing.v_offset >> 31) & 1) ? "+" : "-"), (pDev->pConf->lcd_timing.v_offset & 0xffff));
+			DBG_PRINT("h_offset = %s%u, ", (((pDev->pConf->lcd_timing.h_offset >> 31) & 1) ? "" : "-"), (pDev->pConf->lcd_timing.h_offset & 0xffff));
+			DBG_PRINT("v_offset = %s%u\n", (((pDev->pConf->lcd_timing.v_offset >> 31) & 1) ? "" : "-"), (pDev->pConf->lcd_timing.v_offset & 0xffff));
 		}
 		ret = of_property_read_u32_array(pdev->dev.of_node,"dither_user_ctrl",&lcd_para[0], 2);
 		if(ret){
@@ -4209,7 +4216,10 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 		}
 		else {
 			pDev->pConf->lcd_control.lvds_config->lvds_vswing = val;
-			DBG_PRINT("lvds_vswing = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_vswing = val);
+			if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_LVDS)
+				printk("lvds_vswing = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_vswing = val);
+			else
+				DBG_PRINT("lvds_vswing = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_vswing = val);
 		}
 		ret = of_property_read_u32_array(pdev->dev.of_node,"lvds_user_repack",&lcd_para[0], 2);
 		if(ret){
@@ -4221,7 +4231,10 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 			pDev->pConf->lcd_control.lvds_config->lvds_repack_user = lcd_para[0];
 			pDev->pConf->lcd_control.lvds_config->lvds_repack = lcd_para[1];
 			if (lcd_para[0] > 0) {
-				printk("lvds_repack = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_repack);
+				if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_LVDS)
+					printk("lvds_repack = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_repack);
+				else
+					DBG_PRINT("lvds_repack = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_repack);
 			}
 			else {
 				DBG_PRINT("lvds_repack_user = %u, lvds_repack = %u\n", pDev->pConf->lcd_control.lvds_config->lvds_repack_user, pDev->pConf->lcd_control.lvds_config->lvds_repack);
@@ -4239,7 +4252,10 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 			pDev->pConf->lcd_control.edp_config->link_rate = (unsigned char)(lcd_para[1]);
 			pDev->pConf->lcd_control.edp_config->lane_count = (unsigned char)(lcd_para[2]);
 			if (lcd_para[0] > 0) {
-				printk("edp link_rate = %s, lane_count = %u\n", (lcd_para[1] == 0) ? "1.62G":"2.7G", pDev->pConf->lcd_control.edp_config->lane_count);
+				if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_EDP)
+					printk("edp link_rate = %s, lane_count = %u\n", (lcd_para[1] == 0) ? "1.62G":"2.7G", pDev->pConf->lcd_control.edp_config->lane_count);
+				else
+					DBG_PRINT("edp link_rate = %s, lane_count = %u\n", (lcd_para[1] == 0) ? "1.62G":"2.7G", pDev->pConf->lcd_control.edp_config->lane_count);
 			}
 			else {
 				DBG_PRINT("edp user = %u, link_rate = %s, lane_count = %u\n", pDev->pConf->lcd_control.edp_config->link_user, (lcd_para[1] == 0) ? "1.62G":"2.7G", pDev->pConf->lcd_control.edp_config->lane_count);
@@ -4256,8 +4272,11 @@ static inline int _get_lcd_default_config(struct platform_device *pdev)
 			pDev->pConf->lcd_control.edp_config->link_adaptive = (unsigned char)(lcd_para[0]);
 			pDev->pConf->lcd_control.edp_config->vswing = (unsigned char)(lcd_para[1]);
 			pDev->pConf->lcd_control.edp_config->preemphasis = 0;
-			if (lcd_para[0] > 0) {
-				printk("edp swing_level = %u\n", pDev->pConf->lcd_control.edp_config->vswing);
+			if (lcd_para[0] == 0) {
+				if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_EDP)
+					printk("edp swing_level = %u\n", pDev->pConf->lcd_control.edp_config->vswing);
+				else
+					DBG_PRINT("edp swing_level = %u\n", pDev->pConf->lcd_control.edp_config->vswing);
 			}
 			else {
 				DBG_PRINT("edp link_adaptive = %u, swing_level = %u\n", pDev->pConf->lcd_control.edp_config->link_adaptive, pDev->pConf->lcd_control.edp_config->vswing);
@@ -4493,7 +4512,7 @@ static int lcd_probe(struct platform_device *pdev)
 	spin_lock_init(&gamma_write_lock);
 	spin_lock_init(&lcd_clk_lock);
 	
-	printk("\nlcd driver version: %s@%s%s\n", DRIVER_DATE, DRIVER_VER, DRV_TYPE);
+	printk("lcd driver version: %s@%s%s\n\n", DRIVER_DATE, DRIVER_VER, DRV_TYPE);
 	
 #ifdef 	CONFIG_USE_OF
 	pdata = lcd_get_driver_data(pdev);
