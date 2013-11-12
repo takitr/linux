@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.11a"
+#define ISP_VER					"2013.11.12a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -118,6 +118,8 @@ typedef struct isp_af_info_s {
 	unsigned int y0;
 	unsigned int x1;
 	unsigned int y1;
+	/*touch window radius*/
+	unsigned int radius;
 	/* blnr tmp for isr*/
 	isp_blnr_stat_t isr_af_data;
 }isp_af_info_t;

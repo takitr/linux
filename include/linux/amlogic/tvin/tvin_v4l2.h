@@ -444,7 +444,7 @@ typedef struct xml_algorithm_af_s {
 	/*window for touch focus*/
 	unsigned int	       x;//x coord of touch focus win
 	unsigned int	       y;//y coord of touch focus win
-	unsigned int           radius;//radius of touch focus win
+	unsigned int           radius_ratio;//radius of touch focus win
 } xml_algorithm_af_t;
 
 #define XML_LUT_LS 1024 // 32*32 32-bit

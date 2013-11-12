@@ -40,6 +40,7 @@
 #define CRYPTO_STATUS_FINISH    2
 #define CRYPTO_STATUS_ERROR     3
 
+static DECLARE_WAIT_QUEUE_HEAD(crypto_wq);
 typedef struct crypto_device_struct{
     char algname[32];
 
@@ -382,6 +383,8 @@ static ssize_t crypto_status_show(struct device *_dev,
 {
 	crypto_device_t * pcrypt_info = dev_get_drvdata(_dev);
 
+    if (pcrypt_info->status < CRYPTO_STATUS_FINISH)
+        wait_event_interruptible(crypto_wq, pcrypt_info->status >= CRYPTO_STATUS_FINISH );
 	return snprintf(buf, sizeof("1\n") + 1,"%d\n", pcrypt_info->status);
 }
 
@@ -400,8 +403,8 @@ static ssize_t crypto_status_store(struct device *_dev,
        if(pcrypt_info->status==CRYPTO_STATUS_START)
        {
             pcrypt_info->status = CRYPTO_STATUS_NONE;
-
             pcrypt_info->status = crypto_done(pcrypt_info);
+            wake_up_interruptible(&crypto_wq);
        }
 
 	return count;
@@ -480,6 +483,7 @@ static struct platform_driver crypto_dev_driver = {
 
 static int __init crypto_dev_init(void) 
 {
+	init_waitqueue_head(&crypto_wq);
 	return platform_driver_register(&crypto_dev_driver);
 }
 

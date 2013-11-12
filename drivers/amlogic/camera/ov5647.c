@@ -1961,12 +1961,9 @@ static bool OV5647_check_mains_freq(void){// when the fr change,we need to chang
 bool OV5647_set_af_new_step(unsigned int af_step){
     struct i2c_adapter *adapter;
     char buf[3];
-    unsigned int diff = 0;
-    int codes;
-    unsigned int vcm_data = 0;
-    unsigned char byte_h, byte_l;
     if(af_step == last_af_step)
         return true;
+	/*
     diff = (af_step > last_af_step) ? af_step - last_af_step : last_af_step - af_step;
     last_af_step = af_step;
     if(diff < 256){
@@ -1979,9 +1976,10 @@ bool OV5647_set_af_new_step(unsigned int af_step){
     vcm_data |= (last_af_step << 4);  // bit[4:13]
     byte_h  = (vcm_data >> 8) & 0x000000ff;
     byte_l  = (vcm_data >> 0) & 0x000000ff;
-
-    buf[0] = byte_h;
-    buf[1] = byte_l;
+*/
+	last_af_step = af_step;
+    buf[0] = (af_step>>4)&0xff;
+    buf[1] = (af_step<<4)&0xff;
     adapter = i2c_get_adapter(4);
     my_i2c_put_byte_add8(adapter,0x0c,buf,2);
     return true;
@@ -2241,6 +2239,40 @@ void OV5647_init_regs(struct ov5647_device *dev)
 	}
 	
 	return;
+}
+/*init for vcm  mode0:LSC mode1:DLC*/
+static void dw9714_init(unsigned char mode)
+{
+	char buf[3];
+	unsigned short dlc[4] = {
+		0xeca3,0xf248,0xa10d,0xdc51
+	};
+	struct i2c_adapter *adapter;
+	adapter = i2c_get_adapter(4);
+	if(mode){
+		buf[0]=dlc[0]>>8&&0xff;
+		buf[1]=dlc[0]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[1]>>8&&0xff;
+		buf[1]=dlc[1]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[2]>>8&&0xff;
+		buf[1]=dlc[2]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[3]>>8&&0xff;
+		buf[1]=dlc[3]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+	}
+}
+/* power down for dw9714*/
+static void dw9714_uninit(void)
+{
+        char buf[3];
+	struct i2c_adapter *adapter;
+	buf[0] = 0x80;
+	buf[1] = 0x0;
+	adapter = i2c_get_adapter(4);
+	my_i2c_put_byte_add8(adapter,0x0c,buf,2);
 }
 /*************************************************************************
 * FUNCTION
@@ -2685,7 +2717,6 @@ static int set_focus_zone(struct ov5647_device *dev, int value)
 	
 	dev->cam_para->xml_scenes->af.x = tx;
 	dev->cam_para->xml_scenes->af.y = ty;	
-	dev->cam_para->xml_scenes->af.radius = (ov5647_v_active>>5);
 	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_WINDOW;
 	dev->fe_arg.port = TVIN_PORT_ISP;
 	dev->fe_arg.index = 0;
@@ -3617,6 +3648,7 @@ static int ov5647_open(struct file *file)
     }
     OV5647_init_regs(dev);
     msleep(40);
+    dw9714_init(1);
     mutex_lock(&dev->mutex);
     dev->users++;
     if (dev->users > 1) {
@@ -3772,6 +3804,7 @@ static int ov5647_close(struct file *file)
     //ov5647_frmintervals_active.numerator = 1;
     //ov5647_frmintervals_active.denominator = 15;
     power_down_ov5647(dev);
+    dw9714_uninit();
     msleep(10);
 
     aml_cam_uninit(&dev->cam_info);

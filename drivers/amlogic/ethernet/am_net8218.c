@@ -2321,14 +2321,37 @@ static int __init am_eth_class_init(void)
 /* --------------------------------------------------------------------------*/
 static int ethernet_probe(struct platform_device *pdev)
 {
+        int ret;
+	int res;
 	printk("ethernet_driver probe!\n");
+#ifdef CONFIG_OF
 	if (!pdev->dev.of_node) {
 		printk("eth: pdev->dev.of_node == NULL!\n");
 		return -1;
 	}
-        int ret;
 	ret = of_property_read_u32(pdev->dev.of_node,"ethbaseaddr",&ethbaseaddr);
-	ret = of_property_read_u32(pdev->dev.of_node,"interruptsnum",&interruptnum);
+	if (ret) {
+		printk("Please config ethbaseaddr.\n");
+		return -1;
+	}
+	ret = of_property_read_u32(pdev->dev.of_node,"interruptnum",&interruptnum);
+	if (ret) {
+		printk("Please config interruptnum.\n");
+		return -1;
+	}
+#endif
+	printk(DRV_NAME "init(dbg[%p]=%d)\n", (&g_debug), g_debug);
+	my_ndev = alloc_etherdev(sizeof(struct am_net_private));
+	if (my_ndev == NULL) {
+		printk(DRV_NAME "ndev alloc failed!!\n");
+		return -ENOMEM;
+	}
+	res = probe_init(my_ndev);
+	if (res != 0) 
+		free_netdev(my_ndev);
+	else 
+		res = am_eth_class_init();
+
 	eth_pdata = (struct aml_eth_platdata *)pdev->dev.platform_data;
 	if (!eth_pdata) {
 		printk("\nethernet pm ops resource undefined.\n");
@@ -2407,11 +2430,15 @@ static int ethernet_resume(struct platform_device *dev)
 
 	return 0;
 }
+#ifdef CONFIG_OF
 static const struct of_device_id eth_dt_match[]={
 	{	.compatible 	= "amlogic,meson-eth",
 	},
 	{},
 };
+#else
+#define eth_dt_match NULL
+#endif
 
 static struct platform_driver ethernet_driver = {
 	.probe   = ethernet_probe,
@@ -2433,28 +2460,15 @@ static struct platform_driver ethernet_driver = {
 /* --------------------------------------------------------------------------*/
 static int __init am_net_init(void)
 {
-	int res;
-	printk(DRV_NAME "init(dbg[%p]=%d)\n", (&g_debug), g_debug);
-	my_ndev = alloc_etherdev(sizeof(struct am_net_private));
-	if (my_ndev == NULL) {
-		printk(DRV_NAME "ndev alloc failed!!\n");
-		return -ENOMEM;
-	}
-	res = probe_init(my_ndev);
-	if (res != 0) {
-		free_netdev(my_ndev);
+
+	if (platform_driver_register(&ethernet_driver)) {
+		printk("failed to register ethernet_pm driver\n");
+		g_ethernet_registered = 0;
 	} else {
-		res = am_eth_class_init();
-
-		if (platform_driver_register(&ethernet_driver)) {
-			printk("failed to register ethernet_pm driver\n");
-			g_ethernet_registered = 0;
-		} else {
-			g_ethernet_registered = 1;
-		}
+		g_ethernet_registered = 1;
 	}
 
-	return res;
+	return 0;
 }
 
 /* --------------------------------------------------------------------------*/

@@ -53,7 +53,7 @@
 #define BT656_MAX_DEVS             1
 //#define BT656IN_ANCI_DATA_SIZE        0x4000
 
-
+#define BT656_VER "2013/11/12"
 
 /* Per-device (per-bank) structure */
 
@@ -129,13 +129,16 @@ static void reinit_bt656in_dec(struct am656in_dev_s *devp)
 	WR(BT_LINECTRL , 0)  ;
 	//there is no use anci in m2
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, 0); //devp->mem_start + devp->mem_size);
+	//WR(BT_ANCISADR, devp->mem_start);
+	//WR(BT_ANCIEADR, 0); //devp->mem_start + devp->mem_size);
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+
+#else
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
 			(1 << 3)) ;     // urgent
-
+#endif
 
 	WR(BT_INT_CTRL ,   // (1 << 5) |    //ancififo done int.
 			//                      (1 << 4) |    //SOF interrupt enable.
@@ -212,13 +215,16 @@ static void reinit_bt601in_dec(struct am656in_dev_s *devp)
 			220 )  ;
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
+	//WR(BT_ANCISADR, devp->mem_start);
+	//WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+
+#else
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
 			(1 << 3)) ;     // urgent
-
+#endif
 	WR(BT_INT_CTRL ,   // (1 << 5) |    //ancififo done int.
 			//                      (1 << 4) |    //SOF interrupt enable.
 			//                      (1 << 3) |      //EOF interrupt enable.
@@ -312,13 +318,15 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			hs_bp);//horizontal active data start offset
 
 	// ANCI is the field blanking data, like close caption. If it connected to digital camara interface, the jpeg bitstream also use this ANCI FIFO.
-	WR(BT_ANCISADR, devp->mem_start);
-	WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
+	//WR(BT_ANCISADR, devp->mem_start);
+	//WR(BT_ANCIEADR, 0);//devp->mem_start + devp->mem_size);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 
+#else
 	WR(BT_AFIFO_CTRL,   (1 <<31) |     // load start and end address to afifo.
 			(1 << 6) |     // fill _en;
 			(1 << 3)) ;     // urgent
-
+#endif
 	WR(BT_INT_CTRL ,    //(1 << 5) |    //ancififo done int.
 			//(1 << 4) |    //SOF interrupt enable.
 			//(1 << 3) |      //EOF interrupt enable.
@@ -452,7 +460,9 @@ static void start_amvdec_656_601_camera_in(struct am656in_dev_s *devp)
 		printk("[bt656..]%s: input is not selected, please try again. \n",__func__);
 		return;
 	}
-        printk("bt656: %s input port is %s fmt is %s.\n",__func__,tvin_port_str(devp->para.port),tvin_sig_fmt_str(devp->para.fmt));
+    printk("[bt656(%s)]: %s input port: %s fmt: %s.\n",BT656_VER,__func__,
+            tvin_port_str(devp->para.port),tvin_sig_fmt_str(devp->para.fmt));
+	
 	return;
 }
 
@@ -661,7 +671,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct am656in_dev_s *devp;
-	struct resource *res;
+	//struct resource *res;
 	ret = 0;
 
 	//malloc dev
@@ -687,18 +697,18 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 		goto fail_create_device;
 	}
 	/* get device memory */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		pr_err("%s: can't get memory resource........................................\n", __func__);
-		ret = -EFAULT;
-		goto fail_get_resource_mem;
-	} else {
-	    devp->mem_start = res->start;
-	    devp->mem_size = res->end - res->start + 1;
-	    pr_info("%s: mem_start: 0x%x, mem_size: 0x%x ............................... \n", __func__,
-			    devp->mem_start,
-			    devp->mem_size);
-    }
+	//res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	//if (!res) {
+	//	pr_err("%s: can't get memory resource........................................\n", __func__);
+	//	ret = -EFAULT;
+	//	goto fail_get_resource_mem;
+	//} else {
+	//    devp->mem_start = res->start;
+	//    devp->mem_size = res->end - res->start + 1;
+	//    pr_info("%s: mem_start: 0x%x, mem_size: 0x%x ............................... \n", __func__,
+	//		    devp->mem_start,
+	//		    devp->mem_size);
+    //}
     
     
 	/*register frontend */
@@ -715,7 +725,7 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, devp);
 	printk("amvdec_656in probe ok.\n");
 	return ret;
-fail_get_resource_mem:
+//fail_get_resource_mem:
 fail_create_device:
 	cdev_del(&devp->cdev);
 fail_add_cdev:
@@ -739,20 +749,20 @@ static int amvdec_656in_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);       
 	return 0;
 }
-#ifdef CONFIG_OF
-static const struct of_device_id bt656_dt_match[]={
-        {       .compatible = "amlogic,amvdec_656in",   },
-        {},
-};
-#else
-#define bt656_dt_match NULL
-#endif
+//#ifdef CONFIG_OF
+//static const struct of_device_id bt656_dt_match[]={
+//        {       .compatible = "amlogic,amvdec_656in",   },
+//        {},
+//};
+//#else
+//#define bt656_dt_match NULL
+//#endif
 static struct platform_driver amvdec_656in_driver = {
 	.probe      = amvdec_656in_probe,
 	.remove     = amvdec_656in_remove,
 	.driver     = {
 		.name   = DRV_NAME,
-		.of_match_table = bt656_dt_match,
+		//.of_match_table = bt656_dt_match,
 	}
 };
 
@@ -773,7 +783,7 @@ static int __init amvdec_656in_init_module(void)
                 printk("%s:failed to create class\n",__func__);
                 goto fail_class_create;
         }
-#if 0
+#if 1
         pdev = platform_device_alloc(DEV_NAME,0);
         if(IS_ERR(pdev)){
                 printk("[bt656..]%s alloc platform device error.\n", __func__);

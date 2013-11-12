@@ -327,7 +327,7 @@ static ssize_t userdata_show(struct class *cla, struct class_attribute *attr, ch
 	struct device	*dev = efuse_class_to_device(cla);
 	data = dev->platform_data;
 	if(!data){
-		printk( KERN_ERR"%s error!no platform_data!\n",__FUNCTION__);
+		printk( KERN_ERR "%s error!no platform_data!\n",__FUNCTION__);
 		return -1;
 	}		
 
@@ -382,7 +382,7 @@ static ssize_t userdata_write(struct class *cla, struct class_attribute *attr, c
 	dev = efuse_class_to_device(cla);
 	data = dev->platform_data;
 	if(!data){
-		printk( KERN_ERR"%s error!no platform_data!\n",__FUNCTION__);
+		printk( KERN_ERR "%s error!no platform_data!\n",__FUNCTION__);
 		return -1;
 	}
 	if(data->data_verify)

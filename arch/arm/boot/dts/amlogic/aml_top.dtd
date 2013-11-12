@@ -349,6 +349,11 @@ sub_file /arch/arm/mach-meson8/aml_gpio.dtd
 sub_file /arch/arm/mach-meson8/aml_pin.dtd
 #endif
 
+/// ***************************************************************************************
+///	-	Ethernet
+//$$ MODULE="Ethernet"
+sub_file /drivers/amlogic/ethernet/aml.dtd
+
 #the end of dtd file
 }; /* end of / */
 #endif

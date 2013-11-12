@@ -872,21 +872,22 @@ static unsigned int max_vibrate = 2000;
 module_param(max_vibrate,uint,0664);
 MODULE_PARM_DESC(max_vibrate,"\n threshold for vibrate sum.\n");
 
-static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
+static unsigned int get_best_step(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 {
-        unsigned int i = 0, cur_grid = 0, max_grid = 0, best_step = 0;
-        unsigned long long sum_ac = 0, sum_dc = 0, mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, min_fv = 0xffffffffffffffff, sum_fv = 0,moment = 0;
+        unsigned int i = 0, j = 0,cur_grid = 0, max_grid = 0, best_step = 0;
+        unsigned long long sum_ac = 0, sum_pixel=0,sum_dc = 0, ave_dc = 0,mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, min_fv = 0xffffffffffffffff, sum_fv = 0,moment = 0;
 		unsigned long long fv_diff_sum=0,fv_ave=0,fv_sum=0,diff_fv_parm;
 		if(best_step_debug&0x2)				
 			pr_info("%s ac[0] ac[1] ac[2] ac[3] dc[0] dc[1] dc[2] dc[3]\n", __func__);
-        for (i = 0; i < FOCUS_GRIDS; i++){
-                if (i && (step[i]==0)){
+        for (i = 0; i < af_alg->valid_step_cnt; i++){
+                if (i && (af_alg->step[i]==0)){
                         break;
                 }
                 max_grid = i;
-                fv[i] = get_fv_base_blnr(&blnr[i]);
+                fv[i] = get_fv_base_blnr(&af_info->af_data[i]);
 	        if(best_step_debug&0x2)
-                        pr_info("%s %u %u %u %u %u %u %u %u\n", __func__, blnr[i].ac[0], blnr[i].ac[1], blnr[i].ac[2], blnr[i].ac[3], blnr[i].dc[0], blnr[i].dc[1], blnr[i].dc[2], blnr[i].dc[3]);
+                        pr_info("%s %u %u %u %u %u %u %u %u\n", __func__, af_info->af_data[i].ac[0], af_info->af_data[i].ac[1], af_info->af_data[i].ac[2], 
+                        af_info->af_data[i].ac[3], af_info->af_data[i].dc[0], af_info->af_data[i].dc[1], af_info->af_data[i].dc[2], af_info->af_data[i].dc[3]);
                 if (max_fv < fv[i]){
 		        max_fv = fv[i];
 		        cur_grid = i;
@@ -895,10 +896,14 @@ static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
 			min_fv = fv[i];
 		if(i>=1)
 			fv_diff_sum += isp_abs64(fv[i-1],fv[i]);
+		for(j=0;j<4;j++)
+			sum_dc += af_info->af_data[i].dc[j];
         }
+		sum_pixel = (af_info->radius*af_info->radius)<<2;
+		ave_dc = div64(sum_dc,sum_pixel);
 		diff_fv_parm = div64((fv_diff_sum*1024),(max_fv-min_fv));
 		if(best_step_debug)
-			pr_info("%s diff_fv_parm %llu,fv_diff_sum %llu,fv_fall %llu.\n",__func__,diff_fv_parm,fv_diff_sum,(max_fv-min_fv));
+			pr_info("%s ave_dc=%llu,sum_pixel=%u,sum_dc=%llu.\n",__func__,ave_dc,sum_pixel,sum_dc);
 		if(diff_fv_parm > max_vibrate){
 			pr_info("%s diff_fv_parm %llu>%u, return 0.\n",__func__,diff_fv_parm,max_vibrate);
 			return 0;
@@ -909,13 +914,13 @@ static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
         }
         // too much stroke
         else if (cur_grid == max_grid){
-	        best_step = step[max_grid];
+	        best_step = af_alg->step[max_grid];
 	}
 	// work out best step with 3 grids
 	else if ((cur_grid == 1) || (cur_grid == max_grid - 1)){
-                moment += fv[cur_grid - 1]*(unsigned long long)step[cur_grid - 1];
-                moment += fv[cur_grid    ]*(unsigned long long)step[cur_grid    ];
-                moment += fv[cur_grid + 1]*(unsigned long long)step[cur_grid + 1];
+                moment += fv[cur_grid - 1]*(unsigned long long)af_alg->step[cur_grid - 1];
+                moment += fv[cur_grid    ]*(unsigned long long)af_alg->step[cur_grid    ];
+                moment += fv[cur_grid + 1]*(unsigned long long)af_alg->step[cur_grid + 1];
                 sum_fv += fv[cur_grid - 1];
                 sum_fv += fv[cur_grid    ];
                 sum_fv += fv[cur_grid + 1];
@@ -923,11 +928,11 @@ static unsigned int get_best_step(isp_blnr_stat_t *blnr,unsigned int *step)
 	}
 	// work out best step with 5 grids
         else {
-                moment += (unsigned long long)fv[cur_grid - 2]*(unsigned long long)step[cur_grid - 2];
-                moment += (unsigned long long)fv[cur_grid - 1]*(unsigned long long)step[cur_grid - 1];
-                moment += (unsigned long long)fv[cur_grid    ]*(unsigned long long)step[cur_grid    ];
-                moment += (unsigned long long)fv[cur_grid + 1]*(unsigned long long)step[cur_grid + 1];
-                moment += (unsigned long long)fv[cur_grid + 2]*(unsigned long long)step[cur_grid + 2];
+                moment += (unsigned long long)fv[cur_grid - 2]*(unsigned long long)af_alg->step[cur_grid - 2];
+                moment += (unsigned long long)fv[cur_grid - 1]*(unsigned long long)af_alg->step[cur_grid - 1];
+                moment += (unsigned long long)fv[cur_grid    ]*(unsigned long long)af_alg->step[cur_grid    ];
+                moment += (unsigned long long)fv[cur_grid + 1]*(unsigned long long)af_alg->step[cur_grid + 1];
+                moment += (unsigned long long)fv[cur_grid + 2]*(unsigned long long)af_alg->step[cur_grid + 2];
                 sum_fv += fv[cur_grid - 2];
                 sum_fv += fv[cur_grid - 1];
                 sum_fv += fv[cur_grid    ];
@@ -977,7 +982,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 	
 	static_cnt = 0;
 	for(i=0;i<af_alg->detect_step_cnt;i++){
-		delta_dc = v_dc[i]>ave_vdc?v_dc[i]-ave_vdc:ave_vdc-v_dc[i];
+		delta_dc = isp_abs64(v_dc[i],ave_vdc);
 		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
 		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
 		if(tmp_vdc1 > ave_vdc){
@@ -1067,8 +1072,7 @@ void isp_af_detect(isp_dev_t *devp)
 				sm_state.af_state = AF_INIT;
 				if(af_sm_dg)
 					pr_info("[af_sm]:lost focus.\n");
-			}
-			if(++af_info->cur_index >= af_alg->detect_step_cnt){
+			}else if(++af_info->cur_index >= af_alg->detect_step_cnt){
 				af_info->cur_index = 0;
 			}
 			break;
@@ -1129,7 +1133,7 @@ void isp_af_sm(isp_dev_t *devp)
 			} 
 			break;
 		case AF_CALC_GREAT:
-			af_info->great_step = get_best_step(af_info->af_data,af_alg->step);
+			af_info->great_step = get_best_step(af_info,af_alg);
 			af_info->cur_step = af_info->great_step - af_alg->jump_offset;
 			atomic_set(&af_info->writeable,1);
 			af_delay = 0;
@@ -1146,16 +1150,9 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_SUCCESS:
 			if(af_delay >= 2){
 				/*get last blnr*/
-				af_info->last_blnr.ac[0] = af_info->af_data[af_info->cur_index].ac[0];
-				af_info->last_blnr.ac[1] = af_info->af_data[af_info->cur_index].ac[1];
-				af_info->last_blnr.ac[2] = af_info->af_data[af_info->cur_index].ac[2];
-				af_info->last_blnr.ac[3] = af_info->af_data[af_info->cur_index].ac[3];
-				af_info->last_blnr.dc[0] = af_info->af_data[af_info->cur_index].dc[0];
-				af_info->last_blnr.dc[1] = af_info->af_data[af_info->cur_index].dc[1];
-				af_info->last_blnr.dc[2] = af_info->af_data[af_info->cur_index].dc[2];
-				af_info->last_blnr.dc[3] = af_info->af_data[af_info->cur_index].dc[3];
+				memcpy(&af_info->last_blnr,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 		                /* get last fv */
-		                af_info->fv_aft_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
+		                af_info->fv_aft_af = get_fv_base_blnr(&af_info->last_blnr);
 			        if(af_sm_dg&0x2){
 				        pr_info("[af] last blnr:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",
 				                af_info->af_data[af_info->cur_index].ac[0],af_info->af_data[af_info->cur_index].ac[1],
@@ -1163,8 +1160,7 @@ void isp_af_sm(isp_dev_t *devp)
 					        af_info->af_data[af_info->cur_index].dc[0],af_info->af_data[af_info->cur_index].dc[1],
 					        af_info->af_data[af_info->cur_index].dc[2],af_info->af_data[af_info->cur_index].dc[3],af_info->fv_aft_af);
 				}
-				fv_delta = af_info->fv_aft_af>af_info->fv_bf_af?(af_info->fv_aft_af-af_info->fv_bf_af):(af_info->fv_bf_af-af_info->fv_aft_af);
-				fv_delta = fv_delta*100;
+				fv_delta = af_info->fv_bf_af*100;
 				fv_delta = div64(fv_delta,af_alg->af_fail_ratio);
 				/*af failed return to af init,retry*/
 				if(af_sm_dg&0x1){
