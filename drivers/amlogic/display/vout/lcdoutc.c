@@ -1982,26 +1982,26 @@ static void init_phy_lvds(Lcd_Config_t *pConf)
 	//WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL1, 0x00000348);
 	switch (pConf->lcd_control.lvds_config->lvds_vswing) {
 		case 0:
-			swing_ctrl = 0x328;
+			swing_ctrl = 0x028;
 			break;
 		case 1:
-			swing_ctrl = 0x348;
+			swing_ctrl = 0x048;
 			break;
 		case 2:
-			swing_ctrl = 0x388;
+			swing_ctrl = 0x088;
 			break;
 		case 3:
-			swing_ctrl = 0x3c8;
+			swing_ctrl = 0x0c8;
 			break;
 		case 4:
-			swing_ctrl = 0x3f8;
+			swing_ctrl = 0x0f8;
 			break;
 		default:
-			swing_ctrl = 0x348;
+			swing_ctrl = 0x048;
 			break;
 	}
 	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL1, swing_ctrl);
-	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL2, 0x004665b7);
+	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL2, 0x000665b7);
 	WRITE_LCD_CBUS_REG(HHI_DIF_CSI_PHY_CNTL3, 0x84070000);
 #endif
 }
