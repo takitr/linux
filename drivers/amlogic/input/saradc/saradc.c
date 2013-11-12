@@ -140,11 +140,11 @@ int get_adc_sample(int chan)
 	int value=-1;
 	int sum;
 	int changed;
-	
+	unsigned int flags;
 	if (!gp_saradc)
 		return -1;
-		
-	spin_lock(&gp_saradc->lock);
+	
+	spin_lock_irqsave(&gp_saradc->lock,flags);
 
 	set_chan_list(chan, 1);
 	set_avg_mode(chan, NO_AVG_MODE, SAMPLE_NUM_8);
@@ -194,7 +194,7 @@ end:
 #endif
 	disable_sample_engine();
 //	set_sc_phase();
-	spin_unlock(&gp_saradc->lock);
+	spin_unlock_irqrestore(&gp_saradc->lock,flags);
 	return value;
 }
 
@@ -426,10 +426,8 @@ static int saradc_probe(struct platform_device *pdev)
 		err = -ENOMEM;
 		goto err_free_mem;
 	}
-
 	saradc_reset();
 	gp_saradc = saradc;
-
 	saradc->cal = 0;
 	saradc->cal_num = 0;
 #ifdef ENABLE_CALIBRATION
