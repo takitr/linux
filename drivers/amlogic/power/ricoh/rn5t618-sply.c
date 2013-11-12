@@ -56,7 +56,9 @@ struct rn5t618_supply      *g_rn5t618_supply  = NULL;
 struct ricoh_pmu_init_data *g_rn5t618_init    = NULL;
 struct battery_parameter   *rn5t618_battery   = NULL;
 struct input_dev           *rn5t618_power_key = NULL;
-static int rn5t618_curr_dir = 0;
+static int rn5t618_curr_dir   = 0;
+static int power_protection   = 0;
+static int over_discharge_cnt = 0;
 
 #ifdef CONFIG_AMLOGIC_USB
 struct work_struct          rn5t618_otg_work;
@@ -642,8 +644,7 @@ static int rn5t618_ac_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_PRESENT:
-        if (charger->rest_vol == 0 && 
-            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+        if (power_protection) {   // protect for over-discharging
             val->intval = 0;
         } else {
             val->intval = charger->dcin_valid;
@@ -651,8 +652,7 @@ static int rn5t618_ac_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_ONLINE:
-        if (charger->rest_vol == 0 && 
-            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+        if (power_protection) {   // protect for over-discharging
             val->intval = 0;
         } else {
             val->intval = charger->dcin_valid;
@@ -690,8 +690,7 @@ static int rn5t618_usb_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_PRESENT:
-        if (charger->rest_vol == 0 && 
-            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+        if (power_protection) {                                         // over-disharging
             val->intval = 0;
         } else {
             val->intval = charger->usb_valid;
@@ -699,8 +698,7 @@ static int rn5t618_usb_get_property(struct power_supply *psy,
         break;
 
     case POWER_SUPPLY_PROP_ONLINE:
-        if (charger->rest_vol == 0 && 
-            charger->charge_status == CHARGER_DISCHARGING) {   // protect for over-discharging
+        if (power_protection) {                                         // over-discharging
             val->intval = 0;
         } else {
             val->intval = charger->usb_valid;
@@ -1236,11 +1234,27 @@ static void rn5t618_charging_monitor(struct work_struct *work)
 #ifdef CONFIG_RESET_TO_SYSTEM
     rn5t618_feed_watchdog();
 #endif
-
+    
+    /*
+     * protection for over-discharge with large loading usage
+     */
+    if (charger->rest_vol <= 0 && 
+        charger->ext_valid     && 
+        charger->charge_status == CHARGER_DISCHARGING) {
+        over_discharge_cnt++;
+        if (over_discharge_cnt >= 5) {
+            RICOH_DBG("%s, battery is over-discharge now, force system power off\n", __func__);
+            power_protection = 1;
+        }
+    } else {
+        over_discharge_cnt = 0; 
+        power_protection   = 0;
+    }
     if ((charger->rest_vol - pre_rest_cap)         || 
         (pre_pwr_status != charger->ext_valid)     || 
         (pre_chg_status != charger->charge_status) ||
-         charger->resume) {
+        charger->resume                            ||
+        power_protection) {
         RICOH_DBG("battery vol change: %d->%d \n", pre_rest_cap, charger->rest_vol);
         if (unlikely(charger->resume)) {
             charger->resume = 0;
