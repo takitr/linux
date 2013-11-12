@@ -482,6 +482,7 @@ static void mfdin_basic (unsigned input, unsigned char iformat, unsigned char of
 
     WRITE_HREG(HCODEC_MFDIN_REG8_DMBL,(picsize_x << 12) |(picsize_y << 0));
     WRITE_HREG(HCODEC_MFDIN_REG9_ENDN,(7<<0)| (6<<3)|( 5<<6)|(4<<9) |(3<<12) |(2<<15) |( 1<<18) |(0<<21));
+    //WRITE_HREG(HCODEC_MFDIN_REG6_DCFG, 0x1ff);
 }
 
 static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsigned input, unsigned offset, unsigned size, unsigned char need_flush)

@@ -98,21 +98,21 @@ static inline void vm_vf_put_from_provider(vframe_t *vf);
 
 #define VM_DEPTH_16_CANVAS VM_CANVAS_INDEX         //for single canvas use ,RGB16, YUV422,etc
 
-#define VM_DEPTH_24_CANVAS VM_CANVAS_INDEX+2
+#define VM_DEPTH_24_CANVAS (VM_CANVAS_INDEX+2)
 
-#define VM_DEPTH_8_CANVAS_Y  VM_CANVAS_INDEX+4     // for Y/CbCr 4:2:0
-#define VM_DEPTH_8_CANVAS_UV VM_CANVAS_INDEX+5
-#define VM_DEPTH_8_CANVAS_U VM_CANVAS_INDEX+7
-#define VM_DEPTH_8_CANVAS_V VM_CANVAS_INDEX+8
+#define VM_DEPTH_8_CANVAS_Y  (VM_CANVAS_INDEX+4)     // for Y/CbCr 4:2:0
+#define VM_DEPTH_8_CANVAS_UV (VM_CANVAS_INDEX+5)
+#define VM_DEPTH_8_CANVAS_U (VM_CANVAS_INDEX+7)
+#define VM_DEPTH_8_CANVAS_V (VM_CANVAS_INDEX+8)
 
-#define VM_RES_CANVAS_INDEX VM_CANVAS_INDEX+9
-#define VM_RES_CANVAS_INDEX_U VM_CANVAS_INDEX+10
-#define VM_RES_CANVAS_INDEX_V VM_CANVAS_INDEX+11
-#define VM_RES_CANVAS_INDEX_UV VM_CANVAS_INDEX+12
+#define VM_RES_CANVAS_INDEX (VM_CANVAS_INDEX+9)
+#define VM_RES_CANVAS_INDEX_U (VM_CANVAS_INDEX+10)
+#define VM_RES_CANVAS_INDEX_V (VM_CANVAS_INDEX+11)
+#define VM_RES_CANVAS_INDEX_UV VM_RES_CANVAS_INDEX_U
 
-#define VM_DMA_CANVAS_INDEX VM_CANVAS_INDEX+14
+#define VM_DMA_CANVAS_INDEX (VM_CANVAS_INDEX+14)
 
-#define VM_CANVAS_MX VM_CANVAS_INDEX+15
+#define VM_CANVAS_MX (VM_CANVAS_INDEX+15)
 
 #ifdef CONFIG_AMLOGIC_CAPTURE_FRAME_ROTATE
 static int vmdecbuf_size[] ={
@@ -174,12 +174,10 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 #endif
 
 
-
-#ifdef CONFIG_CMA
-
 void set_vm_buf_info(resource_size_t start,unsigned int size);
-void unset_vm_buf_info();
-
+void unset_vm_buf_info(void);
+static void vm_cache_flush(unsigned buf_start , unsigned buf_size );
+#ifdef CONFIG_CMA
 static dma_addr_t vm_buf_phys = ~0;
 static void *vm_buf_virt;
 static size_t vm_buf_size;
@@ -188,11 +186,11 @@ int vm_init_buf(size_t size)
 {
 
     if(size ==0)
-        return;
+        return -1;
 
     if(vm_buf_phys != ~0)
     {
-        pr_info("phys already in use phys %p, virt %p\n", vm_buf_phys, vm_buf_virt);
+        //pr_info("phys already in use phys %p, virt %p\n", vm_buf_phys, vm_buf_virt);
         dma_free_coherent(NULL, vm_buf_size, vm_buf_virt, vm_buf_phys); 
     }
 
@@ -694,7 +692,7 @@ static int get_output_format(int v4l2_format)
 	return format;
 }
 
-static vm_output_para_t output_para = {0,0,0,0,0,0,-1,-1,0,0};
+static vm_output_para_t output_para = {0,0,0,0,0,0,-1,-1,0,0,0};
 
 typedef struct vm_dma_contig_memory {
 	u32 magic;
@@ -779,14 +777,14 @@ int get_canvas_index(int v4l2_format, int *depth)
 	return canvas;
 }
 
-int get_canvas_index_res(int v4l2_format, int *depth, int width, int height, unsigned buf)
+int get_canvas_index_res(int ext_canvas, int v4l2_format, int *depth, int width, int height, unsigned buf)
 {
-	int canvas = VM_RES_CANVAS_INDEX;
+	int canvas = ext_canvas;
 	*depth = 16;
 	switch(v4l2_format){
 	case V4L2_PIX_FMT_RGB565X:
 	case V4L2_PIX_FMT_VYUY:
-		canvas = VM_RES_CANVAS_INDEX;
+		canvas = ext_canvas&0xff;
 		*depth = 16 ;
 		canvas_config(canvas,
 			(unsigned long)buf,
@@ -796,7 +794,7 @@ int get_canvas_index_res(int v4l2_format, int *depth, int width, int height, uns
 	case V4L2_PIX_FMT_YUV444:
 	case V4L2_PIX_FMT_BGR24:
 	case V4L2_PIX_FMT_RGB24:
-		canvas = VM_RES_CANVAS_INDEX;
+		canvas = ext_canvas&0xff;
 		*depth = 24;
 		canvas_config(canvas,
 			(unsigned long)buf,
@@ -805,32 +803,32 @@ int get_canvas_index_res(int v4l2_format, int *depth, int width, int height, uns
 		break; 
 	case V4L2_PIX_FMT_NV12:
 	case V4L2_PIX_FMT_NV21: 
-		canvas_config(VM_RES_CANVAS_INDEX,
+		canvas_config(ext_canvas&0xff,
 			(unsigned long)buf,
 			width, height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		canvas_config(VM_RES_CANVAS_INDEX_UV,
+		canvas_config((ext_canvas&0xff00)>>8,
 			(unsigned long)(buf+width*height),
 			width, height/2,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		canvas = VM_RES_CANVAS_INDEX | (VM_RES_CANVAS_INDEX_UV<<8);
+		canvas = ext_canvas&0xffff;
 		*depth = 12;   
 		break;
 	case V4L2_PIX_FMT_YVU420:
 	case V4L2_PIX_FMT_YUV420:
-		canvas_config(VM_RES_CANVAS_INDEX,
+		canvas_config(ext_canvas&0xff,
 			(unsigned long)buf,
 			width, height,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		canvas_config(VM_RES_CANVAS_INDEX_U,
+		canvas_config((ext_canvas&0xff00)>>8,
 			(unsigned long)(buf+width*height),
 			width/2, height/2,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		canvas_config(VM_RES_CANVAS_INDEX_V,
+		canvas_config((ext_canvas&0xff0000)>>16,
 			(unsigned long)(buf+width*height*5/4),
 			width/2, height/2,
 			CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-		canvas = VM_RES_CANVAS_INDEX|(VM_RES_CANVAS_INDEX_U<<8)|(VM_RES_CANVAS_INDEX_V<<16);
+		canvas = ext_canvas&0xffffff;
 		*depth = 12;
 		break;
 	default:
@@ -881,7 +879,10 @@ int vm_fill_buffer(struct videobuf_buffer* vb , vm_output_para_t* para)
 		depth =  (vb->bytesperline <<3)/vb->width;
 		break;
 	case  MAGIC_RE_MEM:
-		canvas_index =  get_canvas_index_res(v4l2_format,&depth,vb->width,vb->height,(unsigned)para->vaddr);
+		if(para->ext_canvas!=0)
+		    canvas_index = get_canvas_index_res(para->ext_canvas,v4l2_format,&depth,vb->width,(para->height==0)?vb->height:para->height,(unsigned)para->vaddr);
+		else
+		    canvas_index =  get_canvas_index_res((VM_RES_CANVAS_INDEX|(VM_RES_CANVAS_INDEX_U<<8)|(VM_RES_CANVAS_INDEX_V<<16)),v4l2_format,&depth,vb->width,vb->height,(unsigned)para->vaddr);
 		break;
 	case  MAGIC_SG_MEM:
 	case  MAGIC_VMAL_MEM:
@@ -902,8 +903,11 @@ int vm_fill_buffer(struct videobuf_buffer* vb , vm_output_para_t* para)
 	output_para.zoom= para->zoom;
 	output_para.angle= para->angle;
 	output_para.vaddr = para->vaddr;
+	output_para.ext_canvas = (magic == MAGIC_RE_MEM)?para->ext_canvas:0;
 	up(&vb_start_sema);
 	ret = down_interruptible(&vb_done_sema);
+	if(magic == MAGIC_RE_MEM)
+		vm_cache_flush((unsigned)para->vaddr, output_para.bytesperline*((para->height==0)?output_para.height:para->height));
 	return ret;
 }
 
@@ -1617,6 +1621,25 @@ void get_vm_buf_info(resource_size_t* start,unsigned int* size,struct io_mapping
 		*mapping = vm_device.mapping;
 }
 
+/*
+static void vm_dma_flush(unsigned buf_start , unsigned buf_size )
+{
+	if(vm_device.dev){
+		if((buf_start>=vm_device.buffer_start)&&((buf_start+buf_size)<=(vm_device.buffer_start + vm_device.buffer_size)))
+			dma_sync_single_for_device(vm_device.dev,buf_start ,buf_size, DMA_TO_DEVICE);
+	}
+}
+*/
+
+static void vm_cache_flush(unsigned buf_start , unsigned buf_size )
+{
+	if(vm_device.dev){
+		if((buf_start>=vm_device.buffer_start)&&((buf_start+buf_size)<=(vm_device.buffer_start + vm_device.buffer_size)))
+			dma_sync_single_for_cpu(vm_device.dev , buf_start, buf_size, DMA_FROM_DEVICE);
+	}
+}
+
+
 static int vm_open(struct inode *inode, struct file *file)
 {
 	 ge2d_context_t *context=NULL;
@@ -1721,6 +1744,7 @@ int uninit_vm_device(void)
 	{
 		if(vm_device.dev)
 		device_destroy(vm_device.cla, MKDEV(vm_device.major, 0));
+		vm_device.dev = NULL;
 		class_unregister(vm_device.cla);
 	}
 
@@ -1739,12 +1763,10 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 /* for driver. */
 static int vm_driver_probe(struct platform_device *pdev)
 {
+#ifndef CONFIG_CMA
 	char* buf_start;
 	unsigned int buf_size;
 	struct resource *mem;
-
-
-#ifndef CONFIG_CMA
 
 	if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
 	{
