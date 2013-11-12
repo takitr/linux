@@ -755,11 +755,13 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->delta_fv_ratio = 0;
 		devp->isp_af_parm->af_duration_time = 1;//0.5s
 		/*window for full scan & detect*/
+		devp->isp_af_parm->radius_ratio = 8;
 		devp->isp_af_parm->win_ratio = 4;
 		devp->af_info.x0 = info->h_active/devp->isp_af_parm->win_ratio;
 		devp->af_info.y0 = info->v_active/devp->isp_af_parm->win_ratio;
 		devp->af_info.x1 = info->h_active - devp->af_info.x0;
 		devp->af_info.y1 = info->v_active - devp->af_info.y0;
+		devp->af_info.radius = info->h_active/devp->isp_af_parm->radius_ratio;
 		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.fv = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.v_dc = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
@@ -892,11 +894,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			//devp->isp_af_parm = &param->xml_scenes->af;
 			devp->isp_af_parm->x = param->xml_scenes->af.x;
 			devp->isp_af_parm->y = param->xml_scenes->af.y;
-			devp->isp_af_parm->radius = param->xml_scenes->af.radius;
-			x0 = devp->isp_af_parm->x>devp->isp_af_parm->radius?devp->isp_af_parm->x-devp->isp_af_parm->radius:0;
-			y0 = devp->isp_af_parm->y>devp->isp_af_parm->radius?devp->isp_af_parm->y-devp->isp_af_parm->radius:0;
-			x1 = devp->isp_af_parm->x + devp->isp_af_parm->radius;
-			y1 = devp->isp_af_parm->y + devp->isp_af_parm->radius;
+			x0 = devp->isp_af_parm->x>devp->af_info.radius?devp->isp_af_parm->x-devp->af_info.radius:0;
+			y0 = devp->isp_af_parm->y>devp->af_info.radius?devp->isp_af_parm->y-devp->af_info.radius:0;
+			x1 = devp->isp_af_parm->x + devp->af_info.radius;
+			y1 = devp->isp_af_parm->y + devp->af_info.radius;
 			if(ioctl_debug)
 				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);

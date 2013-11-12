@@ -233,7 +233,7 @@ void set_af_parm(xml_algorithm_af_t *af_sw,char **parm)
 		{"af_fail_ratio",         &af_sw->af_fail_ratio,           1, ISP_U32},
 		{"x",                     &af_sw->x,      			       1, ISP_U32},
 		{"y",                     &af_sw->y,      			       1, ISP_U32},
-		{"radius",                &af_sw->radius,     		       1, ISP_U32},
+		{"radius_ratio",          &af_sw->radius_ratio,     		       1, ISP_U32},
 	};
 	
 	if(!strcmp(parm[0],"show")){
