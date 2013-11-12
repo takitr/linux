@@ -15,6 +15,7 @@
 #define CAPTURE_MAX 5
 #define GAMMA_MAX 257
 #define SCENE_MAX 202
+#define WB_SENSOR_MAX 6
 #define BUFFER_SIZE 1024
 
 enum error_code {
@@ -88,8 +89,6 @@ typedef struct{
 	capture_type capture[CAPTURE_MAX];
 }capture_struct;
 
-
-
 typedef struct sensor_aet_s {
     unsigned int exp;
     unsigned int ag;
@@ -140,6 +139,10 @@ typedef struct{
 }gamma_struct;
 
 typedef struct{
+    int export[WB_SENSOR_MAX];
+}wb_sensor_struct;
+
+typedef struct{
     effect_struct eff;
     int effect_valid;
     hw_struct hw;
@@ -157,7 +160,9 @@ typedef struct{
     lenc_struct lenc;
     int lenc_valid;
     gamma_struct gamma;
-    int gamma_valid;  
+    int gamma_valid;
+    wb_sensor_struct wb_sensor_data;
+    int wb_sensor_data_valid;
 }configure;
 
 typedef struct{

@@ -20,6 +20,7 @@ char *wb_key = "wb_start";
 char *wave_key = "wave_start";
 char *lenc_key = "lenc_start";
 char *gamma_key = "gamma_start";
+char *wb_sensor_key = "sensor_start";
 
 typedef struct{
 	char *buffer;
@@ -859,6 +860,29 @@ int parse_gamma(buffer_para_t *buf_para,int *remained,int *offset){
     return 0;
 }
 
+
+int parse_wb_sensor(buffer_para_t *buf_para,int *remained,int *offset){
+    int i;
+    char *iter;
+
+    iter = search_string(buf_para,offset,remained,"sensor_start","sensor_end");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    /***parser head***/
+    iter = strstr(iter,"export");
+    iter += 7;
+    for(i=0;i<WB_SENSOR_MAX;i++){
+        sscanf(iter,"%x",&(cf->wb_sensor_data.export[i]));
+        //printk("wb sensor:%x\n",cf->wb_sensor_data.export[i]);
+        iter = strstr(iter,",");
+        if(iter == NULL)
+            break;
+        iter += 1;
+    }
+    return 0;
+}
+
 int parse_config(char *path){
     char *buffer,*iter;
     int file_size;
@@ -951,7 +975,7 @@ int parse_config(char *path){
                     }else{
                         buf_para.data_start += strlen(wb_key);
                     }
-                }if(*(iter + 1) == 'a'){
+                }else if(*(iter + 1) == 'a'){
                     if(memcmp(iter,wave_key,strlen(wave_key)) == 0){
                         cf->wave_valid = 1;
                         if((ret = parse_wave(&buf_para,&remained_size,&read_offset)) != 0){
@@ -961,20 +985,33 @@ int parse_config(char *path){
                     }else{
                         buf_para.data_start += strlen(wave_key);
                     }					
-                }else
+                }else 
                     buf_para.data_start += 1;
 
                 break;
             case 's':
-                if(memcmp(iter,scenes_key,strlen(scenes_key)) == 0){
-                    cf->scene_valid = 1;
-                    if((ret = parse_scene(&buf_para,&remained_size,&read_offset)) != 0){
-                        cf->scene_valid = 0;
-                        printk("scene invalid :%d\n",ret);										
+                if(*(iter + 3) == 'n'){
+                    if(memcmp(iter,scenes_key,strlen(scenes_key)) == 0){
+                        cf->scene_valid = 1;
+                        if((ret = parse_scene(&buf_para,&remained_size,&read_offset)) != 0){
+                            cf->scene_valid = 0;
+                            printk("scene invalid :%d\n",ret);										
+                        }
+                    }else{
+                        buf_para.data_start += strlen(scenes_key);
                     }
-                }else{
-                    buf_para.data_start += strlen(scenes_key);
-                }
+                }else if(*(iter + 3) == 's'){
+                    if(memcmp(iter,wb_sensor_key,strlen(wb_sensor_key)) == 0){
+                        cf->wb_sensor_data_valid = 1;
+                        if((ret = parse_wb_sensor(&buf_para,&remained_size,&read_offset)) != 0){
+                            cf->wb_sensor_data_valid = 0;
+                            printk("wb sensor data invalid :%d\n",ret);									
+                        }
+                    }else{
+                        buf_para.data_start += strlen(wb_sensor_key);
+                    }
+                }else
+                    buf_para.data_start += 3;
                 break;
             case 'c':
                 if(memcmp(iter,capture_key,strlen(capture_key)) == 0){
