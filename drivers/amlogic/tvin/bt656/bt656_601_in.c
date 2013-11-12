@@ -53,7 +53,7 @@
 #define BT656_MAX_DEVS             1
 //#define BT656IN_ANCI_DATA_SIZE        0x4000
 
-
+#define BT656_VER "2013/11/12"
 
 /* Per-device (per-bank) structure */
 
@@ -460,7 +460,9 @@ static void start_amvdec_656_601_camera_in(struct am656in_dev_s *devp)
 		printk("[bt656..]%s: input is not selected, please try again. \n",__func__);
 		return;
 	}
-        printk("bt656: %s input port is %s fmt is %s.\n",__func__,tvin_port_str(devp->para.port),tvin_sig_fmt_str(devp->para.fmt));
+    printk("[bt656(%s)]: %s input port: %s fmt: %s.\n",BT656_VER,__func__,
+            tvin_port_str(devp->para.port),tvin_sig_fmt_str(devp->para.fmt));
+	
 	return;
 }
 
