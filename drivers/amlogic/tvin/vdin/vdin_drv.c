@@ -535,7 +535,8 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
 	vdin_set_hvscale(devp);
-	vdin_set_cm2(devp->addr_offset,0);
+	if(devp->parm.port == TVIN_PORT_ISP)
+	        vdin_set_cm2(devp->addr_offset,0);
         /*reverse / disable reverse write buffer*/
         vdin_wr_reverse(devp->addr_offset,reverse_flag,reverse_flag);
 
