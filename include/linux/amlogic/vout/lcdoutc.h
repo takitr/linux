@@ -121,7 +121,7 @@
 	#define LVDS_REPACK					0
 
 /* for video encoder */
-	#define	MIPI_DELAY				0
+	#define	MIPI_DELAY				2
 	#define	LVDS_DELAY				8
 	#define	EDP_DELAY				8
 	#define	TTL_DELAY				19
@@ -408,8 +408,8 @@ typedef struct {
 
 typedef struct DSI_Config_s{
         unsigned int    dsi_clk_div;
-        unsigned int    dsi_clk_max;
-        unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
+ //       unsigned int    dsi_clk_max;
+ //       unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
 
         unsigned int    denominator; //
         unsigned int    numerator;//default 10000
@@ -422,13 +422,11 @@ typedef struct DSI_Config_s{
         unsigned int    vfp;
         unsigned int    vact;
 
-        unsigned int    pol_vs_hs_de;
         unsigned int    venc_color_type;
         unsigned int    dpi_color_type;
         unsigned char   dpi_chroma_subsamp;
         unsigned int    venc_fmt;
         unsigned char   lane_num;
-        unsigned char   refresh_rate;
         unsigned char   trans_mode;
 
         unsigned char   trans_type;    //such ad hs or lp

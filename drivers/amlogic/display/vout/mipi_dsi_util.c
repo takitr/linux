@@ -25,12 +25,12 @@ static unsigned int exp2_tbl[]={1,2,4,8};
 
 void init_mipi_dsi_phy(Lcd_Config_t *p)
 {
-        unsigned int div, clk_min, clk_max;
+        unsigned int div;
         DSI_Config_t *cfg= p->lcd_control.mipi_config;
 
         div = cfg->dsi_clk_div;
-        clk_min = cfg->dsi_clk_min;
-        clk_max = cfg->dsi_clk_max;
+     //   clk_min = cfg->dsi_clk_min;
+      //  clk_max = cfg->dsi_clk_max;
 
         switch (div){
                 case 1:
@@ -181,7 +181,6 @@ void set_mipi_dsi_host_to_command_mode(int lane_num,                            
                 tv_enc_lcd_type_t output_type,                          // video type, such as 1080x720
                 int vid_mode_type,                                      // video mode : burst/non_burst
                 int check_phy_status,                                   // enable/disable phy lock check, disable for multiple pic test
-                unsigned char refresh_rate,
                 Lcd_Config_t *p)
 {
         int real_lane_num = lane_num+1;
@@ -322,7 +321,6 @@ void set_mipi_dsi_host_to_video_mode(int lane_num,                              
                 tv_enc_lcd_type_t output_type,                          // video type, such as 1080x720
                 int vid_mode_type,                                      // video mode : burst/non_burst
                 int check_phy_status,                                   // enable/disable phy lock check, disable for multiple pic test
-                unsigned char refresh_rate,
                 Lcd_Config_t *p)
 
 {
@@ -519,8 +517,7 @@ void print_info(int lane_num,                                           // lane 
                 int trans_mode,                                         // video mode/command mode
                 tv_enc_lcd_type_t output_type,                          // video type, such as 1080x720
                 int vid_mode_type,                                      // video mode : burst/non_burst
-                int check_phy_status,                                   // enable/disable phy lock check, disable for multiple pic test
-                unsigned char refresh_rate
+                int check_phy_status                                   // enable/disable phy lock check, disable for multiple pic test
                )
 {
         // Information display
@@ -877,7 +874,7 @@ void set_pll_mipi(Lcd_Config_t *p)
         pConf->mipi_config->venc_fmt = TV_ENC_LCD768x1024p;
         pConf->mipi_config->lane_num = 3;
         pConf->mipi_config->dpi_chroma_subsamp = 0;
-        pConf->mipi_config->refresh_rate = 60;
+
 
 	// Configure VS/HS/DE polarity before mipi_dsi_host.pixclk starts,
 	WRITE_LCD_REG(MIPI_DSI_TOP_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CNTL) & ~(0x7<<4))   |
@@ -998,7 +995,7 @@ void set_control_mipi(Lcd_Config_t *p)
         unsigned int        is_rgb;
         unsigned int        dith10_en, dith8_en, dith5_en;
         unsigned char       trans_mode;
-        unsigned char       refresh_rate; //available only for 2560x1600
+  //      unsigned char       refresh_rate; //available only for 2560x1600
 
 	//set VPU clk
         //WRITE_CBUS_REG(HHI_VPU_CLK_CNTL, 0x303); //vid pll clock, N = 0, enable //moved to vpu.c, default config by dts
@@ -1012,7 +1009,7 @@ void set_control_mipi(Lcd_Config_t *p)
         mipi_dsi_dpi_color_type = pConf->mipi_config->dpi_color_type;
         lane_num                = pConf->mipi_config->lane_num;
         chroma_subsamp          = pConf->mipi_config->dpi_chroma_subsamp;
-        refresh_rate            = pConf->mipi_config->refresh_rate;
+ //       refresh_rate            = pConf->mipi_config->refresh_rate;
 
         DPRINT("%s, %d\n", __func__, __LINE__);
         print_info(lane_num,                        // Lane number
@@ -1023,8 +1020,8 @@ void set_control_mipi(Lcd_Config_t *p)
                         trans_mode,                                          // DSI transfer mode, video or command
                         venc_format,                                         // Venc resolution format, eg, 240x160
                         MIPI_DSI_TRANS_VIDEO_MODE,                          //?????? // Video transfer mode, burst or non-burst
-                        1,                                                   // If check the phy status, need check when first pic
-                        refresh_rate);
+                        1);                                                   // If check the phy status, need check when first pic
+
 
 
         DPRINT("[TEST.C] Set mipi_dsi_host and mipi_dphy\n");
@@ -1043,7 +1040,7 @@ void set_control_mipi(Lcd_Config_t *p)
                         venc_format,                                         // Venc resolution format, eg, 240x160
                         MIPI_DSI_TRANS_VIDEO_MODE,                          //?????? // Video transfer mode, burst or non-burst
                         1,                                                   // If check the phy status, need check when first pic
-                        refresh_rate, p);
+                        p);
 }
 void powerdown_mipi_analog()
 {
@@ -1157,7 +1154,7 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
         unsigned int        is_rgb;
         unsigned int        dith10_en, dith8_en, dith5_en;
         unsigned char       trans_mode;
-        unsigned char       refresh_rate; //available only for 2560x1600
+ //       unsigned char       refresh_rate; //available only for 2560x1600
 
         if(OFF == status){
 
@@ -1198,7 +1195,7 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
         mipi_dsi_dpi_color_type = pConf->mipi_config->dpi_color_type;
         lane_num                = pConf->mipi_config->lane_num;
         chroma_subsamp          = pConf->mipi_config->dpi_chroma_subsamp;
-        refresh_rate            = pConf->mipi_config->refresh_rate;
+    //    refresh_rate            = pConf->mipi_config->refresh_rate;
 
         startup_transfer_video();
 
@@ -1228,7 +1225,7 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
                         venc_format,                                         // Venc resolution format, eg, 240x160
                         MIPI_DSI_TRANS_VIDEO_MODE,                          //?????? // Video transfer mode, burst or non-burst
                         1,                                                   // If check the phy status, need check when first pic
-                        refresh_rate, p);
+                        p);
 
 }
 

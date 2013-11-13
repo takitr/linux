@@ -560,10 +560,11 @@ typedef enum tv_enc_lcd_type_e{
         TV_ENC_LCD768x1024p = 26,
         TV_ENC_LCD_TYPE_MAX
 } tv_enc_lcd_type_t;   /* tv encoder output format */
-
+/*
 int set_lcd_clk(unsigned int display_w, unsigned int display_h,
                 unsigned int color_code, unsigned int lane_num,
                 unsigned int refresh_rate);
+                */
 void init_mipi_dsi_phy(Lcd_Config_t *pConf);
 
 extern void start_mipi_dsi_host();                                             // close the default reset
