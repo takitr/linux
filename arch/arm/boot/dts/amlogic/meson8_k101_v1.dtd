@@ -930,7 +930,7 @@ sdio{
 		edp_user_link_rate_lane_count=<1 1 4>;	/** edp_user(0=auto setting, 1=user define), link_rate(0=1.62G, 1=2.7G, only valid when edp_user=1), lane_count(support 1,2,4, only valid when edp_user=1) */
 		edp_link_adaptive_vswing=<0 0>;	/** adaptive(0=fixed user defined vswing, 1=auto setting vswing by training), vswing(support level 0,1,2,3, user defined vswing, only valid when adaptive=0) */
 		rgb_base_coeff=<0xf0 0x74a>;	/** rgb_base, rgb_coeff */
-		video_on_pixel_line=<177 116>;  /** video_on_pixel, video_on_line */  //for mipi 177=180-3, 180=hvsa+hfp+hbp, 116=vsa+vfp+vbp
+		video_on_pixel_line=<120 32>;  /** video_on_pixel, video_on_line */  //for mipi 177=180-3, 180=hvsa+hfp+hbp, 116=vsa+vfp+vbp
 
 		//lcd power ctrl	//support up to 15 steps for each sequence
 		power_on_uboot="n","n","n";	/** only for uboot, ahead of lcd_power_on, no need config delay */
@@ -1022,15 +1022,11 @@ sdio{
 		period=<948 1140>;		/** horizontal period(htotal), vertical period(vtotal) */
 
 		clock_hz_pol=<64843200 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
-		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
-		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		hsync_width_backporch=<64 120>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<50 80>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-                dsi_clk = <500 560 1>;  /** min_clk, max_clk, scaler**/
+    lane_num=<4>;//lane num
 
-                lane_num=<4>;//lane num
-                pol_vs_hs_de=<1 1 0>;
-                dpi_color_type=<4 0>;
-                refresh_rate =<60 0>;// refresh rate available only for 2560x1600
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
