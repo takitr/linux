@@ -141,7 +141,7 @@ void af_sm_init(isp_dev_t *devp)
 	/*init for af*/
 	if(sm_state.af_state)
 		devp->flag |= devp->af_info.flag_bk;
-	if(devp->flag & ISP_FLAG_AF){
+	if(devp->flag & ISP_AF_SM_MASK){
     	        sm_state.af_state = AF_INIT;
 	}
 	devp->af_info.fv_aft_af = 0;
@@ -1187,8 +1187,10 @@ void isp_af_sm(isp_dev_t *devp)
 					af_info->af_retry_cnt = 0;
 					af_info->adj_duration_cnt = 0;
 					af_info->last_move = false;
-					devp->flag &=(~ISP_FLAG_TOUCH_AF);
-					sm_state.af_state = AF_DETECT_INIT;
+					if(devp->flag & ISP_FLAG_AF)
+						sm_state.af_state = AF_DETECT_INIT;
+					else
+						sm_state.af_state = AF_NULL;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				} else {/*af success*/
 					/*enable awb,enable af*/
@@ -1196,8 +1198,10 @@ void isp_af_sm(isp_dev_t *devp)
 					af_info->af_retry_cnt = 0;
 					af_info->adj_duration_cnt = 0;
 					af_info->last_move = false;
-					devp->flag &=(~ISP_FLAG_TOUCH_AF);
-					sm_state.af_state = AF_DETECT_INIT;
+					if(devp->flag & ISP_FLAG_AF)
+						sm_state.af_state = AF_DETECT_INIT;
+					else
+						sm_state.af_state = AF_NULL;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				}
 			}
