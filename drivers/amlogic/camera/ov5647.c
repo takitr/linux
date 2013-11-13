@@ -2729,7 +2729,7 @@ static int set_focus_zone(struct ov5647_device *dev, int value)
 	
 	dev->cam_para->xml_scenes->af.x = tx;
 	dev->cam_para->xml_scenes->af.y = ty;	
-	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_WINDOW;
+	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_FOCUS;
 	dev->fe_arg.port = TVIN_PORT_ISP;
 	dev->fe_arg.index = 0;
 	dev->fe_arg.arg = (void *)(dev->cam_para);
@@ -3922,6 +3922,74 @@ static const struct v4l2_subdev_ops ov5647_ops = {
 	.core = &ov5647_core_ops,
 };
 
+static ssize_t cam_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        ssize_t len = 0;
+	struct ov5647_device *t;
+
+        t = dev_get_drvdata(dev);
+
+        len += sprintf(buf+len, "\t%s parameters below\n", t->cam_info.name);
+        len += sprintf(buf+len, "\ti2c_bus_num=%d, front_back=%d,flash=%d, auto_focus=%d, i2c_addr=0x%x\n"
+                                "\tmclk=%d, flash_support=%d, flash_ctrl_level=%d, interface=%d, clk_channel=%d\n",
+                                t->cam_info.i2c_bus_num,
+                                t->cam_info.front_back,
+                                t->cam_info.flash,
+                                t->cam_info.auto_focus,
+                                t->cam_info.i2c_addr,
+                                t->cam_info.mclk,
+                                t->cam_info.flash_support,
+                                t->cam_info.flash_ctrl_level,
+                                t->cam_info.interface,
+                                t->cam_info.clk_channel);
+        return len;
+}
+static ssize_t cam_info_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
+{
+
+	struct ov5647_device *t;
+        unsigned char n=0;
+        unsigned char ret=0;
+        char *buf_orig, *ps, *token;
+        char *parm[3] = {NULL};
+
+        printk("buf=%p", buf);
+        if(!buf)
+		return len;
+        buf_orig = kstrdup(buf, GFP_KERNEL);
+        t = dev_get_drvdata(dev);
+
+        ps = buf_orig;
+        while (1) {
+                if ( n >=ARRAY_SIZE(parm) ){
+                        printk("parm array overflow, n=%d, ARRAY_SIZE(parm)=%d\n", n, ARRAY_SIZE(parm));
+                        return len;
+                }
+
+                token = strsep(&ps, " \n");
+                if (token == NULL)
+                        break;
+                if (*token == '\0')
+                        continue;
+                parm[n++] = token;
+        }
+
+        if ( 0 == strcmp(parm[0],"interface")){
+                t->cam_info.interface = simple_strtol(parm[1],NULL,16);
+                printk("interface =%s", t->cam_info.interface?"dvp":"mipi");
+        }else if ( 0 == strcmp(parm[0],"clk")){
+                t->cam_info.clk_channel = simple_strtol(parm[1],NULL,16);
+                printk("clk channel =%s", t->cam_info.interface?"clkA":"clkB");
+        }
+
+        kfree(buf_orig);
+
+        return len;
+
+}
+
+static DEVICE_ATTR(cam_info, 0664, cam_info_show, cam_info_store);
+
 static int ov5647_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -3972,6 +4040,7 @@ static int ov5647_probe(struct i2c_client *client,
 		kfree(t);
 		return err;
 	}
+        device_create_file( &t->vdev->dev, &dev_attr_cam_info);
 	return 0;
 }
 
@@ -3979,6 +4048,7 @@ static int ov5647_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov5647_device *t = to_dev(sd);
+        device_remove_file( &t->vdev->dev, &dev_attr_cam_info);
 	video_unregister_device(t->vdev);
 	v4l2_device_unregister_subdev(sd);
 	wake_lock_destroy(&(t->wake_lock));

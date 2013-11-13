@@ -278,7 +278,7 @@ static ssize_t csi_attr_show(struct device *dev, struct device_attribute *attr, 
         for( i = CSI_HST_START_REG; i <= CSI_HST_END_REG; i ++ )
         {
                 len += sprintf(buf+len, "\t[0x%04x]=0x%08x\n",
-                                i, READ_CSI_HST_REG(i));
+                               i<<2, READ_CSI_HST_REG(i));
         }
 
         return len;
@@ -302,6 +302,10 @@ static ssize_t csi_attr_store(struct device *dev,struct device_attribute *attr,c
 
         ps = buf_orig;
         while (1) {
+                if ( n >=ARRAY_SIZE(parm) ){
+                        printk("parm array overflow, n=%d, ARRAY_SIZE(parm)=%d\n", n, ARRAY_SIZE(parm));
+                        return len;
+                }
                 token = strsep(&ps, " \n");
                 if (token == NULL)
                         break;

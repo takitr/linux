@@ -76,14 +76,8 @@ const char *cam_cmd_to_str(cam_command_t cmd)
                 case CAM_COMMAND_FULLSCAN:
 		       	return "CAM_COMMAND_FULLSCAN";
 			break;
-		case CAM_COMMAND_TOUCH_WINDOW:
-			return "CAM_COMMAND_TOUCH_WINDOW";
-			break;
-		case CAM_COMMAND_TOUCH_FOCUS_ON:
-			return "CAM_COMMAND_TOUCH_FOCUS_ON";
-			break;
-		case CAM_COMMAND_TOUCH_FOCUS_OFF:
-			return "CAM_COMMAND_TOUCH_FOCUS_OFF";
+		case CAM_COMMAND_TOUCH_FOCUS:
+			return "CAM_COMMAND_TOUCH_FOCUS";
 			break;
 		case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
 			return "CAM_COMMAND_CONTINUOUS_FOCUS_ON";

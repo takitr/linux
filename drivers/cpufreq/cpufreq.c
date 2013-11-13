@@ -833,12 +833,12 @@ static int cpufreq_add_policy_cpu(unsigned int cpu, unsigned int sibling,
 	per_cpu(cpufreq_cpu_data, cpu) = policy;
 	write_unlock_irqrestore(&cpufreq_driver_lock, flags);
 
-	unlock_policy_rwsem_write(sibling);
 
 	if (has_target) {
 		__cpufreq_governor(policy, CPUFREQ_GOV_START);
 		__cpufreq_governor(policy, CPUFREQ_GOV_LIMITS);
 	}
+	unlock_policy_rwsem_write(sibling);
 
 	ret = sysfs_create_link(&dev->kobj, &policy->kobj, "cpufreq");
 	if (ret) {
@@ -1035,6 +1035,7 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 		return -EINVAL;
 	}
 
+	WARN_ON(lock_policy_rwsem_write(cpu));
 	if (cpufreq_driver->target)
 		__cpufreq_governor(data, CPUFREQ_GOV_STOP);
 
@@ -1044,12 +1045,10 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			data->governor->name, CPUFREQ_NAME_LEN);
 #endif
 
-	WARN_ON(lock_policy_rwsem_write(cpu));
 	cpus = cpumask_weight(data->cpus);
 
 	if (cpus > 1)
 		cpumask_clear_cpu(cpu, data->cpus);
-	unlock_policy_rwsem_write(cpu);
 
 	if (cpu != data->cpu) {
 		sysfs_remove_link(&dev->kobj, "cpufreq");
@@ -1061,7 +1060,6 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 		if (ret) {
 			pr_err("%s: Failed to move kobj: %d", __func__, ret);
 
-			WARN_ON(lock_policy_rwsem_write(cpu));
 			cpumask_set_cpu(cpu, data->cpus);
 
 			write_lock_irqsave(&cpufreq_driver_lock, flags);
@@ -1075,17 +1073,16 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			return -EINVAL;
 		}
 
-		WARN_ON(lock_policy_rwsem_write(cpu));
 		update_policy_cpu(data, cpu_dev->id);
-		unlock_policy_rwsem_write(cpu);
 		pr_debug("%s: policy Kobject moved to cpu: %d from: %d\n",
 				__func__, cpu_dev->id, cpu);
 	}
 
 	/* If cpu is last user of policy, free policy */
 	if (cpus == 1) {
-		if (cpufreq_driver->target)
+		if (cpufreq_driver->target){
 			__cpufreq_governor(data, CPUFREQ_GOV_POLICY_EXIT);
+		}
 
 		lock_policy_rwsem_read(cpu);
 		kobj = &data->kobj;
@@ -1115,6 +1112,7 @@ static int __cpufreq_remove_dev(struct device *dev, struct subsys_interface *sif
 			__cpufreq_governor(data, CPUFREQ_GOV_LIMITS);
 		}
 	}
+	unlock_policy_rwsem_write(cpu);
 
 	per_cpu(cpufreq_policy_cpu, cpu) = -1;
 	return 0;

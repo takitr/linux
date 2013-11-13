@@ -50,9 +50,7 @@ typedef struct {
 #define AMVDEC_H264_CANVAS_MAX 0xbf
 
 
-//tvin camera  vdin0: 0x18-0x1d   vdin1: 0x1e-0x23, nv21 chroma: 0x24-0x2f
-#define VDIN_CAMERA_CANVAS_INDEX   0x18
-#define VDIN_CAMERA_CANVAS_MAX_INDEX 0x2f
+//0x18-0x23  empty
 
 //jpeg dec
 #define JPEGDEC_CANVAS_INDEX   0//0x18//0x3a
@@ -128,6 +126,9 @@ typedef struct {
 //tvin vdin1: 0x24-0x3b
 #define VDIN1_CANVAS_INDEX              0x24
 #define VDIN1_CANVAS_MAX_INDEX          0x3B
+
+#define CAMERA_USER_CANVAS_INDEX             0x98
+#define CAMERA_USER_CANVAS_MAX_INDEX     0xaf
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
 #define AMLVIDEO2_RES_CANVAS 0xD8

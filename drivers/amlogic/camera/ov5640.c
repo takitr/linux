@@ -29,7 +29,7 @@
 #include <linux/kthread.h>
 #include <linux/highmem.h>
 #include <linux/freezer.h>
-#include <media/videobuf-vmalloc.h>
+#include <media/videobuf-res.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <linux/wakelock.h>
@@ -45,12 +45,15 @@
 
 #include "common/plat_ctrl.h"
 #include "common/vmapi.h"
+#include "common/vm.h"
 #include "ov5640_firmware.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
 #endif
 #define OV5640_CAMERA_MODULE_NAME "ov5640"
+#define MAGIC_RE_MEM 0x123039dc
+#define OV5640_RES0_CANVAS_INDEX CAMERA_USER_CANVAS_INDEX
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -123,6 +126,18 @@ static struct v4l2_frmivalenum ov5640_frmivalenum[]={
 		.pixel_format = V4L2_PIX_FMT_NV21,
 		.width = 1280,
 		.height = 720,
+		.type = V4L2_FRMIVAL_TYPE_DISCRETE,
+		{
+			.discrete ={
+				.numerator = 1,
+				.denominator = 30,
+			}
+		}
+	},{
+		.index = 0,
+		.pixel_format = V4L2_PIX_FMT_NV21,
+		.width = 1920,
+		.height = 1080,
 		.type = V4L2_FRMIVAL_TYPE_DISCRETE,
 		{
 			.discrete ={
@@ -472,6 +487,8 @@ struct ov5640_buffer {
 	struct videobuf_buffer vb;
 
 	struct ov5640_fmt        *fmt;
+
+	unsigned int canvas_id;
 };
 
 struct ov5640_dmaqueue {
@@ -548,6 +565,8 @@ struct ov5640_fh {
 	struct ov5640_fmt            *fmt;
 	unsigned int               width, height;
 	struct videobuf_queue      vb_vidq;
+
+	struct videobuf_res_privdata res;
 
 	enum v4l2_buf_type         type;
 	int	           input;     /* Input Number on bars */
@@ -2009,16 +2028,13 @@ static struct aml_camera_i2c_fig_s OV5640_capture_2M_script[] = {
 };
 
 static resolution_param_t  prev_resolution_array[] = {
-	#if 0
 	{
 		.frmsize			= {1920, 1080},
 		.active_frmsize			= {1280, 718},
 		.active_fps			= 30,
 		.size_type			= SIZE_1920X1080,
 		.reg_script			= OV5640_preview_720P_script,
-	},
-	#endif
-	{
+	},{
 		.frmsize			= {1280, 960},
 		.active_frmsize			= {1280, 958},
 		.active_fps			= 30,
@@ -2030,8 +2046,7 @@ static resolution_param_t  prev_resolution_array[] = {
 		.active_fps			= 30,
 		.size_type			= SIZE_1280X720,
 		.reg_script			= OV5640_preview_720P_script,
-	},
-	{
+	},{
 		.frmsize			= {1024, 768},
 		.active_frmsize			= {1280, 958},
 		.active_fps			= 30,
@@ -2910,6 +2925,38 @@ unsigned char v4l_2_ov5640(int val)
 	else return 0;
 }
 
+static int convert_canvas_index(unsigned int v4l2_format, unsigned int start_canvas)
+{
+	int canvas = start_canvas;
+
+	switch(v4l2_format){
+	case V4L2_PIX_FMT_RGB565X:
+	case V4L2_PIX_FMT_VYUY:
+		canvas = start_canvas;
+		break;
+	case V4L2_PIX_FMT_YUV444:
+	case V4L2_PIX_FMT_BGR24:
+	case V4L2_PIX_FMT_RGB24:
+		canvas = start_canvas;
+		break; 
+	case V4L2_PIX_FMT_NV12:
+	case V4L2_PIX_FMT_NV21: 
+		canvas = start_canvas | ((start_canvas+1)<<8);
+		break;
+	case V4L2_PIX_FMT_YVU420:
+	case V4L2_PIX_FMT_YUV420:
+		if(V4L2_PIX_FMT_YUV420 == v4l2_format){
+			canvas = start_canvas|((start_canvas+1)<<8)|((start_canvas+2)<<16);
+		}else{
+			canvas = start_canvas|((start_canvas+2)<<8)|((start_canvas+1)<<16);
+		}
+		break;
+	default:
+		break;
+	}
+	return canvas;
+}
+
 static int ov5640_setting(struct ov5640_device *dev,int PROP_ID,int value ) 
 {
 	int ret=0;
@@ -3043,18 +3090,24 @@ static void power_down_ov5640(struct ov5640_device *dev)
 static void ov5640_fillbuff(struct ov5640_fh *fh, struct ov5640_buffer *buf)
 {
 	struct ov5640_device *dev = fh->dev;
-	void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	//void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	void *vbuf = (void *)videobuf_to_res(&buf->vb);
 	vm_output_para_t para = {0};
 	dprintk(dev,1,"%s\n", __func__);    
 	if (!vbuf)
     	return;
 	/*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
+	if(buf->canvas_id == 0)
+           buf->canvas_id = convert_canvas_index(fh->fmt->fourcc, OV5640_RES0_CANVAS_INDEX+buf->vb.i*3);
 	para.mirror = ov5640_qctrl[2].default_value&3;
 	para.v4l2_format = fh->fmt->fourcc;
-	para.v4l2_memory = 0x18221223;
+	para.v4l2_memory = MAGIC_RE_MEM;//0x18221223;
 	para.zoom = ov5640_qctrl[10].default_value;
 	para.angle = ov5640_qctrl[11].default_value;
 	para.vaddr = (unsigned)vbuf;
+	para.ext_canvas = buf->canvas_id;
+	para.width = buf->vb.width;
+	para.height = buf->vb.height;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
@@ -3196,10 +3249,14 @@ static void ov5640_stop_thread(struct ov5640_dmaqueue  *dma_q)
 static int
 buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
-	struct ov5640_fh  *fh = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5640_fh *fh  = container_of(res, struct ov5640_fh, res);
 	struct ov5640_device *dev  = fh->dev;
 	//int bytes = fh->fmt->depth >> 3 ;
-	*size = (fh->width*fh->height*fh->fmt->depth)>>3;    
+	int height = fh->height;
+	if(height==1080)
+           height = 1088;
+	*size = (fh->width*height*fh->fmt->depth)>>3;    
 	if (0 == *count)
         *count = 32;
 
@@ -3214,7 +3271,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 
 static void free_buffer(struct videobuf_queue *vq, struct ov5640_buffer *buf)
 {
-	struct ov5640_fh  *fh = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5640_fh *fh  = container_of(res, struct ov5640_fh, res);
 	struct ov5640_device *dev  = fh->dev;
 
 	dprintk(dev, 1, "%s, state: %i\n", __func__, buf->vb.state);
@@ -3223,7 +3281,7 @@ static void free_buffer(struct videobuf_queue *vq, struct ov5640_buffer *buf)
 	if (in_interrupt())
     		BUG();
 
-	videobuf_vmalloc_free(&buf->vb);
+	videobuf_res_free(vq, &buf->vb);
 	dprintk(dev, 1, "free_buffer: freed\n");
 	buf->vb.state = VIDEOBUF_NEEDS_INIT;
 }
@@ -3234,7 +3292,8 @@ static int
 buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
                     	enum v4l2_field field)
 {
-	struct ov5640_fh     *fh  = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5640_fh *fh  = container_of(res, struct ov5640_fh, res);
 	struct ov5640_device    *dev = fh->dev;
 	struct ov5640_buffer *buf = container_of(vb, struct ov5640_buffer, vb);
 	int rc;
@@ -3278,7 +3337,8 @@ static void
 buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 {
 	struct ov5640_buffer    *buf  = container_of(vb, struct ov5640_buffer, vb);
-	struct ov5640_fh        *fh   = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5640_fh *fh  = container_of(res, struct ov5640_fh, res);
 	struct ov5640_device       *dev  = fh->dev;
 	struct ov5640_dmaqueue *vidq = &dev->vidq;
 
@@ -3291,8 +3351,9 @@ static void buffer_release(struct videobuf_queue *vq,
                struct videobuf_buffer *vb)
 {
 	struct ov5640_buffer   *buf  = container_of(vb, struct ov5640_buffer, vb);
-	struct ov5640_fh       *fh   = vq->priv_data;
-	struct ov5640_device      *dev  = (struct ov5640_device *)fh->dev;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5640_fh *fh  = container_of(res, struct ov5640_fh, res);
+	struct ov5640_device *dev = (struct ov5640_device *)fh->dev;
 
 	dprintk(dev, 1, "%s\n", __func__);
 
@@ -3316,7 +3377,7 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	struct ov5640_device *dev = fh->dev;
 
 	strcpy(cap->driver, "ov5640");
-	strcpy(cap->card, "ov5640");
+	strcpy(cap->card, "ov5640.canvas");
 	strlcpy(cap->bus_info, dev->v4l2_dev.name, sizeof(cap->bus_info));
 	cap->version = OV5640_CAMERA_VERSION;
 	cap->capabilities =	V4L2_CAP_VIDEO_CAPTURE |
@@ -3518,7 +3579,6 @@ static int vidioc_g_parm(struct file *file, void *priv,
 	return 0;
 }
 
-
 static int vidioc_reqbufs(struct file *file, void *priv,
               struct v4l2_requestbuffers *p)
 {
@@ -3530,8 +3590,15 @@ static int vidioc_reqbufs(struct file *file, void *priv,
 static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
 {
 	struct ov5640_fh  *fh = priv;
-
-	return (videobuf_querybuf(&fh->vb_vidq, p));
+	int ret = videobuf_querybuf(&fh->vb_vidq, p);
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+	if(ret == 0){
+	    p->reserved  = convert_canvas_index(fh->fmt->fourcc, OV5640_RES0_CANVAS_INDEX+p->index*3);
+	}else{
+	    p->reserved = 0;
+	}
+#endif
+	return ret;
 }
 
 static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p)
@@ -3578,7 +3645,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
                 para.v_active = fh->dev->cur_resolution_param->active_frmsize.height;
                 para.hs_bp = 0;
                 para.vs_bp = 2;
-                para.cfmt = TVIN_YUV422;
+                para.cfmt = TVIN_NV21;
                 para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
         } else {
                 para.frame_rate = ov5640_frmintervals_active.denominator;;
@@ -3586,7 +3653,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
                 para.v_active = fh->dev->cur_resolution_param->active_frmsize.height;
                 para.hs_bp = 0;
                 para.vs_bp = 2;
-                para.cfmt = TVIN_YUV422;
+                para.cfmt = TVIN_NV21;
                 para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
         }
 
@@ -3827,6 +3894,8 @@ static int ov5640_open(struct file *file)
 	struct ov5640_device *dev = video_drvdata(file);
 	struct ov5640_fh *fh = NULL;
 	//struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	resource_size_t mem_start = 0;
+	unsigned int mem_size = 0;
 	int retval = 0;
 	//int reg_val;
 	//int i = 0;
@@ -3896,10 +3965,16 @@ static int ov5640_open(struct file *file)
 	fh->f_flags  = file->f_flags;
 	/* Resets frame counters */
 	dev->jiffies = jiffies;
-            
-	videobuf_queue_vmalloc_init(&fh->vb_vidq, &ov5640_video_qops,
-        	NULL, &dev->slock, fh->type, V4L2_FIELD_INTERLACED,
-        	sizeof(struct ov5640_buffer), fh, NULL);
+
+	get_vm_buf_info(&mem_start, &mem_size, NULL);
+	fh->res.start = mem_start;
+	fh->res.end = mem_start+mem_size-1;
+	fh->res.magic = MAGIC_RE_MEM;
+	fh->res.priv = NULL;		
+	videobuf_queue_res_init(&fh->vb_vidq, &ov5640_video_qops,
+					NULL, &dev->slock, fh->type, V4L2_FIELD_INTERLACED,
+					sizeof(struct ov5640_buffer), (void*)&fh->res, NULL);
+
 	bDoingAutoFocusMode=false;
 	ov5640_start_thread(fh);
 	return 0;

@@ -49,7 +49,6 @@ static struct class *isp_clsp;
 static unsigned int isp_debug = 0;
 static unsigned int ae_enable = 1;
 static unsigned int awb_enable = 1;
-static unsigned int af_enable = 1;
 static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
 static unsigned int isr_debug = 0;
@@ -652,7 +651,7 @@ static int isp_thread(isp_dev_t *devp) {
 	if(devp->flag&ISP_FLAG_AF_DBG){
 		af_stat(devp->af_dbg,func);
 	}
-	if(devp->flag&ISP_FLAG_AF) {
+	if(devp->flag & ISP_AF_SM_MASK) {
 		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
 			atomic_set(&devp->af_info.writeable,0);
 			func->set_af_new_step(devp->af_info.cur_step);
@@ -748,7 +747,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->field_delay = 1;
 		
 		/*init for auto lose focus tell*/
-		devp->isp_af_parm->detect_step_cnt = 5;
+		devp->isp_af_parm->detect_step_cnt = 16;
 		devp->isp_af_parm->enter_move_ratio = 55;
 		devp->isp_af_parm->enter_static_ratio = 35;
 		devp->isp_af_parm->ave_vdc_thr = 100;
@@ -787,9 +786,11 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
 			kfree(devp->isp_af_parm);
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
-	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
         memset(&devp->info,0,sizeof(isp_info_t));
-        /*close the isp to vdin path*/
+	devp->flag &= (~ISP_FLAG_AF);
+	devp->flag &= (~ISP_FLAG_TOUCH_AF);
+	/*power down isp hw*/
+	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
 
 }
 
@@ -890,7 +891,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_FULLSCAN:
 			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 		        break;
-                case CAM_COMMAND_TOUCH_WINDOW:
+                case CAM_COMMAND_TOUCH_FOCUS:
 			//devp->isp_af_parm = &param->xml_scenes->af;
 			devp->isp_af_parm->x = param->xml_scenes->af.x;
 			devp->isp_af_parm->y = param->xml_scenes->af.y;
@@ -902,16 +903,14 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);
 			isp_set_blenr_stat(x0,y0,x1,y1);
-			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
+			devp->flag |= ISP_FLAG_TOUCH_AF;
 			af_sm_init(devp);
 		        break;
-                case CAM_COMMAND_TOUCH_FOCUS_ON:
-		        break;
-                case CAM_COMMAND_TOUCH_FOCUS_OFF:
-		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
+			devp->flag |= ISP_FLAG_AF;
 		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_OFF:
+			devp->flag &= (~ISP_FLAG_AF);
 		        break;
                 case CAM_COMMAND_BACKGROUND_FOCUS_ON:
 		        break;
@@ -949,8 +948,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
         if(devp->flag & ISP_FLAG_AE)
 	        isp_get_ae_stat(&devp->isp_ae);
 	}
-	if(af_enable){
-	if(devp->flag & ISP_FLAG_AF)
+	if(devp->flag & ISP_AF_SM_MASK){
 	        isp_get_blnr_stat(&af_info->isr_af_data);
 	}
 	if(devp->flag & ISP_FLAG_SET_EFFECT){
@@ -1011,16 +1009,15 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 static void isp_tasklet(unsigned long arg)
 {
 	isp_dev_t *devp = (isp_dev_t *)arg;
-    if(ae_enable){
-	if(devp->flag & ISP_FLAG_AE)
-	        isp_ae_sm(devp);
-    }
+        if(ae_enable){
+                if(devp->flag & ISP_FLAG_AE)
+	                isp_ae_sm(devp);
+        }
 	if(awb_enable){
-	if(devp->flag & ISP_FLAG_AWB)
-                isp_awb_sm(devp);
+		if(devp->flag & ISP_FLAG_AWB)
+                        isp_awb_sm(devp);
 	}
-	if(af_enable){
-	if(devp->flag & ISP_FLAG_AF)
+	if(devp->flag & ISP_AF_SM_MASK){
 		isp_af_detect(devp);
 	}
 }
@@ -1221,9 +1218,6 @@ MODULE_PARM_DESC(ae_enable,"\n ae_enable.\n");
 
 module_param(awb_enable,uint,0664);
 MODULE_PARM_DESC(awb_enable,"\n awb_enable.\n");
-
-module_param(af_enable,uint,0664);
-MODULE_PARM_DESC(af_enable,"\n af_enable.\n");
 
 module_param(ae_flag,uint,0664);
 MODULE_PARM_DESC(ae_flag,"\n debug flag for ae_flag.\n");

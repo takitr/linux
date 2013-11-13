@@ -789,7 +789,7 @@ static int amlvideo_mmap(struct file *file, struct vm_area_struct *vma) {
     int ret;
 
     dprintk(dev, 1, "mmap called, vma=0x%08lx\n", (unsigned long)vma);
-
+    vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
     ret = videobuf_mmap_mapper(&fh->vb_vidq, vma);
 
     dprintk(dev, 1, "vma start=0x%08lx, size=%ld, ret=%d\n", (unsigned long)vma->vm_start, (unsigned long)vma->vm_end-(unsigned long)vma->vm_start, ret);

@@ -997,6 +997,7 @@ void osd_ext_get_prot_canvas_hw(u32 index, s32 *x_start, s32 *y_start, s32 *x_en
 	*x_end = osd_ext_hw.rotation_pandata[index].x_end;
 	*y_end = osd_ext_hw.rotation_pandata[index].y_end;
 }
+
 void osd_ext_pan_display_hw(unsigned int xoffset, unsigned int yoffset, int index)
 {
 	long diff_x, diff_y;
@@ -1803,22 +1804,24 @@ static void osd1_update_disp_geometry(void)
 		data32 |= (osd_ext_hw.block_mode[OSD1] & HW_OSD_BLOCK_ENABLE_MASK);
 		aml_write_reg32(P_VIU2_OSD1_CTRL_STAT, data32);
 	} else {
-		data32 = (osd_ext_hw.dispdata[OSD1].x_start & 0xfff) | (osd_ext_hw.dispdata[OSD1].x_end & 0xfff) << 16;
-		aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W3, data32);
-		if (osd_ext_hw.scan_mode == SCAN_MODE_INTERLACE) {
-			data32 = ((osd_ext_hw.dispdata[OSD1].y_start >> 1) & 0xfff) | ((((osd_ext_hw.dispdata[OSD1].y_end + 1) >> 1) -1) & 0xfff) << 16;
-		} else {
-			data32 =
-			    (osd_ext_hw.dispdata[OSD1].y_start & 0xfff) | (
-					osd_ext_hw.dispdata[OSD1].y_end & 0xfff) << 16;
+		if (osd_ext_hw.rotate[OSD1].on_off > 0 && osd_ext_hw.rotate[OSD1].angle > 0){
+			data32 = (osd_ext_hw.dispdata[OSD1].x_start & 0xfff) | ((osd_ext_hw.dispdata[OSD1].x_start+g_rotation_height) & 0xfff) << 16;
+			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W3, data32);
+			data32 = (osd_ext_hw.dispdata[OSD1].y_start & 0xfff) | ((osd_ext_hw.dispdata[OSD1].y_start+g_rotation_width) & 0xfff) << 16;
+			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W4, data32);
+		}else{
+			data32 = (osd_ext_hw.dispdata[OSD1].x_start & 0xfff) | (osd_ext_hw.dispdata[OSD1].x_end & 0xfff) << 16;
+			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W3, data32);
+			if (osd_ext_hw.scan_mode == SCAN_MODE_INTERLACE) {
+				data32 = ((osd_ext_hw.dispdata[OSD1].y_start >> 1) & 0xfff) | ((((osd_ext_hw.dispdata[OSD1].y_end + 1) >> 1) -1) & 0xfff) << 16;
+			} else {
+				data32 = (osd_ext_hw.dispdata[OSD1].y_start & 0xfff) | (osd_ext_hw.dispdata[OSD1].y_end & 0xfff) << 16;
+			}
+			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W4, data32);
 		}
-		aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W4, data32);
-
 		/* enable osd 2x scale */
 		if (osd_ext_hw.scale[OSD1].h_enable || osd_ext_hw.scale[OSD1].v_enable) {
-			data32 =
-			    (osd_ext_hw.scaledata[OSD1].x_start & 0x1fff) | (osd_ext_hw.scaledata[OSD1].
-									     x_end & 0x1fff) << 16;
+			data32 = (osd_ext_hw.scaledata[OSD1].x_start & 0x1fff) | (osd_ext_hw.scaledata[OSD1].x_end & 0x1fff) << 16;
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W1, data32);
 			data32 = ((osd_ext_hw.scaledata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
 			    | ((osd_ext_hw.scaledata[OSD1].y_end + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16;

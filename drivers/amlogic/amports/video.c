@@ -211,6 +211,9 @@ static u32 next_peek_underflow;
 #define DisableVideoLayer_PREBELEND() \
     do { CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
          VPP_VD1_PREBLEND|VPP_VD2_PREBLEND); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("DisableVideoLayer_PREBELEND()\n"); \
+         } \
     } while (0)
 
 /*********************************************************/
@@ -3465,6 +3468,9 @@ static ssize_t video_test_screen_store(struct class *cla, struct class_attribute
 
     WRITE_VCBUS_REG(VPP_MISC, data);
 
+     if(debug_flag& DEBUG_FLAG_BLACKOUT){  
+        printk("%s write(VPP_MISC,%x) write(VPP_DUMMY_DATA1, %x)\n",__func__, data, test_screen&0x00ffffff); 
+     } 
     return count;
 }
 
@@ -3983,6 +3989,9 @@ static int amvideo_class_resume(struct device *dev)
     if (pm_state.event == PM_EVENT_SUSPEND) {
         WRITE_VCBUS_REG(VPP_MISC + cur_dev->vpp_off, pm_state.vpp_misc);
         pm_state.event = -1;
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  
+            printk("%s write(VPP_MISC,%x)\n",__func__, pm_state.vpp_misc); 
+         } 
     }
 
 #ifdef CONFIG_SCREEN_ON_EARLY
