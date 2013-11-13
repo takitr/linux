@@ -756,3 +756,265 @@ void get_isp_gamma_table(unsigned short *gamma,unsigned int type)
 	WR_BITS(ISP_GMR0_CTRL,0,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
 }
 
+/*
+* lens-shading debug start
+*/
+static unsigned long long div64(unsigned long long n, unsigned long long d) // n for numerator, d for denominator
+{
+    unsigned int n_bits = 0, d_bits = 0, i = 0;
+    unsigned long long q = 0, t = 0; // q for quotient, t for temporary
+    // invalid
+    if (!d) {
+        q = 0xffffffffffffffff;
+    }
+    // (0.5, 0]
+    else if (n + n < d) {
+        q = 0;
+    }
+    // [1.0, 0.5]
+    else if (n <= d) {
+        q = 1;
+    }
+    // [max, 1.0)
+    else
+    {
+        // get n_bits
+        for (n_bits = 1; n_bits <= 64; n_bits++)
+            if (!(n >> n_bits))
+                break;
+        if (n_bits > 64)
+		n_bits = 64;
+		// get d_bits
+        for (d_bits = 1; d_bits <= 64; d_bits++)
+            if (!(d >> d_bits))
+                break;
+        if (d_bits > 64)
+            d_bits = 64;
+        // check integer part
+        for (i = n_bits; i >= d_bits; i--) {
+            q <<= 1;
+            t = d << (i - d_bits);
+            if (n >= t)
+            {
+                n -= t;
+                q += 1;
+            }
+        }
+        // check fraction part
+        if (n + n >= d)
+            q += 1;
+    }
+    return q;
+}
+
+static unsigned int phase_curve_grid(unsigned int curvature, unsigned int gain_0db, unsigned int dx, unsigned int dy, unsigned int rradium)
+{
+    unsigned int data = 0;
+
+    if (curvature > 100)
+    {
+        data = (unsigned int)div64((unsigned long long)gain_0db*(unsigned long long)(curvature - 100)*(unsigned long long)(dx*dx + dy*dy), (unsigned long long)rradium*(unsigned long long)100);
+        data = gain_0db + data;
+        if (data > 255)
+        {
+            data = 255;
+        }
+    }
+    else if (curvature < 100)
+    {
+        data = (unsigned int)div64((unsigned long long)gain_0db*(unsigned long long)(100 - curvature)*(unsigned long long)(dx*dx + dy*dy), (unsigned long long)rradium*(unsigned long long)100);
+        if (data > gain_0db)
+        {
+            data = 0;
+        }
+        else
+        {
+            data = gain_0db - data;
+        }                
+    }
+    else
+    {
+        data = gain_0db;
+    }
+
+    return(data);
+}
+
+void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_to_horizontal (default is 100), given 1.4um*1.4um, it is:
+                                             // 100(%) for p2p format
+                                             // 100(%) for skipping format
+                                             // 100(%) for 2*2 binning format
+                                             // 100(%) for 4*4 binning format
+                                             //  50(%) for 2*1 binning format
+                                             //  50(%) for 4*2 binning format
+                  unsigned int hactive,      // given 1080p, this value is 1920, default is 1920
+                  unsigned int vactive,      // given 1080p, this value is 1080, default is 1080
+                  unsigned int ocenter_c2l,  // optical_center_percentage_center_to_left (default is 50), given centralized, this value is 50(%)
+                  unsigned int ocenter_c2t,  // optical_center_percentage_center_to_top  (default is 50), given centralized, this value is 50(%)
+                  unsigned int gain_0db,     // gain_0db (default is 0)
+                                             // 0 for 128
+                                             // 1 for 64
+                                             // 2 for 32
+                                             // 3 for 16
+                  unsigned int curvature_gr, //   0: corner_gain = 0.0*gain_0db, minimum
+                                             // 100: corner_gain = 1.0*gain_0db, default
+                                             // 200: corner_gain = 2.0*gain_0db, maximum
+                  unsigned int curvature_r,  //   0: corner_gain = 0.0*gain_0db, minimum
+                                             // 100: corner_gain = 1.0*gain_0db, default
+                                             // 200: corner_gain = 2.0*gain_0db, maximum
+                  unsigned int curvature_b,  //   0: corner_gain = 0.0*gain_0db, minimum
+                                             // 100: corner_gain = 1.0*gain_0db, default
+                                             // 200: corner_gain = 2.0*gain_0db, maximum
+                  unsigned int curvature_gb, //   0: corner_gain = 0.0*gain_0db, minimum
+                                             // 100: corner_gain = 1.0*gain_0db, default
+                                             // 200: corner_gain = 2.0*gain_0db, maximum
+                  bool         force_enable  //   0: keep original disable/enable status
+                                             //   1: force to enable lens shielding
+                  )
+{
+    unsigned int haxis[32], vaxis[32], curve[32][32];
+    unsigned int hmax = 0, vmax = 0, vcenter = 0, hcenter = 0, rradium = 0, xscale = 0, yscale = 0;
+    unsigned int i = 0, j = 0, dx = 0, dy = 0, data = 0, control = READ_VCBUS_REG(0x2d28);
+  
+    // validation
+    if ((!psize_v2h) || (psize_v2h > 100))
+    {
+        psize_v2h = 100;
+    }
+    if ((!hactive) || (!vactive))
+    {
+        hactive = 1920;
+        vactive = 1080;
+    }
+    if ((!ocenter_c2l) || (ocenter_c2l > 100))
+    {
+        ocenter_c2l = 50;
+    }
+    if ((!ocenter_c2t) || (ocenter_c2t > 100))
+    {
+        ocenter_c2t = 50;
+    }
+    control &= 0xffff8fff; // lens shielding mux : normal
+    control &= 0xffff7fff; // lens shielding mode: z
+    control &= 0xff00ffff; // clear lens shielding pre_gain_shift
+    switch (gain_0db)
+    {
+        case 0:
+            control |= 0x00000000; // set lens shielding pre_gain_shift
+            gain_0db = 128;
+            break;
+        case 1:
+            control |= 0x00550000; // set lens shielding pre_gain_shift
+            gain_0db = 64;
+            break;
+        case 2:
+            control |= 0x00aa0000; // set lens shielding pre_gain_shift
+            gain_0db = 32;
+            break;
+        case 3:
+            control |= 0x00ff0000; // set lens shielding pre_gain_shift
+            gain_0db = 16;
+            break;
+        default:
+            control |= 0x00000000; // set lens shielding pre_gain_shift
+            gain_0db = 128;
+            break;
+    }
+
+    // variables
+    hmax    = hactive - 1;
+    vmax    = vactive - 1;
+    hcenter = (hmax*ocenter_c2l + 50)/100;
+    vcenter = (vmax*ocenter_c2t + 50)/100;
+    rradium = (unsigned int)div64((unsigned long long)hmax*(unsigned long long)hmax*(unsigned long long)10000 + (unsigned long long)vmax*(unsigned long long)vmax*(unsigned long long)psize_v2h*(unsigned long long)psize_v2h + (unsigned long long)20000, (unsigned long long)40000);
+    xscale  = (7935*32*2 + hmax)/(hmax + hmax);
+    if (xscale > 0x00000fff)
+    {
+        xscale = 0x00000fff;
+    }
+    yscale  = (7935*32*2 + vmax)/(vmax + vmax);
+    if (yscale > 0x00000fff)
+    {
+        yscale = 0x00000fff;
+    }
+    for (i = 0; i < 32; i++)
+    {
+        haxis[i] = (i*256*32 + xscale)/(xscale + xscale);
+        vaxis[i] = (i*256*32 + yscale)/(yscale + yscale);
+    }
+
+    // write lut
+    WRITE_VCBUS_REG(0x2d28, control&0xefffffff); // disable lens shielding
+    WRITE_VCBUS_REG(0x2d29, (xscale << 16)|
+                           (yscale << 0));      // lens shielding xscale & yscale
+    WRITE_VCBUS_REG(0x2d2a, 0x00000000);         // lens shielding xoffset = yoffset = 0
+    WRITE_VCBUS_REG(0x2d2b, 0x80808080);         // lens shielding pre_gain = 0.5
+    WRITE_VCBUS_REG(0x2d2c, 0x00000000);         // lens shielding post_offset = 0
+    WRITE_VCBUS_REG(0x2daf, 0x0000000c);         // lens shielding lut ram: v-bus write mode
+    WRITE_VCBUS_REG(0x2dc6, 0x00000000);         // point to head of ram
+    for (i = 0; i < 32; i++)
+    {
+        for (j = 0; j < 32; j++)
+        {
+            dx = (haxis[i] > hcenter) ? (haxis[i] - hcenter) : (hcenter - haxis[i]);
+            dy = (vaxis[j] > vcenter) ? (vaxis[j] - vcenter) : (vcenter - vaxis[j]);
+            dy = (dy*psize_v2h + 50)/100;
+            curve[i][j] = (phase_curve_grid(curvature_gr, gain_0db, dx, dy, rradium) << 24)|
+                          (phase_curve_grid(curvature_r,  gain_0db, dx, dy, rradium) << 16)|
+                          (phase_curve_grid(curvature_b,  gain_0db, dx, dy, rradium) <<  8)|
+                          (phase_curve_grid(curvature_gb, gain_0db, dx, dy, rradium) <<  0);
+            WRITE_VCBUS_REG(0x2dc7, curve[i][j]);
+        }
+    }
+    WRITE_VCBUS_REG(0x2daf, 0x00000000); // lens shielding lut ram: hardware read mode
+
+    // disable/enable
+    if (force_enable)
+    {
+        //WRITE_VCBUS_REG(0x2d28, backup|0x10000000); // force to enable lens shielding
+        WRITE_VCBUS_REG_BITS(0x2d28, 1, LNS_CMOP_ENABLE_BIT, LNS_CMOP_ENABLE_WID);
+    }
+    else
+    {
+        //WRITE_VCBUS_REG(0x2d28, backup); // retrieve original disable/enable status
+        WRITE_VCBUS_REG_BITS(0x2d28, 0, LNS_CMOP_ENABLE_BIT, LNS_CMOP_ENABLE_WID);
+    }
+    pr_info(" Gb----\n");
+    for (i = 0; i < 32; i++)
+    {
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+         curve[i][0]&0xff, curve[i][1]&0xff, curve[i][2]&0xff, curve[i][3]&0xff, curve[i][4]&0xff, curve[i][5]&0xff, curve[i][6]&0xff, curve[i][7]&0xff, curve[i][8]&0xff, curve[i][9]&0xff, \
+        curve[i][10]&0xff,curve[i][11]&0xff,curve[i][12]&0xff,curve[i][13]&0xff,curve[i][14]&0xff,curve[i][15]&0xff,curve[i][16]&0xff,curve[i][17]&0xff,curve[i][18]&0xff,curve[i][19]&0xff,\
+        curve[i][20]&0xff,curve[i][21]&0xff,curve[i][22]&0xff,curve[i][23]&0xff,curve[i][24]&0xff,curve[i][25]&0xff,curve[i][26]&0xff,curve[i][27]&0xff,curve[i][28]&0xff,curve[i][29]&0xff,\
+        curve[i][30]&0xff,curve[i][31]&0xff);
+    }
+    pr_info(" B----\n");
+        for (i = 0; i < 32; i++)
+    {
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        ( curve[i][0]>>8)&0xff,( curve[i][1]>>8)&0xff,( curve[i][2]>>8)&0xff,( curve[i][3]>>8)&0xff,( curve[i][4]>>8)&0xff,( curve[i][5]>>8)&0xff,( curve[i][6]>>8)&0xff,( curve[i][7]>>8)&0xff,( curve[i][8]>>8)&0xff,( curve[i][9]>>8)&0xff, \
+        (curve[i][10]>>8)&0xff,(curve[i][11]>>8)&0xff,(curve[i][12]>>8)&0xff,(curve[i][13]>>8)&0xff,(curve[i][14]>>8)&0xff,(curve[i][15]>>8)&0xff,(curve[i][16]>>8)&0xff,(curve[i][17]>>8)&0xff,(curve[i][18]>>8)&0xff,(curve[i][19]>>8)&0xff,\
+        (curve[i][20]>>8)&0xff,(curve[i][21]>>8)&0xff,(curve[i][22]>>8)&0xff,(curve[i][23]>>8)&0xff,(curve[i][24]>>8)&0xff,(curve[i][25]>>8)&0xff,(curve[i][26]>>8)&0xff,(curve[i][27]>>8)&0xff,(curve[i][28]>>8)&0xff,(curve[i][29]>>8)&0xff,\
+        (curve[i][30]>>8)&0xff,(curve[i][31]>>8)&0xff);
+    }
+    pr_info(" R----\n");
+        for (i = 0; i < 32; i++)
+    {
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        ( curve[i][0]>>16)&0xff,( curve[i][1]>>16)&0xff,( curve[i][2]>>16)&0xff,( curve[i][3]>>16)&0xff,( curve[i][4]>>16)&0xff,( curve[i][5]>>16)&0xff,( curve[i][6]>>16)&0xff,( curve[i][7]>>16)&0xff,( curve[i][8]>>16)&0xff,( curve[i][9]>>16)&0xff, \
+        (curve[i][10]>>16)&0xff,(curve[i][11]>>16)&0xff,(curve[i][12]>>16)&0xff,(curve[i][13]>>16)&0xff,(curve[i][14]>>16)&0xff,(curve[i][15]>>16)&0xff,(curve[i][16]>>16)&0xff,(curve[i][17]>>16)&0xff,(curve[i][18]>>16)&0xff,(curve[i][19]>>16)&0xff,\
+        (curve[i][20]>>16)&0xff,(curve[i][21]>>16)&0xff,(curve[i][22]>>16)&0xff,(curve[i][23]>>16)&0xff,(curve[i][24]>>16)&0xff,(curve[i][25]>>16)&0xff,(curve[i][26]>>16)&0xff,(curve[i][27]>>16)&0xff,(curve[i][28]>>16)&0xff,(curve[i][29]>>16)&0xff,\
+        (curve[i][30]>>16)&0xff,(curve[i][31]>>16)&0xff);
+    }
+    pr_info(" Gr----\n");
+        for (i = 0; i < 32; i++)
+    {
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        ( curve[i][0]>>24)&0xff,( curve[i][1]>>24)&0xff,( curve[i][2]>>24)&0xff,( curve[i][3]>>24)&0xff,( curve[i][4]>>24)&0xff,( curve[i][5]>>24)&0xff,( curve[i][6]>>24)&0xff,( curve[i][7]>>24)&0xff,( curve[i][8]>>24)&0xff,( curve[i][9]>>24)&0xff, \
+        (curve[i][10]>>24)&0xff,(curve[i][11]>>24)&0xff,(curve[i][12]>>24)&0xff,(curve[i][13]>>24)&0xff,(curve[i][14]>>24)&0xff,(curve[i][15]>>24)&0xff,(curve[i][16]>>24)&0xff,(curve[i][17]>>24)&0xff,(curve[i][18]>>24)&0xff,(curve[i][19]>>24)&0xff,\
+        (curve[i][20]>>24)&0xff,(curve[i][21]>>24)&0xff,(curve[i][22]>>24)&0xff,(curve[i][23]>>24)&0xff,(curve[i][24]>>24)&0xff,(curve[i][25]>>24)&0xff,(curve[i][26]>>24)&0xff,(curve[i][27]>>24)&0xff,(curve[i][28]>>24)&0xff,(curve[i][29]>>24)&0xff,\
+        (curve[i][30]>>24)&0xff,(curve[i][31]>>24)&0xff);
+    }
+    pr_info(" -------end------\n");
+    
+}

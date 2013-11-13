@@ -15,7 +15,7 @@
 #define CAPTURE_MAX 5
 #define GAMMA_MAX 257
 #define SCENE_MAX 202
-#define WB_SENSOR_MAX 6
+#define WB_SENSOR_MAX 4
 #define BUFFER_SIZE 1024
 
 enum error_code {
