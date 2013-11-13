@@ -624,6 +624,71 @@ static ssize_t gamma_store(struct class *cls,
 static DEVICE_ATTR(gamma, 0664, gamma_show, gamma_store);
 
 
+static ssize_t ls_show(struct class *cls,struct class_attribute *attr,char *buf)
+{
+	pr_info("Usage:");
+	pr_info("	echo psize_v2h ocenter_c2l ocenter_c2t gain_0db curvature_gr curvature_r curvature_b curvature_gb force_enable > ...\n");
+	pr_info("Notes:");
+	pr_info(" Path: /sys/class/isp/isp0/lens");
+	pr_info("Example:");
+	pr_info(" echo 100 50 50 128 120 120 120 120 1 > /sys/class/isp/isp0/lens \n");
+	
+	return 0;
+}
+
+static ssize_t ls_store(struct class *cls,
+			 struct class_attribute *attr,
+			 const char *buffer, size_t count)
+{
+
+	int n = 0;
+	char *buf_orig, *ps, *token;
+	char *parm[12] = {NULL};
+	int i = 0;
+    unsigned int psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, curvature_gr,curvature_r; 
+    unsigned int curvature_b,curvature_gb; 
+    bool force_enable;
+    
+	/* to avoid the bellow warning message while compiling:
+	 * warning: the frame size of 1576 bytes is larger than 1024 bytes
+	 */
+	buf_orig = kstrdup(buffer, GFP_KERNEL);
+	ps = buf_orig;
+	while (1) {
+		token = strsep(&ps, " \n");
+		if (token == NULL)
+			break;
+		if (*token == '\0')
+			continue;
+		parm[n++] = token;
+	}
+	if(!strcmp(parm[0],"enable")) {
+	    psize_v2h = simple_strtoul(     parm[1],NULL,10);
+	    hactive = simple_strtoul(       parm[2],NULL,10);
+	    vactive = simple_strtoul(       parm[3],NULL,10);
+	    ocenter_c2l = simple_strtoul(   parm[4],NULL,10);
+	    ocenter_c2t = simple_strtoul(   parm[5],NULL,10);
+	    gain_0db = simple_strtoul(      parm[6],NULL,10); 
+	    curvature_gr = simple_strtoul(  parm[7],NULL,10);
+	    curvature_r = simple_strtoul(   parm[8],NULL,10); 
+        curvature_b = simple_strtoul(   parm[9],NULL,10);
+        curvature_gb = simple_strtoul(  parm[10],NULL,10);   
+        force_enable = simple_strtoul(  parm[11],NULL,10);
+        
+        pr_info("psize_v2h:%u hactive:%u vactive:%u ocenter_c2l:%u :ocenter_c2t:%u :gain_0db:%u curvature_gr:%u ;curvature_r:%u curvature_b:%u curvature_gb:%u force_enable:%u \n", psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, \
+            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
+            
+        isp_ls_curve(psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, \
+            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
+    }
+	kfree(buf_orig);
+
+	return count;
+}
+
+static DEVICE_ATTR(lens, 0664, ls_show, ls_store);
+
+
 static int isp_thread(isp_dev_t *devp) {
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	printk("isp_thread is run! \n");

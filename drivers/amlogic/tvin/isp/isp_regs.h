@@ -474,7 +474,7 @@
 /*********************** lens shading correction registers*****************/
 #define ISP_LNS_CTRL                        0x2d28    
 //Bit 31:29, reserved
-#define LNS_CMOP_ENABLE_BIE		    28
+#define LNS_CMOP_ENABLE_BIT		    28
 #define LNS_CMOP_ENABLE_WID		    1
 //Bit    28, reg_isp_lns_cmop_enable    lens shading compensation enable. 0: no compensation; 1: compensation enable;  default= 0
 //Bit 27:26, reserved

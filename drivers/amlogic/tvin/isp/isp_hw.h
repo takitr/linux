@@ -111,5 +111,11 @@ extern void isp_awb_set_gain(unsigned int r, unsigned int g, unsigned int b);
 extern void isp_awb_get_gain(isp_awb_gain_t *awb_gain);
 extern void set_isp_gamma_table(unsigned short *gamma,unsigned int type);
 extern void get_isp_gamma_table(unsigned short *gamma,unsigned int type);
+extern void isp_ls_curve(unsigned int psize_v2h, unsigned int hactive, 
+        unsigned int vactive, unsigned int ocenter_c2l, 
+        unsigned int ocenter_c2t, unsigned int gain_0db, 
+        unsigned int curvature_gr, unsigned int curvature_r, 
+        unsigned int curvature_b, unsigned int curvature_gb, bool force_enable);
+                  
 #endif
 
