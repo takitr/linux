@@ -2679,19 +2679,31 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
         i++;
     }
 
-    int default_sensor_data[6] = {0x06,0x68,0x04,0x00,0x08,0x78};
+    int default_sensor_data[4] = {0x00000668,0x00000400,0x00000400,0x00000878};
     int *sensor_data;
     int addr_start = 0x5186;
+    int data = 0;
+    int index = 0;
     if(cf->wb_sensor_data_valid == 1){
         sensor_data = cf->wb_sensor_data.export;
     }else
         sensor_data = default_sensor_data;
-    for(i = 0;i < WB_SENSOR_MAX; i++){
-        if((i2c_put_byte(client, addr_start + i, sensor_data[i]) < 0)) {
+    for(i = 0;i < (WB_SENSOR_MAX - 1) * 2;){ // current only rgb valid
+        data = (sensor_data[index] >> 8) & 0x0f;
+        if((i2c_put_byte(client, addr_start + i, data) < 0)) {
             printk("fail in setting resolution param. i=%d\n",i);
             break;
         }
-        i++;
+        data = (sensor_data[index]) & 0xff;
+        if((i2c_put_byte(client, addr_start + i + 1, data) < 0)) {
+            printk("fail in setting resolution param. i=%d\n",i);
+            break;
+        }
+        if(index == 1)
+            index += 2;
+        else
+            index++;
+        i += 2;
     }
     ov5647_frmintervals_active.numerator = 1;
     ov5647_frmintervals_active.denominator = res_param->active_fps;
