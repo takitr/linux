@@ -2717,7 +2717,7 @@ static int set_focus_zone(struct ov5647_device *dev, int value)
 	
 	dev->cam_para->xml_scenes->af.x = tx;
 	dev->cam_para->xml_scenes->af.y = ty;	
-	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_WINDOW;
+	dev->cam_para->cam_command = CAM_COMMAND_TOUCH_FOCUS;
 	dev->fe_arg.port = TVIN_PORT_ISP;
 	dev->fe_arg.index = 0;
 	dev->fe_arg.arg = (void *)(dev->cam_para);

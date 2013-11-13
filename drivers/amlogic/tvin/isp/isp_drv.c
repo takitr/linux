@@ -748,7 +748,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->field_delay = 1;
 		
 		/*init for auto lose focus tell*/
-		devp->isp_af_parm->detect_step_cnt = 5;
+		devp->isp_af_parm->detect_step_cnt = 16;
 		devp->isp_af_parm->enter_move_ratio = 55;
 		devp->isp_af_parm->enter_static_ratio = 35;
 		devp->isp_af_parm->ave_vdc_thr = 100;
@@ -890,7 +890,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_FULLSCAN:
 			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 		        break;
-                case CAM_COMMAND_TOUCH_WINDOW:
+                case CAM_COMMAND_TOUCH_FOCUS:
 			//devp->isp_af_parm = &param->xml_scenes->af;
 			devp->isp_af_parm->x = param->xml_scenes->af.x;
 			devp->isp_af_parm->y = param->xml_scenes->af.y;
@@ -904,10 +904,6 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			isp_set_blenr_stat(x0,y0,x1,y1);
 			devp->flag |= (ISP_FLAG_AF|ISP_FLAG_TOUCH_AF);
 			af_sm_init(devp);
-		        break;
-                case CAM_COMMAND_TOUCH_FOCUS_ON:
-		        break;
-                case CAM_COMMAND_TOUCH_FOCUS_OFF:
 		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
 		        break;

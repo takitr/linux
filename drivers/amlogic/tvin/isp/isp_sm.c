@@ -966,14 +966,14 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 	dc2 = af_info->last_blnr.dc[2];
 	dc3 = af_info->last_blnr.dc[3];
 	for(i=0;i<af_alg->detect_step_cnt;i++){
-		delta_dc = dc0>af_info->af_detect[i].dc[0]?dc0-af_info->af_detect[i].dc[0]:af_info->af_detect[i].dc[0]-dc0;
-		v_dc[i]  = div64((unsigned long long)delta_dc*1024,dc0);
-		delta_dc = dc1>af_info->af_detect[i].dc[1]?dc1-af_info->af_detect[i].dc[1]:af_info->af_detect[i].dc[1]-dc1;
-		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc1);
-		delta_dc = dc2>af_info->af_detect[i].dc[2]?dc2-af_info->af_detect[i].dc[2]:af_info->af_detect[i].dc[2]-dc2;
-		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc2);
-		delta_dc = dc3>af_info->af_detect[i].dc[3]?dc3-af_info->af_detect[i].dc[3]:af_info->af_detect[i].dc[3]-dc3;
-		v_dc[i] += div64((unsigned long long)delta_dc*1024,dc3);
+		delta_dc = isp_abs64(dc0,af_info->af_detect[i].dc[0]);
+		v_dc[i]  = div64((delta_dc*1024),(unsigned long long)dc0);
+		delta_dc = isp_abs64(dc1,af_info->af_detect[i].dc[1]);
+		v_dc[i] += div64((delta_dc*1024),(unsigned long long)dc1);
+		delta_dc = isp_abs64(dc2,af_info->af_detect[i].dc[2]);
+		v_dc[i] += div64((delta_dc*1024),(unsigned long long)dc2);
+		delta_dc = isp_abs64(dc3,af_info->af_detect[i].dc[3]);
+		v_dc[i] += div64((delta_dc*1024),(unsigned long long)dc3);
 		sum_vdc += v_dc[i];
 		if(af_sm_dg&0x2)
 			pr_info("v_dc[%u]=%llu.\n",i,v_dc[i]);
@@ -988,11 +988,11 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 		if(tmp_vdc1 > ave_vdc){
 			if(ave_vdc > af_alg->ave_vdc_thr){
 			        is_move = true;
+				break;
 			} else{
                                 if(af_sm_dg&0x1)
 				        pr_info("static ave_vdc=%llu.\n",ave_vdc);
 			}
-			break;
 		}else if(tmp_vdc2 < ave_vdc){
 			if(++static_cnt >= af_alg->detect_step_cnt)
 				is_static = true;
@@ -1006,6 +1006,9 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 		return false;
 	/* during hysteresis ,still last state*/
 	}else if((!is_static&&!is_move)||!af_info->last_move){
+		if(af_sm_dg&0x1){
+			pr_info("v_dc %llu is between %llu~%llu keep last state.\n",ave_vdc,tmp_vdc2,tmp_vdc1);
+		}
 		return false;
 	}
 	if(af_sm_dg&0x1)
@@ -1014,7 +1017,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 	if(af_alg->delta_fv_ratio == 0)
 		return true;
 	sum_fv = 0;
-	for(i=0;i<af_alg->valid_step_cnt;i++){
+	for(i=0;i<af_alg->detect_step_cnt;i++){
 		fv[i] = get_fv_base_blnr(&af_info->af_detect[i]);
 		sum_fv += fv[i];
 		if(af_sm_dg&0x4){
@@ -1072,7 +1075,10 @@ void isp_af_detect(isp_dev_t *devp)
 				sm_state.af_state = AF_INIT;
 				if(af_sm_dg)
 					pr_info("[af_sm]:lost focus.\n");
-			}else if(++af_info->cur_index >= af_alg->detect_step_cnt){
+			}else if(af_info->cur_index < af_alg->detect_step_cnt){
+				memcpy(&af_info->af_detect[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
+				af_info->cur_index++;
+			}else{/*af_info->cur_index >= af_alg->detect_step_cnt*/
 				af_info->cur_index = 0;
 			}
 			break;
