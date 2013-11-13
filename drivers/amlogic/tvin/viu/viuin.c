@@ -599,7 +599,7 @@ static void viuin_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_proper
 #else
     prop->color_format = TVIN_RGB444;
 #endif
-    prop->dest_cfmt = devp->parm.cfmt;
+    prop->dest_cfmt = devp->parm.dfmt;
     prop->pixel_repeat = 0;
 }
 

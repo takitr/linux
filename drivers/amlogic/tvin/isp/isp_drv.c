@@ -762,6 +762,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	isp_info_t *info = &devp->info;
 	
 	info->fe_port = parm->isp_fe_port;
+	info->dfmt = parm->dfmt;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
 	info->frame_rate = parm->frame_rate;
@@ -1099,7 +1100,7 @@ static void isp_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_property
 {
 	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
         prop->color_format = TVIN_YUV422;
-	//prop->dest_cfmt = devp->parm.cfmt;
+	prop->dest_cfmt = devp->info.dfmt;
         prop->pixel_repeat = 0;
 }
 static bool isp_frame_skip(struct tvin_frontend_s *fe)

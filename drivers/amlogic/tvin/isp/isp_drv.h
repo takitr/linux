@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.13b"
+#define ISP_VER					"2013.11.13c"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -53,6 +53,7 @@
 
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
+	tvin_color_fmt_t dfmt;
 	unsigned int h_active;
 	unsigned int v_active;
 	unsigned int frame_rate;

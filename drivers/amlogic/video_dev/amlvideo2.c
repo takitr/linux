@@ -1416,7 +1416,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 			para.vsync_phase  = 1;//0x1
 			para.hs_bp = 0;
 			para.vs_bp = 0;
-			para.cfmt = TVIN_NV21;//TVIN_YUV422;
+			para.dfmt = TVIN_NV21;//TVIN_YUV422;
 			para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
 			if(vinfo->width<vinfo->height){
 				para.dest_hactive = fh->height;
