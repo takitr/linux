@@ -148,7 +148,7 @@ void root_func(){
 		status = "ok";
 		reg = <0x06200000 0x01000000
 	       	 0x07200000 0x00100000>;
-		display_size_default = <768 1024 768 2048 32>;
+		display_size_default = <1024 768 1024 1536 32>;
 	 
 	};
 
