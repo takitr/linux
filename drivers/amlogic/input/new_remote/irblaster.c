@@ -40,14 +40,14 @@
 #include <mach/gpio.h>
 #include <linux/irq.h>
 #include "irblaster.h"
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 #define irblaster_dbg(fmt, args...) printk(KERN_INFO "ir_blaster: " fmt, ##args)
 #else
 #define irblaster_dbg(fmt, args...)
 #endif
 
-#define DEVICE_NAME "BLASTER"
+#define DEVICE_NAME "meson-irblaster"
 #define DEIVE_COUNT 32
 #define BUFFER_SIZE 4096
 static dev_t irblaster_id;
@@ -58,7 +58,11 @@ static struct blaster_window rec_win, send_win;
 static int rec_idx;
 static unsigned int last_jiffies;
 static char logbuf[4096];
+static unsigned int temp_value,temp_value1;
+static void aml_irblaster_tasklet(void);
 static DEFINE_MUTEX(irblaster_file_mutex);
+static void ir_hardware_release(void);
+static void ir_hardware_init(void);
 static void send_all_frame(struct blaster_window * creat_window){
 	int i,k;
 	// set init_high valid and enable the ir_blaster
@@ -295,6 +299,8 @@ static DEVICE_ATTR(log, S_IWUSR | S_IRUGO, show_log, NULL);
 static int aml_ir_irblaster_open(struct inode *inode, struct file *file)
 {
 	irblaster_dbg("aml_ir_irblaster_open()\n");
+	irblaster_dbg("ir_blaster & ir rev start()\n");
+	ir_hardware_init();
 	return 0;
 }
 
@@ -335,6 +341,10 @@ static long aml_ir_irblaster_ioctl(struct file *filp, unsigned int cmd, unsigned
 		case IRRECEIVER_IOC_STUDY_E:
 			irblaster_dbg("IRRECEIVER_IOC_STUDY_E\n");
 			break;
+		case GET_NUM_CARRIER:
+			break;
+		case SET_NUM_CARRIER:
+			break;
 
 		default:
 			r = -ENOIOCTLCMD;
@@ -347,6 +357,7 @@ static int aml_ir_irblaster_release(struct inode *inode, struct file *file)
 {
 	irblaster_dbg("aml_ir_irblaster_release()\n");
 	file->private_data = NULL;
+	ir_hardware_release();
 	return 0;
 
 }
@@ -356,8 +367,12 @@ static const struct file_operations aml_ir_irblaster_fops = {
 	.unlocked_ioctl = aml_ir_irblaster_ioctl,
 	.release	= aml_ir_irblaster_release,
 };
+static irqreturn_t irblaster_interrupt(int irq, void *dev_id){
+	aml_irblaster_tasklet();
+	return IRQ_HANDLED;
+}
 
-static void ir_fiq_interrupt(void)
+static void aml_irblaster_tasklet(void)
 {
 	int pulse_width;
 	unsigned int current_jiffies = jiffies;
@@ -379,14 +394,15 @@ static void ir_fiq_interrupt(void)
 		return;
 
 	rec_win.winNum = rec_idx;
-	rec_win.winArray[rec_idx-1] = (pulse_width<<1);
-	irblaster_dbg("idx[%d]window width[%d]\n", rec_idx-1, pulse_width);
+	rec_win.winArray[rec_idx-1] = (pulse_width);
 }
 
 static void ir_hardware_init(void)
 {
 	unsigned int control_value;
-
+	int ret;
+	temp_value = am_remote_read_reg(AM_IR_DEC_REG0);
+	temp_value1 = am_remote_read_reg(AM_IR_DEC_REG1);
 	rec_idx = 0;
 	last_jiffies = 0xffffffff;
 	aml_set_reg32_mask(P_AO_RTI_PIN_MUX_REG, (1 << 31));
@@ -395,13 +411,23 @@ static void ir_hardware_init(void)
 	am_remote_write_reg(AM_IR_DEC_REG0, control_value);
 	control_value = 0x8574;
 	am_remote_write_reg(AM_IR_DEC_REG1, control_value);
-	request_fiq(INT_REMOTE, &ir_fiq_interrupt);
+	ret = request_irq(INT_REMOTE, irblaster_interrupt, IRQF_SHARED, "irblaster", (void *)irblaster_interrupt);
+	if (ret < 0) {
+		printk(KERN_ERR "Irblaster: request_irq failed, ret=%d.\n", ret);
+		return ret;
+	}
 }
-
+static void ir_hardware_release(void)
+{
+	unsigned int control_value;
+	am_remote_write_reg(AM_IR_DEC_REG0, temp_value);
+	am_remote_write_reg(AM_IR_DEC_REG1, temp_value1);
+	free_irq(INT_REMOTE,irblaster_interrupt);
+}
 static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 {
 	int r;
-	irblaster_dbg("ir irblaster probe\n");
+	printk("ir irblaster probe\n");	
 	r = alloc_chrdev_region(&irblaster_id, 0, DEIVE_COUNT, DEVICE_NAME);
 	if (r < 0) {
 		printk(KERN_ERR "Can't register major for ir irblaster device\n");
@@ -420,7 +446,7 @@ static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 	irblaster_dev = device_create(irblaster_class, NULL, irblaster_id, NULL, "irblaster%d", 0);
 
 	if (irblaster_dev == NULL) {
-		irblaster_dbg("irblaster_dev create error\n");
+		printk("irblaster_dev create error\n");
 		class_destroy(irblaster_class);
 		return -EEXIST;
 	}
@@ -428,7 +454,6 @@ static int  aml_ir_irblaster_probe(struct platform_device *pdev)
 	device_create_file(irblaster_dev, &dev_attr_debug);
 	device_create_file(irblaster_dev, &dev_attr_keyvalue);
 	device_create_file(irblaster_dev, &dev_attr_log);
-	ir_hardware_init();
 	return 0;
 }
 
@@ -437,7 +462,6 @@ static int aml_ir_irblaster_remove(struct platform_device *pdev)
 	irblaster_dbg("remove IR Receiver\n");
 
 	/* unregister everything */
-	free_fiq(INT_REMOTE, &ir_fiq_interrupt);
 	/* Remove the cdev */
 	device_remove_file(irblaster_dev, &dev_attr_debug);
 	device_remove_file(irblaster_dev, &dev_attr_keyvalue);
@@ -452,15 +476,20 @@ static int aml_ir_irblaster_remove(struct platform_device *pdev)
 	unregister_chrdev_region(irblaster_id, DEIVE_COUNT);
 	return 0;
 }
-
+static const struct of_device_id irblaster_dt_match[]={
+	{	.compatible 	= "amlogic,aml_irblaster",
+	},
+	{},
+};
 static struct platform_driver aml_ir_irblaster_driver = {
 	.probe		= aml_ir_irblaster_probe,
 	.remove		= aml_ir_irblaster_remove,
 	.suspend	= NULL,
 	.resume		= NULL,
-	.driver		= {
-		.name	= DEVICE_NAME,
-		.owner	= THIS_MODULE,
+	.driver = {
+		.name = "meson-irblaster",
+		.owner  = THIS_MODULE,
+		.of_match_table = irblaster_dt_match,	
 	},
 };
 

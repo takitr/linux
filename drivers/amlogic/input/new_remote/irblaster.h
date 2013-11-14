@@ -27,5 +27,7 @@ unsigned int ir_g_remote_base = P_AO_IR_DEC_LDR_ACTIVE;
 #define IRRECEIVER_IOC_RECV     0x5501
 #define IRRECEIVER_IOC_STUDY_S  0x5502
 #define IRRECEIVER_IOC_STUDY_E  0x5503
+#define GET_NUM_CARRIER         0x5504
+#define SET_NUM_CARRIER         0x5505
 
 #endif 
