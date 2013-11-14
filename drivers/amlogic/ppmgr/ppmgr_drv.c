@@ -175,10 +175,13 @@ ssize_t _ppmgr_angle_write(unsigned long val)
 {
     unsigned long angle = val;
 
-    if(angle>3) {
-        if(angle==90) angle=1;
-        else if(angle==180) angle=2;
-        else if(angle==270) angle=3;
+    if (angle > 3) {
+        if (angle == 90)
+            angle = 1;
+        else if (angle == 180)
+            angle = 2;
+        else if (angle == 270)
+            angle = 3;
         else {
             printk("invalid orientation value\n");
             printk("you should set 0 or 0 for 0 clock wise,");
@@ -188,15 +191,18 @@ ssize_t _ppmgr_angle_write(unsigned long val)
         }
     }
 
-    if(angle != ppmgr_device.angle ){
-        property_change = 1;
+    ppmgr_device.global_angle = angle;
+    if (!ppmgr_device.use_prot) {
+        if (angle != ppmgr_device.angle) {
+            property_change = 1;
+        }
+        ppmgr_device.angle = angle;
+        ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
+        printk("ppmgr angle:%d,orientation:%d,videoangle:%d \n", ppmgr_device.angle, ppmgr_device.orientation, ppmgr_device.videoangle);
+    } else {
+        set_video_angle(angle);
+        printk("prot angle:%d\n", angle);
     }
-
-    ppmgr_device.angle = angle;
-    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
-    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
-        ppmgr_device.orientation, ppmgr_device.videoangle);
-
     return 0;
 }
 EXPORT_SYMBOL(_ppmgr_angle_write);
@@ -263,30 +269,16 @@ static ssize_t angle_write(struct class *cla,
 {
     ssize_t size;
     char *endp;
-    unsigned long angle  =  simple_strtoul(buf, &endp, 0);
-    printk("==%ld==\n",angle);
+    unsigned long angle = simple_strtoul(buf, &endp, 0);
 
     if (angle > 3 || angle < 0) {
         size = endp - buf;
         return count;
     }
-    ppmgr_device.global_angle = angle;
-    if (!ppmgr_device.use_prot) {
-        if (_ppmgr_angle_write(angle) < 0) {
-            return -EINVAL;
-        }
-    } else {
-       set_video_angle(angle);
+
+    if (_ppmgr_angle_write(angle) < 0) {
+        return -EINVAL;
     }
-/*
-    if(angle != ppmgr_device.angle ){
-        property_change = 1;
-    }
-    ppmgr_device.angle = angle;
-    ppmgr_device.videoangle = (ppmgr_device.angle+ ppmgr_device.orientation)%4;
-    printk("angle:%d,orientation:%d,videoangle:%d \n",ppmgr_device.angle ,
-    ppmgr_device.orientation, ppmgr_device.videoangle);
-*/
     size = endp - buf;
     return count;
 }
