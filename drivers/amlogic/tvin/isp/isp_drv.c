@@ -1188,6 +1188,7 @@ static int isp_probe(struct platform_device *pdev)
 	ret = device_create_file(devp->dev,&dev_attr_wave_param);
 	ret = device_create_file(devp->dev,&dev_attr_gamma_debug);
 	ret = device_create_file(devp->dev,&dev_attr_gamma);
+	ret = device_create_file(devp->dev,&dev_attr_lens);
 	if(ret < 0)
 		goto err;
 	
@@ -1219,6 +1220,7 @@ static int isp_remove(struct platform_device *pdev)
 	device_remove_file(devp->dev,&dev_attr_af_param);
 	device_remove_file(devp->dev,&dev_attr_cap_param);
 	device_remove_file(devp->dev,&dev_attr_wave_param);
+	device_remove_file(devp->dev,&dev_attr_lens);
 	
 	isp_delete_device(devp->index);
         tvin_unreg_frontend(&devp->frontend);
