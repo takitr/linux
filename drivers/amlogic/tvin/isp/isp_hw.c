@@ -937,12 +937,25 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     {
         yscale = 0x00000fff;
     }
+    pr_info("hmax:%u vmax:%u hcenter:%u vcenter:%u rradium:%u xscale:%u yscale:%u \n", 
+             hmax,vmax,hcenter,vcenter,rradium,xscale,yscale);
     for (i = 0; i < 32; i++)
     {
-        haxis[i] = (i*256*32 + xscale)/(xscale + xscale);
-        vaxis[i] = (i*256*32 + yscale)/(yscale + yscale);
+        haxis[i] = (i*256*32*2 + xscale)/(xscale + xscale);
+        vaxis[i] = (i*256*32*2 + yscale)/(yscale + yscale);
     }
-
+    pr_info(" haxis----\n");
+    pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+         haxis[0], haxis[1], haxis[2], haxis[3], haxis[4], haxis[5], haxis[6], haxis[7], haxis[8], haxis[9], \
+        haxis[10],haxis[11],haxis[12],haxis[13],haxis[14],haxis[15],haxis[16],haxis[17],haxis[18],haxis[19],\
+        haxis[20],haxis[21],haxis[22],haxis[23],haxis[24],haxis[25],haxis[26],haxis[27],haxis[28],haxis[29],\
+        haxis[30],haxis[31]);
+    pr_info(" vaxis----\n");
+    pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+         vaxis[0], vaxis[1], vaxis[2], vaxis[3], vaxis[4], vaxis[5], vaxis[6], vaxis[7], vaxis[8], vaxis[9], \
+        vaxis[10],vaxis[11],vaxis[12],vaxis[13],vaxis[14],vaxis[15],vaxis[16],vaxis[17],vaxis[18],vaxis[19],\
+        vaxis[20],vaxis[21],vaxis[22],vaxis[23],vaxis[24],vaxis[25],vaxis[26],vaxis[27],vaxis[28],vaxis[29],\
+        vaxis[30],vaxis[31]);
     // write lut
     WRITE_VCBUS_REG(0x2d28, control&0xefffffff); // disable lens shielding
     WRITE_VCBUS_REG(0x2d29, (xscale << 16)|
@@ -956,8 +969,8 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     {
         for (j = 0; j < 32; j++)
         {
-            dx = (haxis[i] > hcenter) ? (haxis[i] - hcenter) : (hcenter - haxis[i]);
-            dy = (vaxis[j] > vcenter) ? (vaxis[j] - vcenter) : (vcenter - vaxis[j]);
+            dx = (haxis[j] > hcenter) ? (haxis[j] - hcenter) : (hcenter - haxis[j]);
+            dy = (vaxis[i] > vcenter) ? (vaxis[i] - vcenter) : (vcenter - vaxis[i]);
             dy = (dy*psize_v2h + 50)/100;
             curve[i][j] = (phase_curve_grid(curvature_gr, gain_0db, dx, dy, rradium) << 24)|
                           (phase_curve_grid(curvature_r,  gain_0db, dx, dy, rradium) << 16)|
@@ -982,7 +995,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     pr_info(" Gb----\n");
     for (i = 0; i < 32; i++)
     {
-        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
          curve[i][0]&0xff, curve[i][1]&0xff, curve[i][2]&0xff, curve[i][3]&0xff, curve[i][4]&0xff, curve[i][5]&0xff, curve[i][6]&0xff, curve[i][7]&0xff, curve[i][8]&0xff, curve[i][9]&0xff, \
         curve[i][10]&0xff,curve[i][11]&0xff,curve[i][12]&0xff,curve[i][13]&0xff,curve[i][14]&0xff,curve[i][15]&0xff,curve[i][16]&0xff,curve[i][17]&0xff,curve[i][18]&0xff,curve[i][19]&0xff,\
         curve[i][20]&0xff,curve[i][21]&0xff,curve[i][22]&0xff,curve[i][23]&0xff,curve[i][24]&0xff,curve[i][25]&0xff,curve[i][26]&0xff,curve[i][27]&0xff,curve[i][28]&0xff,curve[i][29]&0xff,\
@@ -991,7 +1004,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     pr_info(" B----\n");
         for (i = 0; i < 32; i++)
     {
-        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
         ( curve[i][0]>>8)&0xff,( curve[i][1]>>8)&0xff,( curve[i][2]>>8)&0xff,( curve[i][3]>>8)&0xff,( curve[i][4]>>8)&0xff,( curve[i][5]>>8)&0xff,( curve[i][6]>>8)&0xff,( curve[i][7]>>8)&0xff,( curve[i][8]>>8)&0xff,( curve[i][9]>>8)&0xff, \
         (curve[i][10]>>8)&0xff,(curve[i][11]>>8)&0xff,(curve[i][12]>>8)&0xff,(curve[i][13]>>8)&0xff,(curve[i][14]>>8)&0xff,(curve[i][15]>>8)&0xff,(curve[i][16]>>8)&0xff,(curve[i][17]>>8)&0xff,(curve[i][18]>>8)&0xff,(curve[i][19]>>8)&0xff,\
         (curve[i][20]>>8)&0xff,(curve[i][21]>>8)&0xff,(curve[i][22]>>8)&0xff,(curve[i][23]>>8)&0xff,(curve[i][24]>>8)&0xff,(curve[i][25]>>8)&0xff,(curve[i][26]>>8)&0xff,(curve[i][27]>>8)&0xff,(curve[i][28]>>8)&0xff,(curve[i][29]>>8)&0xff,\
@@ -1000,7 +1013,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     pr_info(" R----\n");
         for (i = 0; i < 32; i++)
     {
-        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
         ( curve[i][0]>>16)&0xff,( curve[i][1]>>16)&0xff,( curve[i][2]>>16)&0xff,( curve[i][3]>>16)&0xff,( curve[i][4]>>16)&0xff,( curve[i][5]>>16)&0xff,( curve[i][6]>>16)&0xff,( curve[i][7]>>16)&0xff,( curve[i][8]>>16)&0xff,( curve[i][9]>>16)&0xff, \
         (curve[i][10]>>16)&0xff,(curve[i][11]>>16)&0xff,(curve[i][12]>>16)&0xff,(curve[i][13]>>16)&0xff,(curve[i][14]>>16)&0xff,(curve[i][15]>>16)&0xff,(curve[i][16]>>16)&0xff,(curve[i][17]>>16)&0xff,(curve[i][18]>>16)&0xff,(curve[i][19]>>16)&0xff,\
         (curve[i][20]>>16)&0xff,(curve[i][21]>>16)&0xff,(curve[i][22]>>16)&0xff,(curve[i][23]>>16)&0xff,(curve[i][24]>>16)&0xff,(curve[i][25]>>16)&0xff,(curve[i][26]>>16)&0xff,(curve[i][27]>>16)&0xff,(curve[i][28]>>16)&0xff,(curve[i][29]>>16)&0xff,\
@@ -1009,7 +1022,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     pr_info(" Gr----\n");
         for (i = 0; i < 32; i++)
     {
-        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
+        pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u \n", \
         ( curve[i][0]>>24)&0xff,( curve[i][1]>>24)&0xff,( curve[i][2]>>24)&0xff,( curve[i][3]>>24)&0xff,( curve[i][4]>>24)&0xff,( curve[i][5]>>24)&0xff,( curve[i][6]>>24)&0xff,( curve[i][7]>>24)&0xff,( curve[i][8]>>24)&0xff,( curve[i][9]>>24)&0xff, \
         (curve[i][10]>>24)&0xff,(curve[i][11]>>24)&0xff,(curve[i][12]>>24)&0xff,(curve[i][13]>>24)&0xff,(curve[i][14]>>24)&0xff,(curve[i][15]>>24)&0xff,(curve[i][16]>>24)&0xff,(curve[i][17]>>24)&0xff,(curve[i][18]>>24)&0xff,(curve[i][19]>>24)&0xff,\
         (curve[i][20]>>24)&0xff,(curve[i][21]>>24)&0xff,(curve[i][22]>>24)&0xff,(curve[i][23]>>24)&0xff,(curve[i][24]>>24)&0xff,(curve[i][25]>>24)&0xff,(curve[i][26]>>24)&0xff,(curve[i][27]>>24)&0xff,(curve[i][28]>>24)&0xff,(curve[i][29]>>24)&0xff,\
