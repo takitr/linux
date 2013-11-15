@@ -3645,7 +3645,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
                 para.v_active = fh->dev->cur_resolution_param->active_frmsize.height;
                 para.hs_bp = 0;
                 para.vs_bp = 2;
-                para.cfmt = TVIN_NV21;
                 para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
         } else {
                 para.frame_rate = ov5640_frmintervals_active.denominator;;
@@ -3653,12 +3652,13 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
                 para.v_active = fh->dev->cur_resolution_param->active_frmsize.height;
                 para.hs_bp = 0;
                 para.vs_bp = 2;
-                para.cfmt = TVIN_NV21;
                 para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
         }
 
         printk("ov5640: h_active = %d; v_active = %d, frame_rate=%d\n",
                         para.h_active, para.v_active, para.frame_rate);
+        para.cfmt = TVIN_YUV422;
+        para.dfmt = TVIN_NV21;
         para.hsync_phase = 1;
         para.vsync_phase  = 1;    
         para.skip_count =  2;

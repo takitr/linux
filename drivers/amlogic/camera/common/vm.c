@@ -500,16 +500,43 @@ static inline void vm_vf_put_from_provider(vframe_t *vf)
 *   main task functions.
 *
 *************************************************/
+static unsigned int print_ifmt=0;
+module_param(print_ifmt, uint, 0644);
+MODULE_PARM_DESC(print_ifmt, "print input format\n");
+
 static int get_input_format(vframe_t* vf)
 {
-	int format= GE2D_FORMAT_M24_YUV420;
-
-	if(vf->type&VIDTYPE_VIU_422)
-		format =  GE2D_FORMAT_S16_YUV422;
-	else
-		format =  GE2D_FORMAT_M24_YUV420;
-
-	return format;
+        int format= GE2D_FORMAT_M24_NV21;
+        if(vf->type&VIDTYPE_VIU_422){
+                if(vf->type &VIDTYPE_INTERLACE_BOTTOM){
+                        format =  GE2D_FORMAT_S16_YUV422|(GE2D_FORMAT_S16_YUV422B & (3<<3));
+                }else if(vf->type &VIDTYPE_INTERLACE_TOP){
+                        format =  GE2D_FORMAT_S16_YUV422|(GE2D_FORMAT_S16_YUV422T & (3<<3));
+                }else{
+                        format =  GE2D_FORMAT_S16_YUV422;
+                }
+        }else if(vf->type&VIDTYPE_VIU_NV21){
+                if(vf->type &VIDTYPE_INTERLACE_BOTTOM){
+                        format =  GE2D_FORMAT_M24_NV21|(GE2D_FORMAT_M24_NV21B & (3<<3));
+                }else if(vf->type &VIDTYPE_INTERLACE_TOP){
+                        format =  GE2D_FORMAT_M24_NV21|(GE2D_FORMAT_M24_NV21T & (3<<3));
+                }else{
+                        format =  GE2D_FORMAT_M24_NV21;
+                }
+        } else{
+                if(vf->type &VIDTYPE_INTERLACE_BOTTOM){
+                        format =  GE2D_FORMAT_M24_YUV420|(GE2D_FMT_M24_YUV420B & (3<<3));
+                }else if(vf->type &VIDTYPE_INTERLACE_TOP){
+                        format =  GE2D_FORMAT_M24_YUV420|(GE2D_FORMAT_M24_YUV420T & (3<<3));
+                }else{
+                        format =  GE2D_FORMAT_M24_YUV420;
+                }
+        }
+        if (1==print_ifmt) {
+                printk("VIDTYPE_VIU_NV21=%x, vf->type=%x, format=%x\n", VIDTYPE_VIU_NV21, vf->type, format);
+                print_ifmt = 0;
+        }
+        return format;
 }
 
 #ifdef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER

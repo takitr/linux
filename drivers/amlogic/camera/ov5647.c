@@ -3409,6 +3409,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.hs_bp = 0;
     para.vs_bp = 2;
     para.cfmt = TVIN_YUV422;
+    para.dfmt = TVIN_NV21;
     para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
     para.bt_path = dev->cam_info.bt_path;
     current_fmt = 0;
