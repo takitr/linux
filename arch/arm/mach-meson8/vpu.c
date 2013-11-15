@@ -14,7 +14,9 @@
 #include <plat/io.h>
 #include <mach/am_regs.h>
 #include <mach/vpu.h>
+#ifdef CONFIG_SMP
 #include <mach/smp.h>
+#endif
 #include <linux/amlogic/vout/vinfo.h>
 
 #define VPU_VERION	"v03"
