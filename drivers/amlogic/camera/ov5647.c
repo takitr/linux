@@ -1785,7 +1785,7 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 	{0xffff, 0xff},
 };
 
-static resolution_param_t  prev_resolution_array[] = {
+static resolution_param_t  debug_prev_resolution_array[] = {
 	{
 		.frmsize			= {640, 480},
 		.active_frmsize		= {352, 288},
@@ -1823,11 +1823,52 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},{
 		.frmsize			= {2592, 1944},
-		.active_frmsize		        = {2592, 1944},
+		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
+		.size_type			= SIZE_H1080P_2592X1944,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
-	},
+	}
+};
+
+
+static resolution_param_t  prev_resolution_array[] = {
+	{
+		.frmsize			= {640, 480},
+		.active_frmsize		= {352, 288},
+		.active_fps			= 30,
+		.size_type			= SIZE_CIF_352X288,
+		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	}, {
+		.frmsize			= {640, 480},
+		.active_frmsize		= {640, 480},
+		.active_fps			= 30,
+		.size_type			= SIZE_VGA_640X480,
+		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	}, {
+		.frmsize			= {1280, 720},
+		.active_frmsize		= {1280, 720},
+		.active_fps			= 30,
+		.size_type			= SIZE_720P_1280X720,
+		.reg_script[0]			= OV5647_preview_720P_script,
+		.reg_script[1]			= OV5647_720P_script_mipi,
+	}, {
+		.frmsize			= {1280, 960},
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
+		.size_type			= SIZE_960P_1280X960,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
+	}, {
+		.frmsize			= {1920, 1080},
+		.active_frmsize		= {1920, 1080},
+		.active_fps			= 15,
+		.size_type			= SIZE_1080P_1920X1080,
+		.reg_script[0]			= OV5647_preview_1080P_script,
+		.reg_script[1]			= OV5647_1080P_script_mipi,
+	}
 };
 	
 
@@ -2643,8 +2684,8 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
         tmp_resolution_param = capture_resolution_array;
         arry_size = ARRAY_SIZE(capture_resolution_array);
     } else {
-        tmp_resolution_param = prev_resolution_array;
-        arry_size = ARRAY_SIZE(prev_resolution_array);
+        tmp_resolution_param = debug_prev_resolution_array;
+        arry_size = ARRAY_SIZE(debug_prev_resolution_array);
     }
     for (i = 0; i < arry_size; i++) {
         if (tmp_resolution_param[i].size_type == res_type)
@@ -2661,7 +2702,7 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     int i=0;
     unsigned char t = dev->cam_info.interface;
     if(i_index != -1 && is_capture == 0){
-        res_param = &prev_resolution_array[i_index];
+        res_param = &debug_prev_resolution_array[i_index];
     }
     if (!res_param->reg_script[t]) {
         printk("error, resolution reg script is NULL\n");
@@ -3473,7 +3514,7 @@ static ssize_t manual_format_store(struct class *cls,struct class_attribute *att
 		printk("wrong res\n");
 		return len;
 	}
-	res_param = &prev_resolution_array[t_index];	
+	res_param = &debug_prev_resolution_array[t_index];	
 	dest_hactive = res_param->active_frmsize.width;
     dest_vactive = res_param->active_frmsize.height;
     printk("d_h:%d,d_v:%d\n",dest_hactive,dest_vactive);
