@@ -38,10 +38,10 @@
 #include <media/v4l2-chip-ident.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
+#include <linux/amlogic/vmapi.h>
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include "common/plat_ctrl.h"
-#include "common/vmapi.h"
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>

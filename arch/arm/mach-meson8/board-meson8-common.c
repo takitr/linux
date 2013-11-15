@@ -44,6 +44,9 @@
 #endif
 #include <linux/syscore_ops.h>
 #include <mach/am_regs.h>
+
+#include <linux/amlogic/vmapi.h>
+
 static void meson_map_board_io(void);
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
@@ -60,6 +63,9 @@ static __init void meson8_reserve(void)
       *   flushing valid data on "zero address"
       */
     memblock_reserve(PHYS_OFFSET,__pa(swapper_pg_dir) - PHYS_OFFSET);
+#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER && CONFIG_CMA
+    vm_reserve_cma();
+#endif
 }
 
 __initdata struct map_desc meson_board_io_desc[1];

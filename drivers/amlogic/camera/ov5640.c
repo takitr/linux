@@ -37,6 +37,7 @@
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
+#include <linux/amlogic/vmapi.h>
 
 #include <mach/am_regs.h>
 //#include <mach/am_eth_pinmux.h>
@@ -44,7 +45,6 @@
 #include <mach/gpio.h>
 
 #include "common/plat_ctrl.h"
-#include "common/vmapi.h"
 #include "common/vm.h"
 #include "ov5640_firmware.h"
 

@@ -39,13 +39,13 @@
 
 #include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
+#include <linux/amlogic/vmapi.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 //#include <media/amlogic/656in.h>
 #include "common/plat_ctrl.h"
-#include "common/vmapi.h"
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>

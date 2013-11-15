@@ -44,16 +44,17 @@
 #include <media/videobuf-dma-sg.h>
 #include <media/videobuf-res.h>
 
+#include <linux/amlogic/vmapi.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
 #include <linux/ctype.h>
 #include <linux/of.h>
 
 #include <linux/sizes.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-contiguous.h>
 
 /*class property info.*/
 #include "vmcls.h"
-#include "vmapi.h"
 
 static int task_running = 0;
 
@@ -91,7 +92,9 @@ A%BA%E5%91%98%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99/%E5%9F%BA%E7%A1%80%E6%A8%A1%E5
 
 static int test_zoom = 0;
 
+static void vm_cache_flush(unsigned buf_start , unsigned buf_size);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
+static struct platform_device vm_plat_dev;
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 #endif
@@ -174,59 +177,6 @@ static inline void ptr_atomic_wrap_inc(u32 *ptr)
 #endif
 
 
-void set_vm_buf_info(resource_size_t start,unsigned int size);
-void unset_vm_buf_info(void);
-static void vm_cache_flush(unsigned buf_start , unsigned buf_size );
-#ifdef CONFIG_CMA
-static dma_addr_t vm_buf_phys = ~0;
-static void *vm_buf_virt;
-static size_t vm_buf_size;
-
-int vm_init_buf(size_t size)
-{
-
-    if(size ==0)
-        return -1;
-
-    if(vm_buf_phys != ~0)
-    {
-        //pr_info("phys already in use phys %p, virt %p\n", vm_buf_phys, vm_buf_virt);
-        dma_free_coherent(NULL, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-    }
-
-    //pr_info("... allocating ...\n");
-    vm_buf_virt = dma_alloc_coherent(NULL, size, &vm_buf_phys, GFP_KERNEL);
-
-    //pr_info("chris allocating virt %p, phys %p\n", vm_buf_virt, vm_buf_phys);
-    if(vm_buf_virt == 0)
-        return -1;
-        //goto tryagain;
-    else
-        set_vm_buf_info(vm_buf_phys, size);
-
-    vm_buf_size = size;
-    return 0;
-}
-
-EXPORT_SYMBOL(vm_init_buf);
-
-void vm_deinit_buf()
-{
-    if(0 == vm_buf_size)
-        return;
-
-    unset_vm_buf_info();
-    if(vm_buf_phys != ~0)
-    {
-        dma_free_coherent(NULL, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-        vm_buf_phys = ~0;
-        vm_buf_virt = 0;
-        vm_buf_size = 0;
-    }
-}
-
-EXPORT_SYMBOL(vm_deinit_buf);
-#endif
 
 int start_vm_task(void) ;
 int start_simulate_task(void);
@@ -1752,6 +1702,75 @@ int uninit_vm_device(void)
 	return  0;
 }
 
+
+#ifdef CONFIG_CMA
+
+void set_vm_buf_info(resource_size_t start,unsigned int size);
+void unset_vm_buf_info();
+
+static dma_addr_t vm_buf_phys = ~0;
+static void *vm_buf_virt;
+static size_t vm_buf_size;
+
+int vm_init_buf(size_t size)
+{
+
+    if(size ==0)
+        return;
+
+    if(vm_buf_phys != ~0)
+    {
+        pr_info("phys already in use phys %p, virt %p, size %d\n", vm_buf_phys, vm_buf_virt, size/1024);
+        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+    }
+
+    vm_buf_virt = dma_alloc_coherent(&vm_plat_dev.dev, size, &vm_buf_phys, GFP_KERNEL);
+
+    pr_info("%s: allocating virt %p, phys %p, size %dk\n", __func__, vm_buf_virt, vm_buf_phys, size/1024);
+    if(vm_buf_virt == 0)
+    {
+        pr_err("CMA failed to allocate dma buffer\n");
+        return -1;
+    }
+    else
+        set_vm_buf_info(vm_buf_phys, size);
+
+    vm_buf_size = size;
+    return 0;
+}
+
+EXPORT_SYMBOL(vm_init_buf);
+
+void vm_deinit_buf()
+{
+    if(0 == vm_buf_size)
+    {
+        pr_warn("vm buf size equals 0\n");
+        return;
+    }
+    unset_vm_buf_info();
+    if(vm_buf_phys != ~0)
+    {
+        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+        vm_buf_phys = ~0;
+        vm_buf_virt = 0;
+        vm_buf_size = 0;
+    }
+    pr_info("%s\n", __func__);
+}
+
+EXPORT_SYMBOL(vm_deinit_buf);
+
+void __init vm_reserve_cma(void)
+{
+    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 68 * SZ_1M, 0, 0);
+    if(ret)
+        pr_err("%s : dma_declare_contiguous failed\n", __func__);
+}
+#endif
+
+
+
 /*******************************************************************
  *
  * interface for Linux driver
@@ -1780,6 +1799,8 @@ static int vm_driver_probe(struct platform_device *pdev)
 #endif
 
 	init_vm_device();
+
+
 	return 0;
 }
 
@@ -1799,6 +1820,16 @@ static const struct of_device_id amlogic_vm_dt_match[]={
 #else
 #define amlogic_vm_dt_match NULL
 #endif
+
+
+static struct platform_device vm_plat_dev = 
+{
+    .name = "vm",
+    .id = 0,
+    .dev = {
+        .coherent_dma_mask = ~0,
+    }
+};
 
 /* general interface for a linux driver .*/
 static struct platform_driver vm_drv = {
@@ -1822,6 +1853,9 @@ vm_init_module(void)
 		return err;
 	}
 
+    err = platform_device_register(&vm_plat_dev);
+    if(err)
+        platform_driver_unregister(&vm_drv);
 	return err;
 }
 
@@ -1829,6 +1863,7 @@ static void __exit
 vm_remove_module(void)
 {
 	platform_driver_unregister(&vm_drv);
+    platform_device_unregister(&vm_plat_dev);
 	amlog_level(LOG_LEVEL_HIGH,"vm module removed.\n");
 }
 

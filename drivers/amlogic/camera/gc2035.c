@@ -37,12 +37,12 @@
 #include <linux/i2c.h>
 #include <media/v4l2-chip-ident.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
+#include <linux/amlogic/vmapi.h>
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
 #include <mach/gpio.h>
 #include "common/plat_ctrl.h"
-#include "common/vmapi.h"
 #include <mach/mod_gate.h>
 
 #define gc2035_CAMERA_MODULE_NAME "gc2035"
@@ -2960,7 +2960,7 @@ static int gc2035_open(struct file *file)
 	int retval = 0;
 
 #if CONFIG_CMA
-    retval = vm_init_buf(32*SZ_1M);
+    retval = vm_init_buf(16*SZ_1M);
     if(retval <0)
     {
         pr_err("%s : Allocation from CMA failed\n", __func__);
