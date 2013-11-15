@@ -32,8 +32,7 @@ void isp_top_init(xml_top_t *top,unsigned int w,unsigned int h)
 	unsigned short offset[XML_TOP]={
 		0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0xaf
 	};
-	int i = 0;	
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
+	int i = 0;
 	if(top){
 		//for(i=0;i < XML_TOP;i++)
 //			WR(ISP_VCBUS_BASE+offset[i],top->reg_map[i]);
@@ -49,12 +48,11 @@ void isp_top_init(xml_top_t *top,unsigned int w,unsigned int h)
 void isp_set_test_pattern(xml_tp_t *tp)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(tp){
 		for(i=0;i<XML_TP;i++)
 			WR(ISP_PAT_GEN_CTRL+i,tp->reg_map[i]);
 	} else {
-		
+
 	}
 	return;
 }
@@ -64,7 +62,6 @@ void isp_set_test_pattern(xml_tp_t *tp)
 void isp_set_clamp_gain(xml_cg_t *cg)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(cg){
 		for(i=0;i<XML_CG;i++)
 		        WR(ISP_CLAMPGAIN_CTRL+i, cg->reg_map[i]);
@@ -77,8 +74,7 @@ void isp_set_clamp_gain(xml_cg_t *cg)
 void isp_set_lens_shading(xml_ls_t *lens)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
-	if(lens){		
+	if(lens){
 		for(i=0;i<XML_LS;i++)
 		        WR(ISP_LNS_CTRL+i, lens->reg_map[i]);
 	}
@@ -89,8 +85,7 @@ void isp_set_lens_shading(xml_ls_t *lens)
 void isp_set_gamma_correction(xml_gc_t *gc)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
-	if(gc){		
+	if(gc){
 		for(i=0;i<XML_GC;i++)
 		        WR(ISP_GMR0_CTRL+i, gc->reg_map[i]);
 	}
@@ -105,7 +100,6 @@ void isp_set_defect_pixel_correction(xml_dp_t *dpc)
 	unsigned short offset[XML_DP]={
 		0x31,0x33,0x34,0x35,0x36,0x37,0x38,0x39,0x3a,0x3b,0x3c
 	};
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(dpc){
 		for(i=0;i<XML_DP;i++)
 		        WR(ISP_VCBUS_BASE+offset[i], dpc->reg_map[i]);
@@ -117,7 +111,6 @@ void isp_set_defect_pixel_correction(xml_dp_t *dpc)
 void isp_set_demosaicing(xml_dm_t *dms)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(dms){
 		for(i=0;i<XML_DM;i++)
 		        WR(ISP_DMS_CTRL0+i, dms->reg_map[i]);
@@ -139,7 +132,6 @@ void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 		//rgb->709
 	};
 	unsigned int i=0, *start;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(csc){
 		start = &(csc->reg_map[0]);
 		if(height > 720)
@@ -153,10 +145,10 @@ void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 	}
 }
 /*
-*reg 0x50 
-*reg 0x52 0x53 0x54 0x55 0x56 0x57 0x58 0x59 0x5a 0x5b 
-*reg 0x60 0x61 0x62 0x63 0x64 0x65 0x66 
-*reg 0x72 0x73 0x74 0x75 0x76 0x78 0x79 0x7a 0x7b 
+*reg 0x50
+*reg 0x52 0x53 0x54 0x55 0x56 0x57 0x58 0x59 0x5a 0x5b
+*reg 0x60 0x61 0x62 0x63 0x64 0x65 0x66
+*reg 0x72 0x73 0x74 0x75 0x76 0x78 0x79 0x7a 0x7b
 *reg 0x80 0x81 0x82 0x83 0x84 0x85(special effect )
 */
 void isp_set_sharpness(xml_sharp_t *sharp)
@@ -167,15 +159,14 @@ void isp_set_sharpness(xml_sharp_t *sharp)
 		0x60,0x61,0x62,0x63,0x64,0x65,0x66,0x72,0x73,0x74,0x75,
 		0x76,0x78,0x79,0x7a,0x7b,0x80,0x81,0x82,0x83,0x84,0x85
 	};
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(sharp){
 		for(i=0;i<XML_SH;i++)
-			WR(ISP_VCBUS_BASE+offset[i], sharp->reg_map[i]);		
+			WR(ISP_VCBUS_BASE+offset[i], sharp->reg_map[i]);
 	}
 }
 /*
 *reg 0x50~0x51
-*reg 0x68~0x71 
+*reg 0x68~0x71
 *reg 0x85
 */
 void isp_set_nr(xml_nr_t *nr)
@@ -185,7 +176,6 @@ void isp_set_nr(xml_nr_t *nr)
 		0x50,0x51,0x68,0x69,0x6a,0x6b,0x6c,
 		0x6d,0x6e,0x6f,0x70,0x71,0x85
 	};
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(nr){
 		for(i=0;i<XML_NR;i++)
 			WR(ISP_VCBUS_BASE+offset[i], nr->reg_map[i]);
@@ -197,7 +187,6 @@ void isp_set_nr(xml_nr_t *nr)
 void isp_set_awb_stat(xml_awb_t *awbs,unsigned int w,unsigned int h)
 {
 	int i = 0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(awbs){
 		for(i=0;i<XML_AWB;i++)
 			WR(ISP_AWB_WIND_LR+i, awbs->reg_map[i]);
@@ -216,7 +205,6 @@ void isp_set_ae_stat(xml_ae_t *aes,unsigned int w,unsigned int h)
 	unsigned short offset[XML_AE]={
 		0x8c,0x90,0x91,0x92,0x93,0x94
 	};
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(aes){
 		for(i=0;i<XML_AE;i++)
 			WR(ISP_VCBUS_BASE+offset[i],aes->reg_map[i]);
@@ -236,7 +224,6 @@ void isp_set_ae_stat(xml_ae_t *aes,unsigned int w,unsigned int h)
 void isp_set_af_stat(xml_af_t *afs,unsigned int w,unsigned int h)
 {
 	unsigned int i=0,tmp_w=0,tmp_h=0;
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
 	if(afs){
 		for(i=0;i<XML_AF;i++)
 			WR(ISP_AFC_FILTER_SEL+i, afs->reg_map[i]);
@@ -259,7 +246,7 @@ void isp_set_af_stat(xml_af_t *afs,unsigned int w,unsigned int h)
 	WR(ISP_AFC_WIND3_TB,(tmp_h<<3)<<16|tmp_h*11);
 	/*wind4 h:8-11 v:8-11*/
 	WR(ISP_AFC_WIND4_LR,(tmp_w<<3)<<16|tmp_w*11);
-	WR(ISP_AFC_WIND4_TB,(tmp_h<<3)<<16|tmp_h*11);	
+	WR(ISP_AFC_WIND4_TB,(tmp_h<<3)<<16|tmp_h*11);
 }
 /*
 *reg 0xac~0xae
@@ -285,7 +272,12 @@ void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned
 	WR(ISP_BLNR_WIND_LR, x1|x0<<16);
 	WR(ISP_BLNR_WIND_TB, y1|y0<<16);
 	WR_BITS(ISP_BLNR_CTRL,1,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
-	
+
+
+	WR(ISP_AFC_WIND0_LR,x1|x0<<16);
+	WR(ISP_AFC_WIND0_TB,y1|y0<<16);
+	WR(ISP_AFC_FILTER_SEL,0x000170f0);
+
 }
 /*
 *reg 0xb0~0xb1
@@ -329,16 +321,16 @@ static void isp_set_gamma_table(struct xml_lut_gc_s *gt)
 void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h)
 {
 	unsigned int mux = 0;
-	switch(fe_port){			
-		case TVIN_PORT_CAMERA:				
-			mux = 1;				
-			break;			
-		case TVIN_PORT_MIPI:	
-			mux = 2;				
-			break;			
-		default:				
-			mux = 0;				
-			break;		
+	switch(fe_port){
+		case TVIN_PORT_CAMERA:
+			mux = 1;
+			break;
+		case TVIN_PORT_MIPI:
+			mux = 2;
+			break;
+		default:
+			mux = 0;
+			break;
 	}
 	WR_BITS(VPU_MISC_CTRL,mux,ISP_IN_SEL_BIT,ISP_IN_SEL_WID);
 	isp_top_init(&regs->top,w,h);
@@ -358,7 +350,7 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	//isp_set_dbg(&regs->dbg);
 	isp_set_lnsd(&regs->lnsd);
 	isp_set_gamma_table(&regs->lut_gc);
-	pr_info("[%s..]%s: init ok.\n",DEVICE_NAME,__func__);
+	pr_info("[%s..]%s: init ok(w:%d,h:%d).\n",DEVICE_NAME,__func__,w,h);
 }
 /*
 *just enable test pattern
@@ -407,7 +399,7 @@ void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsi
         WRITE_VCBUS_REG(ISP_MATRIX_COEF22,    0x000003eb);
         WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST0_1, 0x00000200);
         WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST2,   0x00000200);
-		
+
         WRITE_VCBUS_REG(ISP_RST_DLY_NUM,htotal*6);
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,1,28,1);
 }
@@ -453,7 +445,7 @@ void flash_init(bool mode_pol_inv,bool led1_pol_inv,bool pin_mux_inv,wave_t *wav
 void torch_init(bool mode_pol_inv,bool led1_pol_inv,bool pin_mux_inv,bool torch_pol_inv,wave_t *wave_param,unsigned int level)
 {
         unsigned int pulse_qty = 0;
-	
+
 	wave_init(wave_param);
 	// MODE pin
 	//if (mode_pol_inv)
@@ -528,7 +520,7 @@ void isp_wr(unsigned int addr,unsigned int data)
 unsigned int isp_rd(unsigned int addr)
 {
 	WR(ISP_RO_ADDR_PORT,addr);
-        return(RD(ISP_RO_DATA_PORT));	
+        return(RD(ISP_RO_DATA_PORT));
 }
 /*
 *reg 0x00~0x1b
@@ -615,7 +607,7 @@ void isp_get_ae_stat(isp_ae_stat_t *ae_stat)
 	ae_stat->bayer_over_info[1] = RD(ISP_RO_DATA_PORT);
 	WR(ISP_RO_ADDR_PORT, ISP_RO_AECRAW_NUM_BLUE);
 	ae_stat->bayer_over_info[2] = RD(ISP_RO_DATA_PORT);
-	
+
 	return;
 }
 
@@ -625,7 +617,7 @@ void isp_set_ae_win(unsigned int left, unsigned int right, unsigned int top, uns
 	WR_BITS(ISP_AECRAW_WIND_LR, right, AECRAW_WIND_RIGHT_BIT, AECRAW_WIND_RIGHT_WID);
 	WR_BITS(ISP_AECRAW_WIND_TB, top, AECRAW_WIND_TOP_BIT, AECRAW_WIND_TOP_WID);
 	WR_BITS(ISP_AECRAW_WIND_TB, bottom, AECRAW_WIND_BOT_BIT, AECRAW_WIND_BOT_WID);
-	
+
 	WR_BITS(ISP_AEC_WIND_XYSTART, left, AEC_WIND_XSTART_BIT, AEC_WIND_XSTART_WID);
 	WR_BITS(ISP_AEC_WIND_XYSTART, top, AEC_WIND_YSTART_BIT, AEC_WIND_YSTART_WID);
 	WR_BITS(ISP_AEC_WIND_XYSTEP, (right-left+1)>>2, AEC_WIND_XSTEP_BIT, AEC_WIND_XSTEP_WID);
@@ -653,14 +645,14 @@ void isp_set_awb_yuv_thr(unsigned char yh, unsigned char yl, unsigned char u, un
 	WR_BITS(ISP_AWB_UVTH_YPIECE, yh, AWB_YPIECE_HIG_BIT, AWB_YPIECE_HIG_WID);
 	WR_BITS(ISP_AWB_UVTH_YPIECE, yl, AWB_YPIECE_LOW_BIT, AWB_YPIECE_LOW_WID);
 	WR_BITS(ISP_AWB_UVTH_YPIECE, u, AWB_U_THRD_BIT, AWB_U_THRD_WID);
-	WR_BITS(ISP_AWB_UVTH_YPIECE, v, AWB_V_THRD_BIT, AWB_V_THRD_WID);	
+	WR_BITS(ISP_AWB_UVTH_YPIECE, v, AWB_V_THRD_BIT, AWB_V_THRD_WID);
 }
 
 void isp_set_awb_rgb_thr(unsigned char gb, unsigned char gr, unsigned br)
 {
 	WR_BITS(ISP_AWB_GBGRBR_THRD, gb, AWB_GB_THRD_BIT, AWB_GB_THRD_WID);
 	WR_BITS(ISP_AWB_GBGRBR_THRD, gr, AWB_GR_THRD_BIT, AWB_GR_THRD_WID);
-	WR_BITS(ISP_AWB_GBGRBR_THRD, br, AWB_BR_THRD_BIT, AWB_BR_THRD_WID);	
+	WR_BITS(ISP_AWB_GBGRBR_THRD, br, AWB_BR_THRD_BIT, AWB_BR_THRD_WID);
 }
 
 void isp_get_af_stat(isp_af_stat_t * af_stat)
@@ -678,22 +670,24 @@ void isp_get_af_stat(isp_af_stat_t * af_stat)
 
 void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
 {
-	int i = 0;
+	int i = 0, af = isp_rd(ISP_RO_AFC_WIND0_F0);
+
 	for(i=0;i<4;i++){
 		blnr_stat->dc[i] = isp_rd(ISP_RO_BLNR_GRBG_DCSUM0+i);
 		blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);
+		blnr_stat->ac[i] = af;
 	}
-	
+
 	return;
 }
 
 void isp_hw_reset()
 {
-	WR_BITS(ISP_TIMING_MODE,1,5,1);			
-	WR_BITS(ISP_FRM_SOFT_RST,1,0,1);			
-	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);			
-	WR_BITS(ISP_FRM_SOFT_RST,1,0,1);			
-	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);			
+	WR_BITS(ISP_TIMING_MODE,1,5,1);
+	WR_BITS(ISP_FRM_SOFT_RST,1,0,1);
+	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
+	WR_BITS(ISP_FRM_SOFT_RST,1,0,1);
+	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
 	WR_BITS(ISP_TIMING_MODE,0,5,1);
 }
 
@@ -701,7 +695,7 @@ void isp_awb_set_gain(unsigned int r,unsigned int g,unsigned int b)
 {
 	WR_BITS(ISP_GAIN_GRBG01, g, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
 	WR_BITS(ISP_GAIN_GRBG01, r, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
-	WR_BITS(ISP_GAIN_GRBG23, b, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);	
+	WR_BITS(ISP_GAIN_GRBG23, b, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);
 	WR_BITS(ISP_GAIN_GRBG23, g, GAIN_GRBG3_BIT, GAIN_GRBG3_WID);
 }
 
@@ -714,7 +708,7 @@ void isp_awb_get_gain(isp_awb_gain_t *awb_gain)
 
 void set_isp_gamma_table(unsigned short *gamma,unsigned int type)
 {
-	unsigned int flag = 0,i = 0; 
+	unsigned int flag = 0,i = 0;
 
         // store gamma table enable/disable status
         flag = (RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID))|gamma_enable;
@@ -732,11 +726,11 @@ void set_isp_gamma_table(unsigned short *gamma,unsigned int type)
         // retrieve gamma table enable/disable status, gamma table hardware mode
         WR_BITS(ISP_GMR0_CTRL, flag,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
 	WR_BITS(ISP_GMR0_CTRL,0,GCLUT_ACCMODE_BIT,GCLUT_ACCMODE_WID);
-	
+
 }
 void get_isp_gamma_table(unsigned short *gamma,unsigned int type)
 {
-	unsigned int flag = 0,i = 0; 
+	unsigned int flag = 0,i = 0;
 
         // store gamma table enable/disable status
         flag = RD_BITS(ISP_GMR0_CTRL,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
@@ -830,7 +824,7 @@ static unsigned int phase_curve_grid(unsigned int curvature, unsigned int gain_0
         else
         {
             data = gain_0db - data;
-        }                
+        }
     }
     else
     {
@@ -875,7 +869,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     unsigned int haxis[32], vaxis[32], curve[32][32];
     unsigned int hmax = 0, vmax = 0, vcenter = 0, hcenter = 0, rradium = 0, xscale = 0, yscale = 0;
     unsigned int i = 0, j = 0, dx = 0, dy = 0, data = 0, control = READ_VCBUS_REG(0x2d28);
-  
+
     // validation
     if ((psize_v2h < 50) || (psize_v2h > 200))
     {
@@ -887,7 +881,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
     {
         hactive = 1920;
         vactive = 1080;
-    }  
+    }
 #endif
     if ((!ocenter_c2l) || (ocenter_c2l > 100))
     {
@@ -941,7 +935,7 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
         yscale = 0x00000fff;
     }
 #if 0
-    pr_info("hmax:%u vmax:%u hcenter:%u vcenter:%u rradium:%u xscale:%u yscale:%u \n", 
+    pr_info("hmax:%u vmax:%u hcenter:%u vcenter:%u rradium:%u xscale:%u yscale:%u \n",
              hmax,vmax,hcenter,vcenter,rradium,xscale,yscale);
 #endif
     for (i = 0; i < 32; i++)
@@ -1032,5 +1026,5 @@ void isp_ls_curve(unsigned int psize_v2h,    // pixel_size_percentage_vertical_t
         (curve[i][30]>>24)&0xff,(curve[i][31]>>24)&0xff);
     }
     pr_info(" -------end------\n");
-    
+
 }

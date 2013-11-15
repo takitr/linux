@@ -34,8 +34,8 @@
 #include "../tvin_frontend.h"
 #include "../tvin_format_table.h"
 
-#include "isp_drv.h" 
-#include "isp_tool.h" 
+#include "isp_drv.h"
+#include "isp_tool.h"
 #include "isp_sm.h"
 #include "isp_regs.h"
 
@@ -56,16 +56,17 @@ static unsigned int isr_debug = 0;
 static volatile unsigned int ae_flag = 0;
 static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
+static unsigned int af_ave_step_en = 1;
 
 static void parse_param(char *buf_orig,char **parm)
 {
 	char *ps, *token;
 	unsigned int n=0;
 	ps = buf_orig;
-	
+
         if(isp_debug)
 		pr_info("%s parm:%s",__func__,buf_orig);
-        
+
         while(1) {
                 token = strsep(&ps, " \n");
                 if (token == NULL)
@@ -173,7 +174,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		af->post_step = data[7];
 		af->pre_threshold = data[8];
 		af->post_threshold = data[9];
-		
+
 		af->state = 0;
 		af->step = af->pre_step;
 		if(devp->af_dbg)
@@ -182,11 +183,11 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		devp->flag |= ISP_FLAG_AF_DBG;
 		pr_info("%s:full scan from %u-%u-%u-%u.\n",__func__,af->min_step,
 				af->pre_threshold,af->post_threshold,af->max_step);
-	}else if(!strcmp(parm[0],"print")){	
+	}else if(!strcmp(parm[0],"print")){
 		unsigned int i=0,cursor=0;
 		af = devp->af_dbg;
 		if(IS_ERR_OR_NULL(af))
-			return len;		
+			return len;
 		devp->flag &=(~ISP_FLAG_AF_DBG);
 		pr_info("ac[0]   ac[1]    ac[2]   ac[3]   dc[0]   dc[1]   dc[2]   dc[3]\n");
 		if(af->dir){
@@ -199,7 +200,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
 					af->data[cursor].ac[2],af->data[cursor].ac[3],
 					af->data[cursor].dc[0],af->data[cursor].dc[1],
-					af->data[cursor].dc[2],af->data[cursor].dc[3]);	
+					af->data[cursor].dc[2],af->data[cursor].dc[3]);
 				msleep(10);
 			}
 		}else{
@@ -212,7 +213,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
 					af->data[cursor].ac[2],af->data[cursor].ac[3],
 					af->data[cursor].dc[0],af->data[cursor].dc[1],
-					af->data[cursor].dc[2],af->data[cursor].dc[3]);	
+					af->data[cursor].dc[2],af->data[cursor].dc[3]);
 				msleep(10);
 			}
 		}
@@ -248,7 +249,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 				devp->af_test.af_bl[i].ac[3],devp->af_test.af_bl[i].dc[0],
 				devp->af_test.af_bl[i].dc[1],devp->af_test.af_bl[i].dc[2],
 				devp->af_test.af_bl[i].dc[3]);
-		}		
+		}
 		pr_info("win0 win1 win2 win3 win4 win5 win6 win7 win8 win9 win10 win11 win12 win13 win14 win15\n");
 		for(i=0;i<devp->af_test.cnt;i++){
 			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
@@ -269,16 +270,16 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		devp->af_test.af_win = NULL;
 		devp->af_test.ae_win = NULL;
 	}
-	
+
 	kfree(buf_orig);
-	
+
 	return len;
 }
 
 static ssize_t af_debug_show(struct device *dev,struct device_attribute *attr, char* buf)
 {
 	size_t len = 0;
-	
+
 	isp_dev_t *devp = dev_get_drvdata(dev);
 	unsigned int pix_sum = ((devp->info.h_active)*(devp->info.v_active))>>2;
 	len += sprintf(buf+len,"0x%x 0x%x 0x%x 0x%x\n",devp->blnr_stat.dc[0],devp->blnr_stat.dc[1],devp->blnr_stat.dc[2],devp->blnr_stat.dc[3]);
@@ -300,9 +301,9 @@ static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 			af->step = af->post_step;
 		else if(af->cur_step >= af->pre_threshold)
 			af->step = af->mid_step;
-		else 
+		else
 			af->step = af->post_step;
-		
+
 		if(af->dir){
 			af->cur_step += af->step;
 			if (af->cur_step > af->max_step){
@@ -324,20 +325,20 @@ static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 		}
 	}
         return;
-	
+
 }
 static DEVICE_ATTR(af_debug, 0664, af_debug_show, af_debug_store);
 
 
 static ssize_t ae_param_store(struct device *dev,struct device_attribute *attr, const char* buf, size_t len)
 {
-	
+
         char *parm[18]={NULL};
 	isp_dev_t *devp;
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_ae_parm||!buf){		
+	if(!devp->isp_ae_parm||!buf){
 		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -353,7 +354,7 @@ static ssize_t ae_param_show(struct device *dev,struct device_attribute *attr, c
 	char *buff="show";
 
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_ae_parm){		
+	if(!devp->isp_ae_parm){
 		pr_err("[%s..]%s %s error,isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -369,7 +370,7 @@ static ssize_t awb_param_store(struct device *dev,struct device_attribute *attr,
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_awb_parm||!buf){		
+	if(!devp->isp_awb_parm||!buf){
 		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -385,7 +386,7 @@ static ssize_t awb_param_show(struct device *dev,struct device_attribute *attr, 
 	isp_dev_t *devp;
 
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_awb_parm){		
+	if(!devp->isp_awb_parm){
 		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
 		return len;
 	}
@@ -402,7 +403,7 @@ static ssize_t af_param_store(struct device *dev,struct device_attribute *attr, 
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_af_parm||!buf){		
+	if(!devp->isp_af_parm||!buf){
 		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -418,7 +419,7 @@ static ssize_t af_param_show(struct device *dev,struct device_attribute *attr, c
 	isp_dev_t *devp;
 
 	devp = dev_get_drvdata(dev);
-	if(!devp->isp_af_parm){		
+	if(!devp->isp_af_parm){
 		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
 		return len;
 	}
@@ -435,7 +436,7 @@ static ssize_t capture_param_store(struct device *dev,struct device_attribute *a
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
-	if(!devp->capture_parm||!buf){		
+	if(!devp->capture_parm||!buf){
 		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -451,7 +452,7 @@ static ssize_t capture_param_show(struct device *dev,struct device_attribute *at
 		isp_dev_t *devp;
 
 	devp = dev_get_drvdata(dev);
-	if(!devp->capture_parm){		
+	if(!devp->capture_parm){
 		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
 		return len;
 	}
@@ -468,7 +469,7 @@ static ssize_t wave_param_store(struct device *dev,struct device_attribute *attr
 	char *buf_orig = kstrdup(buf, GFP_KERNEL);
 	parse_param(buf_orig,(char **)&parm);
 	devp = dev_get_drvdata(dev);
-	if(!devp->wave||!buf){		
+	if(!devp->wave||!buf){
 		pr_err("[%s..]%s %s error.isp device has't started.\n",DEVICE_NAME,__func__,buf);
 		return len;
 	}
@@ -490,7 +491,7 @@ static ssize_t wave_param_show(struct device *dev,struct device_attribute *attr,
 		isp_dev_t *devp;
 
 	devp = dev_get_drvdata(dev);
-	if(!devp->wave){		
+	if(!devp->wave){
 		len += sprintf(buf+len,"[%s..]%s isp device has't started.\n",DEVICE_NAME,__func__);
 		return len;
 	}
@@ -627,14 +628,14 @@ static DEVICE_ATTR(gamma, 0664, gamma_show, gamma_store);
 static ssize_t ls_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     ssize_t len = 0;
-    
+
     len += sprintf(buf+len," command format:\n");
     len += sprintf(buf+len," echo psize_v2h ocenter_c2l ocenter_c2t gain_0db curvature_gr curvature_r curvature_b curvature_gb force_enable > ... \n");
 
     len += sprintf(buf+len," Example:\n");
     len += sprintf(buf+len," echo enable 100 50 50 0 120 120 120 120 1 > /sys/class/isp/isp0/lens \n");
-     
-    return len;	
+
+    return len;
 }
 
 static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
@@ -645,10 +646,10 @@ static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const c
     isp_dev_t *devp;
 	devp = dev_get_drvdata(dev);
 	isp_info_t *info = &devp->info;
-    unsigned int psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, curvature_gr,curvature_r; 
-    unsigned int curvature_b,curvature_gb; 
+    unsigned int psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, curvature_gr,curvature_r;
+    unsigned int curvature_b,curvature_gb;
     bool force_enable;
-    
+
 	/* to avoid the bellow warning message while compiling:
 	 * warning: the frame size of 1576 bytes is larger than 1024 bytes
 	 */
@@ -669,17 +670,17 @@ static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const c
 	    psize_v2h = simple_strtoul(     parm[1],NULL,10);
 	    ocenter_c2l = simple_strtoul(   parm[2],NULL,10);
 	    ocenter_c2t = simple_strtoul(   parm[3],NULL,10);
-	    gain_0db = simple_strtoul(      parm[4],NULL,10); 
+	    gain_0db = simple_strtoul(      parm[4],NULL,10);
 	    curvature_gr = simple_strtoul(  parm[5],NULL,10);
-	    curvature_r = simple_strtoul(   parm[6],NULL,10); 
+	    curvature_r = simple_strtoul(   parm[6],NULL,10);
         curvature_b = simple_strtoul(   parm[7],NULL,10);
-        curvature_gb = simple_strtoul(  parm[8],NULL,10);   
+        curvature_gb = simple_strtoul(  parm[8],NULL,10);
         force_enable = simple_strtoul(  parm[9],NULL,10);
-        
+
         pr_info("psize_v2h:%u hactive:%u vactive:%u ocenter_c2l:%u ocenter_c2t:%u gain_0db:%u curvature_gr:%u curvature_r:%u curvature_b:%u curvature_gb:%u force_enable:%u \n", \
             psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
-            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);        
-            
+            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
+
         isp_ls_curve(psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
             curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
     }
@@ -730,14 +731,14 @@ static int isp_thread(isp_dev_t *devp) {
 	}
 }
 
-static int start_isp_thread(isp_dev_t *devp) {	
+static int start_isp_thread(isp_dev_t *devp) {
 	if(!devp->kthread) {
 		devp->kthread = kthread_run(isp_thread, devp, "isp");
 		if(IS_ERR(devp->kthread)) {
 			pr_err("[%s..]%s thread creating error.\n",DEVICE_NAME,__func__);
 			return -1;
 		}
-		wake_up_process(devp->kthread);    
+		wake_up_process(devp->kthread);
 	}
 	return 0;
 }
@@ -759,25 +760,25 @@ static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
 }
 
 static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
-{        
+{
 	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	vdin_parm_t *parm = (vdin_parm_t*)fe->private_data;
 	isp_info_t *info = &devp->info;
-	
+
 	info->fe_port = parm->isp_fe_port;
 	info->dfmt = parm->dfmt;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
 	info->frame_rate = parm->frame_rate;
 	info->skip_cnt = 0;
-	devp->isp_fe = tvin_get_frontend(info->fe_port, 0);		
-	if(devp->isp_fe && devp->isp_fe->dec_ops) {			
-		devp->isp_fe->private_data = fe->private_data;			
+	devp->isp_fe = tvin_get_frontend(info->fe_port, 0);
+	if(devp->isp_fe && devp->isp_fe->dec_ops) {
+		devp->isp_fe->private_data = fe->private_data;
 		devp->isp_fe->dec_ops->open(devp->isp_fe, info->fe_port);
 		pr_info("[%s..]%s: open %s ok.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));
-	} else {			
-		pr_info("[%s..]%s:get %s frontend error.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));		
-	}       
+	} else {
+		pr_info("[%s..]%s:get %s frontend error.\n",DEVICE_NAME,__func__,tvin_port_str(info->fe_port));
+	}
 	/*open the isp to vdin path,power on the isp hw module*/
 	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_ON);
         devp->cam_param = (cam_parameter_t*)parm->reserved;
@@ -794,8 +795,10 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 16;
-		devp->isp_af_parm->af_fail_ratio = 20;
-		devp->isp_af_parm->af_retry_max = 2;
+		devp->isp_af_parm->af_fail_ratio = 120;
+		devp->isp_af_parm->af_step_mid_thre= 250;
+		devp->isp_af_parm->af_step_max_thre = 550;
+		devp->isp_af_parm->af_retry_max = 3;
 		devp->isp_af_parm->step[0] = 100;
 		devp->isp_af_parm->step[1] = 150;
 		devp->isp_af_parm->step[2] = 200;
@@ -803,18 +806,23 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->step[4] = 290;
 		devp->isp_af_parm->step[5] = 330;
 		devp->isp_af_parm->step[6] = 370;
-		devp->isp_af_parm->step[7] = 400;		
-		devp->isp_af_parm->step[8] = 430;		
+		devp->isp_af_parm->step[7] = 400;
+		devp->isp_af_parm->step[8] = 430;
 		devp->isp_af_parm->step[9] = 460;
-		devp->isp_af_parm->step[10] = 480;		
+		devp->isp_af_parm->step[10] = 480;
 		devp->isp_af_parm->step[11] = 500;
                 devp->isp_af_parm->step[12] = 520;
                 devp->isp_af_parm->step[13] = 530;
                 devp->isp_af_parm->step[14] = 540;
 		devp->isp_af_parm->step[15] = 550;
+		if(af_ave_step_en){
+			int temp;
+			for(temp=0;temp<16;temp++)
+				devp->isp_af_parm->step[temp] = 100+30*temp;
+		}
 		devp->isp_af_parm->jump_offset = 100;
-		devp->isp_af_parm->field_delay = 1;
-		
+		devp->isp_af_parm->field_delay = 2;
+
 		/*init for auto lose focus tell*/
 		devp->isp_af_parm->detect_step_cnt = 16;
 		devp->isp_af_parm->enter_move_ratio = 55;
@@ -843,7 +851,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 }
 
 static void isp_fe_close(struct tvin_frontend_s *fe)
-{        
+{
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 		if(devp->af_info.af_detect)
 			kfree(devp->af_info.af_detect);
@@ -866,12 +874,12 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
 static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 {
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
-	
+
 	pr_info("[%s..]%s:isp start.\n",DEVICE_NAME,__func__);
-		
+
 	if(devp->isp_fe)
 	        devp->isp_fe->dec_ops->start(devp->isp_fe,fmt);
-	
+
 	/*configuration the hw,load reg table*/
 
 	if(!IS_ERR_OR_NULL(devp->cam_param)) {
@@ -884,20 +892,20 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
         }
 	tasklet_enable(&devp->isp_task);
 	start_isp_thread(devp);
-	
+
         devp->flag |= ISP_FLAG_START;
 	return;
 }
 static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
-         
+
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	if(devp->isp_fe)
 	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
 	tasklet_disable_nosync(&devp->isp_task);
 	stop_isp_thread(devp);
 	/*disable hw*/
-        devp->flag &= (~ISP_FLAG_START);    
+        devp->flag &= (~ISP_FLAG_START);
 }
 static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 {
@@ -911,8 +919,8 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
         }
 	cmd = param->cam_command;
 	devp->cam_param = param;
-	if(ioctl_debug)	 	
-	 	pr_info("[%s..]%s:cmd: %s .\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd));	 
+	if(ioctl_debug)
+	 	pr_info("[%s..]%s:cmd: %s .\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd));
 	switch(cmd) {
                 case CAM_COMMAND_INIT:
 		        break;
@@ -996,11 +1004,11 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
 	        default:
 		        break;
-	}	
+	}
 	return 0;
 }
 static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
-{	
+{
 	xml_csc_t *csc;
 	xml_wb_manual_t *wb;
 	af_debug_t *af;
@@ -1062,7 +1070,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		ret = isp_capture_sm(devp);
 	if(devp->isp_fe)
 		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
-	
+
 	if(devp->flag & ISP_FLAG_SKIP_BUF){
 		ret = TVIN_BUF_SKIP;
 		if(devp->info.skip_cnt++ > 25){
@@ -1072,7 +1080,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 			pr_info("%s isp skip cnt %u %s 25.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>25?">":"<");
 	}
 	tasklet_schedule(&devp->isp_task);
-        return ret;        
+        return ret;
 }
 
 static void isp_tasklet(unsigned long arg)
@@ -1179,9 +1187,9 @@ static int isp_probe(struct platform_device *pdev)
 	isp_devp[devp->index] = devp;
 	/* create cdev and reigser with sysfs */
 	ret = isp_add_cdev(&devp->cdev,&isp_fops,devp->index);
-	
+
 	devp->dev = isp_create_device(&pdev->dev,devp->index);
-	
+
 	ret = device_create_file(devp->dev,&dev_attr_debug);
 	ret = device_create_file(devp->dev,&dev_attr_ae_param);
 	ret = device_create_file(devp->dev,&dev_attr_awb_param);
@@ -1194,14 +1202,14 @@ static int isp_probe(struct platform_device *pdev)
 	ret = device_create_file(devp->dev,&dev_attr_lens);
 	if(ret < 0)
 		goto err;
-	
+
 	sprintf(devp->frontend.name, "%s%d", DEVICE_NAME, devp->index);
-	
+
 	if(!tvin_frontend_init(&devp->frontend,&isp_dec_ops,&isp_sm_ops,devp->index)) {
 		if(tvin_reg_frontend(&devp->frontend))
 			pr_err("[%s..]%s register isp frontend error.\n",DEVICE_NAME,__func__);
 	}
-	
+
 	tasklet_init(&devp->isp_task,isp_tasklet,(unsigned long)devp);
 	tasklet_disable(&devp->isp_task);
 	platform_set_drvdata(pdev,(void *)devp);
@@ -1209,7 +1217,7 @@ static int isp_probe(struct platform_device *pdev)
 	pr_info("[%s..]%s isp probe ok.\n",DEVICE_NAME,__func__);
 	return 0;
 err:
-	isp_delete_device(devp->index); 
+	isp_delete_device(devp->index);
 	return 0;
 
 }
@@ -1224,7 +1232,7 @@ static int isp_remove(struct platform_device *pdev)
 	device_remove_file(devp->dev,&dev_attr_cap_param);
 	device_remove_file(devp->dev,&dev_attr_wave_param);
 	device_remove_file(devp->dev,&dev_attr_lens);
-	
+
 	isp_delete_device(devp->index);
         tvin_unreg_frontend(&devp->frontend);
 	tasklet_kill(&devp->isp_task);
@@ -1247,7 +1255,7 @@ static struct platform_driver isp_driver = {
 	.probe 	 = isp_probe,
 	.remove  = isp_remove,
 	.suspend = isp_suspend,
-	.resume  = isp_resume,	
+	.resume  = isp_resume,
 	.driver = {
 		.name = DEVICE_NAME,
 	}
@@ -1308,6 +1316,8 @@ MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
 module_param(isr_debug,uint,0664);
 MODULE_PARM_DESC(isr_debug,"\n debug isr function.\n");
 
+module_param(af_ave_step_en,uint,0664);
+MODULE_PARM_DESC(af_ave_step_en,"\n debug flag for af function.\n");
 
 MODULE_VERSION(ISP_VER);
 module_init(isp_init_module);

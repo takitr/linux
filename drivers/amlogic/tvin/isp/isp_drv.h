@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.15"
+#define ISP_VER					"2013.11.15a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -45,7 +45,7 @@
 #define ISP_FLAG_MWB			        0x00000200
 #define ISP_FLAG_BLNR				0x00000400
 #define ISP_FLAG_SET_COMB4			0x00000800
-#define ISP_TEST_FOR_AF_WIN			0x00001000	
+#define ISP_TEST_FOR_AF_WIN			0x00001000
 #define ISP_FLAG_TOUCH_AF			0x00002000
 #define ISP_FLAG_SKIP_BUF			0x00004000
 
@@ -63,9 +63,9 @@ typedef struct isp_info_s {
 typedef struct flash_property_s {
 	bool 	 valid;		 //true:have flash,false:havn't flash
 	bool     torch_pol_inv;  // false: negative correlation
-                                 // true: positive correlation                                     
+                                 // true: positive correlation
         bool 	 pin_mux_inv;	 // false: led1=>pin1 & led2=>pin2, true: led1=>pin2 & led2=>pin1
-    
+
         bool 	 led1_pol_inv;	 // false: active high, true: active low
         bool     mode_pol_inv;   //        TORCH  FLASH
                                  //false: low      high
@@ -87,7 +87,7 @@ typedef struct af_debug_s {
 	unsigned int	post_step;
 	unsigned int	pre_threshold;
 	unsigned int	post_threshold;
-	isp_blnr_stat_t data[1024];	
+	isp_blnr_stat_t data[1024];
 } af_debug_t;
 /*for af test debug*/
 typedef struct af_debug_test_s {
@@ -109,6 +109,7 @@ typedef struct isp_af_info_s {
 	/*for climbing algorithm*/
 	unsigned int flag_bk;
 	unsigned int great_step;
+	unsigned int last_great_step;
 	unsigned int cur_step;
 	unsigned int af_retry_cnt;
 	unsigned long long fv_aft_af;
@@ -144,7 +145,7 @@ typedef struct isp_dev_s{
         /*add for tvin frontend*/
         tvin_frontend_t frontend;
 	tvin_frontend_t *isp_fe;
-	
+
 	struct isp_info_s info;
 	struct tasklet_struct isp_task;
 	struct task_struct     *kthread;
@@ -171,7 +172,7 @@ typedef enum data_type_e{
 	ISP_U8=0,
 	ISP_U16,
 	ISP_U32,
-	ISP_FLOAT,	
+	ISP_FLOAT,
 }data_type_t;
 
 typedef struct isp_param_s{

@@ -2,7 +2,7 @@
  * TVIN Modules Exported Header File
  *
  * Author: kele bai <kele.bai@amlogic.com>
- *       
+ *
  *
  * Copyright (C) 2010 Amlogic Inc.
  *
@@ -239,7 +239,7 @@ typedef enum cam_command_e {
         CAM_COMMAND_CONTINUOUS_FOCUS_ON,
         CAM_COMMAND_CONTINUOUS_FOCUS_OFF,
         CAM_COMMAND_BACKGROUND_FOCUS_ON,
-        CAM_COMMAND_BACKGROUND_FOCUS_OFF,  
+        CAM_COMMAND_BACKGROUND_FOCUS_OFF,
         // flash related
         CAM_COMMAND_SET_FLASH_MODE,
         // torch related
@@ -267,9 +267,9 @@ typedef enum flash_mode_s {
 
 #define WAVE_PARM_NUM		12
 typedef struct wave_s {
-	unsigned int torch_rising_time; 
-	unsigned int flash_rising_time; 
-	unsigned int torch_flash_ratio; 
+	unsigned int torch_rising_time;
+	unsigned int flash_rising_time;
+	unsigned int torch_flash_ratio;
         unsigned int wave_clock_div;     // u16
         unsigned int pulse_init_time;    // u11
         unsigned int pulse_high_time;    // u11
@@ -338,21 +338,21 @@ typedef struct xml_algorithm_ae_s {
         unsigned int  radium_outer_h;  // 0 ~ 255
         unsigned int  radium_outer_m;  // 0 ~ 255
         unsigned int  radium_outer_l;  // 0 ~ 255
-        unsigned int  flash_thr;       // 0 ~ 255 
+        unsigned int  flash_thr;       // 0 ~ 255
 
     /***********************AE_ENH********************************/
-	                
-        unsigned int           ratio_histr;          // 0 ~1023 
-        unsigned int           ratio_histg;          // 0 ~1023 
-        unsigned int           ratio_histb;          // 0 ~1023 
-        unsigned int           target_r;             // 0 ~ 255 
-        unsigned int           target_g;             // 0 ~ 255 
-        unsigned int           target_b;             // 0 ~ 255 
-        unsigned int           maxrate_inner;        // 0 ~1023 
-        unsigned int           maxrate_outer;        // 0 ~1023 
-        unsigned int           slow_lpfcoef_enh;     // 0 ~ 255 
-        unsigned int           fast_lpfcoef_enh;     // 0 ~ 255 
-        unsigned int           flash_thr_enh;	     // 0 ~ 255                 
+
+        unsigned int           ratio_histr;          // 0 ~1023
+        unsigned int           ratio_histg;          // 0 ~1023
+        unsigned int           ratio_histb;          // 0 ~1023
+        unsigned int           target_r;             // 0 ~ 255
+        unsigned int           target_g;             // 0 ~ 255
+        unsigned int           target_b;             // 0 ~ 255
+        unsigned int           maxrate_inner;        // 0 ~1023
+        unsigned int           maxrate_outer;        // 0 ~1023
+        unsigned int           slow_lpfcoef_enh;     // 0 ~ 255
+        unsigned int           fast_lpfcoef_enh;     // 0 ~ 255
+        unsigned int           flash_thr_enh;	     // 0 ~ 255
 } xml_algorithm_ae_t;
 
 #define AWB_PARM_NUM			57
@@ -362,23 +362,23 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           ratio_winr;            //0 ~ 1024
         unsigned int           ratio_wint;            //0 ~ 1024
         unsigned int           ratio_winb;            //0 ~ 1024
-        unsigned int  	       ratio_rgb;             // 0 ~ 255 
-        unsigned int           ratio_yh;              // 0 ~ 255 
-        unsigned int 	       ratio_ym;              // 0 ~ 255 
-        unsigned int 	       ratio_yl;              // 0 ~ 255 
-        unsigned int 	       yyh;                   // 0 ~ 255 
-        unsigned int 	       yym;                   // 0 ~ 255 
-        unsigned int 	       yyl;                   // 0 ~ 255 
-        unsigned int 	       coef_r[4];             // 0 ~ 255 
-        unsigned int 	       coef_g[4];             // 0 ~ 255 
-        unsigned int 	       coef_b[4];             // 0 ~ 255 
-        unsigned int 	       inner_rg;          // 0 ~ 1023 
+        unsigned int  	       ratio_rgb;             // 0 ~ 255
+        unsigned int           ratio_yh;              // 0 ~ 255
+        unsigned int 	       ratio_ym;              // 0 ~ 255
+        unsigned int 	       ratio_yl;              // 0 ~ 255
+        unsigned int 	       yyh;                   // 0 ~ 255
+        unsigned int 	       yym;                   // 0 ~ 255
+        unsigned int 	       yyl;                   // 0 ~ 255
+        unsigned int 	       coef_r[4];             // 0 ~ 255
+        unsigned int 	       coef_g[4];             // 0 ~ 255
+        unsigned int 	       coef_b[4];             // 0 ~ 255
+        unsigned int 	       inner_rg;          // 0 ~ 1023
         unsigned int 	       inner_bg;          // 0 ~ 1023
         unsigned int 	       outer_rg;          // 0 ~ 1023
         unsigned int 	       outer_bg;          // 0 ~ 1023
-        unsigned int           r_max;             // 0 ~ 4095    
+        unsigned int           r_max;             // 0 ~ 4095
         unsigned int           r_min;             // 0 ~ 4095
-        unsigned int           b_max;             // 0 ~ 4095    
+        unsigned int           b_max;             // 0 ~ 4095
         unsigned int           b_min;             // 0 ~ 4095
         unsigned int           thr_gb_h;          // 0 ~ 255
         unsigned int           thr_gb_m;          // 0 ~ 255
@@ -402,7 +402,7 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           thr_yl_m;          // 0 ~ 255
         unsigned int           thr_yl_l;          // 0 ~ 255
 	/*********************awb_enh****************/
-    	unsigned int           ratio_yuv;    
+    	unsigned int           ratio_yuv;
         unsigned int           slow_lpfcoef;    // 0 ~ 255
         unsigned int           fast_lpfcoef;    // 0 ~ 255
         unsigned int           outer;           // 0 ~ 1023
@@ -443,6 +443,8 @@ typedef struct xml_algorithm_af_s {
 	unsigned int	       x;//x coord of touch focus win
 	unsigned int	       y;//y coord of touch focus win
 	unsigned int           radius_ratio;//radius of touch focus win
+	unsigned int           af_step_mid_thre;
+	unsigned int           af_step_max_thre;
 } xml_algorithm_af_t;
 
 #define XML_LUT_LS 1024 // 32*32 32-bit
@@ -545,7 +547,7 @@ typedef struct xml_peripheral_s {
 } xml_peripheral_t;
 
 typedef struct xml_default_regs_s {
-        struct xml_top_s          top;    
+        struct xml_top_s          top;
         struct xml_tp_s           tp;     // disable
         struct xml_cg_s           cg;     // straight
         struct xml_ls_s           ls;
@@ -561,7 +563,7 @@ typedef struct xml_default_regs_s {
         struct xml_awb_s          awb_reg;
         struct xml_af_s           af_reg;
 	struct xml_lut_ls_s	  lnsd;
-	struct xml_lut_gc_s	  lut_gc;				  
+	struct xml_lut_gc_s	  lut_gc;
 } xml_default_regs_t;
 
 typedef struct xml_scenes_s {
@@ -570,7 +572,7 @@ typedef struct xml_scenes_s {
         struct xml_algorithm_af_s  af;
 } xml_scenes_t;
 /*only G0 R1 B2 G3*/
-typedef struct xml_wb_manual_s {        
+typedef struct xml_wb_manual_s {
         unsigned int reg_map[2];
 } xml_wb_manual_t;
 
@@ -587,7 +589,7 @@ typedef struct xml_effect_manual_s {
 } cam_format_t;
 */
 typedef struct cam_function_s {
-	bool (*set_af_new_step)(unsigned int af_debug_control);    
+	bool (*set_af_new_step)(unsigned int af_debug_control);
 	unsigned int (*get_aet_current_step)(void);
 	short (*get_aet_current_gain)(void);
 	short (*get_aet_min_gain)(void);
@@ -645,7 +647,7 @@ typedef struct cam_parameter_s {
         struct xml_wb_manual_s     *xml_wb_manual;
 	struct xml_capture_s	   *xml_capture;
 	struct wave_s		   *xml_wave;
-	unsigned int 		    level;//the torch light level 
+	unsigned int 		    level;//the torch light level
 	flash_mode_t                flash_mode;//the flash mode
 	camera_mode_t		    cam_mode;//set the isp work mode
 } cam_parameter_t;
@@ -670,7 +672,7 @@ typedef enum vdin_format_convert_e {
 	VDIN_FORMAT_CONVERT_YUV_NV12,
 	VDIN_FORMAT_CONVERT_YUV_NV21,
 	VDIN_FORMAT_CONVERT_RGB_NV12,
-	VDIN_FORMAT_CONVERT_RGB_NV21,	
+	VDIN_FORMAT_CONVERT_RGB_NV21,
 } vdin_format_convert_t;
 
 typedef enum vdin_cmd_e {
@@ -742,7 +744,7 @@ typedef struct vdin_parm_s {
         unsigned short  v_active;
         unsigned short  frame_rate;
         /*for bt656*/
-        enum bt_path_e  bt_path;//0:from gpio,1:from csi2 
+        enum bt_path_e  bt_path;//0:from gpio,1:from csi2
         unsigned char   hsync_phase;//1: inverted 0: original
         unsigned char   vsync_phase;//1: inverted 0: origianl
         unsigned short  hs_bp;//the horizontal start postion of bt656 window
