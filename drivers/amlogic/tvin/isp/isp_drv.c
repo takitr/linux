@@ -48,6 +48,7 @@ static dev_t isp_devno;
 static struct class *isp_clsp;
 static unsigned int isp_debug = 0;
 static unsigned int ae_enable = 1;
+static unsigned int ae_adjust_enable = 1;
 static unsigned int awb_enable = 1;
 static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
@@ -708,8 +709,9 @@ static int isp_thread(isp_dev_t *devp) {
 		printk("set new step %d \n",ae_sens.new_step);
 		if(func&&func->set_aet_new_step)
 		{
-		func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
-		ae_sens.send = 0;
+			if(ae_adjust_enable)
+				func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+			ae_sens.send = 0;
 		}
 		else
 		printk("set_aet_new_step fail!!!!!!!!!!!!!!\n");
@@ -1067,7 +1069,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 			devp->flag &= (~ISP_FLAG_SKIP_BUF);
 		}
 		if(isr_debug)
-			pr_info("%s isp skip cnt %u %s 40.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>40?">":"<");
+			pr_info("%s isp skip cnt %u %s 25.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>25?">":"<");
 	}
 	tasklet_schedule(&devp->isp_task);
         return ret;        
@@ -1284,6 +1286,9 @@ MODULE_PARM_DESC(isp_debug,"\n debug flag for isp.\n");
 
 module_param(ae_enable,uint,0664);
 MODULE_PARM_DESC(ae_enable,"\n ae_enable.\n");
+
+module_param(ae_adjust_enable,uint,0664);
+MODULE_PARM_DESC(ae_adjust_enable,"\n ae_adjust_enable.\n");
 
 module_param(awb_enable,uint,0664);
 MODULE_PARM_DESC(awb_enable,"\n awb_enable.\n");

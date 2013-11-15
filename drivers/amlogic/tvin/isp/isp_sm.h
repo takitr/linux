@@ -137,6 +137,10 @@ typedef struct isp_ae_sm_s {
 	unsigned int countlimit_b;
 	unsigned int tf_ratio;
     unsigned int change_step;
+	unsigned int max_lumasum1;  //low
+	unsigned int max_lumasum2;
+	unsigned int max_lumasum3;
+	unsigned int max_lumasum4;	//high
 	
 	isp_auto_exposure_enh_state_t  isp_ae_enh_state;
 	isp_auto_exposure_state_t isp_ae_state;
