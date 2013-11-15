@@ -195,6 +195,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	int i;
 	static int k = 0;
 	static int h = 0;
+	static int sum = 0;
 	int step = 0;
 	unsigned short targrate;
 	unsigned int targstep, newstep;
