@@ -269,7 +269,11 @@ static int set_vpu_clk(unsigned int vclk)
 	
 	if ((((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 9) & 0x7) != vpu_clk_setting[clk_level][1]) || (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 0) & 0x7f) != vpu_clk_setting[clk_level][2])) {
 		vpu_config.clk_level = clk_level;
+#ifdef CONFIG_SMP
 		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
+#else
+		adjust_vpu_clk(&vpu_config);
+#endif
 	}
 	if (((aml_read_reg32(P_HHI_VPU_CLK_CNTL) >> 8) & 1) == 0)
 		aml_set_reg32_bits(P_HHI_VPU_CLK_CNTL, 1, 8, 1);
@@ -372,7 +376,11 @@ int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod)
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
 	if (clk_level != vpu_config.clk_level) {
 		vpu_config.clk_level = clk_level;
+#ifdef CONFIG_SMP
 		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
+#else
+		adjust_vpu_clk(&vpu_config);
+#endif
 	}
 #endif
 
@@ -422,7 +430,11 @@ int release_vpu_clk_vmod(unsigned int vmod)
 #ifdef CONFIG_VPU_DYNAMIC_ADJ
 	if (clk_level != vpu_config.clk_level) {
 		vpu_config.clk_level = clk_level;
+#ifdef CONFIG_SMP
 		try_exclu_cpu_exe(adjust_vpu_clk, &vpu_config);
+#else
+		adjust_vpu_clk(&vpu_config);
+#endif
 	}
 #endif
 
