@@ -128,6 +128,7 @@ typedef struct isp_ae_sm_s {
 	unsigned int alert_g;   
 	unsigned int alert_b; 
 	unsigned short cur_gain;
+	unsigned short pre_gain;
 	unsigned short max_gain;
 	unsigned short min_gain;
 	unsigned int max_step;

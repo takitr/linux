@@ -224,6 +224,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * ae_ratio2) >> 10;
 			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * ae_ratio3) >> 10;
 			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * ae_ratio4) >> 10;
+			aepa->pre_gain = 400;
 			targ = aep->targetlow;
 			temp = 1;
 			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;
@@ -249,20 +250,17 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			sm_state.isp_ae_parm.isp_ae_state = AE_SHUTTER_ADJUST;
 			break;
 		case AE_ORI_SET:
-			aepa->cur_step = func->get_aet_current_step;
-			newstep = aepa->cur_step;
-			if(aep->ae_skip[1] == 0x1)
-			{
-				//if(func&&func->set_aet_new_step)
-				//func->set_aet_new_step(newstep,true,true);
-				sm_state.isp_ae_parm.isp_ae_state = AE_REST;							
-			}
-			else
-			{
-				//if(func&&func->set_aet_new_step)
-				//func->set_aet_new_step(newstep,true,false);
-				sm_state.isp_ae_parm.isp_ae_state = AE_GAIN_ADJUST;
-			}
+			newstep = find_step(func,0,aepa->max_step,aepa->pre_gain);
+			ae_sens.send = 1;
+			ae_sens.new_step = newstep;
+			ae_sens.shutter = 1;
+			ae_sens.gain = 1;
+			//printk("ae_sens.send \n");
+			sm_state.status = ISP_AE_STATUS_UNSTABLE;
+			if(ae_debug&0x10)
+			printk("ISP_AE_STATUS_UNSTABLE\n");
+			sm_state.ae_down = false;
+			sm_state.isp_ae_parm.isp_ae_state = AE_REST;
 			break;
 		case AE_LOW_GAIN:
 			aepa->cur_gain = func->get_aet_current_gain;
@@ -284,6 +282,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 		case AE_SHUTTER_ADJUST:
 			if(func&&func->get_aet_current_gain)
 			aepa->cur_gain = func->get_aet_current_gain();
+			aepa->pre_gain = aepa->cur_gain;
 			if(func&&func->get_aet_current_gain)
 			aepa->cur_step = func->get_aet_current_step();
 			if(aepa->cur_gain == 0)
