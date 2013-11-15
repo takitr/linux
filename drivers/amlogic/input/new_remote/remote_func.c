@@ -16,7 +16,7 @@
 #include <mach/am_regs.h>
 #include "remote_main.h"
 extern char *remote_log_buf;
-
+static int repeat_count = 0;
 static int dbg_printk(const char *fmt, ...)
 {
 	char buf[100];
@@ -365,6 +365,7 @@ int remote_hw_reprot_key(struct remote *remote_data)
 				}
 			}
 		}
+		repeat_count = 0;
 		if (remote_data->timer.expires > jiffies) {
 			remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code , 0,0);
 		}
@@ -385,8 +386,10 @@ int remote_hw_reprot_key(struct remote *remote_data)
 	}
 	else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg){	//repeate key
 		if (remote_data->repeat_enable) {
+			repeat_count++;
 			if (remote_data->repeat_tick < jiffies) {
-				remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code, 2,0);
+				if(repeat_count > 1)
+					remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code, 2,0);
 				remote_data->repeat_tick += msecs_to_jiffies(remote_data->input->rep[REP_PERIOD]);
 			}
 		} else {
