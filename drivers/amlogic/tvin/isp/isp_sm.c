@@ -61,6 +61,26 @@ static unsigned int ae_step = 1;
 module_param(ae_step,uint,0664);
 MODULE_PARM_DESC(ae_step,"\n debug flag for ae.\n");
 
+static unsigned int ae_ratio1 = 5;    //low
+
+module_param(ae_ratio1,uint,0664);
+MODULE_PARM_DESC(ae_ratio1,"\n debug flag for ae.\n");
+
+static unsigned int ae_ratio2 = 15;
+
+module_param(ae_ratio2,uint,0664);
+MODULE_PARM_DESC(ae_ratio2,"\n debug flag for ae.\n");
+
+static unsigned int ae_ratio3 = 30;
+
+module_param(ae_ratio3,uint,0664);
+MODULE_PARM_DESC(ae_ratio3,"\n debug flag for ae.\n");
+
+static unsigned int ae_ratio4 = 40;   //high
+
+module_param(ae_ratio4,uint,0664);
+MODULE_PARM_DESC(ae_ratio4,"\n debug flag for ae.\n");
+
 static unsigned int awb_debug = 0;
 
 module_param(awb_debug,uint,0664);
@@ -163,13 +183,15 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	struct isp_info_s *parm = &devp->info;
 	struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
+	struct vframe_prop_s *ph = devp->frontend.private_data;
 	u8  sub_avg[16] = {0};
 	unsigned int avg_sum = 0;
 	unsigned int avg_env_sum = 0;
 	unsigned int avg_env;
 	unsigned int avg_envo;
 	int avg, avgo;
-	u8  targ;
+	static short targ;
+	static short temp;
 	int i;
 	static int k = 0;
 	static int h = 0;
@@ -197,9 +219,16 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
 			aepa->pixel_sum = parm->h_active * parm->v_active;
 			aepa->sub_pixel_sum = aepa->pixel_sum >> 4;
+			aepa->max_lumasum1 = ((aepa->pixel_sum >> 4) * ae_ratio1) >> 10;
+			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * ae_ratio2) >> 10;
+			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * ae_ratio3) >> 10;
+			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * ae_ratio4) >> 10;
+			targ = aep->targetlow;
+			temp = 1;
 			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;
 			aepa->alert_g = ((aepa->pixel_sum >> 4) * aep->ratio_g) >> 7;	 //grgb
 			aepa->alert_b = ((aepa->pixel_sum >> 4) * aep->ratio_b) >> 8;
+			printk("aepa->max_lumasum1=%d,max_lumasum2=%d,=%d,=%d",aepa->max_lumasum1,aepa->max_lumasum2,aepa->max_lumasum3,aepa->max_lumasum4);
 			printk("aepa->alert_r=%d,g=%d,b=%d\n",aepa->alert_r,aepa->alert_g,aepa->alert_b);
 			aepa->change_step = 0;
 			if(func&&func->get_aet_max_gain)
@@ -343,11 +372,33 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						break;
 					case AE_CALCULATE_LUMA_TARG:
 						avg_envo = (avg_env << 10)/aepa->cur_gain;
+						sum = ph->hist.gamma[58]+ph->hist.gamma[57];
 						if(ae_debug&0x1)
 						printk("avg=%d,avg_envo=%d,aepa->cur_gain=%d,avg_env=%d,avg_env_sum=%d,avg_sum=%d,luma_win[9]=%d,sub[9]=%d\n",avg,avg_envo,aepa->cur_gain,avg_env,avg_env_sum,avg_sum,ae->luma_win[9],sub_avg[9]);
-						if((avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
+						if(ae_debug6)
+						printk("ph->hist.gamma[58]=%d,%d\n",ph->hist.gamma[58],sum);
+						if(1)//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
 						{
-							targ = aep->targetlow;
+							//targ = aep->targetlow;
+							if((sum > aepa->max_lumasum4)||((sum > aepa->max_lumasum3)&&(temp==2)))
+							{
+								temp = 2;
+								targ--;
+								if(targ<30)
+									targ = 30;
+							}
+							else if((sum < aepa->max_lumasum1)||((sum < aepa->max_lumasum2)&&(temp==0)))
+							{
+								temp = 0;
+								targ++;
+								if(targ>aep->targetlow)
+									targ = aep->targetlow;
+							}
+							else 
+							{
+								temp = 1;
+								//targ = 80;
+							}
 							radium_inner = aep->radium_inner_l;
 							radium_outer = aep->radium_outer_l;
 							sm_state.env = ENV_LOW;
@@ -370,7 +421,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
 						}
 						if(ae_debug6)
-							printk("targ=%d\n",targ);
+							printk("targ=%d,temp=%d\n",targ,temp);
 						step = AE_LUMA_AVG_CHECK;
 						break;
 					case AE_LUMA_AVG_CHECK:
