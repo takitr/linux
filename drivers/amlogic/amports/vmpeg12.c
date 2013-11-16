@@ -68,6 +68,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define MREG_ERROR_COUNT    AV_SCRATCH_C
 #define MREG_FRAME_OFFSET   AV_SCRATCH_D
 #define MREG_WAIT_BUFFER    AV_SCRATCH_E
+#define MREG_FATAL_ERROR    AV_SCRATCH_F
 
 #define PICINFO_ERROR       0x80000000
 #define PICINFO_TYPE_MASK   0x00030000
@@ -484,11 +485,12 @@ static void vmpeg_put_timer_func(unsigned long arg)
          state  = RECEIVER_INACTIVE ;
     }
 
-    if ((READ_VREG(MREG_WAIT_BUFFER) != 0) &&
-        (vfq_empty(&recycle_q)) &&
-        (vfq_empty(&display_q)) &&
-        (state == RECEIVER_INACTIVE)) {
-        printk("$$$$$$decoder is waiting for buffer\n");
+    if (((READ_VREG(MREG_WAIT_BUFFER) != 0) &&
+         (vfq_empty(&recycle_q)) &&
+         (vfq_empty(&display_q)) &&
+         (state == RECEIVER_INACTIVE)) ||
+        (READ_VREG(MREG_FATAL_ERROR) == 1)) {
+        printk("$$$$$$decoder is waiting for buffer or fatal reset.\n");
         if (++wait_buffer_counter > 4) {
             amvdec_stop();
 
@@ -627,8 +629,16 @@ static void vmpeg12_canvas_init(void)
 static void vmpeg12_prot_init(void)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
-    WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6));
+    int save_reg = READ_VREG(POWER_CTL_VLD);
+
+    WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6) | (1<<4));
     WRITE_VREG(DOS_SW_RESET0, 0);
+
+    WRITE_VREG(MDEC_SW_RESET, (1<<7));
+    WRITE_VREG(MDEC_SW_RESET, 0);
+
+    WRITE_VREG(POWER_CTL_VLD, save_reg);
+
 #else
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC);
 #endif
@@ -668,6 +678,7 @@ static void vmpeg12_prot_init(void)
     }
     /* clear error count */
     WRITE_VREG(MREG_ERROR_COUNT, 0);
+    WRITE_VREG(MREG_FATAL_ERROR, 0);
     /* clear wait buffer status */
     WRITE_VREG(MREG_WAIT_BUFFER, 0);
 #ifdef NV21
