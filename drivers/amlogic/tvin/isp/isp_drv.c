@@ -111,6 +111,12 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		width = simple_strtol(parm[1],NULL,10);
 		height = simple_strtol(parm[2],NULL,10);
 		isp_set_init(width,height,width+26,height+16);
+	} else if(!strcmp(parm[0],"rgb")){
+        unsigned int b,r,g;
+        b = RD_BITS(ISP_GAIN_GRBG23, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);
+        r = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
+        g = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
+        pr_info("%s: r:%d, g:%d b:%d.\n",__func__,r,g,b);
 	}
 	return len;
 }
@@ -707,7 +713,7 @@ static int isp_thread(isp_dev_t *devp) {
 	if(ae_sens.send)
 	{
 		if(isp_debug)
-		printk("set new step %d \n",ae_sens.new_step);
+		    printk("[isp] set new step:%d \n",ae_sens.new_step);
 		if(func&&func->set_aet_new_step)
 		{
 			if(ae_adjust_enable)

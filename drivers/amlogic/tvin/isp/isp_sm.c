@@ -633,6 +633,25 @@ static inline int matrix_yuv709_rgb_b(unsigned int y, unsigned int u, unsigned i
 
 static struct isp_awb_gain_s awb_gain, awb_gain_pre;
 
+unsigned int isp_awb_load_pre_para(isp_dev_t *devp)
+{
+    memcpy(&awb_gain, &awb_gain_pre, sizeof(struct isp_awb_gain_s));
+    isp_awb_set_gain(awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
+    pr_info("[isp] %s load pre awb, r:%d g:%d b:%d ... ...\n",
+                __func__, awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
+
+    return 0;
+}
+
+int isp_awb_save_current_para(isp_dev_t *devp)
+{
+    isp_awb_get_gain(&awb_gain_pre);
+
+    pr_info("[isp] %s save awb, r:%d g:%d b:%d ... ...\n",
+                __func__, awb_gain_pre.r_val, awb_gain_pre.g_val,awb_gain_pre.b_val);
+
+    return 0;
+}
 void isp_awb_base_sm(isp_dev_t *devp)
 {
 	struct isp_awb_stat_s *awb = &devp->isp_awb;
@@ -669,7 +688,11 @@ void isp_awb_base_sm(isp_dev_t *devp)
 			awba->countlimitym	= ((awba->pixel_sum >> 2) * awbp->ratio_ym) >> 6;
 			awba->countlimityl	= ((awba->pixel_sum >> 2) * awbp->ratio_yl) >> 6;
 			awba->status = ISP_AWB_STATUS_STABLE;
-			sm_state.isp_awb_parm.isp_awb_state = AWB_CHECK;
+			if (devp->flag & ISP_FLAG_CAPTURE) {
+			    isp_awb_load_pre_para(devp);
+			    sm_state.isp_awb_parm.isp_awb_state = AWB_IDLE;
+			} else
+			    sm_state.isp_awb_parm.isp_awb_state = AWB_CHECK;
 			break;
 		case AWB_CHECK:
 			while(step != AWB_SUCCESS)
@@ -1867,7 +1890,9 @@ void isp_awb_sm(isp_dev_t *devp)
 void isp_sm_uninit(isp_dev_t *devp)
 {
     isp_ae_save_current_para(devp);
+    isp_awb_save_current_para(devp);
 }
+
 module_param(best_step_debug,uint,0664);
 MODULE_PARM_DESC(best_step_debug,"\n debug flag for calc best focus position.\n");
 
