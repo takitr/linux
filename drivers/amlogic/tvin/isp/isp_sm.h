@@ -91,6 +91,8 @@ typedef enum af_state_e {
 	AF_CLIMBING,
 	AF_FINE,
 	AF_SUCCESS,
+	AF_CAPTURE_START,
+	AF_CAPTURE_OK,
 } af_state_t;
 typedef enum isp_capture_state_e {
 	CAPTURE_INIT,
@@ -229,6 +231,7 @@ extern void isp_af_sm(isp_dev_t *devp);
 extern void isp_af_detect(isp_dev_t *devp);
 extern int isp_capture_sm(isp_dev_t *devp);
 extern unsigned long long div64(unsigned long long n, unsigned long long d);
+extern void isp_af_save_current_para(isp_dev_t *devp);
 #endif
 
 

@@ -833,7 +833,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->detect_step_cnt = 16;
 		devp->isp_af_parm->enter_move_ratio = 55;
 		devp->isp_af_parm->enter_static_ratio = 35;
-		devp->isp_af_parm->ave_vdc_thr = 100;
+		devp->isp_af_parm->ave_vdc_thr = 200;
 		devp->isp_af_parm->delta_fv_ratio = 0;
 		devp->isp_af_parm->af_duration_time = 1;//0.5s
 		/*window for full scan & detect*/
@@ -983,7 +983,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			if(ioctl_debug)
 				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);
-			isp_set_blenr_stat(x0,y0,x1,y1);
+			//isp_set_blenr_stat(x0,y0,x1,y1);
 			devp->flag |= ISP_FLAG_TOUCH_AF;
 			af_sm_init(devp);
 		        break;

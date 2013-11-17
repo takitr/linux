@@ -164,11 +164,18 @@ void isp_sm_init(isp_dev_t *devp)
 void af_sm_init(isp_dev_t *devp)
 {
 	unsigned int tmp = 0 ;
+	struct isp_af_info_s *af_info = &devp->af_info;
 	/*init for af*/
 	if(sm_state.af_state)
 		devp->flag |= devp->af_info.flag_bk;
 	if(devp->flag & ISP_AF_SM_MASK){
     	        sm_state.af_state = AF_INIT;
+	}
+	if(devp->flag & ISP_FLAG_CAPTURE){
+		af_info->cur_step = af_info->capture_step;
+		atomic_set(&af_info->writeable,1);
+		devp->flag |= ISP_FLAG_AF;
+		sm_state.af_state = AF_CAPTURE_START;
 	}
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
@@ -1318,6 +1325,8 @@ void isp_af_sm(isp_dev_t *devp)
 					af_info->af_retry_cnt = 0;
 					af_info->adj_duration_cnt = 0;
 					af_info->last_move = false;
+					if(devp->flag & ISP_FLAG_TOUCH_AF)
+						devp->flag &= (~ISP_FLAG_TOUCH_AF);
 					if(devp->flag & ISP_FLAG_AF)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
@@ -1333,6 +1342,8 @@ void isp_af_sm(isp_dev_t *devp)
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:af_info->final_step:%d.\n",af_info->cur_step);
 					atomic_set(&af_info->writeable,1);
+					if(devp->flag & ISP_FLAG_TOUCH_AF)
+						devp->flag &= (~ISP_FLAG_TOUCH_AF);
 					if(devp->flag & ISP_FLAG_AF)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
@@ -1341,9 +1352,25 @@ void isp_af_sm(isp_dev_t *devp)
 				}
 			}
 			break;
+		case AF_CAPTURE_START:
+			if(af_delay >= 2)
+				sm_state.af_state = AF_CAPTURE_OK;
 		default:
 			break;
 	}
+}
+void isp_af_save_current_para(isp_dev_t *devp)
+{
+	struct isp_af_info_s *af_info = &devp->af_info;
+	af_info->af_retry_cnt = 0;
+	af_info->adj_duration_cnt = 0;
+	af_info->last_move = false;
+	sm_state.af_state = AF_NULL;
+	if(sm_state.af_state < AF_INIT)
+		af_info->capture_step = af_info->cur_step;
+	else
+		af_info->capture_step = 0;
+	pr_info("[isp]%s:save step:%d\n",__func__,af_info->capture_step);
 }
 #define FLASH_OFF         0
 #define FLASH_ON	  1
@@ -1376,7 +1403,7 @@ void capture_sm_init(isp_dev_t *devp)
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
 	devp->capture_parm->multi_capture_num = 0;
-	devp->capture_parm->af_mode = CAM_SCANMODE_NULL;
+	devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 	devp->capture_parm->eyetime = 0;
 	devp->capture_parm->pretime = 0;
 	devp->capture_parm->postime = 0;		
@@ -1390,6 +1417,8 @@ void capture_sm_init(isp_dev_t *devp)
 		cap_sm->capture_state = CAPTURE_INIT;
 	else
 		cap_sm->capture_state = CAPTURE_TUNE_AE;
+
+	af_sm_init(devp);
 }
 int isp_capture_sm(isp_dev_t *devp)
 {
@@ -1500,7 +1529,7 @@ int isp_capture_sm(isp_dev_t *devp)
 			}
 			break;
 		case CAPTURE_TUNE_AF:
-			if(sm_state.af_state == AF_SUCCESS){
+			if(sm_state.af_state == AF_CAPTURE_OK){
 				devp->flag &=(~ISP_FLAG_AF);
 				if(cap_sm->flash_on){
 					devp->flag |= ISP_FLAG_AE;
@@ -1891,6 +1920,7 @@ void isp_sm_uninit(isp_dev_t *devp)
 {
     isp_ae_save_current_para(devp);
     isp_awb_save_current_para(devp);
+    isp_af_save_current_para(devp);
 }
 
 module_param(best_step_debug,uint,0664);
