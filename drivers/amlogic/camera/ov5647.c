@@ -3399,10 +3399,12 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     if(is_capture == 0){
    		para.dest_hactive = dest_hactive;
    		para.dest_vactive = dest_vactive;
+		dev->cam_para->cam_mode = CAMERA_PREVIEW;	
    	}else{
         para.skip_count = 2;
    		para.dest_hactive = 0;
    		para.dest_vactive = 0;	
+		dev->cam_para->cam_mode = CAMERA_CAPTURE;	
    	}
     para.hsync_phase = 1;
     para.vsync_phase  = 1;
@@ -3424,7 +3426,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
     dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
     dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
-    dev->cam_para->cam_mode = CAMERA_PREVIEW;	
     if (CAM_MIPI == dev->cam_info.interface)
     {
             para.csi_hw_info.lanes = 2;

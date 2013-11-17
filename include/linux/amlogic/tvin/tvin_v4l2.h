@@ -614,14 +614,15 @@ typedef struct cam_window_s {
         unsigned short y1;
 } cam_window_t;
 
-#define CAP_PARM_NUM			9
+#define CAP_PARM_NUM			10
 typedef struct xml_capture_s {
 	unsigned int ae_en;
 	unsigned int awb_en;
-	cam_scanmode_t af_mode;
+	unsigned int ae_try_max_cnt;
 	unsigned int sigle_count;
 	unsigned int skip_step;
 	unsigned int multi_capture_num;
+	cam_scanmode_t af_mode;
 	unsigned int eyetime;//ms
 	unsigned int pretime;//ms
 	unsigned int postime;//ms

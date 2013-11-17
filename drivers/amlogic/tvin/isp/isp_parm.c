@@ -251,6 +251,7 @@ void set_cap_parm(struct xml_capture_s *cap_sw,char **parm)
 	isp_param_t cap[CAP_PARM_NUM]={
 		{"ae_en",      	     &cap_sw->ae_en,      	   1, ISP_U32},
 		{"awb_en",           &cap_sw->awb_en,      	   1, ISP_U32},
+		{"ae_try_max_cnt",   &cap_sw->ae_try_max_cnt,      1, ISP_U32},
 		{"af_mode",          &cap_sw->af_mode,      	   1, ISP_U32},
 		{"sigle_count",      &cap_sw->sigle_count,         1, ISP_U32},
 		{"skip_step",        &cap_sw->skip_step,      	   1, ISP_U32},

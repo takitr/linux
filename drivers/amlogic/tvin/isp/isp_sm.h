@@ -97,7 +97,6 @@ typedef enum isp_capture_state_e {
 	CAPTURE_PRE_WAIT,//for time lapse
 	CAPTURE_FLASH_ON,//turn on flash for red eye
 	CAPTURE_TR_WAIT,
-	CAPTURE_TUNE_AEW,
 	CAPTURE_TUNE_AE,
 	CAPTURE_TUNE_AWB,
 	CAPTURE_TUNE_AF,
@@ -220,7 +219,9 @@ typedef struct isp_ae_to_sensor_s {
 } isp_ae_to_sensor_t;
 
 extern void isp_sm_init(isp_dev_t *devp);
+extern void isp_sm_uninit(isp_dev_t *devp);
 extern void af_sm_init(isp_dev_t *devp);
+extern void capture_sm_init(isp_dev_t *devp);
 extern void isp_set_flash_mode(isp_dev_t *devp);
 extern void isp_ae_sm(isp_dev_t *devp);
 extern void isp_awb_sm(isp_dev_t *devp);

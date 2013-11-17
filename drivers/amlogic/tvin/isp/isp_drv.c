@@ -841,11 +841,6 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.fv = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.v_dc = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
-		/*patch for capture*/
-		if((info->h_active==2592)||(info->v_active==1944)){
-			devp->flag |= ISP_FLAG_SKIP_BUF;
-			devp->flag &= (~ISP_FLAG_AF);
-		}
 	}
         return 0;
 }
@@ -864,8 +859,6 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
         memset(&devp->info,0,sizeof(isp_info_t));
-	devp->flag &= (~ISP_FLAG_AF);
-	devp->flag &= (~ISP_FLAG_TOUCH_AF);
 	/*power down isp hw*/
 	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
 
@@ -883,12 +876,14 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 	/*configuration the hw,load reg table*/
 
 	if(!IS_ERR_OR_NULL(devp->cam_param)) {
-	        if(devp->cam_param->cam_mode == CAMERA_CAPTURE)
+	        if(devp->cam_param->cam_mode == CAMERA_CAPTURE){
 		        devp->flag = ISP_FLAG_CAPTURE;
-	        else if(devp->cam_param->cam_mode == CAMERA_RECORD)
+			capture_sm_init(devp);
+	        }else if(devp->cam_param->cam_mode == CAMERA_RECORD){
 		        devp->flag = ISP_FLAG_RECORD;
-	        else
+	        }else{
 		        devp->flag &= (~ISP_WORK_MODE_MASK);
+	        }
         }
 	tasklet_enable(&devp->isp_task);
 	start_isp_thread(devp);
@@ -904,6 +899,9 @@ static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
 	tasklet_disable_nosync(&devp->isp_task);
 	stop_isp_thread(devp);
+	devp->flag &= (~ISP_FLAG_AF);
+	devp->flag &= (~ISP_FLAG_TOUCH_AF);
+	isp_sm_uninit(devp);
 	/*disable hw*/
         devp->flag &= (~ISP_FLAG_START);
 }
@@ -1066,19 +1064,14 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		isp_set_lnsd_mode(devp->debug.comb4_mode);
 		devp->flag &= (~ISP_FLAG_SET_COMB4);
 	}
-	if(devp->flag & ISP_FLAG_CAPTURE)
-		ret = isp_capture_sm(devp);
 	if(devp->isp_fe)
-		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
-
-	if(devp->flag & ISP_FLAG_SKIP_BUF){
-		ret = TVIN_BUF_SKIP;
-		if(devp->info.skip_cnt++ > 25){
-			devp->flag &= (~ISP_FLAG_SKIP_BUF);
-		}
-		if(isr_debug)
-			pr_info("%s isp skip cnt %u %s 25.\n",__func__,devp->info.skip_cnt,devp->info.skip_cnt>25?">":"<");
-	}
+		ret |= devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
+	
+	if(devp->flag & ISP_FLAG_CAPTURE)
+		ret |= isp_capture_sm(devp);
+	if(isr_debug&&ret)
+		pr_info("%s isp %d buf.\n",__func__,ret);
+	
 	tasklet_schedule(&devp->isp_task);
         return ret;
 }
