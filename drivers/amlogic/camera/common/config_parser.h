@@ -14,7 +14,7 @@
 #define WB_MAX 9
 #define CAPTURE_MAX 5
 #define GAMMA_MAX 257
-#define SCENE_MAX 202
+#define SCENE_MAX 203
 #define WB_SENSOR_MAX 4
 #define BUFFER_SIZE 1024
 
@@ -143,6 +143,12 @@ typedef struct{
 }wb_sensor_struct;
 
 typedef struct{
+    char date[40];
+    char module[30];
+    char version[20];		
+}version_struct;
+
+typedef struct{
     effect_struct eff;
     int effect_valid;
     hw_struct hw;
@@ -163,6 +169,8 @@ typedef struct{
     int gamma_valid;
     wb_sensor_struct wb_sensor_data;
     int wb_sensor_data_valid;
+    version_struct version;
+    int version_info_valid;
 }configure;
 
 typedef struct{

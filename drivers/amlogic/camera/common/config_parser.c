@@ -21,6 +21,7 @@ char *wave_key = "wave_start";
 char *lenc_key = "lenc_start";
 char *gamma_key = "gamma_start";
 char *wb_sensor_key = "mwb_sensor_start";
+char *version_key = "version_start";
 
 typedef struct{
 	char *buffer;
@@ -883,6 +884,38 @@ int parse_wb_sensor(buffer_para_t *buf_para,int *remained,int *offset){
     return 0;
 }
 
+
+int parse_version(buffer_para_t *buf_para,int *remained,int *offset){
+    int i;
+    char *iter,*end;
+    int len = 0;
+
+    iter = search_string(buf_para,offset,remained,"version_start","version_end");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    iter = strstr(iter,"Date");
+    iter += 5;
+    end = strstr(iter,"Module");
+    len = end - iter;
+    memcpy(cf->version.date,iter,len);
+    cf->version.date[len] = '\0';
+    
+    iter = end + 7;
+    end = strstr(iter,"Version");
+    len = end - iter;    
+    memcpy(cf->version.module,iter,len);
+    cf->version.module[len] = '\0';    
+
+    iter = end + 8;
+    end = strstr(iter,"[version");
+    len = end - iter;
+    memcpy(cf->version.version,iter,len);
+    cf->version.version[len] = '\0';  
+    printk("version:%s",cf->version.version);    
+    return 0;
+}
+
 int parse_config(char *path){
     char *buffer,*iter;
     int file_size;
@@ -1043,7 +1076,18 @@ int parse_config(char *path){
                 }else{
                     buf_para.data_start += strlen(wb_sensor_key);
                 } 
-                 break;          
+                 break;
+            case 'v':
+                if(memcmp(iter,version_key,strlen(version_key)) == 0){
+                    cf->version_info_valid = 1;
+                    if((ret = parse_version(&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->version_info_valid = 0;
+                        printk("version info invalid :%d\n",ret);									
+                    }
+                }else{
+                    buf_para.data_start += strlen(version_key);
+                } 
+                 break;                      
             default:
                 buf_para.data_start += 1;
                 break;		

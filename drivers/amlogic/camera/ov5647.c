@@ -122,8 +122,6 @@ static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
-static int capture_delay = 3500;
-module_param(capture_delay,int,0664);
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {
 	{
@@ -2308,13 +2306,35 @@ static void dw9714_init(unsigned char mode)
 /* power down for dw9714*/
 static void dw9714_uninit(void)
 {
-        char buf[3];
-	struct i2c_adapter *adapter;
+    char buf[3];
+    struct i2c_adapter *adapter;
 	buf[0] = 0x80;
 	buf[1] = 0x0;
 	adapter = i2c_get_adapter(4);
-	my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+	my_i2c_put_byte_add8(adapter,0x0c,buf,2);	
 }
+
+
+
+static ssize_t version_info_store(struct class *cls,struct class_attribute *attr, const char* buf, size_t len)
+{
+	return len;
+}
+
+static ssize_t version_info_show(struct class *cls,struct class_attribute *attr, char* buf)
+{
+	size_t len = 0;
+    if(cf->version_info_valid == 0)
+        printk("verion info envalid\n");
+    else{
+        printk("Date %s\n",cf->version.date);
+        printk("Module %s\n",cf->version.module);
+        printk("Version %s\n",cf->version.version);	
+    }
+    return len;
+}
+
+static CLASS_ATTR(version_debug, 0664, version_info_show, version_info_store);
 /*************************************************************************
 * FUNCTION
 *    OV5647_set_param_wb
@@ -3766,6 +3786,7 @@ static int ov5647_open(struct file *file)
     retval = class_create_file(cam_class,&class_attr_vcm_debug);
     retval = class_create_file(cam_class,&class_attr_resolution_debug);
     retval = class_create_file(cam_class,&class_attr_light_source_debug);
+    retval = class_create_file(cam_class,&class_attr_version_debug);
     printk("open successfully\n");
     dev->vops = get_vdin_v4l2_ops();
 
@@ -3874,8 +3895,8 @@ static int ov5647_close(struct file *file)
     class_remove_file(cam_class,&class_attr_aet_debug);
     class_remove_file(cam_class,&class_attr_dg_debug);
     class_remove_file(cam_class,&class_attr_vcm_debug);
-    class_remove_file(cam_class,&class_attr_resolution_debug);
-    class_remove_file(cam_class,&class_attr_light_source_debug);
+    class_remove_file(cam_class,&class_attr_resolution_debug);   
+    class_remove_file(cam_class,&class_attr_version_debug);
     class_destroy(cam_class);
     printk("close success\n");
 #ifdef CONFIG_CMA
