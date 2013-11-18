@@ -1112,7 +1112,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 		delta_dc = isp_abs64(v_dc[i],ave_vdc);
 		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
 		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
-		if(tmp_vdc1 > ave_vdc){
+		if(!af_info->last_move){
 			if(ave_vdc > af_alg->ave_vdc_thr){
 			        is_move = true;
 				break;
