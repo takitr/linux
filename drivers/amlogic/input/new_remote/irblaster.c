@@ -78,7 +78,8 @@ static void send_all_frame(struct blaster_window * creat_window){
 		for(i =0; i < k/2; i++){
 			aml_write_reg32( P_AO_IR_BLASTER_ADDR2, (0x10000 & ~(1<<12))    //timeleve = 0;
 					| (3<<10)     //[11:10] = 2'b01,then set the timebase 10us. 
-					| ((((creat_window->winArray[2*i])*10-1)/26)<<0)    //[9:0] = 10'd,the timecount = N+1;
+			//		| ((((creat_window->winArray[2*i])*10-1)/26)<<0)    //[9:0] = 10'd,the timecount = N+1;
+					| (((((creat_window->winArray[2*i])*10-1)*38)/1000)<<0)    //[9:0] = 10'd,the timecount = N+1;
 				       );
 			aml_write_reg32( P_AO_IR_BLASTER_ADDR2, (0x10000  | (1<<12))     //timeleve = 1;
 					| (1<<10)     //[11:10] = 2'b11,then set the timebase 26.5us. 
