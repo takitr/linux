@@ -289,7 +289,7 @@ typedef struct xml_window_s {
         unsigned char ratio_y1; // 0 ~ 255, y1 = (format.v * ratio_y1) >> 8
 } xml_window_t;
 
-#define AE_PARM_NUM			59
+#define AE_PARM_NUM			60
 typedef struct xml_algorithm_ae_s {
         unsigned int  ae_algorithm;       //0:basic;    1:enhanced
         unsigned int  ae_statistics[3];   //0: false, 1: true
@@ -353,6 +353,7 @@ typedef struct xml_algorithm_ae_s {
         unsigned int           slow_lpfcoef_enh;     // 0 ~ 255
         unsigned int           fast_lpfcoef_enh;     // 0 ~ 255
         unsigned int           flash_thr_enh;	     // 0 ~ 255
+        unsigned int 	       aet_fmt_gain;         //0db for each fmt
 } xml_algorithm_ae_t;
 
 #define AWB_PARM_NUM			57
@@ -614,10 +615,8 @@ typedef struct cam_window_s {
         unsigned short y1;
 } cam_window_t;
 
-#define CAP_PARM_NUM			10
+#define CAP_PARM_NUM			8
 typedef struct xml_capture_s {
-	unsigned int ae_en;
-	unsigned int awb_en;
 	unsigned int ae_try_max_cnt;
 	unsigned int sigle_count;
 	unsigned int skip_step;

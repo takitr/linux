@@ -132,6 +132,7 @@ void set_ae_parm(xml_algorithm_ae_t *ae_sw,char **parm)
 		{"slow_lpfcoef_enh",  &ae_sw->slow_lpfcoef_enh,  1,  ISP_U32},
 		{"fast_lpfcoef_enh",  &ae_sw->fast_lpfcoef_enh,  1,  ISP_U32},
 		{"flash_thr_enh",     &ae_sw->flash_thr_enh,     1,  ISP_U32},
+		{"aet_fmt_gain",      &ae_sw->aet_fmt_gain,      1,  ISP_U32},	
 
 	};
 
