@@ -715,9 +715,9 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	/*register frontend */
     sprintf(devp->frontend.name, "%s", DEV_NAME);
 	//tvin_frontend_init(&devp->frontend, &am656_decoder_ops_s, &am656_machine_ops, pdev->id);
-    if(!tvin_frontend_init(&devp->frontend,&am656_decoder_ops_s,&am656_machine_ops, 0)) {
+    if(!tvin_frontend_init(&devp->frontend,&am656_decoder_ops_s,&am656_machine_ops, pdev->id)) {
         if(tvin_reg_frontend(&devp->frontend))
-            printk(" %s register frontend error........................\n",__func__);
+            printk(" %s register frontend error \n",__func__);
     }        
 
 	/*set pinmux for ITU601 A and ITU601 B*/
