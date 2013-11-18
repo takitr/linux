@@ -1399,7 +1399,8 @@ void isp_set_flash_mode(isp_dev_t *devp)
 void capture_sm_init(isp_dev_t *devp)
 {
 	struct isp_capture_sm_s *cap_sm = &sm_state.cap_sm;
-		
+	xml_capture_t *parm = devp->capture_parm;
+	
 	devp->capture_parm->ae_try_max_cnt = 15;
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
@@ -1413,11 +1414,18 @@ void capture_sm_init(isp_dev_t *devp)
 	cap_sm->fr_time = 0;
 	cap_sm->tr_time = 0;
 	
-	devp->flag &= (~ISP_FLAG_AF);
-	if(cap_sm->flash_mode)
+	if(cap_sm->flash_mode) {
 		cap_sm->capture_state = CAPTURE_INIT;
-	else
-		cap_sm->capture_state = CAPTURE_TUNE_AE;
+	} else {
+		cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
+		if(parm->af_mode){
+			devp->flag |= ISP_FLAG_AF;
+		}else{
+			devp->flag &= (~ISP_FLAG_AF);
+		}
+		devp->flag |= ISP_FLAG_AWB;
+		devp->flag |= ISP_FLAG_AE;
+	}
 
 	af_sm_init(devp);
 }
@@ -1438,11 +1446,11 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->capture_state = CAPTURE_PRE_WAIT;
 				start_jf = jiffies;
 				if(capture_debug)
-					pr_info("[cap_sm]init->pre_wait.\n");
+					pr_info("[cap_sm]%u:init->pre_wait.\n",__LINE__);
 			} else {
 			        cap_sm->capture_state = CAPTURE_FLASH_ON;
 				if(capture_debug)
-					pr_info("[cap_sm]init->flash_on.\n");
+					pr_info("[cap_sm]%u:init->flash_on.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_PRE_WAIT:
@@ -1450,7 +1458,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->capture_state = CAPTURE_FLASH_ON;
 				start_jf = 0;
 				if(capture_debug)
-					pr_info("[cap_sm] pre_wait->flash_on.\n");
+					pr_info("[cap_sm]%u:pre_wait->flash_on.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_FLASH_ON:
@@ -1466,92 +1474,65 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->flash_on = 1;
 				cap_sm->capture_state = CAPTURE_TR_WAIT;
 				if(capture_debug)
-					pr_info("[cap_sm] flash on->torch rising wait.\n");
+					pr_info("[cap_sm]%u:flash on->torch rising wait.\n",__LINE__);
 			} else {
 				/*without flash*/
 				cap_sm->flash_on = 0;
 				cap_sm->capture_state = CAPTURE_TUNE_AE;
 			        if(capture_debug)
-				        pr_info("[cap_sm] flash on->tune ae wait.\n");
+				        pr_info("[cap_sm]%u:flash on->tune ae wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_TR_WAIT:
 			if(time_after(jiffies,cap_sm->tr_time)){
-				cap_sm->capture_state = CAPTURE_TUNE_AE;
+				cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
 				if(capture_debug)
-				        pr_info("[cap_sm] torch rising wait->tune ae wait.\n");
+				        pr_info("[cap_sm]%u:torch rising wait->tune ae wait.\n",__LINE__);
+			}
+			break;
+		case CAPTURE_TUNE_AF_AWB:
+			if((sm_state.af_state==AF_CAPTURE_OK)||(parm->af_mode==CAM_SCANMODE_NULL)){
+				devp->flag &=(~ISP_FLAG_AF);
+				devp->flag &=(~ISP_FLAG_AWB);
+				if(cap_sm->flash_on){
+					devp->flag |= ISP_FLAG_AE;
+					isp_ae_low_gain();
+					cap_sm->capture_state = CAPTURE_LOW_GAIN;
+					if(capture_debug)
+						pr_info("[cap_sm]%u: af_awb->low gain.\n",__LINE__);
+				}else{
+					cap_sm->capture_state = CAPTURE_TUNE_AE;
+					devp->flag |= ISP_FLAG_AE;
+					cap_sm->adj_cnt = 0;
+					if(capture_debug)
+						pr_info("[cap_sm]%u: af_awb->ae.\n",__LINE__);
+				}
 			}
 			break;
 		case CAPTURE_TUNE_AE:
 			if((sm_state.status==ISP_AE_STATUS_STABLE)||(cap_sm->adj_cnt >= parm->ae_try_max_cnt))
 			{
 				devp->flag &= (~ISP_FLAG_AE);
-				cap_sm->capture_state = CAPTURE_TUNE_AWB;
-				devp->flag |= ISP_FLAG_AWB;
 				cap_sm->adj_cnt = 0;
-				if(capture_debug)
-					pr_info("[cap_sm] changed ae(%s)->awb.\n",
-							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
-				if(parm->af_mode){
-					cap_sm->capture_state = CAPTURE_TUNE_AF;
-					devp->flag |= ISP_FLAG_AF;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->af.\n");
-				}else if(cap_sm->flash_on){
-					devp->flag |= ISP_FLAG_AE;
-					cap_sm->capture_state = CAPTURE_LOW_GAIN;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->low gain.\n");
-				}else {
-					cap_sm->capture_state = CAPTURE_SINGLE;
-					cap_sm->adj_cnt = 0;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->single.\n");
-				}
-			}
-			break;
-		case CAPTURE_TUNE_AWB:
-			devp->flag &=(~ISP_FLAG_AWB);
-			if(parm->af_mode) {
-				devp->flag |= ISP_FLAG_AF;
-				cap_sm->capture_state = CAPTURE_TUNE_AF;
-				if(capture_debug)
-					pr_info("[cap_sm] changed awb->af.\n");
-			}else if(cap_sm->flash_on){
-				devp->flag |= ISP_FLAG_AE;
-				cap_sm->capture_state = CAPTURE_LOW_GAIN;
-				if(capture_debug)
-					pr_info("[cap_sm] changed awb->low gain.\n");
-			}else{
-				cap_sm->capture_state = CAPTURE_SINGLE;
-				cap_sm->adj_cnt = 0;
-				if(capture_debug)
-				        pr_info("[cap_sm] changed awb->single.\n");
-			}
-			break;
-		case CAPTURE_TUNE_AF:
-			if(sm_state.af_state == AF_CAPTURE_OK){
-				devp->flag &=(~ISP_FLAG_AF);
 				if(cap_sm->flash_on){
 					devp->flag |= ISP_FLAG_AE;
-					isp_ae_low_gain();
 					cap_sm->capture_state = CAPTURE_LOW_GAIN;
 					if(capture_debug)
-						pr_info("[cap_sm] changed af->low gain.\n");
-				}else{
+						pr_info("[cap_sm]%u:ae->low gain.\n",__LINE__);
+				}else {
 					cap_sm->capture_state = CAPTURE_SINGLE;
-					cap_sm->adj_cnt = 0;
 					if(capture_debug)
-						pr_info("[cap_sm] changed af->single.\n");
+						pr_info("[cap_sm]%u:ae(%s)->sigle.\n",__LINE__,
+							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
 				}
 			}
-			break;
+			break;			
 		case CAPTURE_LOW_GAIN:
 			if(sm_state.ae_down==true){
 				devp->flag &=(~ISP_FLAG_AE);
 				cap_sm->capture_state = CAPTURE_EYE_WAIT;
 				if(capture_debug)
-					pr_info("[cap_sm] changed low gain->eye wait.\n");
+					pr_info("[cap_sm]%u:low gain->eye wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_EYE_WAIT:
@@ -1560,7 +1541,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				start_jf = 0;
 				cap_sm->capture_state = CAPTURE_POS_WAIT;
 				if(capture_debug)
-				        pr_info("[cap_sm] changed eye wait->post wait:%u.\n",start_jf);
+				        pr_info("[cap_sm]%u:eye wait->post wait:%u.\n",__LINE__,start_jf);
 			}
 			break;
 		case CAPTURE_POS_WAIT:
@@ -1569,7 +1550,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				isp_set_flash(devp,FLASH_ON,0);
 				start_jf = 0;
 				if(capture_debug)
-				        pr_info("[cap_sm] changed post waite->flash wait.\n");
+				        pr_info("[cap_sm]%u:changed post waite->flash wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_FLASHW:
@@ -1577,7 +1558,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				isp_set_flash(devp,FLASH_TORCH,0);
 				ret = TVIN_BUF_NULL;
 				if(capture_debug)
-					pr_info("[cap_sm] flash wait end,report buffer.\n");
+					pr_info("[cap_sm]%u:flash wait end,report buffer.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_SINGLE:
@@ -1585,7 +1566,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				for(j=0;j<4;j++)
 					cur_ac += devp->blnr_stat.ac[j];
 					if(capture_debug)
-						pr_info("[cap_sm] field[%u] ac_sum %u.\n",cap_sm->adj_cnt,cur_ac);
+						pr_info("[cap_sm]%u:field[%u] ac_sum %u.\n",__LINE__,cap_sm->adj_cnt,cur_ac);
 					if(cur_ac > cap_sm->max_ac_sum){
 						cap_sm->max_ac_sum = cur_ac;
 						ret = TVIN_BUF_TMP;
@@ -1596,11 +1577,11 @@ int isp_capture_sm(isp_dev_t *devp)
 					cap_sm->capture_state = CAPTURE_MULTI;
 					cap_sm->adj_cnt = 1;
 					if(capture_debug)
-						pr_info("[cap_sm] changed single->multi.\n");
+						pr_info("[cap_sm]%u:single->multi.\n",__LINE__);
 				}else{
 					cap_sm->capture_state = CAPTURE_END;
 					if(capture_debug)
-						pr_info("[cap_sm] changed single->capture end.\n");
+						pr_info("[cap_sm]%u:single->capture end.\n",__LINE__);
 				}
 			}
 			break;
@@ -1610,7 +1591,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				if(multi_count++ > parm->multi_capture_num){
 					cap_sm->capture_state = CAPTURE_END;
                                         if(capture_debug)
-                                                pr_info("[cap_sm] muti capture end.\n");
+                                                pr_info("[cap_sm]%u:muti capture end.\n",__LINE__);
 				}
 			} else {
 				ret = TVIN_BUF_SKIP;

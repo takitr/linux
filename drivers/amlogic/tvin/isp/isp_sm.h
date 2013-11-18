@@ -99,9 +99,8 @@ typedef enum isp_capture_state_e {
 	CAPTURE_PRE_WAIT,//for time lapse
 	CAPTURE_FLASH_ON,//turn on flash for red eye
 	CAPTURE_TR_WAIT,
+	CAPTURE_TUNE_AF_AWB,
 	CAPTURE_TUNE_AE,
-	CAPTURE_TUNE_AWB,
-	CAPTURE_TUNE_AF,
 	CAPTURE_LOW_GAIN,
 	CAPTURE_EYE_WAIT,
 	CAPTURE_POS_WAIT,
