@@ -1366,9 +1366,10 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 		        goto irq_handled;
                 }
 	}
-	curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
-	if(curr_wr_vfe)
+	if(curr_wr_vfe){
+		curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
 		provider_vf_put(curr_wr_vfe, devp->vfp);
+	}
 
 	/* prepare for next input data */
 	next_wr_vfe = provider_vf_get(devp->vfp);

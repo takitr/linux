@@ -940,12 +940,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
                 case CAM_COMMAND_AWB:
 	                devp->flag |= ISP_FLAG_AWB;
-			devp->capture_parm->awb_en = 1;
 		        break;
 		case CAM_COMMAND_MWB:
 			devp->flag &= (~ISP_FLAG_AWB);
 	                devp->flag |= ISP_FLAG_MWB;
-			devp->capture_parm->awb_en = 0;
 		        break;
 		case CAM_COMMAND_SET_WORK_MODE:
 			if(devp->cam_param->cam_mode == CAMERA_CAPTURE)
@@ -959,11 +957,9 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_AE_ON:
 		        isp_sm_init(devp);
 		        devp->flag |= ISP_FLAG_AE;
-		        devp->capture_parm->ae_en = 1;
 		        break;
                 case CAM_COMMAND_AE_OFF:
 		        devp->flag &= (~ISP_FLAG_AE);
-		        devp->capture_parm->ae_en = 0;
 		        break;
                 // af related
                 case CAM_COMMAND_AF:
@@ -1080,10 +1076,10 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		devp->flag &= (~ISP_FLAG_SET_COMB4);
 	}
 	if(devp->isp_fe)
-		ret |= devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
+		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
 	
 	if(devp->flag & ISP_FLAG_CAPTURE)
-		ret |= isp_capture_sm(devp);
+		ret = max(isp_capture_sm(devp),ret);
 	if(isr_debug&&ret)
 		pr_info("%s isp %d buf.\n",__func__,ret);
 	

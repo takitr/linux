@@ -1248,12 +1248,11 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         capture = para->xml_capture;
-        capture->ae_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
-        capture->awb_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[1]);
-        capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
-        capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
+        capture->ae_try_max_cnt = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
+		capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
         capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
-        capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+		capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+		capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
         capture->eyetime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[6]);
         capture->pretime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[7]);
         capture->postime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[8]);

@@ -1400,8 +1400,6 @@ void capture_sm_init(isp_dev_t *devp)
 {
 	struct isp_capture_sm_s *cap_sm = &sm_state.cap_sm;
 		
-	devp->capture_parm->ae_en = 1;
-	devp->capture_parm->awb_en = 1;
 	devp->capture_parm->ae_try_max_cnt = 15;
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
@@ -1583,16 +1581,17 @@ int isp_capture_sm(isp_dev_t *devp)
 			}
 			break;
 		case CAPTURE_SINGLE:
-			if(cap_sm->adj_cnt < parm->sigle_count){
+			if(cap_sm->adj_cnt <= parm->sigle_count){
 				for(j=0;j<4;j++)
 					cur_ac += devp->blnr_stat.ac[j];
+					if(capture_debug)
+						pr_info("[cap_sm] field[%u] ac_sum %u.\n",cap_sm->adj_cnt,cur_ac);
 					if(cur_ac > cap_sm->max_ac_sum){
 						cap_sm->max_ac_sum = cur_ac;
 						ret = TVIN_BUF_TMP;
 					}
 			}else{
-				//ret = TVIN_BUF_RECYCLE_TMP;
-				ret = TVIN_BUF_NULL;
+				ret = TVIN_BUF_RECYCLE_TMP;
 				if(parm->multi_capture_num > 0){
 					cap_sm->capture_state = CAPTURE_MULTI;
 					cap_sm->adj_cnt = 1;
@@ -1618,8 +1617,7 @@ int isp_capture_sm(isp_dev_t *devp)
 			}
 			break;
 		case CAPTURE_END:
-			//ret = TVIN_BUF_RECYCLE_TMP;
-			ret = TVIN_BUF_NULL;
+			ret = TVIN_BUF_RECYCLE_TMP;
 			devp->flag &= (~ISP_FLAG_CAPTURE);
 			break;
 		default:
