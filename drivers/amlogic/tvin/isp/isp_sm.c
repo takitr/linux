@@ -1225,6 +1225,7 @@ void isp_af_sm(isp_dev_t *devp)
 
 	switch(sm_state.af_state){
 		case AF_INIT:
+			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			af_info->last_great_step = af_alg->af_step_max_thre;
 			if((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down)){
 			/*awb brake,ae brake*/
@@ -1332,6 +1333,7 @@ void isp_af_sm(isp_dev_t *devp)
 					else
 						sm_state.af_state = AF_NULL;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
+					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				} else {/*af success*/
 					/*enable awb,enable af*/
 				        devp->flag |= af_info->flag_bk;
@@ -1349,6 +1351,7 @@ void isp_af_sm(isp_dev_t *devp)
 					else
 						sm_state.af_state = AF_NULL;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
+					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				}
 			}
 			break;

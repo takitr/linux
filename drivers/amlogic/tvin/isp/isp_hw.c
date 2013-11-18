@@ -248,6 +248,12 @@ void isp_set_af_stat(xml_af_t *afs,unsigned int w,unsigned int h)
 	WR(ISP_AFC_WIND4_LR,(tmp_w<<3)<<16|tmp_w*11);
 	WR(ISP_AFC_WIND4_TB,(tmp_h<<3)<<16|tmp_h*11);
 }
+void isp_set_af_scan_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned int y1)
+{
+	WR(ISP_AFC_WIND0_LR,x1|x0<<16);
+	WR(ISP_AFC_WIND0_TB,y1|y0<<16);
+	WR(ISP_AFC_FILTER_SEL,0x000170f0);
+}
 /*
 *reg 0xac~0xae
 */
@@ -272,12 +278,6 @@ void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned
 	WR(ISP_BLNR_WIND_LR, x1|x0<<16);
 	WR(ISP_BLNR_WIND_TB, y1|y0<<16);
 	WR_BITS(ISP_BLNR_CTRL,1,BLNR_STATISTICS_EN_BIT,BLNR_STATISTICS_EN_WID);
-
-
-	WR(ISP_AFC_WIND0_LR,x1|x0<<16);
-	WR(ISP_AFC_WIND0_TB,y1|y0<<16);
-	WR(ISP_AFC_FILTER_SEL,0x000170f0);
-
 }
 /*
 *reg 0xb0~0xb1
@@ -667,15 +667,20 @@ void isp_get_af_stat(isp_af_stat_t * af_stat)
 	}
 	return;
 }
-
-void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
+void isp_get_af_scan_stat(isp_blnr_stat_t *blnr_stat)
 {
 	int i = 0, af = isp_rd(ISP_RO_AFC_WIND0_F0);
+	for(i=0;i<4;i++){
+		blnr_stat->ac[i] = af;
+	}
+}
+void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
+{
+	int i = 0;
 
 	for(i=0;i<4;i++){
 		blnr_stat->dc[i] = isp_rd(ISP_RO_BLNR_GRBG_DCSUM0+i);
-		blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);
-		blnr_stat->ac[i] = af;
+		//blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);
 	}
 
 	return;

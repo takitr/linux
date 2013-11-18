@@ -980,10 +980,14 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			y0 = devp->isp_af_parm->y>devp->af_info.radius?devp->isp_af_parm->y-devp->af_info.radius:0;
 			x1 = devp->isp_af_parm->x + devp->af_info.radius;
 			y1 = devp->isp_af_parm->y + devp->af_info.radius;
+			if(x1 >= devp->info.h_active)
+				x1 = devp->info.h_active - 1;
+			if(y1 >= devp->info.v_active)
+				y1 = devp->info.v_active - 1;
 			if(ioctl_debug)
 				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);
-			//isp_set_blenr_stat(x0,y0,x1,y1);
+			isp_set_af_scan_stat(x0,y0,x1,y1);
 			devp->flag |= ISP_FLAG_TOUCH_AF;
 			af_sm_init(devp);
 		        break;
@@ -1031,6 +1035,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->flag & ISP_AF_SM_MASK){
 	        isp_get_blnr_stat(&af_info->isr_af_data);
+		isp_get_af_scan_stat(&af_info->isr_af_data);
 	}
 	if(devp->flag & ISP_FLAG_SET_EFFECT){
 		csc = &(devp->cam_param->xml_effect_manual->csc);
@@ -1039,9 +1044,11 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->flag&ISP_FLAG_CAPTURE){
 		isp_get_blnr_stat(&devp->blnr_stat);
+		isp_get_af_scan_stat(&devp->blnr_stat);
 	}
 	if(devp->flag&ISP_FLAG_BLNR){
 		isp_get_blnr_stat(&devp->blnr_stat);
+		isp_get_af_scan_stat(&devp->blnr_stat);
 		if(devp->vs_cnt-- == 0)
 			devp->flag &= (~ISP_FLAG_BLNR);
 	}
@@ -1049,11 +1056,13 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		af = devp->af_dbg;
 		if((af->state >= 1)&&(af->state <= af->delay)){
 			isp_get_blnr_stat(&af->data[af->cur_step]);
+			isp_get_af_scan_stat(&af->data[af->cur_step]);
 			af->state++;
 		}
 	}
 	if(devp->flag & ISP_TEST_FOR_AF_WIN){
 		isp_get_blnr_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
+		isp_get_af_scan_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
 		isp_get_af_stat(&devp->af_test.af_win[devp->af_test.cnt]);
 		isp_get_ae_stat(&devp->af_test.ae_win[devp->af_test.cnt]);
 		if(devp->af_test.cnt++ > devp->af_test.max){
