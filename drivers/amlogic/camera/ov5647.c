@@ -113,15 +113,11 @@ static unsigned int current_fmt;
 static unsigned int current_fr = 0;//50 hz
 static unsigned int aet_index;
 static unsigned int last_af_step = 0;
-
-static struct file *debug_file;
-static struct ov5647_device *debug_dev;
-static struct ov5647_fh *debug_fh;
-
 static int i_index = 3;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
+static bool bDoingAutoFocusMode = false;
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {
 	{
@@ -2260,8 +2256,8 @@ static CLASS_ATTR(light_source_debug, 0664, light_source_freq_manual_show, light
 //load OV5647 parameters
 void OV5647_init_regs(struct ov5647_device *dev)
 {
-	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-  int i=0;
+    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+    int i=0;
 
 	while (1) {
 		if (OV5647_script[i].val==0xff&&OV5647_script[i].addr==0xffff)
@@ -2426,58 +2422,11 @@ void OV5647_set_param_wb(struct ov5647_device *dev,enum  camera_wb_flip_e para)/
 void OV5647_set_param_exposure(struct ov5647_device *dev,enum camera_exposure_e para)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-    switch (para)
-    {
-        case EXPOSURE_N4_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0x40);//40
-            i2c_put_byte(client,0x0201 , 0x90);
-            break;
-        case EXPOSURE_N3_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0x50);
-            i2c_put_byte(client,0x0201 , 0xa0);
-            break;
-        case EXPOSURE_N2_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0x60);
-            i2c_put_byte(client,0x0201 , 0xb0);
-            break;
-        case EXPOSURE_N1_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0x70);
-            i2c_put_byte(client,0x0201 , 0xd0);
-            break;		
-        case EXPOSURE_0_STEP:
-            break;		
-        case EXPOSURE_P1_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0x90);
-            i2c_put_byte(client,0x0201 , 0x10);
-            break;	
-        case EXPOSURE_P2_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0xa0);
-            i2c_put_byte(client,0x0201 , 0x20);
-            break;
-        case EXPOSURE_P3_STEP:
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0xb0);
-            i2c_put_byte(client,0x0201 , 0x30);
-            break;						
-        case EXPOSURE_P4_STEP:	
-            i2c_put_byte(client,0x0300 , 0x81);
-            i2c_put_byte(client,0x0301 , 0xc0);
-            i2c_put_byte(client,0x0201 , 0x40);
-            break;
-        default:
-            printk("not support exposure para\n");
-            return;
-    }
     if(para == EXPOSURE_0_STEP){
         dev->cam_para->cam_command = CAM_COMMAND_AE_ON;
     }else{
-        dev->cam_para->cam_command = CAM_COMMAND_AE_OFF;	
+        dev->cam_para->cam_command = CAM_COMMAND_SET_AE_LEVEL;
+        dev->cam_para->exposure_level = para;
     }
     dev->fe_arg.port = TVIN_PORT_ISP;
     dev->fe_arg.index = 0;
@@ -2606,24 +2555,31 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
 
     switch (focus_mode) {
         case CAM_FOCUS_MODE_AUTO:       
-            printk("auto mode start\n");
+            printk("auto focus mode start\n");
+            bDoingAutoFocusMode = true;
+            dev->cam_para->cam_command = CAM_COMMAND_FULLSCAN;
+            dev->fe_arg.port = TVIN_PORT_ISP;
+            dev->fe_arg.index = 0;
+            dev->fe_arg.arg = (void *)(dev->cam_para);
+            if(dev->vops != NULL){
+                dev->vops->tvin_fe_func(0,&dev->fe_arg);
+            }
             break;
-
         case CAM_FOCUS_MODE_CONTI_VID:
         case CAM_FOCUS_MODE_CONTI_PIC:
-            i2c_put_byte(client, 0x3022 , 0x4); //start to auto focus
-            i2c_put_byte(client, 0x3023 , 0x1);
-            /*while(i2c_get_byte(client, 0x3023) == 0x1) {
-              msleep(10);
-              }*/
+            dev->cam_para->cam_command = CAM_COMMAND_AF;
+            dev->fe_arg.port = TVIN_PORT_ISP;
+            dev->fe_arg.index = 0;
+            dev->fe_arg.arg = (void *)(dev->cam_para);
+            if(dev->vops != NULL){
+                dev->vops->tvin_fe_func(0,&dev->fe_arg);
+            }
             printk("start continous focus\n");
             break;
 
         case CAM_FOCUS_MODE_RELEASE:
         case CAM_FOCUS_MODE_FIXED:
         default:
-            i2c_put_byte(client, 0x3023 , 0x1);
-            i2c_put_byte(client, 0x3022 , 0x8);
             printk("release focus to infinit\n");
             break;
     }
@@ -3548,7 +3504,7 @@ static ssize_t manual_format_show(struct class *cls,struct class_attribute *attr
 {
 
 	size_t len = 0;
-
+	printk("current hactive :%d, v_active :%d, dest_hactive :%d, dest_vactive:%d\n",ov5647_h_active,ov5647_v_active,dest_hactive,dest_vactive);
 	return len;
 }
 static CLASS_ATTR(resolution_debug, 0664, manual_format_show,manual_format_store);
@@ -3656,15 +3612,66 @@ static int vidioc_g_ctrl(struct file *file, void *priv,
 {
 	struct ov5647_fh *fh = priv;
 	struct ov5647_device *dev = fh->dev;
-	int i;
+	int i, status;
+	int ret = 0;
 
 	for (i = 0; i < ARRAY_SIZE(ov5647_qctrl); i++)
 		if (ctrl->id == ov5647_qctrl[i].id) {
-			ctrl->value = dev->qctl_regs[i];
-			return 0;
-		}
+            if( (V4L2_CID_FOCUS_AUTO == ctrl->id)
+                    && bDoingAutoFocusMode){
+                dev->cam_para->cam_command = CAM_COMMAND_GET_STATE;
+                dev->fe_arg.port = TVIN_PORT_ISP;
+                dev->fe_arg.index = 0;
+                dev->fe_arg.arg = (void *)(dev->cam_para);
+                status = dev->vops->tvin_fe_func(0,&dev->fe_arg);
+                switch(status){
+                    case CAM_STATE_DOING:
+                        ret = -EBUSY;
+                        break;
+                    case CAM_STATE_ERROR:
+                    case CAM_STATE_NULL:
+                        printk("auto mode failed!\n");
+                        bDoingAutoFocusMode = false;
+                        ret = -EAGAIN;
+                        break;
+                    case CAM_STATE_SUCCESS:
+                        bDoingAutoFocusMode = false;
+                        ret = 0;
+                        break;
+                    default:
+                        printk("wrong state\n");
+                        ret = 0;
+                }
+            }else if( V4L2_CID_AUTO_FOCUS_STATUS == ctrl->id){
+                dev->cam_para->cam_command = CAM_COMMAND_GET_STATE;
+                dev->fe_arg.port = TVIN_PORT_ISP;
+                dev->fe_arg.index = 0;
+                dev->fe_arg.arg = (void *)(dev->cam_para);
+                status = dev->vops->tvin_fe_func(0,&dev->fe_arg);
+                switch(status){
+                    case CAM_STATE_DOING:
+                        ctrl->value = V4L2_AUTO_FOCUS_STATUS_BUSY;
+                        break;
+                    case CAM_STATE_ERROR:
+                        printk("should resart focus\n");
+                        ctrl->value = V4L2_AUTO_FOCUS_STATUS_FAILED;
+                        break;
+                    case CAM_STATE_NULL:
+                        ctrl->value = V4L2_AUTO_FOCUS_STATUS_IDLE;
+                        break;
+                    case CAM_STATE_SUCCESS:
+                        ctrl->value = V4L2_AUTO_FOCUS_STATUS_REACHED;
+                        break;
+                    default:
+                        printk("wrong state\n");
+                }	
+                return 0;
+            }
+            ctrl->value = dev->qctl_regs[i];
+            return ret;
+        }
 
-	return -EINVAL;
+    return -EINVAL;
 }
 
 static int vidioc_s_ctrl(struct file *file, void *priv,
@@ -3790,10 +3797,7 @@ static int ov5647_open(struct file *file)
     retval = class_create_file(cam_class,&class_attr_version_debug);
     printk("open successfully\n");
     dev->vops = get_vdin_v4l2_ops();
-
-    debug_file = file;
-    debug_dev = dev;
-    debug_fh = fh;
+		bDoingAutoFocusMode=false;
     return 0;
 }
 
