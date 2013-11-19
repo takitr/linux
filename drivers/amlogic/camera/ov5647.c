@@ -2327,9 +2327,9 @@ static ssize_t version_info_show(struct class *cls,struct class_attribute *attr,
     if(cf->version_info_valid == 0)
         printk("verion info envalid\n");
     else{
-        printk("Date %s\n",cf->version.date);
-        printk("Module %s\n",cf->version.module);
-        printk("Version %s\n",cf->version.version);	
+        printk("Date %s",cf->version.date);
+        printk("Module %s",cf->version.module);
+        printk("Version %s",cf->version.version);	
     }
     return len;
 }
