@@ -533,7 +533,7 @@ static int get_input_format(vframe_t* vf)
                 }
         }
         if (1==print_ifmt) {
-                printk("VIDTYPE_VIU_NV21=%x, vf->type=%x, format=%x\n", VIDTYPE_VIU_NV21, vf->type, format);
+                printk("VIDTYPE_VIU_NV21=%x, vf->type=%x, format=%x, w=%d, h=%d\n", VIDTYPE_VIU_NV21, vf->type, format, vf->width, vf->height);
                 print_ifmt = 0;
         }
         return format;
