@@ -1211,13 +1211,13 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         scene = para->xml_scenes;
-        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
         if(cf->aet_valid == 1){
-        	cf->scene.scene[pindex.scenes_index].export[97] = sensor_aet_info->format_transfer_parameter;
+        	cf->scene.scene[pindex.scenes_index].export[97] = sensor_aet_info->format_transfer_parameter;        	
         }
         else
         	cf->scene.scene[pindex.scenes_index].export[97] = 0;
-        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 98*sizeof(unsigned int),104*sizeof(unsigned int));
+        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,98*sizeof(unsigned int));
+        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + sizeof(xml_algorithm_ae_t),104*sizeof(unsigned int));
         // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
     }else{
         para->xml_scenes = NULL;

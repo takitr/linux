@@ -12,7 +12,7 @@
 #define AET_MAX 32
 #define HW_MAX 16
 #define WB_MAX 9
-#define CAPTURE_MAX 5
+#define CAPTURE_ITEM_MAX 5
 #define GAMMA_MAX 257
 #define SCENE_MAX 203
 #define WB_SENSOR_MAX 4
@@ -84,7 +84,7 @@ typedef struct{
 typedef struct{
 	int num;
 	char name[40];
-	int export[CAPTURE_MAX];	
+	int export[CAPTURE_ITEM_MAX];	
 }capture_type;
 
 typedef struct{

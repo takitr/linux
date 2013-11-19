@@ -3443,6 +3443,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
         free_para(dev->cam_para);
         para.reserved = 0;
     }
+    printk("aet_fmt_gain:%d\n",dev->cam_para->xml_scenes->ae.aet_fmt_gain);
     dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
     dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
     dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
