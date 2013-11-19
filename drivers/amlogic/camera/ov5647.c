@@ -3769,6 +3769,9 @@ static int ov5647_open(struct file *file)
     fh->height   = 480;
     fh->stream_on = 0 ;
     fh->f_flags  = file->f_flags;
+    if( CAM_MIPI == dev->cam_info.interface){ //deprecated; this added for there is no 960p output for mipi
+        i_index = 2;
+    }
     /* Resets frame counters */
     dev->jiffies = jiffies;
     videobuf_queue_vmalloc_init(&fh->vb_vidq, &ov5647_video_qops,
@@ -4022,7 +4025,6 @@ static ssize_t cam_info_store(struct device *dev,struct device_attribute *attr,c
         char *buf_orig, *ps, *token;
         char *parm[3] = {NULL};
 
-        printk("buf=%p", buf);
         if(!buf)
 		return len;
         buf_orig = kstrdup(buf, GFP_KERNEL);
@@ -4045,10 +4047,10 @@ static ssize_t cam_info_store(struct device *dev,struct device_attribute *attr,c
 
         if ( 0 == strcmp(parm[0],"interface")){
                 t->cam_info.interface = simple_strtol(parm[1],NULL,16);
-                printk("interface =%s", t->cam_info.interface?"dvp":"mipi");
+                printk("substitude with %s interface\n", t->cam_info.interface?"mipi":"dvp");
         }else if ( 0 == strcmp(parm[0],"clk")){
                 t->cam_info.clk_channel = simple_strtol(parm[1],NULL,16);
-                printk("clk channel =%s", t->cam_info.interface?"clkA":"clkB");
+                printk("clk channel =%s\n", t->cam_info.interface?"clkB":"clkA");
         }
 
         kfree(buf_orig);

@@ -19,6 +19,11 @@
 #include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include "../tvin_frontend.h"
 #include "../tvin_global.h"
+#ifdef PRINT_DEBUG_INFO
+#define DPRINT(...)		printk(__VA_ARGS__)
+#else
+#define DPRINT(...)
+#endif
 
 enum amcsi_status_e{
         TVIN_AMCSI_STOP,
@@ -35,6 +40,10 @@ typedef struct amcsi_dev_s{
         enum amcsi_status_e     dec_status;
         struct vdin_parm_s      para;
         csi_parm_t              csi_parm;
+        unsigned char           reset;
+        unsigned int            reset_count;
+        unsigned int            irq_num;
         struct tvin_frontend_s  frontend; 
+        struct timer_list       t;
 }amcsi_dev_t;
 #endif
