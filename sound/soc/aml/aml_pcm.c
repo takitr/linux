@@ -32,8 +32,8 @@
 #include "aml_audio_hw.h"
 #include "aml_platform.h"
 
-#define USE_HRTIMER 0
-#define HRTIMER_PERIOD (1000000000UL/48000)
+#define USE_HRTIMER 1
+#define HRTIMER_PERIOD (1000000000UL/1000)
 #define DEBUG_ALSA_PLATFRORM
 
 #define ALSA_PRINT(fmt,args...)	printk(KERN_INFO "[aml-pcm]" fmt,##args)
