@@ -917,6 +917,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	cam_parameter_t *param = (cam_parameter_t *)arg;
 	enum cam_command_e cmd;
+	cam_cmd_state_t ret = CAM_STATE_SUCCESS;
 	if(IS_ERR_OR_NULL(param)) {
                 pr_err("[%s..]camera parameter can't be null.\n",DEVICE_NAME);
                 return -1;
@@ -928,6 +929,9 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	switch(cmd) {
                 case CAM_COMMAND_INIT:
 		        break;
+		case CAM_COMMAND_GET_STATE:
+			ret = devp->cmd_state;
+			break;
                 case CAM_COMMAND_SCENES:
 		        devp->isp_ae_parm = &param->xml_scenes->ae;
 		        devp->isp_awb_parm = &param->xml_scenes->awb;
@@ -961,12 +965,18 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_AE_OFF:
 		        devp->flag &= (~ISP_FLAG_AE);
 		        break;
+		case CAM_COMMAND_SET_AE_LEVEL:
+			devp->ae_info.manul_level = devp->cam_param->exposure_level;
+			break;
                 // af related
                 case CAM_COMMAND_AF:
 			devp->flag |= ISP_FLAG_AF;
 		        break;
                 case CAM_COMMAND_FULLSCAN:
-			devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
+			isp_set_af_scan_stat(0,0,devp->info.h_active-1,devp->info.v_active-1);
+			devp->flag |= ISP_FLAG_TOUCH_AF;
+			devp->cmd_state = CAM_STATE_DOING;
+			af_sm_init(devp);
 		        break;
                 case CAM_COMMAND_TOUCH_FOCUS:
 			//devp->isp_af_parm = &param->xml_scenes->af;
@@ -1009,7 +1019,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	        default:
 		        break;
 	}
-	return 0;
+	return ret;
 }
 static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 {

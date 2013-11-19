@@ -216,11 +216,18 @@ typedef enum cam_scanmode_e {
         CAM_SCANMODE_PROBE,
         CAM_SCANMODE_FULL,
 } cam_scanmode_t;
+/*state for cmd*/
+typedef enum cam_cmd_state_e {
+	CAM_STATE_NULL,
+	CAM_STATE_DOING,
+	CAM_STATE_ERROR,
+	CAM_STATE_SUCCESS,
+} cam_cmd_state_t;
 
 typedef enum cam_command_e {
         // common
-        CAM_COMMAND_INIT = 0,
-        //CAM_COMMAND_FORMAT,
+        CAM_COMMAND_INIT = 0,        
+        CAM_COMMAND_GET_STATE,
         CAM_COMMAND_SCENES,
         CAM_COMMAND_EFFECT,
         CAM_COMMAND_AWB,
@@ -229,9 +236,7 @@ typedef enum cam_command_e {
         // ae related
         CAM_COMMAND_AE_ON,
         CAM_COMMAND_AE_OFF,
-        //CAM_COMMAND_EXPOSURE,
-        //CAM_COMMAND_ISO_ANALOG,
-        //CAM_COMMAND_ISO_DIGITAL,
+        CAM_COMMAND_SET_AE_LEVEL,
         // af related
         CAM_COMMAND_AF,
         CAM_COMMAND_FULLSCAN,
@@ -650,6 +655,7 @@ typedef struct cam_parameter_s {
 	unsigned int 		    level;//the torch light level
 	flash_mode_t                flash_mode;//the flash mode
 	camera_mode_t		    cam_mode;//set the isp work mode
+	         int		    exposure_level;//manual exposure level 2db by each step
 } cam_parameter_t;
 
 typedef struct isp_status_s {

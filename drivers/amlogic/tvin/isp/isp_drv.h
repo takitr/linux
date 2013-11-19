@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.17b"
+#define ISP_VER					"2013.11.19a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -71,6 +71,10 @@ typedef struct flash_property_s {
                                  //false: low      high
                                  //true:  high     low
 } flash_property_t;
+/*parameters used for ae in sm or driver*/
+typedef struct isp_ae_info_s {
+	int manul_level;//each step 2db
+} isp_ae_info_t;
 
 /*for af debug*/
 typedef struct af_debug_s {
@@ -152,6 +156,7 @@ typedef struct isp_dev_s{
 	struct task_struct     *kthread;
 
 	struct isp_ae_stat_s isp_ae;
+	struct isp_ae_info_s ae_info;
 	struct isp_awb_stat_s isp_awb;
 	struct isp_af_stat_s isp_af;
 	struct isp_af_info_s af_info;
@@ -167,6 +172,8 @@ typedef struct isp_dev_s{
 	debug_t         debug;
 	/*test for af test win*/
 	af_debug_test_t af_test;
+	/*cmd state for camera*/
+	cam_cmd_state_t cmd_state;
 }isp_dev_t;
 
 typedef enum data_type_e{

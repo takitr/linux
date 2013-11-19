@@ -199,7 +199,7 @@ unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
 
     //if (func && func->get_aet_gain_by_format)
     //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
-    format_gain_new = 52;
+    format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
     aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
     new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
 
@@ -216,7 +216,7 @@ int isp_ae_save_current_para(isp_dev_t *devp)
         aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
     //if (func && func->get_aet_gain_by_format)
     //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
-    format_gain_pre = 150;
+    format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
     pr_info("[isp] %s ae gain, aet_gain_pre:%d format_gain_pre:%d ... ...\n",
                 __func__, aet_gain_pre, format_gain_pre);
 
