@@ -1332,6 +1332,7 @@ void isp_af_sm(isp_dev_t *devp)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
 						sm_state.af_state = AF_NULL;
+					devp->cmd_state = CAM_STATE_SUCCESS;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				} else {/*af success*/
@@ -1350,6 +1351,7 @@ void isp_af_sm(isp_dev_t *devp)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
 						sm_state.af_state = AF_NULL;
+					devp->cmd_state = CAM_STATE_SUCCESS;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				}
