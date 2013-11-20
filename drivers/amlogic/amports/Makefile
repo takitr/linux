@@ -79,6 +79,7 @@ amvdec_real-y    := vreal.o
 obj-$(CONFIG_AM_JPEGDEC) += jpegdec.o
 
 obj-$(CONFIG_AM_ENCODER) += encoder.o
+obj-$(CONFIG_AM_JPEG_ENCODER) += jpegenc.o
 obj-$(CONFIG_AM_VIDEO) += amvideo.o
 amvideo-objs := video.o vpp.o video_prot.o
 amvideo-y    := video.o vpp.o video_prot.o
