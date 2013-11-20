@@ -186,10 +186,10 @@ static int gslX680_chip_init(struct touch_pdata *pdata)
 	mdelay(120); // > 100ms
 	
 #ifdef CONFIG_OF
-//	 if (pdata->gpio_interrupt) {
-//	  aml_gpio_direction_input(pdata->gpio_interrupt);
-//	  aml_gpio_to_irq(pdata->gpio_interrupt, pdata->irq-INT_GPIO_0, pdata->irq_edge);
-//	}
+	 if (pdata->gpio_interrupt) {
+	  aml_gpio_direction_input(pdata->gpio_interrupt);
+	  aml_gpio_to_irq(pdata->gpio_interrupt, pdata->irq, pdata->irq_edge);
+	}
 #else
   gpio_set_status(PAD_GPIOA_16, gpio_status_in);
   gpio_irq_set(PAD_GPIOA_16, GPIO_IRQ(INT_GPIO_0-INT_GPIO_0, GPIO_IRQ_RISING));
@@ -1143,11 +1143,11 @@ static int gsl_ts_probe(struct i2c_client *client,
 	ts_com->software_reset = gslx680_software_reset;
 	ts_com->read_version = gslx680_test_i2c;
 	ts_com->upgrade_touch = gslx680_upgrade_touch;
-	SCREEN_MAX_X = g_pdata->xres;
-	SCREEN_MAX_Y = g_pdata->yres;
-	MAX_FINGERS = g_pdata->max_num;
+  SCREEN_MAX_X = g_pdata->xres;
+  SCREEN_MAX_Y = g_pdata->yres;
+  MAX_FINGERS = g_pdata->max_num;
 	gslX680_chip_init(g_pdata);
-	printk("===== gslx680 TP test start =====\n");
+  printk("===== gslx680 TP test start =====\n");
 	rc = test_i2c(client);
 	if(rc){
 		printk("!!! gslx680 TP is not exist !!!\n");
