@@ -96,7 +96,7 @@ a sample config, send this config should cause the chip cannot work normally*/
                                         }while(0)
 #define GTP_GPIO_AS_INT(pin)            do{\
                                             aml_gpio_direction_input(pin);\
-                                            aml_gpio_to_irq(pin, GTP_INT_IRQ, ts_com->irq_edge);\
+                                            aml_gpio_to_irq(pin, GTP_INT_IRQ-INT_GPIO_0, ts_com->irq_edge);\
                                         }while(0)
 //#define GTP_GPIO_GET_VALUE(pin)         gpio_get_value(pin)
 //#define GTP_GPIO_OUTPUT(pin,level)      gpio_direction_output(pin,level)

@@ -88,8 +88,8 @@ int ct36x_platform_get_resource(struct ct36x_ts_info *ct36x_ts)
 	if (request_touch_gpio(ts_com) != ERR_NO)
 	 return -EIO;
 	aml_gpio_direction_output(ct36x_ts->rst, 1);
-	aml_gpio_direction_input(ct36x_ts->ss);
-	aml_gpio_to_irq(ct36x_ts->ss, ct36x_ts->irq, ts_com->irq_edge);
+	//aml_gpio_direction_input(ct36x_ts->ss);
+	//aml_gpio_to_irq(ct36x_ts->ss, ct36x_ts->irq-INT_GPIO_0, ts_com->irq_edge);
 	#endif
 
 	return 0;
