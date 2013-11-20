@@ -1106,8 +1106,8 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 //			IRQF_DISABLED,
 //			client->name, ts);
 
-//		aml_gpio_direction_input(g_pdata->gpio_interrupt);
-//		aml_gpio_to_irq(g_pdata->gpio_interrupt, g_pdata->irq-INT_GPIO_0, g_pdata->irq_edge);
+		aml_gpio_direction_input(g_pdata->gpio_interrupt);
+		aml_gpio_to_irq(g_pdata->gpio_interrupt, g_pdata->irq, g_pdata->irq_edge);
 		ret = request_irq(client->irq, goodix_ts_irq_handler, IRQF_DISABLED, client->name, ts);
 		if (ret < 0) {
 			dev_err(&client->dev,"Cannot allocate ts INT!ERRNO:%d\n", ret);
