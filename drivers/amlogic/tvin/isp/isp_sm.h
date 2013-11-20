@@ -233,6 +233,7 @@ extern int isp_capture_sm(isp_dev_t *devp);
 extern unsigned long long div64(unsigned long long n, unsigned long long d);
 extern void isp_af_save_current_para(isp_dev_t *devp);
 extern void isp_set_manual_exposure(isp_dev_t *devp);
+extern unsigned int isp_tune_exposure(isp_dev_t *devp);
 #endif
 
 

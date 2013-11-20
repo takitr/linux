@@ -106,6 +106,10 @@ static unsigned int awb_debug4 = 0;
 module_param(awb_debug4,uint,0664);
 MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
 
+static unsigned int exposure_extra = 1024;
+module_param(exposure_extra,uint,0664);
+MODULE_PARM_DESC(exposure_extra,"\n debug exposure for ae.\n");
+
 #define AF_FLAG_PR			0x00000001
 #define AF_FLAG_AE			0x00000002
 #define AF_FLAG_AWB			0x00000004
@@ -248,6 +252,20 @@ unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
     return new_step;
 }
 
+unsigned int isp_tune_exposure(isp_dev_t *devp)
+{
+    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+    struct cam_function_s *func = &devp->cam_param->cam_function;
+    unsigned int new_step = 0;
+	unsigned int gain_cur = 0;
+	unsigned int gain_target = 0;
+	if(func&&func->get_aet_current_gain)
+	gain_cur = func->get_aet_current_gain();	
+	gain_target = (gain_cur*exposure_extra + 512) >> 10;
+	new_step = find_step(func, 0, aepa->max_step, gain_target);
+	return new_step;
+}
+
 int isp_ae_save_current_para(isp_dev_t *devp)
 {
     struct cam_function_s *func = &devp->cam_param->cam_function;
@@ -344,7 +362,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			        printk("ISP_AE_STATUS_UNSTABLE\n");
 			    sm_state.ae_down = false;
 			    sm_state.isp_ae_parm.isp_ae_state = AE_REST;
-			    step = AE_SUCCESS;
 			} else
 			sm_state.isp_ae_parm.isp_ae_state = AE_SHUTTER_ADJUST;
 			break;
