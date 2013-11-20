@@ -896,13 +896,13 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 			capture_sm_init(devp);
 	        }else if(devp->cam_param->cam_mode == CAMERA_RECORD){
 		        devp->flag = ISP_FLAG_RECORD;
+			start_isp_thread(devp);
 	        }else{
 		        devp->flag &= (~ISP_WORK_MODE_MASK);
+			start_isp_thread(devp);
 	        }
         }
 	tasklet_enable(&devp->isp_task);
-	start_isp_thread(devp);
-
         devp->flag |= ISP_FLAG_START;
 	return;
 }
@@ -913,7 +913,8 @@ static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	if(devp->isp_fe)
 	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
 	tasklet_disable_nosync(&devp->isp_task);
-	stop_isp_thread(devp);
+	if(devp->cam_param->cam_mode != CAMERA_CAPTURE)
+		stop_isp_thread(devp);
 	devp->flag &= (~ISP_FLAG_AF);
 	devp->flag &= (~ISP_FLAG_TOUCH_AF);
 	isp_sm_uninit(devp);

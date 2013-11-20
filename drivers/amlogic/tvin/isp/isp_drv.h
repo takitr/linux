@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.19a"
+#define ISP_VER					"2013.11.20a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 

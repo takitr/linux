@@ -91,16 +91,13 @@ typedef enum af_state_e {
 	AF_CLIMBING,
 	AF_FINE,
 	AF_SUCCESS,
-	AF_CAPTURE_START,
-	AF_CAPTURE_OK,
 } af_state_t;
 typedef enum isp_capture_state_e {
 	CAPTURE_INIT,
 	CAPTURE_PRE_WAIT,//for time lapse
 	CAPTURE_FLASH_ON,//turn on flash for red eye
 	CAPTURE_TR_WAIT,
-	CAPTURE_TUNE_AF_AWB,
-	CAPTURE_TUNE_AE,
+	CAPTURE_TUNE_3A,
 	CAPTURE_LOW_GAIN,
 	CAPTURE_EYE_WAIT,
 	CAPTURE_POS_WAIT,
