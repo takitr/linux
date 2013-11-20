@@ -158,7 +158,7 @@ static struct v4l2_queryctrl ov5647_qctrl[] = {
 		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	},{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.type          = V4L2_CTRL_TYPE_MENU,
 		.name          = "white balance",
 		.minimum       = 0,
 		.maximum       = 6,
@@ -568,7 +568,9 @@ struct ov5647_device {
 	fe_arg_t fe_arg;
 	/* wake lock */
 	struct wake_lock	wake_lock;
-
+	/* ae status */
+	bool ae_on;
+	
 	/* Control 'registers' */
 	int 			   qctl_regs[ARRAY_SIZE(ov5647_qctrl)];
 };
@@ -2422,11 +2424,26 @@ void OV5647_set_param_wb(struct ov5647_device *dev,enum  camera_wb_flip_e para)/
 void OV5647_set_param_exposure(struct ov5647_device *dev,enum camera_exposure_e para)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+    int value;
     if(para == EXPOSURE_0_STEP){
         dev->cam_para->cam_command = CAM_COMMAND_AE_ON;
+        dev->ae_on = true;
     }else{
+        if(dev->ae_on == false){ // set ae on
+            dev->cam_para->cam_command = CAM_COMMAND_AE_ON;	
+            dev->fe_arg.port = TVIN_PORT_ISP;
+            dev->fe_arg.index = 0;
+            dev->fe_arg.arg = (void *)(dev->cam_para);
+            dev->vops->tvin_fe_func(0,&dev->fe_arg);	
+            OV5647_set_aet_new_step(sensor_aet_step,1,1);//need to change the new exp and ag mode
+            dev->ae_on = true;
+        }
+        value = para < 8 ? para : 7;
+        value = value > 0 ? value : 1;
+        value -= 4;
         dev->cam_para->cam_command = CAM_COMMAND_SET_AE_LEVEL;
-        dev->cam_para->exposure_level = para;
+        dev->cam_para->exposure_level = value;
+        printk("set manual exposure level:%d\n",value);
     }
     dev->fe_arg.port = TVIN_PORT_ISP;
     dev->fe_arg.index = 0;
@@ -2492,7 +2509,6 @@ void OV5647_set_param_effect(struct ov5647_device *dev,enum camera_effect_flip_e
         dev->fe_arg.port = TVIN_PORT_ISP;
         dev->fe_arg.index = 0;
         dev->fe_arg.arg = (void *)(dev->cam_para);
-        printk("call tvin fe func\n");
         dev->vops->tvin_fe_func(0,&dev->fe_arg);
         return;
     } 
@@ -2567,7 +2583,8 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
             break;
         case CAM_FOCUS_MODE_CONTI_VID:
         case CAM_FOCUS_MODE_CONTI_PIC:
-            dev->cam_para->cam_command = CAM_COMMAND_AF;
+            printk("continus focus\n");
+            dev->cam_para->cam_command = CAM_COMMAND_CONTINUOUS_FOCUS_ON;
             dev->fe_arg.port = TVIN_PORT_ISP;
             dev->fe_arg.index = 0;
             dev->fe_arg.arg = (void *)(dev->cam_para);
@@ -2579,12 +2596,21 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
 
         case CAM_FOCUS_MODE_RELEASE:
         case CAM_FOCUS_MODE_FIXED:
+            printk("continus focus\n");
+            dev->cam_para->cam_command = CAM_COMMAND_CONTINUOUS_FOCUS_OFF;
+            dev->fe_arg.port = TVIN_PORT_ISP;
+            dev->fe_arg.index = 0;
+            dev->fe_arg.arg = (void *)(dev->cam_para);
+            if(dev->vops != NULL){
+                dev->vops->tvin_fe_func(0,&dev->fe_arg);
+            }
+            printk("focus release\n");
+            break;
         default:
             printk("release focus to infinit\n");
             break;
     }
     return ret;
-
 }
 
 static int set_flip(struct ov5647_device *dev)
@@ -2771,13 +2797,22 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
 		dprintk(dev, 1, "setting brightned:%d\n",v4l_2_ov5647(value));
-		ret=i2c_put_byte(client,0x0201,v4l_2_ov5647(value));
 		break;
 	case V4L2_CID_CONTRAST:
-		ret=i2c_put_byte(client,0x0200, value);
 		break;
 	case V4L2_CID_SATURATION:
-		ret=i2c_put_byte(client,0x0202, value);
+		break;
+	case V4L2_CID_HFLIP:    /* set flip on H. */
+		value = value & 0x1;
+		if(ov5647_qctrl[2].default_value!=value){
+			ov5647_qctrl[2].default_value=value;
+			printk(" set camera  h filp =%d. \n ",value);
+			value = value << 1; //bit[1]
+			ret=i2c_put_byte(client,0x3821, value);
+			break;
+		}
+		break;
+	case V4L2_CID_VFLIP:    /* set flip on V. */
 		break;
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(ov5647_qctrl[4].default_value!=value){
@@ -2806,14 +2841,12 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 			OV5647_set_param_effect(dev,value);
 		}
 		break;
-	case V4L2_CID_POWER_LINE_FREQUENCY:
+	case V4L2_CID_WHITENESS:
 		if(ov5647_qctrl[3].default_value!=value){
 			ov5647_qctrl[3].default_value=value;
 			OV5647_set_param_banding(dev,value);
 			printk(KERN_INFO " set camera  banding=%d. \n ",value);
 		}
-		break;
-	case V4L2_CID_VFLIP:    /* set flip on V. */
 		break;
 	case V4L2_CID_ZOOM_ABSOLUTE:
 		if(ov5647_qctrl[10].default_value!=value){
@@ -3785,6 +3818,7 @@ static int ov5647_open(struct file *file)
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
     dev->pindex.capture_index = 0;
+    dev->ae_on = false;
     /**creat class file**/		
     cam_class = class_create(THIS_MODULE,"camera"); 
     if(IS_ERR(cam_class)){
@@ -3885,6 +3919,7 @@ static int ov5647_close(struct file *file)
     ov5647_qctrl[6].default_value=0;
     ov5647_qctrl[10].default_value=100;
     ov5647_qctrl[11].default_value=0;
+    dev->ae_on = false;
     //ov5647_frmintervals_active.numerator = 1;
     //ov5647_frmintervals_active.denominator = 15;
     power_down_ov5647(dev);

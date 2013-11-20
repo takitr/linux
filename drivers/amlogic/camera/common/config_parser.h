@@ -14,7 +14,7 @@
 #define WB_MAX 9
 #define CAPTURE_ITEM_MAX 5
 #define GAMMA_MAX 257
-#define SCENE_MAX 203
+#define SCENE_MAX 202
 #define WB_SENSOR_MAX 4
 #define CAPTURE_MAX 8
 #define LENC_MAX 1024
