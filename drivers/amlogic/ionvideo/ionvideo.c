@@ -108,13 +108,15 @@ static void videoc_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
     if (vf->pts) {
         timestamp_vpts_set(vf->pts);
         dev->receiver_register = 0;
+        dev->pts = vf->pts_us64;
     } else if (dev->receiver_register){
         timestamp_vpts_set(timestamp_pcrscr_get());
         dev->receiver_register = 0;
+        dev->pts = timestamp_vpts_get();
     } else {
         timestamp_vpts_inc(DUR2PTS(vf->duration));
+        dev->pts = timestamp_vpts_get();
     }
-    dev->pts = vf->pts_us64;
 }
 
 static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
@@ -175,7 +177,7 @@ static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
 
 static void ionvideo_sleep(struct ionvideo_dev *dev) {
     struct ionvideo_dmaqueue *dma_q = &dev->vidq;
-    int timeout;
+    //int timeout;
     DECLARE_WAITQUEUE(wait, current);
 
     dprintk(dev, 4, "%s dma_q=0x%08lx\n", __func__, (unsigned long)dma_q);
@@ -454,7 +456,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
     }
 
     f->fmt.pix.field = V4L2_FIELD_INTERLACED;
-    v4l_bound_align_image(&f->fmt.pix.width, 48, MAX_WIDTH, 16, &f->fmt.pix.height, 32, MAX_HEIGHT, 0, 0);
+    v4l_bound_align_image(&f->fmt.pix.width, 48, MAX_WIDTH, 4, &f->fmt.pix.height, 32, MAX_HEIGHT, 0, 0);
     f->fmt.pix.bytesperline = (f->fmt.pix.width * fmt->depth) >> 3;
     f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
     if (fmt->is_yuv)
@@ -514,8 +516,9 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p) {
     q = dev->vdev.queue;
     if (ppmgr2_dev->inited_canvas < q->num_buffers){
         struct vb2_buffer *vb;
+        void* phy_addr = NULL;
         vb = q->bufs[p->index];
-        void* phy_addr = vb2_plane_cookie(vb, 0);
+        phy_addr = vb2_plane_cookie(vb, 0);
         if (phy_addr && !ppmgr2_canvas_config(ppmgr2_dev, dev->width, dev->height, dev->fmt->fourcc, phy_addr, p->index)) {
             ppmgr2_dev->inited_canvas += 1;
         } else {
@@ -562,8 +565,8 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i) {
 /* --- controls ---------------------------------------------- */
 
 static int ionvideo_g_volatile_ctrl(struct v4l2_ctrl *ctrl) {
-    struct ionvideo_dev
-    *dev = container_of(ctrl->handler, struct ionvideo_dev, ctrl_handler);
+    //struct ionvideo_dev
+    //*dev = container_of(ctrl->handler, struct ionvideo_dev, ctrl_handler);
 
     //if (ctrl == dev->autogain)
     //    dev->gain->val = jiffies & 0xff;
@@ -744,27 +747,6 @@ static int ionvideo_release(void) {
     //vb2_dma_contig_cleanup_ctx(ionvideo_dma_ctx);
 
     return 0;
-}
-
-static void vidioc_unregister(struct ionvideo_dev *dev) {
-
-    struct ionvideo_dmaqueue *dma_q = &dev->vidq;
-    unsigned long flags = 0;
-
-    /* Release all active buffers */
-    while (!list_empty(&dma_q->active)) {
-        struct ionvideo_buffer *buf;
-
-        spin_lock_irqsave(&dev->slock, flags);
-        buf = list_entry(dma_q->active.next, struct ionvideo_buffer, list);
-        list_del(&buf->list);
-        spin_unlock_irqrestore(&dev->slock, flags);
-
-        buf->vb.v4l2_buf.timestamp.tv_sec = 0;
-        buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts;
-        vb2_buffer_done(&buf->vb, VB2_BUF_STATE_DONE);
-        dprintk(dev, 2, "[%p/%d] done\n", buf, buf->vb.v4l2_buf.index);
-    }
 }
 
 static int video_receiver_event_fun(int type, void* data, void* private_data) {

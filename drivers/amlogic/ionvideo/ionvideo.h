@@ -17,6 +17,7 @@
 #include <media/v4l2-fh.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-common.h>
+#include <media/videobuf2-core.h>
 
 #include <linux/mm.h>
 #include <mach/mod_gate.h>
@@ -176,13 +177,5 @@ void ppmgr2_set_angle(struct ppmgr2_device *ppd, int angle);
 void ppmgr2_set_mirror(struct ppmgr2_device *ppd, int mirror);
 void ppmgr2_set_paint_mode(struct ppmgr2_device *ppd, int paint_mode);
 int v4l_to_ge2d_format(int v4l2_format);
-
-static inline void paint_mode_convert(int paint_mode, int* src_position, int* dst_paint_position, int* dst_plane_position);
-static inline void ge2d_src_config(struct vframe_s* vf, config_para_ex_t* ge2d_config);
-static inline void ge2d_mirror_config(int dst_mirror, config_para_ex_t* ge2d_config);
-static inline void ge2d_angle_config(int dst_angle, config_para_ex_t* ge2d_config);
-static int get_input_format(struct vframe_s* vf);
-static int ge2d_paint_dst(ge2d_context_t *context, config_para_ex_t* ge2d_config, int dst_canvas_id, int dst_pixel_format, int* src_position, int* dst_paint_position, int* dst_plane_position);
-
 
 #endif
