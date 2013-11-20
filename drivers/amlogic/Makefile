@@ -16,6 +16,7 @@ obj-$(CONFIG_POST_PROCESS_MANAGER) += ppmgr/
 
 obj-$(CONFIG_V4L_AMLOGIC_VIDEO) += video_dev/
 obj-$(CONFIG_V4L_AMLOGIC_VIDEO2) += video_dev/
+obj-$(CONFIG_AMLOGIC_IONVIDEO) += ionvideo/
 
 obj-$(CONFIG_DEINTERLACE) += deinterlace/
 
