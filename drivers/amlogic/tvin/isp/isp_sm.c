@@ -106,6 +106,10 @@ static unsigned int awb_debug4 = 0;
 module_param(awb_debug4,uint,0664);
 MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
 
+static unsigned int exposure_extra = 1024;
+module_param(exposure_extra,uint,0664);
+MODULE_PARM_DESC(exposure_extra,"\n debug exposure for ae.\n");
+
 #define AF_FLAG_PR			0x00000001
 #define AF_FLAG_AE			0x00000002
 #define AF_FLAG_AWB			0x00000004
@@ -205,6 +209,7 @@ void af_sm_init(isp_dev_t *devp)
 {
 	unsigned int tmp = 0 ;
 	struct isp_af_info_s *af_info = &devp->af_info;
+	struct cam_function_s *func = &devp->cam_param->cam_function;
 	/*init for af*/
 	if(sm_state.af_state)
 		devp->flag |= devp->af_info.flag_bk;
@@ -213,9 +218,7 @@ void af_sm_init(isp_dev_t *devp)
 	}
 	if(devp->flag & ISP_FLAG_CAPTURE){
 		af_info->cur_step = af_info->capture_step;
-		atomic_set(&af_info->writeable,1);
-		devp->flag |= ISP_FLAG_AF;
-		sm_state.af_state = AF_CAPTURE_START;
+		func->set_af_new_step(devp->af_info.cur_step);
 	}
 	devp->af_info.fv_aft_af = 0;
 	devp->af_info.fv_bf_af = 0;
@@ -235,17 +238,35 @@ unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
 {
     struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
     struct cam_function_s *func = &devp->cam_param->cam_function;
-    unsigned int new_step = 0;
 
-    //if (func && func->get_aet_gain_by_format)
-    //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
     format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
     aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
-    new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
+    ae_sens.new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
+    ae_sens.shutter = 1;
+    ae_sens.gain = 1;
+    pr_info("[isp] %s: format_gain_new:%d, aet_gain_new:%d new_step:%d... ...\n", __func__, \
+            format_gain_new, aet_gain_new, ae_sens.new_step);
 
-    pr_info("[isp] %s cal new ae step:%d, new aet gain:%d ... ...\n", __func__, new_step, aet_gain_new);
+    if (func && func->set_aet_new_step) {
+        func->set_aet_new_step(ae_sens.new_step, ae_sens.shutter, ae_sens.gain);
+        pr_info("[isp] %s: write new step to sensor... ...\n", __func__);
+    }
 
-    return new_step;
+    return 0;
+}
+
+unsigned int isp_tune_exposure(isp_dev_t *devp)
+{
+    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+    struct cam_function_s *func = &devp->cam_param->cam_function;
+    unsigned int new_step = 0;
+	unsigned int gain_cur = 0;
+	unsigned int gain_target = 0;
+	if(func&&func->get_aet_current_gain)
+	gain_cur = func->get_aet_current_gain();	
+	gain_target = (gain_cur*exposure_extra + 512) >> 10;
+	new_step = find_step(func, 0, aepa->max_step, gain_target);
+	return new_step;
 }
 
 int isp_ae_save_current_para(isp_dev_t *devp)
@@ -254,11 +275,9 @@ int isp_ae_save_current_para(isp_dev_t *devp)
 
     if (func && func->get_aet_gain_by_step)
         aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
-    //if (func && func->get_aet_gain_by_format)
-    //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
     format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
-    pr_info("[isp] %s ae gain, aet_gain_pre:%d format_gain_pre:%d ... ...\n",
-                __func__, aet_gain_pre, format_gain_pre);
+    pr_info("[isp] %s format_gain_pre:%d aet_gain_pre:%d ... ...\n",
+                __func__, format_gain_pre, aet_gain_pre);
 
     return 0;
 }
@@ -333,19 +352,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			printk("aepa->max_step=%d\n",aepa->max_step);
 			//printk("aepa->sub_pixel_sum=%d\n",aepa->cur_gain);
 			//aepa->cur_step = func->get_aet_current_step;
-			if (devp->flag & ISP_FLAG_CAPTURE) {
-			    ae_sens.new_step = isp_ae_cal_new_para(devp);
-			    ae_sens.send = 1;
-			    ae_sens.shutter = 1;
-			    ae_sens.gain = 1;
-			    //printk("ae_sens.send \n");
-			    sm_state.status = ISP_AE_STATUS_UNSTABLE;
-			    if (ae_debug&0x10)
-			        printk("ISP_AE_STATUS_UNSTABLE\n");
-			    sm_state.ae_down = false;
-			    sm_state.isp_ae_parm.isp_ae_state = AE_REST;
-			    step = AE_SUCCESS;
-			} else
 			sm_state.isp_ae_parm.isp_ae_state = AE_SHUTTER_ADJUST;
 			break;
 		case AE_ORI_SET:
@@ -684,7 +690,7 @@ unsigned int isp_awb_load_pre_para(isp_dev_t *devp)
 {
     memcpy(&awb_gain, &awb_gain_pre, sizeof(struct isp_awb_gain_s));
     isp_awb_set_gain(awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
-    pr_info("[isp] %s load pre awb, r:%d g:%d b:%d ... ...\n",
+    pr_info("[isp] %s r:%d g:%d b:%d ... ...\n",
                 __func__, awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
 
     return 0;
@@ -735,10 +741,6 @@ void isp_awb_base_sm(isp_dev_t *devp)
 			awba->countlimitym	= ((awba->pixel_sum >> 2) * awbp->ratio_ym) >> 6;
 			awba->countlimityl	= ((awba->pixel_sum >> 2) * awbp->ratio_yl) >> 6;
 			awba->status = ISP_AWB_STATUS_STABLE;
-			if (devp->flag & ISP_FLAG_CAPTURE) {
-			    isp_awb_load_pre_para(devp);
-			    sm_state.isp_awb_parm.isp_awb_state = AWB_IDLE;
-			} else
 			    sm_state.isp_awb_parm.isp_awb_state = AWB_CHECK;
 			break;
 		case AWB_CHECK:
@@ -1397,9 +1399,6 @@ void isp_af_sm(isp_dev_t *devp)
 				}
 			}
 			break;
-		case AF_CAPTURE_START:
-			if(af_delay >= 2)
-				sm_state.af_state = AF_CAPTURE_OK;
 		default:
 			break;
 	}
@@ -1443,7 +1442,7 @@ void capture_sm_init(isp_dev_t *devp)
 	struct isp_capture_sm_s *cap_sm = &sm_state.cap_sm;
 	xml_capture_t *parm = devp->capture_parm;
 	
-	devp->capture_parm->ae_try_max_cnt = 15;
+	devp->capture_parm->ae_try_max_cnt = 3;
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
 	devp->capture_parm->multi_capture_num = 0;
@@ -1459,15 +1458,17 @@ void capture_sm_init(isp_dev_t *devp)
 	if(cap_sm->flash_mode) {
 		cap_sm->capture_state = CAPTURE_INIT;
 	} else {
-		cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
+		cap_sm->capture_state = CAPTURE_TUNE_3A;
 		if(parm->af_mode){
 			devp->flag |= ISP_FLAG_AF;
 		}else{
 			devp->flag &= (~ISP_FLAG_AF);
 		}
-		devp->flag |= ISP_FLAG_AWB;
-		devp->flag |= ISP_FLAG_AE;
+		devp->flag &= (~ISP_FLAG_AWB);
+		devp->flag &= (~ISP_FLAG_AE);
 	}
+	isp_ae_cal_new_para(devp);     // cal and set new ae value
+	isp_awb_load_pre_para(devp);  // cal and set new awb value
 
 	af_sm_init(devp);
 }
@@ -1520,51 +1521,31 @@ int isp_capture_sm(isp_dev_t *devp)
 			} else {
 				/*without flash*/
 				cap_sm->flash_on = 0;
-				cap_sm->capture_state = CAPTURE_TUNE_AE;
+				cap_sm->capture_state = CAPTURE_TUNE_3A;
 			        if(capture_debug)
-				        pr_info("[cap_sm]%u:flash on->tune ae wait.\n",__LINE__);
+				        pr_info("[cap_sm]%u:flash on->tune 3a wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_TR_WAIT:
 			if(time_after(jiffies,cap_sm->tr_time)){
-				cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
+				cap_sm->capture_state = CAPTURE_TUNE_3A;
 				if(capture_debug)
-				        pr_info("[cap_sm]%u:torch rising wait->tune ae wait.\n",__LINE__);
+				        pr_info("[cap_sm]%u:torch rising wait->tune 3a wait.\n",__LINE__);
 			}
 			break;
-		case CAPTURE_TUNE_AF_AWB:
-			if((sm_state.af_state==AF_CAPTURE_OK)||(parm->af_mode==CAM_SCANMODE_NULL)){
-				devp->flag &=(~ISP_FLAG_AF);
-				devp->flag &=(~ISP_FLAG_AWB);
-				if(cap_sm->flash_on){
-					devp->flag |= ISP_FLAG_AE;
-					isp_ae_low_gain();
-					cap_sm->capture_state = CAPTURE_LOW_GAIN;
-					if(capture_debug)
-						pr_info("[cap_sm]%u: af_awb->low gain.\n",__LINE__);
-				}else{
-					cap_sm->capture_state = CAPTURE_TUNE_AE;
-					devp->flag |= ISP_FLAG_AE;
-					cap_sm->adj_cnt = 0;
-					if(capture_debug)
-						pr_info("[cap_sm]%u: af_awb->ae.\n",__LINE__);
-				}
-			}
-			break;
-		case CAPTURE_TUNE_AE:
-			if((sm_state.status==ISP_AE_STATUS_STABLE)||(cap_sm->adj_cnt >= parm->ae_try_max_cnt))
+		case CAPTURE_TUNE_3A:
+			if(cap_sm->adj_cnt >= parm->ae_try_max_cnt)
 			{
-				devp->flag &= (~ISP_FLAG_AE);
 				cap_sm->adj_cnt = 0;
-				if(cap_sm->flash_on){
+				if(cap_sm->flash_on) {
 					devp->flag |= ISP_FLAG_AE;
 					cap_sm->capture_state = CAPTURE_LOW_GAIN;
 					if(capture_debug)
-						pr_info("[cap_sm]%u:ae->low gain.\n",__LINE__);
-				}else {
+						pr_info("[cap_sm]%u:3a->low gain.\n",__LINE__);
+				} else {
 					cap_sm->capture_state = CAPTURE_SINGLE;
 					if(capture_debug)
-						pr_info("[cap_sm]%u:ae(%s)->sigle.\n",__LINE__,
+						pr_info("[cap_sm]%u:3a(%s)->sigle.\n",__LINE__,
 							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
 				}
 			}

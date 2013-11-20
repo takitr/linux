@@ -189,9 +189,11 @@ static irqreturn_t audiodsp_mailbox_irq(int irq, void *data)
 				priv->frame_format.valid|=DATA_WIDTH_VALID;
 				}
 			}
+		/*
 			if(fmt->data.pcm_encoded_info){
 				set_pcminfo_data(fmt->data.pcm_encoded_info);
 			}
+		*/	
 			DSP_PRNT("audio info from dsp:sample_rate=%d channel_num=%d\n",priv->frame_format.sample_rate,priv->frame_format.channel_num);
 		}
         if(status & (1<<M1B_IRQ8_IEC958_INFO)){

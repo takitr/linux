@@ -699,16 +699,25 @@ static DEVICE_ATTR(lens, 0664, ls_show, ls_store);
 
 
 static int isp_thread(isp_dev_t *devp) {
+	unsigned newstep = 0;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	printk("isp_thread is run! \n");
 	while (1) {
 		//printk("ae_flag = %d\n",ae_flag);
-	if(ae_flag)
+	if(ae_flag&0x1)
 	{
-		ae_flag = 0;
+		ae_flag &= (~0x1);
 		printk("set new step %d \n",ae_new_step);
 		if(func&&func->set_aet_new_step)
 		func->set_aet_new_step(ae_new_step,true,true);
+	}
+	if(ae_flag&0x2)
+	{
+		ae_flag &= (~0x2);
+		newstep = isp_tune_exposure(devp);
+		printk("set new step2 %d \n",newstep);
+		if(func&&func->set_aet_new_step)
+		func->set_aet_new_step(newstep,true,true);		
 	}
 	if(ae_sens.send)
 	{
@@ -887,13 +896,13 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 			capture_sm_init(devp);
 	        }else if(devp->cam_param->cam_mode == CAMERA_RECORD){
 		        devp->flag = ISP_FLAG_RECORD;
+			start_isp_thread(devp);
 	        }else{
 		        devp->flag &= (~ISP_WORK_MODE_MASK);
+			start_isp_thread(devp);
 	        }
         }
 	tasklet_enable(&devp->isp_task);
-	start_isp_thread(devp);
-
         devp->flag |= ISP_FLAG_START;
 	return;
 }
@@ -904,7 +913,8 @@ static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	if(devp->isp_fe)
 	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
 	tasklet_disable_nosync(&devp->isp_task);
-	stop_isp_thread(devp);
+	if(devp->cam_param->cam_mode != CAMERA_CAPTURE)
+		stop_isp_thread(devp);
 	devp->flag &= (~ISP_FLAG_AF);
 	devp->flag &= (~ISP_FLAG_TOUCH_AF);
 	isp_sm_uninit(devp);
