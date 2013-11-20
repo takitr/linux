@@ -21,4 +21,3 @@ extern unsigned get_ppmgr_direction3d(void);
 extern void set_ppmgr_direction3d(unsigned angle);
 #endif
 int get_use_prot(void);
-ssize_t _ppmgr_angle_write(unsigned long val);

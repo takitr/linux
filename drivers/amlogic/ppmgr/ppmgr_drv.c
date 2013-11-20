@@ -171,7 +171,7 @@ void set_ppmgr_direction3d(unsigned angle)
 * Utilities.
 *
 ************************************************************************/
-ssize_t _ppmgr_angle_write(unsigned long val)
+static ssize_t _ppmgr_angle_write(unsigned long val)
 {
     unsigned long angle = val;
 
@@ -205,7 +205,6 @@ ssize_t _ppmgr_angle_write(unsigned long val)
     }
     return 0;
 }
-EXPORT_SYMBOL(_ppmgr_angle_write);
 
 /***********************************************************************
 *

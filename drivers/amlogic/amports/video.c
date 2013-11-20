@@ -196,6 +196,7 @@ static u32 next_peek_underflow;
          VD1_MEM_POWER_OFF(); \
          video_angle = 0; \
          video_prot.angle_changed |= 0x1; \
+         video_prot.power_down = 1; \
          if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
             printk("DisableVideoLayer()\n"); \
          } \
@@ -1738,7 +1739,6 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         if ((video_prot.angle + video_prot.src_vframe_orientation) % 4 == 1 || (video_prot.angle + video_prot.src_vframe_orientation) % 4 == 3) {
             PROT2_MEM_POWER_ON();
             PROT3_MEM_POWER_ON();
-            video_prot.power_down = 0;
         }
         video_prot_reset(&video_prot);
         video_prot.angle_changed &= 0x1;
