@@ -16,8 +16,8 @@ static inline void paint_mode_convert(int paint_mode, int* src_position, int* ds
         dst_paint_position[2] = dst_plane_position[2];
         dst_paint_position[3] = dst_plane_position[3];
     } else if (paint_mode == 1) { //keep size
-        dst_paint_position[0] = dst_plane_position[2] - src_position[2] >> 1;
-        dst_paint_position[1] = dst_plane_position[3] - src_position[3] >> 1;
+        dst_paint_position[0] = (dst_plane_position[2] - src_position[2]) >> 1;
+        dst_paint_position[1] = (dst_plane_position[3] - src_position[3]) >> 1;
         dst_paint_position[2] = src_position[2];
         dst_paint_position[3] = src_position[3];
     } else if (paint_mode == 2) {
@@ -29,8 +29,8 @@ static inline void paint_mode_convert(int paint_mode, int* src_position, int* ds
             dw = dst_plane_position[2];
             dh = dw * src_position[3] / src_position[2];
         }
-        dst_paint_position[0] = dst_plane_position[2] - dw >> 1;
-        dst_paint_position[1] = dst_plane_position[3] - dh >> 1;
+        dst_paint_position[0] = (dst_plane_position[2] - dw) >> 1;
+        dst_paint_position[1] = (dst_plane_position[3] - dh) >> 1;
         dst_paint_position[2] = dw;
         dst_paint_position[3] = dh;
     } else if (paint_mode == 3) { //keep ration black
@@ -42,13 +42,44 @@ static inline void paint_mode_convert(int paint_mode, int* src_position, int* ds
             dh = dst_plane_position[3];
             dw = dh * src_position[2] / src_position[3];
         }
-        dst_paint_position[0] = dst_plane_position[2] - dw >> 1;
-        dst_paint_position[1] = dst_plane_position[3] - dh >> 1;
+        dst_paint_position[0] = (dst_plane_position[2] - dw) >> 1;
+        dst_paint_position[1] = (dst_plane_position[3] - dh) >> 1;
         dst_paint_position[2] = dw;
         dst_paint_position[3] = dh;
     } else if (paint_mode == 4) {
 
     }
+}
+
+static int get_input_format(struct vframe_s* vf) {
+    int format = GE2D_FORMAT_M24_NV21;
+
+    if (vf->type & VIDTYPE_VIU_422) {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+            format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422B & (3 << 3));
+        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
+            format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422T & (3 << 3));
+        } else {
+            format = GE2D_FORMAT_S16_YUV422;
+        }
+    } else if (vf->type & VIDTYPE_VIU_NV21) {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+            format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21B & (3 << 3));
+        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
+            format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21T & (3 << 3));
+        } else {
+            format = GE2D_FORMAT_M24_NV21;
+        }
+    } else {
+        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
+            format = GE2D_FORMAT_M24_YUV420 | (GE2D_FMT_M24_YUV420B & (3 << 3));
+        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
+            format = GE2D_FORMAT_M24_YUV420 | (GE2D_FORMAT_M24_YUV420T & (3 << 3));
+        } else {
+            format = GE2D_FORMAT_M24_YUV420;
+        }
+    }
+    return format;
 }
 
 static inline void ge2d_src_config(struct vframe_s* vf, config_para_ex_t* ge2d_config) {
@@ -93,7 +124,7 @@ static inline void ge2d_src_config(struct vframe_s* vf, config_para_ex_t* ge2d_c
         ge2d_config->src_para.height = src_vf->height;
     }
     ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
-    ppmgr2_printk(2, "vf_width is %d , vf_height is %d type:%p\n", vf->width, vf->height, vf->type);
+    ppmgr2_printk(2, "vf_width is %d , vf_height is %d type:%p\n", vf->width, vf->height, (void *)vf->type);
 }
 
 static int ge2d_paint_dst(ge2d_context_t *context, config_para_ex_t* ge2d_config, int dst_canvas_id, int dst_pixel_format, int* src_position, int* dst_paint_position, int* dst_plane_position) {
@@ -162,7 +193,7 @@ static int ge2d_paint_dst(ge2d_context_t *context, config_para_ex_t* ge2d_config
         }
         stretchblt_noalpha(context, src_position[0], src_position[1], src_position[2], src_position[3], dst_paint_position[0], dst_paint_position[1], dst_paint_position[2], dst_paint_position[3]);
     }
-    ppmgr2_printk(2, "dst addr:%p w:%d h:%d canvas_id:%p format:%p\n", dst_cd.addr, dst_cd.width, dst_cd.height, dst_canvas_id, ge2d_config->dst_para.format);
+    ppmgr2_printk(2, "dst addr:%p w:%d h:%d canvas_id:%p format:%p\n", (void *)dst_cd.addr, dst_cd.width, dst_cd.height, (void *)dst_canvas_id, (void *)ge2d_config->dst_para.format);
     ppmgr2_printk(2, "dst plane w:%d h:%d paint w:%d h:%d\n", dst_plane_position[2], dst_plane_position[3], dst_paint_position[2], dst_paint_position[3]);
 
     return 0;
@@ -194,37 +225,6 @@ static inline void ge2d_angle_config(int dst_angle, config_para_ex_t* ge2d_confi
     } else {
         ge2d_config->dst_xy_swap = 0;
     }
-}
-
-static int get_input_format(struct vframe_s* vf) {
-    int format = GE2D_FORMAT_M24_NV21;
-
-    if (vf->type & VIDTYPE_VIU_422) {
-        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
-            format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422B & (3 << 3));
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
-            format = GE2D_FORMAT_S16_YUV422 | (GE2D_FORMAT_S16_YUV422T & (3 << 3));
-        } else {
-            format = GE2D_FORMAT_S16_YUV422;
-        }
-    } else if (vf->type & VIDTYPE_VIU_NV21) {
-        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
-            format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21B & (3 << 3));
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
-            format = GE2D_FORMAT_M24_NV21 | (GE2D_FORMAT_M24_NV21T & (3 << 3));
-        } else {
-            format = GE2D_FORMAT_M24_NV21;
-        }
-    } else {
-        if ((vf->type & 3) == VIDTYPE_INTERLACE_BOTTOM) {
-            format = GE2D_FORMAT_M24_YUV420 | (GE2D_FMT_M24_YUV420B & (3 << 3));
-        } else if ((vf->type & 3) == VIDTYPE_INTERLACE_TOP) {
-            format = GE2D_FORMAT_M24_YUV420 | (GE2D_FORMAT_M24_YUV420T & (3 << 3));
-        } else {
-            format = GE2D_FORMAT_M24_YUV420;
-        }
-    }
-    return format;
 }
 
 /*
@@ -262,12 +262,12 @@ int ppmgr2_canvas_config(struct ppmgr2_device *ppd, int dst_width, int dst_heigh
     if (ppd->ge2d_fmt == GE2D_FORMAT_M24_NV21 || ppd->ge2d_fmt == GE2D_FORMAT_M24_NV12) {
         canvas_config(PPMGR2_CANVAS_INDEX + index * 2, (ulong) phy_addr, canvas_width, canvas_height, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(PPMGR2_CANVAS_INDEX + index * 2 + 1, (ulong)(phy_addr + (canvas_width * canvas_height)), canvas_width, canvas_height >> 1, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-        ppd->canvas_id[index] = (PPMGR2_CANVAS_INDEX + index * 2) | (PPMGR2_CANVAS_INDEX + index * 2 + 1 << 8);
+        ppd->canvas_id[index] = (PPMGR2_CANVAS_INDEX + index * 2) | ((PPMGR2_CANVAS_INDEX + index * 2 + 1) << 8);
     } else if (ppd->ge2d_fmt == GE2D_FORMAT_S8_Y) {
         canvas_config(PPMGR2_CANVAS_INDEX + index * 3, (ulong) phy_addr, canvas_width, canvas_height, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(PPMGR2_CANVAS_INDEX + index * 3 + 1, (ulong)(phy_addr + canvas_width * canvas_height), canvas_width >> 1, canvas_height >> 1, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
         canvas_config(PPMGR2_CANVAS_INDEX + index * 3 + 2, (ulong)(phy_addr + (canvas_width * canvas_height * 5 >> 2)), canvas_width >> 1, canvas_height >> 1, CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
-        ppd->canvas_id[index] = (PPMGR2_CANVAS_INDEX + index * 3) | (PPMGR2_CANVAS_INDEX + index * 3 + 1 << 8) | (PPMGR2_CANVAS_INDEX + index * 3 + 2 << 16);
+        ppd->canvas_id[index] = (PPMGR2_CANVAS_INDEX + index * 3) | ((PPMGR2_CANVAS_INDEX + index * 3 + 1) << 8) | ((PPMGR2_CANVAS_INDEX + index * 3 + 2) << 16);
     } else {
         int bpp = 0;
         if (ppd->ge2d_fmt == GE2D_FORMAT_S32_ABGR) {
@@ -304,8 +304,8 @@ void ppmgr2_set_paint_mode(struct ppmgr2_device *ppd, int paint_mode) {
 int ppmgr2_process(struct vframe_s* vf, struct ppmgr2_device *ppd, int index) {
     int ret = 0;
     struct vframe_s* src_vf = vf;
-    int src_position[4];
-    int dst_paint_position[4], dst_plane_position[4];
+    int src_position[4] = {0};
+    int dst_paint_position[4] = {0}, dst_plane_position[4] = {0};
     int dst_canvas_id = ppd->canvas_id[index];
     int dst_pixel_format = ppd->ge2d_fmt;
     ge2d_context_t *context = ppd->context;

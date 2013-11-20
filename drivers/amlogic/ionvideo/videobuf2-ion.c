@@ -35,10 +35,10 @@ struct vb2_ion_buf {
 
 static void vb2_ion_put(void *buf_priv);
 
-static void *vb2_ion_alloc(void *alloc_ctx, unsigned long size) {
+static void *vb2_ion_alloc(void *alloc_ctx, unsigned long size, gfp_t gfp_flags) {
     struct vb2_ion_buf *buf;
 
-    buf = kzalloc(sizeof(*buf), GFP_KERNEL);
+    buf = kzalloc(sizeof(*buf), GFP_KERNEL | gfp_flags);
     if (!buf)
         return NULL;
 
@@ -55,7 +55,6 @@ static void *vb2_ion_alloc(void *alloc_ctx, unsigned long size) {
     }
 
     atomic_inc(&buf->refcount);
-
     return buf;
 }
 
@@ -213,7 +212,6 @@ static int vb2_ion_map_dmabuf(void *mem_priv) {
 
 static void vb2_ion_unmap_dmabuf(void *mem_priv) {
     struct vb2_ion_buf *buf = mem_priv;
-    struct ion_buffer *buffer = buf->dbuf->priv;
 
     __arm_iounmap(buf->vaddr);
 
@@ -252,7 +250,7 @@ static void *vb2_ion_cookie(void *buf_priv)
 
     struct ion_buffer *buffer = buf->dbuf->priv;
 
-    return buffer->priv_phys;
+    return (void *)buffer->priv_phys;
 }
 
 const struct vb2_mem_ops vb2_ion_memops = {
@@ -267,7 +265,7 @@ const struct vb2_mem_ops vb2_ion_memops = {
     .vaddr = vb2_ion_vaddr,
     .mmap = vb2_ion_mmap,
     .num_users = vb2_ion_num_users,
-    .cookie     = vb2_ion_cookie,
+    .cookie = vb2_ion_cookie,
 };
 EXPORT_SYMBOL_GPL (vb2_ion_memops);
 

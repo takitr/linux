@@ -118,6 +118,7 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
+        reg = <0x14500000 0x03000000>;
     };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
