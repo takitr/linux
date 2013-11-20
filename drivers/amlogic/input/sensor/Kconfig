@@ -142,6 +142,10 @@ config LIGHT_STK220X
 	help
 	    Say Y here to enable SensorTek's STK2203 using polling mode.
 
+config LIGHT_LTR558
+	bool "Liteon's light sensor LTR558"
+	help
+	    Say Y here to enable Liteon's LTR558 ambient light sensor.
 
 
 endif # SENSOR_DEVICES 

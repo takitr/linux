@@ -219,6 +219,15 @@ struct kionix_accel_driver {
 #endif /* CONFIG_HAS_EARLYSUSPEND */
 };
 
+static struct kionix_accel_platform_data kxtik_data = {
+    .min_interval = 5,
+    .poll_interval = 80,
+    .accel_direction =1,
+    .accel_irq_use_drdy = 0,
+    .accel_res = KIONIX_ACCEL_RES_12BIT,
+    .accel_g_range = KIONIX_ACCEL_G_2G,
+};
+
 static int kionix_i2c_read(struct i2c_client *client, u8 addr, u8 *data, int len)
 {
 	struct i2c_msg msgs[] = {
@@ -363,9 +372,9 @@ static void kionix_accel_grp1_report_accel_data(struct kionix_accel_driver *acce
 		if(atomic_read(&acceld->accel_enable_resume) > 0)
 		{
 			while(loop) {
-				mutex_lock(&input_dev->mutex);
+				//mutex_lock(&input_dev->mutex);
 				err = kionix_i2c_read(acceld->client, ACCEL_GRP1_XOUT, accel_data, 6);
-				mutex_unlock(&input_dev->mutex);
+				//mutex_unlock(&input_dev->mutex);
 				if(err < 0){
 					loop--;
 					mdelay(KIONIX_I2C_RETRY_TIMEOUT);
@@ -529,9 +538,9 @@ static void kionix_accel_grp2_report_accel_data(struct kionix_accel_driver *acce
 		{
 			loop = KIONIX_I2C_RETRY_COUNT;
 			while(loop) {
-				mutex_lock(&input_dev->mutex);
+				//mutex_lock(&input_dev->mutex);
 				err = kionix_i2c_read(acceld->client, ACCEL_GRP2_XOUT_L, (u8 *)accel_data.accel_data_s16, 6);
-				mutex_unlock(&input_dev->mutex);
+				//mutex_unlock(&input_dev->mutex);
 				if(err < 0){
 					loop--;
 					mdelay(KIONIX_I2C_RETRY_TIMEOUT);
@@ -713,7 +722,7 @@ static int kionix_accel_enable(struct kionix_accel_driver *acceld)
 	int err = 0;
 	long remaining;
 
-	mutex_lock(&acceld->mutex_earlysuspend);
+	//mutex_lock(&acceld->mutex_earlysuspend);
 
 	atomic_set(&acceld->accel_suspend_continue, 0);
 
@@ -742,7 +751,7 @@ static int kionix_accel_enable(struct kionix_accel_driver *acceld)
 	atomic_inc(&acceld->accel_enabled);
 
 exit:
-	mutex_unlock(&acceld->mutex_earlysuspend);
+	//mutex_unlock(&acceld->mutex_earlysuspend);
 
 	return err;
 }
@@ -751,7 +760,7 @@ static int kionix_accel_disable(struct kionix_accel_driver *acceld)
 {
 	int err = 0;
 
-	mutex_lock(&acceld->mutex_resume);
+	//mutex_lock(&acceld->mutex_resume);
 
 	atomic_set(&acceld->accel_suspend_continue, 1);
 
@@ -770,7 +779,7 @@ static int kionix_accel_disable(struct kionix_accel_driver *acceld)
 	}
 
 exit:
-	mutex_unlock(&acceld->mutex_resume);
+	//mutex_unlock(&acceld->mutex_resume);
 
 	return err;
 }
@@ -780,7 +789,6 @@ static int kionix_accel_input_open(struct input_dev *input)
 	struct kionix_accel_driver *acceld = input_get_drvdata(input);
 
 	atomic_inc(&acceld->accel_input_event);
-
 	return 0;
 }
 
@@ -1252,9 +1260,18 @@ exit:
 static int kionix_accel_probe(struct i2c_client *client,
 				 const struct i2c_device_id *id)
 {
-	const struct kionix_accel_platform_data *accel_pdata = client->dev.platform_data;
+	const struct kionix_accel_platform_data *accel_pdata;
 	struct kionix_accel_driver *acceld;
 	int err;
+
+	if(client->dev.platform_data) {
+	    accel_pdata = client->dev.platform_data;
+           KMSGERR(&client->dev, "use platform_data from bsp.\n");
+	}
+	else {
+	    accel_pdata = &kxtik_data;
+           KMSGERR(&client->dev, "use platform_data from driver.\n");
+	}
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_I2C | I2C_FUNC_SMBUS_BYTE_DATA)) {
@@ -1404,6 +1421,17 @@ static int kionix_accel_probe(struct i2c_client *client,
 		KMSGERR(&acceld->client->dev, "%s: sysfs_create_group returned err = %d. Abort.\n", __func__, err);
 		goto err_free_irq;
 	}
+
+	// must enable ionix_accel here
+	atomic_set(&acceld->accel_enabled, 1);
+	err = kionix_accel_enable(acceld);
+	if(err<0)
+       	KMSGERR(&acceld->client->dev, "kionix_accel enable failed in driver !\n");
+	else
+       	KMSGERR(&acceld->client->dev, "kionix_accel enable successful in driver!\n");
+
+	atomic_set(&acceld->accel_suspend_continue, 1);
+
 
 #ifdef    CONFIG_HAS_EARLYSUSPEND
 	/* The higher the level, the earlier it resume, and the later it suspend */

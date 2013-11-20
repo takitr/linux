@@ -81,14 +81,14 @@ static int32_t als_transmittance = CONFIG_STK_ALS_TRANSMITTANCE;
 #endif //CONFIG_STK_ALS_TRANSMITTANCE_TUNING
 
 
-inline void report_event(struct input_dev* dev,int32_t report_value)
+static inline void report_event(struct input_dev* dev,int32_t report_value)
 {
 	input_report_abs(dev, ABS_MISC, report_value);
 	input_sync(dev);
 	INFO("STK ALS : als input event %d lux\n",report_value);
 }
 
-inline void update_and_check_report_als(int32_t lux)
+static inline void update_and_check_report_als(int32_t lux)
 {
     int32_t lux_last;
     lux_last = pStkAlsData->als_lux_last;
