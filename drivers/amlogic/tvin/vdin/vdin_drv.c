@@ -738,7 +738,9 @@ int stop_tvin_service(int no)
 		pr_err("%s:decode hasn't started.\n",__func__);
 		return -EBUSY;
 	}
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	devp->flags |= VDIN_FLAG_DEC_STOP_ISR;
+#endif
 	vdin_stop_dec(devp);
         /*close fe*/
         if(devp->frontend->dec_ops->close)
@@ -1311,12 +1313,13 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
             	        goto irq_handled;
                 }
         }
-
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	if (devp->flags & VDIN_FLAG_DEC_STOP_ISR){
 		vdin_hw_disable(devp->addr_offset);
 		devp->flags &= ~VDIN_FLAG_DEC_STOP_ISR;
 		goto irq_handled;
 	}
+#endif
 	/* ignore invalid vs base on the continuous fields different cnt to void screen flicker */
 
 	last_field_type = devp->curr_field_type;
@@ -1366,9 +1369,10 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 		        goto irq_handled;
                 }
 	}
-	curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
-	if(curr_wr_vfe)
+	if(curr_wr_vfe){
+		curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
 		provider_vf_put(curr_wr_vfe, devp->vfp);
+	}
 
 	/* prepare for next input data */
 	next_wr_vfe = provider_vf_get(devp->vfp);

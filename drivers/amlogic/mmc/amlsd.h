@@ -114,8 +114,10 @@ void aml_cs_dont_care (struct amlsd_platform * pdata); // chip select don't care
 int aml_is_sdjtag(struct amlsd_platform * pdata);
 int aml_is_sduart(struct amlsd_platform * pdata);
 int aml_uart_switch(struct amlsd_platform* pdata, bool on);
+void aml_sduart_detect(struct amlsd_platform* pdata);
 bool is_emmc_exist (struct amlsd_host* host); // is eMMC/tSD exist
 void aml_dbg_print_pinmux (void);
+int aml_devm_pinctrl_put (struct amlsd_host* host);
 // void of_init_pins (struct amlsd_platform* pdata);
 
 #ifdef      CONFIG_MMC_AML_DEBUG

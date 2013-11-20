@@ -216,11 +216,18 @@ typedef enum cam_scanmode_e {
         CAM_SCANMODE_PROBE,
         CAM_SCANMODE_FULL,
 } cam_scanmode_t;
+/*state for cmd*/
+typedef enum cam_cmd_state_e {
+	CAM_STATE_NULL,
+	CAM_STATE_DOING,
+	CAM_STATE_ERROR,
+	CAM_STATE_SUCCESS,
+} cam_cmd_state_t;
 
 typedef enum cam_command_e {
         // common
-        CAM_COMMAND_INIT = 0,
-        //CAM_COMMAND_FORMAT,
+        CAM_COMMAND_INIT = 0,        
+        CAM_COMMAND_GET_STATE,
         CAM_COMMAND_SCENES,
         CAM_COMMAND_EFFECT,
         CAM_COMMAND_AWB,
@@ -229,9 +236,7 @@ typedef enum cam_command_e {
         // ae related
         CAM_COMMAND_AE_ON,
         CAM_COMMAND_AE_OFF,
-        //CAM_COMMAND_EXPOSURE,
-        //CAM_COMMAND_ISO_ANALOG,
-        //CAM_COMMAND_ISO_DIGITAL,
+        CAM_COMMAND_SET_AE_LEVEL,
         // af related
         CAM_COMMAND_AF,
         CAM_COMMAND_FULLSCAN,
@@ -289,7 +294,7 @@ typedef struct xml_window_s {
         unsigned char ratio_y1; // 0 ~ 255, y1 = (format.v * ratio_y1) >> 8
 } xml_window_t;
 
-#define AE_PARM_NUM			59
+#define AE_PARM_NUM			60
 typedef struct xml_algorithm_ae_s {
         unsigned int  ae_algorithm;       //0:basic;    1:enhanced
         unsigned int  ae_statistics[3];   //0: false, 1: true
@@ -353,6 +358,7 @@ typedef struct xml_algorithm_ae_s {
         unsigned int           slow_lpfcoef_enh;     // 0 ~ 255
         unsigned int           fast_lpfcoef_enh;     // 0 ~ 255
         unsigned int           flash_thr_enh;	     // 0 ~ 255
+        unsigned int 	       aet_fmt_gain;         //0db for each fmt
 } xml_algorithm_ae_t;
 
 #define AWB_PARM_NUM			57
@@ -614,10 +620,8 @@ typedef struct cam_window_s {
         unsigned short y1;
 } cam_window_t;
 
-#define CAP_PARM_NUM			10
+#define CAP_PARM_NUM			8
 typedef struct xml_capture_s {
-	unsigned int ae_en;
-	unsigned int awb_en;
 	unsigned int ae_try_max_cnt;
 	unsigned int sigle_count;
 	unsigned int skip_step;
@@ -651,6 +655,7 @@ typedef struct cam_parameter_s {
 	unsigned int 		    level;//the torch light level
 	flash_mode_t                flash_mode;//the flash mode
 	camera_mode_t		    cam_mode;//set the isp work mode
+	         int		    exposure_level;//manual exposure level 2db by each step
 } cam_parameter_t;
 
 typedef struct isp_status_s {

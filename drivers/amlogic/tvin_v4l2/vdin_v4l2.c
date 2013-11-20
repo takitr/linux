@@ -49,6 +49,9 @@ const char *cam_cmd_to_str(cam_command_t cmd)
 		case CAM_COMMAND_INIT:
 			return "CAM_COMMAND_INIT";
 		        break;
+		case CAM_COMMAND_GET_STATE:
+			return "CAM_COMMAND_GET_STATE";
+			break;
                 case CAM_COMMAND_SCENES:
 			return "CAM_COMMAND_SCENES";
 			break;
@@ -69,6 +72,9 @@ const char *cam_cmd_to_str(cam_command_t cmd)
 			break;
                 case CAM_COMMAND_AE_OFF:
 			return "CAM_COMMAND_AE_OFF";
+			break;
+		case CAM_COMMAND_SET_AE_LEVEL:
+			return "CAM_COMMAND_SET_AE_LEVEL";
 			break;
                 case CAM_COMMAND_AF:
 			return "CAM_COMMAND_AF";

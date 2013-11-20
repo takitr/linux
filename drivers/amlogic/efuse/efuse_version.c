@@ -397,7 +397,8 @@ static efuseinfo_item_t efuseinfo_v2[] =
 	},
 };
 
-static efuseinfo_item_t efuseinfo_M8_v5[] = 
+//m8 efuse layout according to haixiang.bao allocation
+static efuseinfo_item_t efuseinfo_M8_v20[] = 
 {
 	{
 		.title = "licence",
@@ -496,9 +497,9 @@ efuseinfo_t efuseinfo[] =
 		.version =3,
 	},
 	{
-		.efuseinfo_version = efuseinfo_M8_v5,
-		.size = sizeof(efuseinfo_M8_v5)/sizeof(efuseinfo_item_t),
-		.version =5,
+		.efuseinfo_version = efuseinfo_M8_v20,
+		.size = sizeof(efuseinfo_M8_v20)/sizeof(efuseinfo_item_t),
+		.version =20,
 	},
 };
 

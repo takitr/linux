@@ -19,6 +19,7 @@
 #include <mach/mipi_phy_reg.h>
 #include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
+#include "csi.h"
 
 void init_am_mipi_csi2_clock(void)
 {
@@ -85,7 +86,7 @@ static int init_am_mipi_csi2_adapter(csi_parm_t* info)
                 WRITE_CSI_ADPT_REG(CSI2_DDR_START_ADDR, info->frame->ddr_address);
                 WRITE_CSI_ADPT_REG(CSI2_DDR_END_ADDR, info->frame->ddr_address+info->frame_size);
         }else{
-                printk("info->frame=%p\n", info->frame);
+                DPRINT("info->frame=%p\n", info->frame);
         }
 #endif
 
@@ -108,9 +109,9 @@ static void init_am_mipi_phy(csi_parm_t* info)
         u32 cycle_time = 5;//5 ns
         u32 settle = (85 + 145 + (16*info->ui_val))/2;
         settle = settle/cycle_time;
-        printk("(85 + 145 + (16*%d))/2/5.4945 == settle=%d\n", info->ui_val, settle);
-        printk("%s, %d\n", __func__, __LINE__);
-        printk("settle=%d\n", settle);
+        DPRINT("(85 + 145 + (16*%d))/2/5.4945 == settle=%d\n", info->ui_val, settle);
+        DPRINT("%s, %d\n", __func__, __LINE__);
+        DPRINT("settle=%d\n", settle);
         settle = 25;
         //mipi_dbg("[mipi_hw]:init_am_mipi_phy ---- mipi cycle:%d ns, hs settle:%d ns,\n",cycle_time,(settle*cycle_time));
 
@@ -140,7 +141,7 @@ static void init_am_mipi_phy(csi_parm_t* info)
         WRITE_CSI_PHY_REG(MIPI_PHY_AN_CTRL1,0xcf25); //MIPI_CHCTL1<15:0>=<1100,1111,0010,0101> 
         WRITE_CSI_PHY_REG(MIPI_PHY_AN_CTRL2,0x0667); //MIPI_CHCTL2<15:0>=<0000,0110,0110,0111> 
 #else
-        printk("HHI_GCLK_MPEG1=%x, csi2_dig_clkin=%d\n", READ_CBUS_REG(HHI_GCLK_MPEG1), (READ_CBUS_REG(HHI_GCLK_MPEG1) >> 18)&0x1); 
+        DPRINT("HHI_GCLK_MPEG1=%x, csi2_dig_clkin=%d\n", READ_CBUS_REG(HHI_GCLK_MPEG1), (READ_CBUS_REG(HHI_GCLK_MPEG1) >> 18)&0x1);
         WRITE_CBUS_REG(HHI_CSI_PHY_CNTL0, 0xfdc1 << 16 | 0xfd01); 
         WRITE_CBUS_REG(HHI_CSI_PHY_CNTL1, 0x3f << 16 | 0xffff); 
         temp_data = READ_CBUS_REG(HHI_CSI_PHY_CNTL2);//

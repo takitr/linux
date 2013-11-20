@@ -181,13 +181,16 @@ struct amlsd_host {
 
     u32			opcode; // add by gch for debug
 	u32			arg; // add by gch for debug
-    u32         time_req_sta; // request start time
     
 #ifdef      CONFIG_MMC_AML_DEBUG
     u32         req_cnt;
+    u32         trans_size;
+    u32         time_req_sta; // request start time
 #endif
     
     struct pinctrl *pinctrl;
+    char pinctrl_name[30];
+
     int storage_flag; // used for judging if there is a tsd/emmc
 
     int         version; // bit[7-0]--minor version, bit[31-8]--major version

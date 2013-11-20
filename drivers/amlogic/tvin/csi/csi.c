@@ -54,6 +54,7 @@
 /* Per-device (per-bank) structure */
 static dev_t amcsi_devno;
 static struct class *amcsi_clsp;
+static void csi2_timer_func(unsigned long arg);
 
 static void init_csi_dec_parameter(struct amcsi_dev_s *devp)
 {
@@ -63,7 +64,7 @@ static void init_csi_dec_parameter(struct amcsi_dev_s *devp)
         fmt_info_p = tvin_get_fmt_info(fmt);
 
         if(!fmt_info_p) {
-                printk("[amcsi..]%s:invaild fmt %d.\n",__func__, fmt);
+                DPRINT("[amcsi..]%s:invaild fmt %d.\n",__func__, fmt);
                 return;
         }
 
@@ -80,7 +81,7 @@ static void init_csi_dec_parameter(struct amcsi_dev_s *devp)
 
 static void reset_btcsi_module(void)
 {
-        printk("%s, %d\n", __func__, __LINE__);
+        DPRINT("%s, %d\n", __func__, __LINE__);
         return;
 }
 
@@ -89,7 +90,7 @@ static void reset_btcsi_module(void)
    */
 static void reinit_csi_dec(struct amcsi_dev_s *devp)
 {
-        printk("%s, %d\n", __func__, __LINE__);
+        DPRINT("%s, %d\n", __func__, __LINE__);
         return;
 }
 
@@ -97,7 +98,7 @@ static void start_amvdec_csi(struct amcsi_dev_s *devp)
 {
         enum tvin_port_e port =  devp->para.port;
         if(devp->dec_status & TVIN_AMCSI_RUNNING){
-                printk("[csi..] %s csi have started alreadly.\n",__func__);
+                DPRINT("[csi..] %s csi have started alreadly.\n",__func__);
                 return;
         }
         devp->dec_status = TVIN_AMCSI_RUNNING;
@@ -109,7 +110,7 @@ static void start_amvdec_csi(struct amcsi_dev_s *devp)
         {
                 devp->para.fmt  = TVIN_SIG_FMT_NULL;
                 devp->para.port = TVIN_PORT_NULL;
-                printk("[csi..]%s: input is not selected, please try again. \n",__func__);
+                DPRINT("[csi..]%s: input is not selected, please try again. \n",__func__);
                 return;
         }
         devp->dec_status = TVIN_AMCSI_RUNNING;
@@ -123,7 +124,7 @@ static void stop_amvdec_csi(struct amcsi_dev_s *devp)
                 devp->dec_status = TVIN_AMCSI_STOP;
         }
         else{
-                printk("[csi..] %s device is not started yet. \n",__func__);
+                DPRINT("[csi..] %s device is not started yet. \n",__func__);
         }
         return;
 }
@@ -147,7 +148,7 @@ static bool amcsi_check_skip_frame(struct tvin_frontend_s * fe)
 int amcsi_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
         if((port != TVIN_PORT_MIPI)) {
-                printk("error 1\n");
+                DPRINT("this is not MIPI port\n");
                 return -1;
         } else {
                 return 0;
@@ -190,7 +191,7 @@ static void amcsi_stop(struct tvin_frontend_s * fe, enum tvin_port_e port)
 {
         struct amcsi_dev_s *devp = container_of(fe, amcsi_dev_t, frontend);
         if((port != TVIN_PORT_MIPI)){
-                printk("%s:invaild port %d.\n",__func__, port);
+                DPRINT("%s:invaild port %d.\n",__func__, port);
                 return;
         }
         stop_amvdec_csi(devp);
@@ -199,8 +200,10 @@ static void amcsi_get_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_pr
 {
         struct amcsi_dev_s *devp = container_of(fe, amcsi_dev_t, frontend);
         prop->color_format = devp->para.cfmt;//devp->csi_parm.csi_ofmt;
-        //prop->dest_cfmt = devp->para.cfmt;
-        printk("csi_ofmt=%d, cfmt=%d\n", devp->csi_parm.csi_ofmt, devp->para.cfmt );
+        prop->dest_cfmt = devp->para.dfmt;
+        printk("TVIN_NV21=%d, TVIN_YUV422=%d, devp->para.cfmt=%d, devp->para.dfmt=%d\n",
+                        TVIN_NV21, TVIN_YUV422, devp->para.cfmt, devp->para.dfmt);
+        prop->dest_cfmt =TVIN_NV21;
         prop->pixel_repeat = 0;
 }
 
@@ -227,10 +230,12 @@ int amcsi_isr(struct tvin_frontend_s *fe, unsigned int hcnt)
                 devp->overflow_cnt ++;
                 aml_write_reg32( P_CSI2_ERR_STAT0, 0);
         }
-        if( devp->overflow_cnt > 20){
-                printk("should reset mipi\n");
+        if( devp->overflow_cnt > 4){
+                DPRINT("should reset mipi\n");
                 devp->overflow_cnt = 0;
+                return 0;
         }
+        devp->reset = 0;
 
         return 0;
 }
@@ -242,6 +247,10 @@ static ssize_t csi_attr_show(struct device *dev, struct device_attribute *attr, 
         int i;
 
         csi_devp = dev_get_drvdata(dev);
+        if(csi_devp->dec_status != TVIN_AMCSI_RUNNING){
+                len += sprintf(buf+len, "csi does not start\n");
+                return len;
+        }
 
         len += sprintf(buf+len, "csi parameters below\n");
         len += sprintf(buf+len, "\tlanes=%d, channel=%d, clk_channel=%d\n"
@@ -259,12 +268,19 @@ static ssize_t csi_attr_show(struct device *dev, struct device_attribute *attr, 
                         csi_devp->csi_parm.ui_val, //ns
                         csi_devp->csi_parm.hs_freq, //hz
                         csi_devp->csi_parm.urgent);
+        len += sprintf(buf+len, "\treset=%d, left jiffies=%ld, reset_count=%d\n"
+                                "\tcsi_devp->t.data=%p, csi_devp=%p\n"
+                                "\tcsi_devp->t.function=%p, csi2_timer_func=%p\n",
+                                 csi_devp->reset, csi_devp->t.expires - jiffies,
+                                 csi_devp->reset_count,
+                                 csi_devp->t.data, csi_devp,
+                                 csi_devp->t.function, csi2_timer_func);
 
         len += sprintf(buf+len, "csi adapter register below\n");
         for( i = CSI_ADPT_START_REG; i <= CSI_ADPT_END_REG; i ++ )
         {
                 len += sprintf(buf+len, "\t[0x%04x]=0x%08x\n",
-                                i, READ_CSI_ADPT_REG(i));
+                               i-CSI_ADPT_START_REG, READ_CSI_ADPT_REG(i));
         }
 
         len += sprintf(buf+len, "csi phy register below\n");
@@ -317,8 +333,9 @@ static ssize_t csi_attr_store(struct device *dev,struct device_attribute *attr,c
         if ( 0 == strcmp(parm[0],"reset")){
                 printk("reset\n");
                 am_mipi_csi2_init(&csi_devp->csi_parm);
-        } else {
-                printk("other\n");
+        } else if ( 0 == strcmp(parm[0],"init")){
+                printk("init mipi measure clock\n");
+                init_am_mipi_csi2_clock();// init mipi csi measure clock
         }
 
         kfree(buf_orig);
@@ -326,6 +343,66 @@ static ssize_t csi_attr_store(struct device *dev,struct device_attribute *attr,c
 }
 
 static DEVICE_ATTR(hw_info, 0664, csi_attr_show, csi_attr_store);
+#if 0
+static irqreturn_t csi_hst_isr(int irq, void *arg)
+{
+        amcsi_dev_t *csi_devp = (amcsi_dev_t *)arg;
+        int ret = 0;
+
+        if(!csi_devp)
+                return IRQ_HANDLED;
+
+        //DPRINT("host isr MIPI_CSI2_HOST_ERR1=%x, MIPI_CSI2_HOST_ERR2=%x\n",
+        //        READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR1), READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR2));
+#if 0
+        if (irq == INT_CSI2_HOST){
+                ret = READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR1);//, READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR2));
+        } else {
+                ret = READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR2);//, READ_CSI_HST_REG(MIPI_CSI2_HOST_ERR2));
+        }
+#else
+        if (irq == INT_MIPI_PHY){
+                ret = READ_CSI_PHY_REG(MIPI_PHY_INT_STS);
+        }
+#endif
+        printk("line:%d, irq=%d, state=%x\n", __LINE__, irq, ret);
+
+        if ( 0 == (ret & 0x0330))
+        {
+#if 0
+                if ( 0 == (ret & 0x1111000))
+                {
+                        printk("other, ret=%x\n",ret);
+                }else{
+                        printk("0x100, 0x10\n");
+                }
+#endif
+                return IRQ_HANDLED;
+        }
+        if (csi_devp->reset){
+                printk("already request\n");
+                return IRQ_HANDLED;
+        }
+        csi_devp->reset = 1;
+        csi_devp->t.expires = jiffies + 10; //reset after 50ms=5jiffies
+        add_timer(&csi_devp->t);
+
+	return IRQ_HANDLED;
+}
+#endif
+
+static void csi2_timer_func(unsigned long arg)
+{
+        struct amcsi_dev_s *csi_devp = (struct amcsi_dev_s *) arg;
+        if(1 == csi_devp->reset){ //= 0;
+                printk("reset csi\n");
+                am_mipi_csi2_init(&csi_devp->csi_parm);
+                csi_devp->reset_count ++;
+        }
+        csi_devp->t.expires = jiffies + 10; //reset after 50ms=5jiffies
+        add_timer(&csi_devp->t);
+        csi_devp->reset = 1;
+}
 /*
  *power on mipi module&init the parameters,such as color fmt...,will be used by vdin
  */
@@ -333,14 +410,16 @@ static int amcsi_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
         struct amcsi_dev_s *csi_devp = container_of(fe, amcsi_dev_t, frontend);
         struct vdin_parm_s *parm = fe->private_data;
+        csi_parm_t *p = &csi_devp->csi_parm;
+        int ret;
 
         if((port != TVIN_PORT_MIPI)){
-                printk("[mipi..]%s:invaild port %d.\n",__func__, port);
+                DPRINT("[mipi..]%s:invaild port %d.\n",__func__, port);
                 return -1;
         }
         /*copy the param from vdin to csi*/
         if(!memcpy(&csi_devp->para, parm, sizeof(vdin_parm_t))){
-                printk("[mipi..]%s memcpy error.\n",__func__);
+                DPRINT("[mipi..]%s memcpy error.\n",__func__);
                 return -1;
         }
 
@@ -350,6 +429,32 @@ static int amcsi_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
         memcpy( &csi_devp->csi_parm, &parm->csi_hw_info, sizeof( csi_parm_t));
         csi_devp->csi_parm.skip_frames = parm->skip_count;
 
+        csi_devp->reset = 0;
+        csi_devp->reset_count = 0;
+
+#if 0
+        csi_devp->irq_num = INT_MIPI_PHY; //INT_CSI2_HOST;
+        ret = request_irq(csi_devp->irq_num, csi_hst_isr, IRQF_SHARED, "csi-hst1"/*devp->irq_name*/, csi_devp);
+        //SET_CSI_HST_REG_MASK(MIPI_CSI2_HOST_MASK1, ~((1<< p->lanes) - 1));
+        //WRITE_CSI_HST_REG_BITS(MIPI_CSI2_HOST_MASK1, 0, 28, 1); // enable err_ecc_double
+
+        //SET_CSI_HST_REG_MASK(MIPI_CSI2_HOST_MASK1, ~((1<< p->lanes) - 1));
+        DPRINT("INT_CSI2_HOST = %d, INT_CSI2_HOST_2=%d\n", INT_CSI2_HOST, INT_CSI2_HOST_2)
+        DPRINT("mask1=%x\n", ~((1<< p->lanes) - 1));
+#if 0
+        csi_devp->irq_num = INT_CSI2_HOST_2;
+        ret = request_irq(csi_devp->irq_num, csi_hst_isr, IRQF_SHARED, "csi-hst2"/*devp->irq_name*/, csi_devp);
+#endif
+        if( ret < 0 ){
+                printk("failed to request csi_adapter irq \n");
+        }
+#endif
+
+        init_timer (&csi_devp->t);
+        csi_devp->t.data = csi_devp;
+        csi_devp->t.function = csi2_timer_func;
+        csi_devp->t.expires = jiffies + 10; //reset after 50ms=5jiffies
+        add_timer(&csi_devp->t);
         am_mipi_csi2_init(&csi_devp->csi_parm);
         return 0;
         //csi_devp->skip_vdin_frame_count = parm->reserved;
@@ -363,10 +468,22 @@ static void amcsi_feclose(struct tvin_frontend_s *fe)
         enum tvin_port_e port = devp->para.port;
 
         if((port != TVIN_PORT_MIPI)){
-                printk("[mipi..]%s:invaild port %d.\n",__func__, port);
+                DPRINT("[mipi..]%s:invaild port %d.\n",__func__, port);
                 return;
         }
 
+#if 0
+        devp->irq_num = INT_MIPI_PHY; //INT_CSI2_HOST;
+        free_irq(devp->irq_num, (void *)devp);
+#if 0
+        devp->irq_num = INT_CSI2_HOST_2;
+        free_irq(devp->irq_num, (void *)devp);
+#endif
+#endif
+        devp->reset = 0;
+        devp->reset_count = 0;
+
+        del_timer_sync(&devp->t);
         am_mipi_csi2_uninit();
 
         memset(&devp->para, 0, sizeof(vdin_parm_t));
@@ -495,13 +612,13 @@ static int __init amvdec_csi_init_module(void)
 {
         int ret = 0;
         struct platform_device *pdev;
-        printk("amvdec_csi module: init.\n");
+        DPRINT("amvdec_csi module: init.\n");
         ret=alloc_chrdev_region(&amcsi_devno, 0, CSI_MAX_DEVS, DEV_NAME);
         if(ret<0){
                 printk("%s:failed to alloc major number\n",__func__);
                 goto fail_alloc_cdev_region;
         }
-        printk("%s:major %d\n",__func__,MAJOR(amcsi_devno));
+        DPRINT("%s:major %d\n",__func__,MAJOR(amcsi_devno));
         amcsi_clsp=class_create(THIS_MODULE,CLS_NAME);
         if(IS_ERR(amcsi_clsp)){
                 ret=PTR_ERR(amcsi_clsp);
@@ -522,7 +639,7 @@ static int __init amvdec_csi_init_module(void)
                 goto fail_pdrv_register;
         }
 
-        printk("amvdec_csi module: init. ok\n");
+        DPRINT("amvdec_csi module: init. ok\n");
         return 0;
 fail_pdrv_register:
         platform_device_unregister(pdev);
@@ -541,7 +658,7 @@ fail_alloc_cdev_region:
 static void __exit amvdec_csi_exit_module(void)
 {
         printk("amvdec_csi module remove.\n");
-        printk("%s, %d\n", __func__, __LINE__);
+        DPRINT("%s, %d\n", __func__, __LINE__);
         class_destroy(amcsi_clsp);
         unregister_chrdev_region(amcsi_devno, CSI_MAX_DEVS);
         platform_driver_unregister(&amvdec_csi_driver);

@@ -321,9 +321,12 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
     pdata->gpio_interrupt = amlogic_gpio_name_map_num(str);
     printk("%s: alloc gpio_interrupt(%s)!\n", pdata->owner, str);
     if (pdata->gpio_interrupt <= 0) {
-    	pdata->gpio_interrupt = 0;
-    	printk("%s: faild to alloc gpio_interrupt(%s)!\n", pdata->owner, str);
-      return ERR_GPIO_REQ;
+      pdata->gpio_interrupt = 0;
+      printk("%s: faild to alloc gpio_interrupt(%s)!\n", pdata->owner, str);
+      //return ERR_GPIO_REQ;
+    }
+	else {
+      pdata->gpio_interrupt = 0;
     }
   }
 
@@ -412,6 +415,8 @@ GET_DT_ERR_TYPE request_touch_gpio(struct touch_pdata *pdata)
         return ERR_GPIO_REQ;
       }
 	    printk("%s: request gpio_interrupt = (%d)\n",pdata->owner, pdata->gpio_interrupt);
+	    aml_gpio_direction_input(pdata->gpio_interrupt);
+	    aml_gpio_to_irq(pdata->gpio_interrupt, pdata->irq-INT_GPIO_0, pdata->irq_edge);
 	}
 	if (pdata->gpio_reset) {
       err = aml_gpio_request(pdata->gpio_reset);

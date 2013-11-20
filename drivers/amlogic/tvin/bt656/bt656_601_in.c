@@ -379,7 +379,7 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			|(0 << BT_MODE_BIT)              // BT656 standard interface.
 			|(1 << BT_CLOCK_ENABLE)      // enable 656 clock.
 			|(0 << BT_FID_EN_BIT)            // use external fid pin.
-			|(0 << BT_XCLK27_EN_BIT)     // xclk27 is input.
+			//|(0 << BT_XCLK27_EN_BIT)     // xclk27 is input. change to Raw_mode setting from M8
 			|(0 << BT_PROG_MODE ) 
 			|(0 << BT_AUTO_FMT)  
 			|(0 << BT_CAMERA_MODE)     // enable camera mode
@@ -397,7 +397,7 @@ static void reinit_camera_dec(struct am656in_dev_s *devp)
 			|(0 << BT_MODE_BIT)              // BT656 standard interface.
 			|(1 << BT_CLOCK_ENABLE)      // enable 656 clock.
 			|(0 << BT_FID_EN_BIT)            // use external fid pin.
-			|(1 << BT_XCLK27_EN_BIT)     // xclk27 is input.
+			//|(1 << BT_XCLK27_EN_BIT)     // xclk27 is input. change to Raw_mode setting from M8
 			|(1 << BT_PROG_MODE ) 
 			|(0 << BT_AUTO_FMT)  
 			|(1 << BT_CAMERA_MODE)     // enable camera mode
@@ -715,9 +715,9 @@ static int amvdec_656in_probe(struct platform_device *pdev)
 	/*register frontend */
     sprintf(devp->frontend.name, "%s", DEV_NAME);
 	//tvin_frontend_init(&devp->frontend, &am656_decoder_ops_s, &am656_machine_ops, pdev->id);
-    if(!tvin_frontend_init(&devp->frontend,&am656_decoder_ops_s,&am656_machine_ops, 0)) {
+    if(!tvin_frontend_init(&devp->frontend,&am656_decoder_ops_s,&am656_machine_ops, pdev->id)) {
         if(tvin_reg_frontend(&devp->frontend))
-            printk(" %s register frontend error........................\n",__func__);
+            printk(" %s register frontend error \n",__func__);
     }        
 
 	/*set pinmux for ITU601 A and ITU601 B*/

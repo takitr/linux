@@ -21,6 +21,7 @@ char *wave_key = "wave_start";
 char *lenc_key = "lenc_start";
 char *gamma_key = "gamma_start";
 char *wb_sensor_key = "mwb_sensor_start";
+char *version_key = "version_start";
 
 typedef struct{
 	char *buffer;
@@ -396,6 +397,9 @@ int parse_aet_element_info(char **iter,sensor_aet_info_t *info){
     sscanf(*iter,"%x",&(info->tbl_min_gain));
     *iter = strstr(*iter,",");
     *iter += 1;
+    sscanf(*iter,"%x",&(info->format_transfer_parameter));
+    *iter = strstr(*iter,",");
+    *iter += 1;
     return 0;
 
 }
@@ -494,7 +498,6 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
         return -HEAD_FAILED;
     }
     cf->aet.sum = sum;
-
     /**parser body***/
     for(i = 0;i < sum; i++){
         if((cf->aet.aet[i].info = (sensor_aet_info_t *)kmalloc(sizeof(sensor_aet_info_t),0)) == NULL){
@@ -505,7 +508,7 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
         }
     } //alloc head
     check = 0;
-    while(check < sum && iter != NULL){
+    while(check < sum){
         iter = search_string(buf_para,offset,remained,"aet","aet");
         if(iter == NULL){
             printk("aet wrong config format\n");
@@ -517,7 +520,6 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
             ret = -HEAD_FAILED;
             goto clean;
         } 
-
         ret = parse_aet_element_info(&iter,cf->aet.aet[check].info);
         if(ret != 0){
             ret = -BODY_ELEMENT_FAILED;
@@ -712,7 +714,7 @@ int parse_capture(buffer_para_t *buf_para,int *remained,int *offset){
         //printk("name:%s\n",cf->capture.capture[check].name);
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<10;i++){
+        for(i=0;i<CAPTURE_MAX;i++){
             sscanf(iter,"%x",&(cf->capture.capture[check].export[i]));
            // printk("capture:%x\n",cf->capture.capture[check].export[i]);
             iter = strstr(iter,",");
@@ -738,7 +740,7 @@ int parse_wave(buffer_para_t *buf_para,int *remained,int *offset){
     /***parser head***/
     iter = strstr(iter,"export");
     iter += 7;
-    for(i=0;i<12;i++){
+    for(i=0;i<WAVE_MAX;i++){
         sscanf(iter,"%x",&(cf->wave.export[i]));
         //printk("wave:%x\n",cf->wave.export[i]);
         iter = strstr(iter,",");
@@ -880,6 +882,38 @@ int parse_wb_sensor(buffer_para_t *buf_para,int *remained,int *offset){
             break;
         iter += 1;
     }
+    return 0;
+}
+
+
+int parse_version(buffer_para_t *buf_para,int *remained,int *offset){
+    int i;
+    char *iter,*end;
+    int len = 0;
+
+    iter = search_string(buf_para,offset,remained,"version_start","version_end");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    iter = strstr(iter,"Date");
+    iter += 5;
+    end = strstr(iter,"Module");
+    len = end - iter;
+    memcpy(cf->version.date,iter,len);
+    cf->version.date[len] = '\0';
+    
+    iter = end + 7;
+    end = strstr(iter,"Version");
+    len = end - iter;    
+    memcpy(cf->version.module,iter,len);
+    cf->version.module[len] = '\0';    
+
+    iter = end + 8;
+    end = strstr(iter,"[version");
+    len = end - iter;
+    memcpy(cf->version.version,iter,len);
+    cf->version.version[len] = '\0';  
+    printk("version:%s",cf->version.version);    
     return 0;
 }
 
@@ -1043,7 +1077,18 @@ int parse_config(char *path){
                 }else{
                     buf_para.data_start += strlen(wb_sensor_key);
                 } 
-                 break;          
+                 break;
+            case 'v':
+                if(memcmp(iter,version_key,strlen(version_key)) == 0){
+                    cf->version_info_valid = 1;
+                    if((ret = parse_version(&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->version_info_valid = 0;
+                        printk("version info invalid :%d\n",ret);									
+                    }
+                }else{
+                    buf_para.data_start += strlen(version_key);
+                } 
+                 break;                      
             default:
                 buf_para.data_start += 1;
                 break;		
@@ -1166,9 +1211,14 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         scene = para->xml_scenes;
-        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
-        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 97,104*sizeof(unsigned int));
-       // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
+        if(cf->aet_valid == 1){
+        	cf->scene.scene[pindex.scenes_index].export[97] = sensor_aet_info->format_transfer_parameter;        	
+        }
+        else
+        	cf->scene.scene[pindex.scenes_index].export[97] = 0;
+        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,98*sizeof(unsigned int));
+        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + sizeof(xml_algorithm_ae_t),104*sizeof(unsigned int));
+        // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
     }else{
         para->xml_scenes = NULL;
     }
@@ -1248,12 +1298,11 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         capture = para->xml_capture;
-        capture->ae_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
-        capture->awb_en = (unsigned int)(cf->capture.capture[pindex.capture_index].export[1]);
-        capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
-        capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
+        capture->ae_try_max_cnt = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
+		capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
         capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
-        capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+		capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+		capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
         capture->eyetime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[6]);
         capture->pretime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[7]);
         capture->postime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[8]);

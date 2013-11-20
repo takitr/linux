@@ -132,6 +132,7 @@ void set_ae_parm(xml_algorithm_ae_t *ae_sw,char **parm)
 		{"slow_lpfcoef_enh",  &ae_sw->slow_lpfcoef_enh,  1,  ISP_U32},
 		{"fast_lpfcoef_enh",  &ae_sw->fast_lpfcoef_enh,  1,  ISP_U32},
 		{"flash_thr_enh",     &ae_sw->flash_thr_enh,     1,  ISP_U32},
+		{"aet_fmt_gain",      &ae_sw->aet_fmt_gain,      1,  ISP_U32},	
 
 	};
 
@@ -249,8 +250,6 @@ void set_cap_parm(struct xml_capture_s *cap_sw,char **parm)
 {
 	int len = CAP_PARM_NUM;
 	isp_param_t cap[CAP_PARM_NUM]={
-		{"ae_en",      	     &cap_sw->ae_en,      	   1, ISP_U32},
-		{"awb_en",           &cap_sw->awb_en,      	   1, ISP_U32},
 		{"ae_try_max_cnt",   &cap_sw->ae_try_max_cnt,      1, ISP_U32},
 		{"af_mode",          &cap_sw->af_mode,      	   1, ISP_U32},
 		{"sigle_count",      &cap_sw->sigle_count,         1, ISP_U32},

@@ -99,9 +99,8 @@ typedef enum isp_capture_state_e {
 	CAPTURE_PRE_WAIT,//for time lapse
 	CAPTURE_FLASH_ON,//turn on flash for red eye
 	CAPTURE_TR_WAIT,
+	CAPTURE_TUNE_AF_AWB,
 	CAPTURE_TUNE_AE,
-	CAPTURE_TUNE_AWB,
-	CAPTURE_TUNE_AF,
 	CAPTURE_LOW_GAIN,
 	CAPTURE_EYE_WAIT,
 	CAPTURE_POS_WAIT,
@@ -143,6 +142,7 @@ typedef struct isp_ae_sm_s {
 	unsigned int max_lumasum2;
 	unsigned int max_lumasum3;
 	unsigned int max_lumasum4;	//high
+	unsigned int targ;
 	
 	isp_auto_exposure_enh_state_t  isp_ae_enh_state;
 	isp_auto_exposure_state_t isp_ae_state;
@@ -232,6 +232,7 @@ extern void isp_af_detect(isp_dev_t *devp);
 extern int isp_capture_sm(isp_dev_t *devp);
 extern unsigned long long div64(unsigned long long n, unsigned long long d);
 extern void isp_af_save_current_para(isp_dev_t *devp);
+extern void isp_set_manual_exposure(isp_dev_t *devp);
 #endif
 
 

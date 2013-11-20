@@ -110,6 +110,12 @@ MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
 #define AF_FLAG_AE			0x00000002
 #define AF_FLAG_AWB			0x00000004
 
+#define P1DB 1149
+#define N1DB  913
+#define P2DB 1289
+#define N2DB  813
+
+
 static unsigned int best_step_debug = 0;
 
 static unsigned int af_sm_dg = 0;
@@ -161,6 +167,40 @@ void isp_sm_init(isp_dev_t *devp)
 	sm_state.flash = ISP_FLASH_STATUS_NULL;
 }
 
+void isp_set_manual_exposure(isp_dev_t *devp)
+{
+	struct xml_algorithm_ae_s *aep = devp->isp_ae_parm;
+	struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+	int i;
+	int manual_target;
+	if((aepa->targ > aep->targethigh)||(aepa->targ < aep->targetlow))
+	{
+		return;
+	}
+	printk("devp->ae_info.manul_level=%d\n",devp->ae_info.manul_level);
+	i = devp->ae_info.manul_level;
+	manual_target = aep->targetmid;
+	if(i > 0)
+	{
+		for(;i>0;i--)
+		{
+			manual_target = (manual_target*P1DB+512) >> 10;
+		}
+	}
+	else if(i < 0)
+	{
+		for(;i<0;i++)
+		{
+			manual_target = (manual_target*N1DB+512) >> 10;
+		}
+	}
+	aepa->targ = manual_target;
+    if(aepa->targ > aep->targethigh)
+		aepa->targ = aep->targethigh;
+    if(aepa->targ < aep->targetlow)
+		aepa->targ = aep->targetlow;	
+}
+
 void af_sm_init(isp_dev_t *devp)
 {
 	unsigned int tmp = 0 ;
@@ -199,7 +239,7 @@ unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
 
     //if (func && func->get_aet_gain_by_format)
     //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
-    format_gain_new = 52;
+    format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
     aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
     new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
 
@@ -216,7 +256,7 @@ int isp_ae_save_current_para(isp_dev_t *devp)
         aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
     //if (func && func->get_aet_gain_by_format)
     //    aet_gain = func->get_aet_gain_by_format(ae_sens->new_step);
-    format_gain_pre = 150;
+    format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
     pr_info("[isp] %s ae gain, aet_gain_pre:%d format_gain_pre:%d ... ...\n",
                 __func__, aet_gain_pre, format_gain_pre);
 
@@ -237,7 +277,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	unsigned int avg_env;
 	unsigned int avg_envo;
 	int avg, avgo;
-	static short targ;
 	static short temp;
 	int i;
 	static int k = 0;
@@ -272,7 +311,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * ae_ratio3) >> 10;
 			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * ae_ratio4) >> 10;
 			aepa->pre_gain = 400;
-			targ = aep->targetlow;
+			aepa->targ = aep->targetmid;
 			temp = 1;
 			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;
 			aepa->alert_g = ((aepa->pixel_sum >> 4) * aep->ratio_g) >> 7;	 //grgb
@@ -437,22 +476,22 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						printk("avg=%d,avg_envo=%d,aepa->cur_gain=%d,avg_env=%d,avg_env_sum=%d,avg_sum=%d,luma_win[9]=%d,sub[9]=%d\n",avg,avg_envo,aepa->cur_gain,avg_env,avg_env_sum,avg_sum,ae->luma_win[9],sub_avg[9]);
 						if(ae_debug6)
 						printk("ph->hist.gamma[58]=%d,%d\n",ph->hist.gamma[58],sum);
-						if(1)//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
+						if(devp->ae_info.manul_level==0)//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
 						{
 							//targ = aep->targetlow;
 							if((sum > aepa->max_lumasum4)||((sum > aepa->max_lumasum3)&&(temp==2)))
 							{
 								temp = 2;
-								targ--;
-								if(targ<30)
-									targ = 30;
+								aepa->targ--;
+								if(aepa->targ<(aep->targetmid-50))
+									aepa->targ = aep->targetmid-50;
 							}
 							else if((sum < aepa->max_lumasum1)||((sum < aepa->max_lumasum2)&&(temp==0)))
 							{
 								temp = 0;
-								targ++;
-								if(targ>aep->targetlow)
-									targ = aep->targetlow;
+								aepa->targ++;
+								if(aepa->targ>(aep->targetmid+5))
+									aepa->targ = aep->targetmid+5;
 							}
 							else 
 							{
@@ -464,6 +503,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							sm_state.env = ENV_LOW;
 							isp_set_ae_thrlpf(aep->thr_r_low, aep->thr_g_low, aep->thr_b_low, aep->lpftype_low);
 						}
+						/*
 						else if((avg_envo >= aep->env_hign)||((avg_envo >= aep->env_hign2mid)&&targ == (aep->targethigh)))
 						{
 							targ = aep->targethigh;
@@ -479,16 +519,16 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							radium_outer = aep->radium_outer_m;
 							sm_state.env = ENV_MID;
 							isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
-						}
+						}*/
 						if(ae_debug6)
-							printk("targ=%d,temp=%d\n",targ,temp);
+							printk("targ=%d,temp=%d\n",aepa->targ,temp);
 						step = AE_LUMA_AVG_CHECK;
 						break;
 					case AE_LUMA_AVG_CHECK:
 						if(ae_debug5)
-						printk("avg=%d,targ=%d,radium_inner=%d,radium_outer=%d\n",avg,targ,radium_inner,radium_outer);
-						if(((sm_state.status == ISP_AE_STATUS_UNSTABLE)&&(((avg - targ) > radium_inner)||((targ - avg) > radium_inner)))
-							||(((avg - targ) > radium_outer)||((targ - avg) > radium_outer))
+						printk("avg=%d,targ=%d,radium_inner=%d,radium_outer=%d\n",avg,aepa->targ,radium_inner,radium_outer);
+						if(((sm_state.status == ISP_AE_STATUS_UNSTABLE)&&(((avg - aepa->targ) > radium_inner)||((aepa->targ - avg) > radium_inner)))
+							||(((avg - aepa->targ) > radium_outer)||((aepa->targ - avg) > radium_outer))
 							)
 						{
 							step = AE_EXPOSURE_ADJUST;
@@ -511,7 +551,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							step = AE_SUCCESS;
 							break;
 						}
-						targrate = (targ * aepa->cur_gain)/avg;
+						targrate = (aepa->targ * aepa->cur_gain)/avg;
 						if(ae_debug1)
 							printk("targrate = %d\n",targrate);
 						if(targrate > aepa->max_gain)
@@ -1112,7 +1152,7 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 		delta_dc = isp_abs64(v_dc[i],ave_vdc);
 		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
 		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
-		if(tmp_vdc1 > ave_vdc){
+		if(!af_info->last_move){
 			if(ave_vdc > af_alg->ave_vdc_thr){
 			        is_move = true;
 				break;
@@ -1332,6 +1372,7 @@ void isp_af_sm(isp_dev_t *devp)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
 						sm_state.af_state = AF_NULL;
+					devp->cmd_state = CAM_STATE_SUCCESS;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				} else {/*af success*/
@@ -1350,6 +1391,7 @@ void isp_af_sm(isp_dev_t *devp)
 						sm_state.af_state = AF_DETECT_INIT;
 					else
 						sm_state.af_state = AF_NULL;
+					devp->cmd_state = CAM_STATE_SUCCESS;
 					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 				}
@@ -1399,9 +1441,8 @@ void isp_set_flash_mode(isp_dev_t *devp)
 void capture_sm_init(isp_dev_t *devp)
 {
 	struct isp_capture_sm_s *cap_sm = &sm_state.cap_sm;
-		
-	devp->capture_parm->ae_en = 1;
-	devp->capture_parm->awb_en = 1;
+	xml_capture_t *parm = devp->capture_parm;
+	
 	devp->capture_parm->ae_try_max_cnt = 15;
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
@@ -1415,11 +1456,18 @@ void capture_sm_init(isp_dev_t *devp)
 	cap_sm->fr_time = 0;
 	cap_sm->tr_time = 0;
 	
-	devp->flag &= (~ISP_FLAG_AF);
-	if(cap_sm->flash_mode)
+	if(cap_sm->flash_mode) {
 		cap_sm->capture_state = CAPTURE_INIT;
-	else
-		cap_sm->capture_state = CAPTURE_TUNE_AE;
+	} else {
+		cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
+		if(parm->af_mode){
+			devp->flag |= ISP_FLAG_AF;
+		}else{
+			devp->flag &= (~ISP_FLAG_AF);
+		}
+		devp->flag |= ISP_FLAG_AWB;
+		devp->flag |= ISP_FLAG_AE;
+	}
 
 	af_sm_init(devp);
 }
@@ -1440,11 +1488,11 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->capture_state = CAPTURE_PRE_WAIT;
 				start_jf = jiffies;
 				if(capture_debug)
-					pr_info("[cap_sm]init->pre_wait.\n");
+					pr_info("[cap_sm]%u:init->pre_wait.\n",__LINE__);
 			} else {
 			        cap_sm->capture_state = CAPTURE_FLASH_ON;
 				if(capture_debug)
-					pr_info("[cap_sm]init->flash_on.\n");
+					pr_info("[cap_sm]%u:init->flash_on.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_PRE_WAIT:
@@ -1452,7 +1500,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->capture_state = CAPTURE_FLASH_ON;
 				start_jf = 0;
 				if(capture_debug)
-					pr_info("[cap_sm] pre_wait->flash_on.\n");
+					pr_info("[cap_sm]%u:pre_wait->flash_on.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_FLASH_ON:
@@ -1468,92 +1516,65 @@ int isp_capture_sm(isp_dev_t *devp)
 				cap_sm->flash_on = 1;
 				cap_sm->capture_state = CAPTURE_TR_WAIT;
 				if(capture_debug)
-					pr_info("[cap_sm] flash on->torch rising wait.\n");
+					pr_info("[cap_sm]%u:flash on->torch rising wait.\n",__LINE__);
 			} else {
 				/*without flash*/
 				cap_sm->flash_on = 0;
 				cap_sm->capture_state = CAPTURE_TUNE_AE;
 			        if(capture_debug)
-				        pr_info("[cap_sm] flash on->tune ae wait.\n");
+				        pr_info("[cap_sm]%u:flash on->tune ae wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_TR_WAIT:
 			if(time_after(jiffies,cap_sm->tr_time)){
-				cap_sm->capture_state = CAPTURE_TUNE_AE;
+				cap_sm->capture_state = CAPTURE_TUNE_AF_AWB;
 				if(capture_debug)
-				        pr_info("[cap_sm] torch rising wait->tune ae wait.\n");
+				        pr_info("[cap_sm]%u:torch rising wait->tune ae wait.\n",__LINE__);
+			}
+			break;
+		case CAPTURE_TUNE_AF_AWB:
+			if((sm_state.af_state==AF_CAPTURE_OK)||(parm->af_mode==CAM_SCANMODE_NULL)){
+				devp->flag &=(~ISP_FLAG_AF);
+				devp->flag &=(~ISP_FLAG_AWB);
+				if(cap_sm->flash_on){
+					devp->flag |= ISP_FLAG_AE;
+					isp_ae_low_gain();
+					cap_sm->capture_state = CAPTURE_LOW_GAIN;
+					if(capture_debug)
+						pr_info("[cap_sm]%u: af_awb->low gain.\n",__LINE__);
+				}else{
+					cap_sm->capture_state = CAPTURE_TUNE_AE;
+					devp->flag |= ISP_FLAG_AE;
+					cap_sm->adj_cnt = 0;
+					if(capture_debug)
+						pr_info("[cap_sm]%u: af_awb->ae.\n",__LINE__);
+				}
 			}
 			break;
 		case CAPTURE_TUNE_AE:
 			if((sm_state.status==ISP_AE_STATUS_STABLE)||(cap_sm->adj_cnt >= parm->ae_try_max_cnt))
 			{
 				devp->flag &= (~ISP_FLAG_AE);
-				cap_sm->capture_state = CAPTURE_TUNE_AWB;
-				devp->flag |= ISP_FLAG_AWB;
 				cap_sm->adj_cnt = 0;
-				if(capture_debug)
-					pr_info("[cap_sm] changed ae(%s)->awb.\n",
-							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
-				if(parm->af_mode){
-					cap_sm->capture_state = CAPTURE_TUNE_AF;
-					devp->flag |= ISP_FLAG_AF;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->af.\n");
-				}else if(cap_sm->flash_on){
-					devp->flag |= ISP_FLAG_AE;
-					cap_sm->capture_state = CAPTURE_LOW_GAIN;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->low gain.\n");
-				}else {
-					cap_sm->capture_state = CAPTURE_SINGLE;
-					cap_sm->adj_cnt = 0;
-					if(capture_debug)
-						pr_info("[cap_sm] changed ae->single.\n");
-				}
-			}
-			break;
-		case CAPTURE_TUNE_AWB:
-			devp->flag &=(~ISP_FLAG_AWB);
-			if(parm->af_mode) {
-				devp->flag |= ISP_FLAG_AF;
-				cap_sm->capture_state = CAPTURE_TUNE_AF;
-				if(capture_debug)
-					pr_info("[cap_sm] changed awb->af.\n");
-			}else if(cap_sm->flash_on){
-				devp->flag |= ISP_FLAG_AE;
-				cap_sm->capture_state = CAPTURE_LOW_GAIN;
-				if(capture_debug)
-					pr_info("[cap_sm] changed awb->low gain.\n");
-			}else{
-				cap_sm->capture_state = CAPTURE_SINGLE;
-				cap_sm->adj_cnt = 0;
-				if(capture_debug)
-				        pr_info("[cap_sm] changed awb->single.\n");
-			}
-			break;
-		case CAPTURE_TUNE_AF:
-			if(sm_state.af_state == AF_CAPTURE_OK){
-				devp->flag &=(~ISP_FLAG_AF);
 				if(cap_sm->flash_on){
 					devp->flag |= ISP_FLAG_AE;
-					isp_ae_low_gain();
 					cap_sm->capture_state = CAPTURE_LOW_GAIN;
 					if(capture_debug)
-						pr_info("[cap_sm] changed af->low gain.\n");
-				}else{
+						pr_info("[cap_sm]%u:ae->low gain.\n",__LINE__);
+				}else {
 					cap_sm->capture_state = CAPTURE_SINGLE;
-					cap_sm->adj_cnt = 0;
 					if(capture_debug)
-						pr_info("[cap_sm] changed af->single.\n");
+						pr_info("[cap_sm]%u:ae(%s)->sigle.\n",__LINE__,
+							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
 				}
 			}
-			break;
+			break;			
 		case CAPTURE_LOW_GAIN:
 			if(sm_state.ae_down==true){
 				devp->flag &=(~ISP_FLAG_AE);
 				cap_sm->capture_state = CAPTURE_EYE_WAIT;
 				if(capture_debug)
-					pr_info("[cap_sm] changed low gain->eye wait.\n");
+					pr_info("[cap_sm]%u:low gain->eye wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_EYE_WAIT:
@@ -1562,7 +1583,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				start_jf = 0;
 				cap_sm->capture_state = CAPTURE_POS_WAIT;
 				if(capture_debug)
-				        pr_info("[cap_sm] changed eye wait->post wait:%u.\n",start_jf);
+				        pr_info("[cap_sm]%u:eye wait->post wait:%u.\n",__LINE__,start_jf);
 			}
 			break;
 		case CAPTURE_POS_WAIT:
@@ -1571,7 +1592,7 @@ int isp_capture_sm(isp_dev_t *devp)
 				isp_set_flash(devp,FLASH_ON,0);
 				start_jf = 0;
 				if(capture_debug)
-				        pr_info("[cap_sm] changed post waite->flash wait.\n");
+				        pr_info("[cap_sm]%u:changed post waite->flash wait.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_FLASHW:
@@ -1579,29 +1600,30 @@ int isp_capture_sm(isp_dev_t *devp)
 				isp_set_flash(devp,FLASH_TORCH,0);
 				ret = TVIN_BUF_NULL;
 				if(capture_debug)
-					pr_info("[cap_sm] flash wait end,report buffer.\n");
+					pr_info("[cap_sm]%u:flash wait end,report buffer.\n",__LINE__);
 			}
 			break;
 		case CAPTURE_SINGLE:
-			if(cap_sm->adj_cnt < parm->sigle_count){
+			if(cap_sm->adj_cnt <= parm->sigle_count){
 				for(j=0;j<4;j++)
 					cur_ac += devp->blnr_stat.ac[j];
+					if(capture_debug)
+						pr_info("[cap_sm]%u:field[%u] ac_sum %u.\n",__LINE__,cap_sm->adj_cnt,cur_ac);
 					if(cur_ac > cap_sm->max_ac_sum){
 						cap_sm->max_ac_sum = cur_ac;
 						ret = TVIN_BUF_TMP;
 					}
 			}else{
-				//ret = TVIN_BUF_RECYCLE_TMP;
-				ret = TVIN_BUF_NULL;
+				ret = TVIN_BUF_RECYCLE_TMP;
 				if(parm->multi_capture_num > 0){
 					cap_sm->capture_state = CAPTURE_MULTI;
 					cap_sm->adj_cnt = 1;
 					if(capture_debug)
-						pr_info("[cap_sm] changed single->multi.\n");
+						pr_info("[cap_sm]%u:single->multi.\n",__LINE__);
 				}else{
 					cap_sm->capture_state = CAPTURE_END;
 					if(capture_debug)
-						pr_info("[cap_sm] changed single->capture end.\n");
+						pr_info("[cap_sm]%u:single->capture end.\n",__LINE__);
 				}
 			}
 			break;
@@ -1611,15 +1633,14 @@ int isp_capture_sm(isp_dev_t *devp)
 				if(multi_count++ > parm->multi_capture_num){
 					cap_sm->capture_state = CAPTURE_END;
                                         if(capture_debug)
-                                                pr_info("[cap_sm] muti capture end.\n");
+                                                pr_info("[cap_sm]%u:muti capture end.\n",__LINE__);
 				}
 			} else {
 				ret = TVIN_BUF_SKIP;
 			}
 			break;
 		case CAPTURE_END:
-			//ret = TVIN_BUF_RECYCLE_TMP;
-			ret = TVIN_BUF_NULL;
+			ret = TVIN_BUF_RECYCLE_TMP;
 			devp->flag &= (~ISP_FLAG_CAPTURE);
 			break;
 		default:

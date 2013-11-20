@@ -12,10 +12,13 @@
 #define AET_MAX 32
 #define HW_MAX 16
 #define WB_MAX 9
-#define CAPTURE_MAX 5
+#define CAPTURE_ITEM_MAX 5
 #define GAMMA_MAX 257
-#define SCENE_MAX 202
+#define SCENE_MAX 203
 #define WB_SENSOR_MAX 4
+#define CAPTURE_MAX 8
+#define LENC_MAX 1024
+#define WAVE_MAX 12
 #define BUFFER_SIZE 1024
 
 enum error_code {
@@ -81,7 +84,7 @@ typedef struct{
 typedef struct{
 	int num;
 	char name[40];
-	int export[10];	
+	int export[CAPTURE_ITEM_MAX];	
 }capture_type;
 
 typedef struct{
@@ -108,6 +111,7 @@ typedef struct sensor_aet_info_s {
     unsigned int tbl_rated_step;
     unsigned int tbl_max_gain;
     unsigned int tbl_min_gain;
+    unsigned int format_transfer_parameter;
 } sensor_aet_info_t;
 
 
@@ -125,11 +129,11 @@ typedef struct{
 }aet_struct;
 
 typedef struct{
-	int export[12];	
+	int export[WAVE_MAX];	
 }wave_struct;
 
 typedef struct{
-	int export[1024];
+	int export[LENC_MAX];
 }lenc_struct;
 
 typedef struct{
@@ -141,6 +145,12 @@ typedef struct{
 typedef struct{
     int export[WB_SENSOR_MAX];
 }wb_sensor_struct;
+
+typedef struct{
+    char date[40];
+    char module[30];
+    char version[30];		
+}version_struct;
 
 typedef struct{
     effect_struct eff;
@@ -163,6 +173,8 @@ typedef struct{
     int gamma_valid;
     wb_sensor_struct wb_sensor_data;
     int wb_sensor_data_valid;
+    version_struct version;
+    int version_info_valid;
 }configure;
 
 typedef struct{
