@@ -1244,9 +1244,9 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		err = -ESRCH;
 		goto exit_create_singlethread;
 	}
-	aml_gpio_direction_input(g_pdata->gpio_interrupt);
-  aml_gpio_to_irq(g_pdata->gpio_interrupt, g_pdata->irq, g_pdata->irq_edge);
-  disable_irq_nosync(g_pdata->irq);
+//	aml_gpio_direction_input(g_pdata->gpio_interrupt);
+//	aml_gpio_to_irq(g_pdata->gpio_interrupt, g_pdata->irq-INT_GPIO_0, g_pdata->irq_edge);
+	disable_irq_nosync(g_pdata->irq);
 	err = request_irq(client->irq, ft5x0x_ts_interrupt, IRQF_DISABLED, client->name, ft5x0x_ts);
 	if (err < 0) {
 		dev_err(&client->dev, "request irq failed\n");
