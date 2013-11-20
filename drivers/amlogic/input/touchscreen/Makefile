@@ -7,5 +7,7 @@ obj-$(CONFIG_MESON_INPUT_TOUCHSCREEN) += common.o
 obj-$(CONFIG_FOCALTECH_CAPACITIVE_TOUCHSCREEN)		+=focaltech_5x06.o
 obj-$(CONFIG_GOODIX_GT81XX_CAPACITIVE_TOUCHSCREEN)	+= goodix_gt81xx.o
 obj-$(CONFIG_GSLX680_CAPACITIVE_TOUCHSCREEN)	+= gslx680.o
+obj-$(CONFIG_NOVATEK_CAPACITIVE_TOUCHSCREEN)  += novatek.o
 obj-y += gt9xx/
 obj-y += ct36x_ts/
+obj-y += ft5x02/
