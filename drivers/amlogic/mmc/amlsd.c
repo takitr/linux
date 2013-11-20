@@ -688,7 +688,7 @@ int of_amlsd_init(struct amlsd_platform* pdata)
 	return 0;
 }
 
-int aml_devm_pinctrl_put (struct amlsd_host* host)
+void aml_devm_pinctrl_put (struct amlsd_host* host)
 {
     if (host->pinctrl) {
         devm_pinctrl_put(host->pinctrl);
@@ -854,30 +854,47 @@ void aml_cs_dont_care (struct amlsd_platform * pdata) // chip select don't care
     }
 }
 
-int aml_is_sdjtag(struct amlsd_platform * pdata)
+static int aml_is_card_insert (struct amlsd_platform * pdata)
 {
-    int ret, jtag;
-    
-    if(pdata->jtag_pin != 0) {
-        ret = amlogic_gpio_request_one(pdata->jtag_pin, GPIOF_IN, MODULE_NAME);
-        if(ret){
-            printk("DAT1 pinmux used, return no jtag\n");
-            return 0;
-        }
-        CHECK_RET(ret);
-        jtag = amlogic_get_value(pdata->jtag_pin, MODULE_NAME);
-        // print_tmp("sd jtag_pin=%d\n", amlogic_get_value(pdata->jtag_pin, MODULE_NAME));
-        amlogic_gpio_free(pdata->jtag_pin, MODULE_NAME);
-        if(jtag == 1){
-            return 1;
-        }
+	int ret=0;
+
+	if(pdata->gpio_cd)
+		ret = amlogic_get_value(pdata->gpio_cd, MODULE_NAME); // 1: no inserted  0: inserted
+    // sdio_err("card %s\n", ret?"OUT":"IN");
+
+    ret = !ret; // reverse, so ---- 0: no inserted  1: inserted
+
+	return ret;
+}
+
+static int aml_is_sdjtag(struct amlsd_platform * pdata)
+{
+    int card0;
+    card0 = aml_get_reg32_bits(P_PREG_PAD_GPIO0_I, 22, 1);
+    if(card0 == 1){
+        return 1;
     }
+
+    // if(pdata->jtag_pin != 0) {
+        // ret = amlogic_gpio_request_one(pdata->jtag_pin, GPIOF_IN, MODULE_NAME);
+        // if(ret){
+            // printk("DAT1 pinmux used, return no jtag\n");
+            // return 0;
+        // }
+        // CHECK_RET(ret);
+        // jtag = amlogic_get_value(pdata->jtag_pin, MODULE_NAME);
+        // // print_tmp("sd jtag_pin=%d\n", amlogic_get_value(pdata->jtag_pin, MODULE_NAME));
+        // amlogic_gpio_free(pdata->jtag_pin, MODULE_NAME);
+        // if(jtag == 1){
+            // return 1;
+        // }
+    // }
     return 0;
 }
 
-int aml_is_sduart(struct amlsd_platform * pdata)
+static int aml_is_sduart(struct amlsd_platform * pdata)
 {
-    int ret, dat3;
+    int dat3;
 
     if(pdata->is_sduart)
         return 1;
@@ -904,13 +921,14 @@ int aml_is_sduart(struct amlsd_platform * pdata)
     return 0;
 }
 
-
-
 // int n=0;
-int aml_uart_switch(struct amlsd_platform* pdata, bool on)
+static int aml_uart_switch(struct amlsd_platform* pdata, bool on)
 {
     /*on : uart card pin, !on: uart ao pin*/
     if(on){
+        if (pdata->is_sduart) // switch ON already
+            return 0;
+
         print_tmp("aml_uart_switch %d \n\n\n\n\n", on);
         pdata->is_sduart = 1;
         aml_clr_reg32_mask(P_AO_RTI_PIN_MUX_REG, 0x1800); // UART_TX_AO_A
@@ -969,22 +987,90 @@ int aml_uart_switch(struct amlsd_platform* pdata, bool on)
 #endif
 }
 
-void aml_sduart_detect (struct amlsd_platform* pdata)
+static void aml_sd_uart_detect (struct amlsd_platform* pdata)
 {
-#ifdef CONFIG_ARCH_MESON8
-    if (((pdata->port == MESON_SDIO_PORT_B) || (pdata->port == MESON_SDIO_PORT_XC_B))) {
-        // clear pinmux of CARD_4 and make it as a gpio
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x00001040);
-        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x00000400);
-        if (aml_is_sduart(pdata)) {
-            if(pdata->caps & MMC_CAP_4_BIT_DATA) {
-                pdata->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
+    static bool is_jtag = false;
+
+    if (aml_is_card_insert(pdata)){
+        if(aml_is_sduart(pdata)){
+            if (!pdata->is_sduart) { // status change
+                printk("\033[0;40;33m Uart in\033[0m\n");
                 aml_uart_switch(pdata, 1);
-                printk("\033[0;40;35m [%s] uart in, make sd card 1 bit bus width \033[0m\n", __FUNCTION__);
-            }
+                pdata->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
+
+                if(aml_is_sdjtag(pdata)){
+                    is_jtag = true;
+                    aml_jtag_sd();
+                    pdata->is_in = false;
+                    printk("\033[0;40;32m JTAG in\033[0m\n");
+
+                    return;
+                }
+                pdata->is_in = true;
+            }/*  else { */
+                // printk("\033[0;40;33m Uart in again---------------- \033[0m\n");
+            /* } */
+        } else {
+            if (!pdata->is_in) { // status change, last time is out, and now is in
+                pdata->is_in = true;
+                // printk("\033[0;40;35m normal SD card in \033[0m\n");
+                printk("normal card in\n");
+                aml_uart_switch(pdata, 0);
+                aml_jtag_gpioao();
+                if(pdata->caps & MMC_CAP_4_BIT_DATA)
+                    pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
+            }/*  else { */
+                // printk("\033[0;40;35m normal SD card in again---------------- \033[0m\n");
+            /* } */
         }
+    } else {
+        if (pdata->is_in) { // status change, last time is in, and now is out
+            // printk("\033[0;40;31m card out \033[0m\n");
+            printk("card out\n");
+        } else if (is_jtag) {
+            is_jtag = false;
+            printk("\033[0;40;35m JTAG OUT \033[0m\n");
+        } /* else { */
+            // printk("\033[0;40;31m card out again---------------- \033[0m\n");
+        /* } */
+
+        pdata->is_in = false;
+        aml_uart_switch(pdata, 0);
+        aml_jtag_gpioao();
+        if(pdata->caps & MMC_CAP_4_BIT_DATA)
+            pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
     }
-#endif
+    
+    mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
+
+    return;
+}
+
+irqreturn_t aml_irq_cd_thread(int irq, void *data)
+{
+	struct amlsd_platform *pdata = (struct amlsd_platform*)data;
+
+    mdelay(500);
+    aml_sd_uart_detect(pdata);
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id)
+{
+    // printk("cd dev_id %x\n", dev_id);
+	return IRQ_WAKE_THREAD;
+}
+
+void aml_sduart_pre (struct amlsd_platform* pdata)
+{
+    if (((pdata->port == MESON_SDIO_PORT_B) || (pdata->port == MESON_SDIO_PORT_XC_B))) {
+        // clear pinmux of CARD_0 and CARD_4 to make them used as gpio
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x00005040);
+        CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x00000400);
+        aml_jtag_gpioao();
+        aml_sd_uart_detect(pdata);
+    }
 }
 
 /*-------------------debug---------------------*/

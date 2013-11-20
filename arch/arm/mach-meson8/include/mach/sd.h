@@ -63,7 +63,6 @@ struct amlsd_platform {
 	unsigned int clkc_w;
 	unsigned int ctrl;
 	unsigned int clock;
-	unsigned int eject;
 	unsigned int low_burst;
 	unsigned int irq_in;
 	unsigned int irq_in_edge;
@@ -77,6 +76,7 @@ struct amlsd_platform {
     unsigned int gpio_dat3;
     unsigned int jtag_pin;
     int is_sduart;
+    bool is_in;
 
     /* we used this flag to filter some unnecessary cmd before initialized flow */
     bool is_fir_init; // has been initialized for the first time
@@ -134,7 +134,6 @@ struct amlsd_host {
 	unsigned int f_max;
 	unsigned int f_max_w;
 	unsigned int f_min;
-	unsigned int eject;
 	struct tasklet_struct cmd_tlet;
 	struct tasklet_struct data_tlet;
 	struct tasklet_struct busy_tlet;

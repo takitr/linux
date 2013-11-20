@@ -508,7 +508,7 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
     if(aml_sdio_check_unsupport_cmd(mmc, mrq))
         return;
 
-	if(pdata->eject){
+	if(!pdata->is_in){
         mrq->cmd->error = -ENOMEDIUM;
         mmc_request_done(mmc, mrq);
 		return;
@@ -814,7 +814,7 @@ static void aml_sdio_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct amlsd_platform * pdata = mmc_priv(mmc);
 
-	if(pdata->eject)
+	if(!pdata->is_in)
 		return;
 
     /*set power*/
@@ -849,79 +849,7 @@ static int aml_sdio_get_ro(struct mmc_host *mmc)
 int aml_sdio_get_cd(struct mmc_host *mmc)
 {
 	struct amlsd_platform * pdata = mmc_priv(mmc);
-	int ret = 1;
-
-	if(pdata->cd)
-		ret = pdata->cd(pdata);
-	else
-		ret = 0; //inserted
-	pdata->eject = ret;
-	// printk("aml_sdio_get_cd port %d pdata->eject %d\n", pdata->port, pdata->eject);
-	return (ret?0:1);
-}
-
-static irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id)
-{
-    // printk("cd dev_id %x\n", dev_id);
-	return IRQ_WAKE_THREAD;
-}
-
-static irqreturn_t aml_irq_cdin_thread(int irq, void *data)
-{
-	struct amlsd_platform *pdata = (struct amlsd_platform*)data;
-    int ret=0;
-
-    mdelay(500);
-    if(pdata->cd)
-		ret = pdata->cd(pdata);
-    if(!ret){
-        if(aml_is_sduart(pdata)){
-            printk("\033[0;40;33m Uart in\033[0m\n");
-            if(aml_is_sdjtag(pdata)){
-                aml_jtag_sd();
-                aml_uart_switch(pdata, 1);
-                pdata->eject = 1;
-                printk("\033[0;40;32m JTAG in\033[0m\n");
-                return IRQ_HANDLED;
-            }
-            aml_uart_switch(pdata, 1);
-            pdata->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
-        }
-        else{
-            // printk("\033[0;40;35m normal SD card in \033[0m\n");
-            printk("normal SD card in\n");
-            aml_uart_switch(pdata, 0);
-            aml_jtag_gpioao();
-            if(pdata->caps & MMC_CAP_4_BIT_DATA)
-                pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
-        }
-        mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
-    } // else
-        // printk("\033[0;40;31m card in irq -> card out, ignore \033[0m\n");
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t aml_irq_cdout_thread(int irq, void *data)
-{
-	struct amlsd_platform *pdata = (struct amlsd_platform*)data;
-    int ret=1;
-
-    mdelay(500);
-    if(pdata->cd)
-		ret = pdata->cd(pdata);
-    if(ret){
-        // printk("\033[0;40;31m card out \033[0m\n");
-        printk("card out\n");
-        aml_uart_switch(pdata, 0);
-        aml_jtag_gpioao();
-        if(pdata->caps & MMC_CAP_4_BIT_DATA)
-            pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
-        mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
-        aml_sdio_get_cd(pdata->mmc);
-    } // else{
-        // printk("\033[0;40;33m card out irq -> card in, ignore \033[0m\n");
-    // }
-	return IRQ_HANDLED;
+    return pdata->is_in; // 0: no inserted  1: inserted
 }
 
 #ifdef CONFIG_PM
@@ -1121,7 +1049,7 @@ static int aml_sdio_probe(struct platform_device *pdev)
        //init sdio reg here
         aml_sdio_init_param(pdata);
 
-        aml_sduart_detect(pdata);
+        aml_sduart_pre(pdata);
 
 		ret = mmc_add_host(mmc);
 		if (ret) {
@@ -1137,10 +1065,10 @@ static int aml_sdio_probe(struct platform_device *pdev)
 		if(pdata->irq_in && pdata->irq_out){
 			pdata->irq_init(pdata);
 			ret = request_threaded_irq(pdata->irq_in+INT_GPIO_0,
-                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cdin_thread,
+                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "mmc_in", (void*)pdata);
             ret |= request_threaded_irq(pdata->irq_out+INT_GPIO_0,
-                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cdout_thread,
+                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "mmc_out", (void*)pdata);
 			//ret = request_irq(pdata->irq_in+INT_GPIO_0, aml_sdio_irq_cd, IRQF_DISABLED, "mmc_in", pdata);
 			//ret |= request_irq(pdata->irq_out+INT_GPIO_0, aml_sdio_irq_cd, IRQF_DISABLED, "mmc_out", pdata);
