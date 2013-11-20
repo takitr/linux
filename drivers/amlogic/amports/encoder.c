@@ -111,6 +111,7 @@ static u32 ie_me_mode  = 0;
 static u32 me_start_position = 0;
 static u32 ie_pippeline_block = 3;
 static u32 ie_cur_ref_sel = 0;
+static u32 half_ucode_mode = 0;
 #endif
 static int encode_inited = 0;
 static int encode_opened = 0;
@@ -791,7 +792,49 @@ static void avc_prot_init(void)
     WRITE_HREG(QDCT_MB_CONTROL,
                 (1<<9) | // mb_info_soft_reset
                 (1<<0)); // mb read buffer soft reset
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8              
+    if(half_ucode_mode == 0){
+        WRITE_HREG(QDCT_MB_CONTROL,
+                  (0<<28) | // ignore_t_p8x8
+                  (0<<27) | // zero_mc_out_null_non_skipped_mb
+                  (0<<26) | // no_mc_out_null_non_skipped_mb
+                  (0<<25) | // mc_out_even_skipped_mb
+                  (0<<24) | // mc_out_wait_cbp_ready
+                  (0<<23) | // mc_out_wait_mb_type_ready
+                  (1<<29) | // ie_start_int_enable
+                  (1<<19) | // i_pred_enable
+                  (1<<20) | // ie_sub_enable
+                  (1<<18) | // iq_enable
+                  (1<<17) | // idct_enable
+                  (1<<14) | // mb_pause_enable
+                  (1<<13) | // q_enable
+                  (1<<12) | // dct_enable
+                  (1<<10) | // mb_info_en
+                  (0<<3) | // endian
+                  (0<<1) | // mb_read_en
+                  (0<<0));   // soft reset
+    }else{
+        WRITE_HREG(QDCT_MB_CONTROL,
+                  (0<<28) | // ignore_t_p8x8
+                  (0<<27) | // zero_mc_out_null_non_skipped_mb
+                  (0<<26) | // no_mc_out_null_non_skipped_mb
+                  (0<<25) | // mc_out_even_skipped_mb
+                  (0<<24) | // mc_out_wait_cbp_ready
+                  (0<<23) | // mc_out_wait_mb_type_ready
+                  (1<<22) | // i_pred_int_enable
+                  (1<<19) | // i_pred_enable
+                  (1<<20) | // ie_sub_enable
+                  (1<<18) | // iq_enable
+                  (1<<17) | // idct_enable
+                  (1<<14) | // mb_pause_enable
+                  (1<<13) | // q_enable
+                  (1<<12) | // dct_enable
+                  (1<<10) | // mb_info_en
+                  (avc_endian<<3) | // endian
+                  (1<<1) | // mb_read_en
+                  (0<<0));   // soft reset
+    }
+#else
     WRITE_HREG(QDCT_MB_CONTROL,
               (0<<28) | // ignore_t_p8x8
               (0<<27) | // zero_mc_out_null_non_skipped_mb
@@ -799,11 +842,7 @@ static void avc_prot_init(void)
               (0<<25) | // mc_out_even_skipped_mb
               (0<<24) | // mc_out_wait_cbp_ready
               (0<<23) | // mc_out_wait_mb_type_ready
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-              (1<<29) | // ie_start_int_enable
-#else
               (1<<22) | // i_pred_int_enable
-#endif
               (1<<19) | // i_pred_enable
               (1<<20) | // ie_sub_enable
               (1<<18) | // iq_enable
@@ -812,89 +851,86 @@ static void avc_prot_init(void)
               (1<<13) | // q_enable
               (1<<12) | // dct_enable
               (1<<10) | // mb_info_en
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-              (0<<3) | // endian
-              (0<<1) | // mb_read_en
-#else
               (avc_endian<<3) | // endian
               (1<<1) | // mb_read_en
-#endif
               (0<<0));   // soft reset
-
+#endif
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    WRITE_HREG(SAD_CONTROL,
-              (0<<3) | // ie_result_buff_enable
-              (1<<2) | // ie_result_buff_soft_reset
-              (0<<1) | // sad_enable
-              (1<<0));   // sad soft reset
+    if(half_ucode_mode == 0){
+        WRITE_HREG(SAD_CONTROL,
+                  (0<<3) | // ie_result_buff_enable
+                  (1<<2) | // ie_result_buff_soft_reset
+                  (0<<1) | // sad_enable
+                  (1<<0));   // sad soft reset
 
-    WRITE_HREG(IE_RESULT_BUFFER, 0);
+        WRITE_HREG(IE_RESULT_BUFFER, 0);
 
-    WRITE_HREG(SAD_CONTROL,
-              (1<<3) | // ie_result_buff_enable
-              (0<<2) | // ie_result_buff_soft_reset
-              (1<<1) | // sad_enable
-              (0<<0));   // sad soft reset
+        WRITE_HREG(SAD_CONTROL,  
+                  (1<<3) | // ie_result_buff_enable
+                  (0<<2) | // ie_result_buff_soft_reset
+                  (1<<1) | // sad_enable
+                  (0<<0));   // sad soft reset
 
-    WRITE_HREG(IE_CONTROL,
-              (0<<1) | // ie_enable
-              (1<<0));   // ie soft reset
+        WRITE_HREG(IE_CONTROL, 
+                  (0<<1) | // ie_enable
+                  (1<<0));   // ie soft reset
 
-    WRITE_HREG(IE_CONTROL,
-              (0<<1) | // ie_enable
-              (0<<0)); // ie soft reset
+        WRITE_HREG(IE_CONTROL,
+                  (0<<1) | // ie_enable
+                  (0<<0)); // ie soft reset
 
-    WRITE_HREG(ME_SAD_ENOUGH_01,
-              (0x18<<12) | // me_sad_enough_1
-              (0x10<<0) | // me_sad_enough_0
-              (0<<12) | // me_sad_enough_1
-              (0<<0));   // me_sad_enough_0
+        WRITE_HREG(ME_SAD_ENOUGH_01,
+                  (0x18<<12) | // me_sad_enough_1
+                  (0x10<<0) | // me_sad_enough_0
+                  (0<<12) | // me_sad_enough_1
+                  (0<<0));   // me_sad_enough_0
 
-    WRITE_HREG(ME_SAD_ENOUGH_23,
-              (0x20<<0) | // me_sad_enough_2
-              (0<<12) | // me_sad_enough_3
-              (0<<0));   // me_sad_enough_2
+        WRITE_HREG(ME_SAD_ENOUGH_23, 
+                  (0x20<<0) | // me_sad_enough_2
+                  (0<<12) | // me_sad_enough_3
+                  (0<<0));   // me_sad_enough_2
 
-    WRITE_HREG(ME_STEP0_CLOSE_MV,
-              (0x100 << 10) | // me_step0_big_sad -- two MV sad diff bigger will use use 1
-              (2<<5) | // me_step0_close_mv_y
-              (2<<0));   // me_step0_close_mv_x
+        WRITE_HREG(ME_STEP0_CLOSE_MV, 
+                  (0x100 << 10) | // me_step0_big_sad -- two MV sad diff bigger will use use 1
+                  (2<<5) | // me_step0_close_mv_y
+                  (2<<0));   // me_step0_close_mv_x
 
-    WRITE_HREG(ME_SKIP_LINE,
-              ( 4 << 24) |  // step_3_skip_line
-              ( 4 << 18) |  // step_2_skip_line
-              ( 2 << 12) |  // step_1_skip_line
-              ( 0 << 6) |  // step_0_skip_line
-              //(8 <<0); // read 8*2 less line to save bandwidth
-              (0 <<0)); // read 8*2 less line to save bandwidth
+        WRITE_HREG(ME_SKIP_LINE, 
+                  ( 4 << 24) |  // step_3_skip_line
+                  ( 4 << 18) |  // step_2_skip_line
+                  ( 2 << 12) |  // step_1_skip_line
+                  ( 0 << 6) |  // step_0_skip_line
+                  //(8 <<0); // read 8*2 less line to save bandwidth
+                  (0 <<0)); // read 8*2 less line to save bandwidth
 
-    WRITE_HREG(ME_F_SKIP_SAD,
-              ( 0x40 << 24) |  // force_skip_sad_3
-              ( 0x40 << 16) |  // force_skip_sad_2
-              ( 0x30 << 8)  |  // force_skip_sad_1
-              ( 0x10 << 0));    // force_skip_sad_0
+        WRITE_HREG(ME_F_SKIP_SAD, 
+                  ( 0x40 << 24) |  // force_skip_sad_3
+                  ( 0x40 << 16) |  // force_skip_sad_2
+                  ( 0x30 << 8)  |  // force_skip_sad_1
+                  ( 0x10 << 0));    // force_skip_sad_0
 
-    WRITE_HREG(ME_F_SKIP_WEIGHT,
-              ( 0x18 << 24) |  // force_skip_weight_3
-              ( 0x18 << 16) |  // force_skip_weight_2
-              ( 0x18 << 8)  |  // force_skip_weight_1
-              ( 0x18 << 0));    // force_skip_weight_0
+        WRITE_HREG(ME_F_SKIP_WEIGHT, 
+                  ( 0x18 << 24) |  // force_skip_weight_3
+                  ( 0x18 << 16) |  // force_skip_weight_2
+                  ( 0x18 << 8)  |  // force_skip_weight_1
+                  ( 0x18 << 0));    // force_skip_weight_0
 
-    WRITE_HREG(IE_DATA_FEED_BUFF_INFO,0);
+        WRITE_HREG(IE_DATA_FEED_BUFF_INFO,0);
+    }
 #endif
 
     WRITE_HREG(HCODEC_CURR_CANVAS_CTRL,0);
     //debug_level(0,"current endian is %d \n" , avc_endian);
     data32 = READ_HREG(VLC_CONFIG);
     data32 = data32 | (1<<0); // set pop_coeff_even_all_zero
-    WRITE_HREG(VLC_CONFIG , data32);
-
+    WRITE_HREG(VLC_CONFIG , data32);	
+    
         /* clear mailbox interrupt */
     WRITE_HREG(HCODEC_ASSIST_MBOX2_CLR_REG, 1);
 
     /* enable mailbox interrupt */
     WRITE_HREG(HCODEC_ASSIST_MBOX2_MASK, 1);
-
+    
 }
 
 void amvenc_reset(void)
@@ -1068,24 +1104,29 @@ static s32 avc_poweroff(void)
 static s32 avc_init(void)
 {
     int r;
+    const u32 * p = full_encoder_mc;
     avc_poweron();
     avc_canvas_init();
     WRITE_HREG(HCODEC_ASSIST_MMC_CTRL1,0x2);
     debug_level(1,"start to load microcode\n");
-    if (amvenc_loadmc(encoder_mc) < 0) {
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if(half_ucode_mode == 1)
+        p = half_encoder_mc;
+#endif
+    if (amvenc_loadmc(p) < 0) {
         //amvdec_disable();
         return -EBUSY;
-    }
+    }	
     debug_level(1,"succeed to load microcode\n");
     //avc_canvas_init();
     frame_start = 0;
-    idr_pic_id = 0 ;
+    idr_pic_id = 0 ;	
     frame_number = 0 ;
     process_irq = 0;
     pic_order_cnt_lsb = 0 ;
     encoder_status = ENCODER_IDLE ;
     amvenc_reset();
-    avc_init_encoder();
+    avc_init_encoder(); 
     avc_init_input_buffer();  //dct buffer setting
     avc_init_output_buffer();  //output stream buffer
     avc_prot_init();
@@ -1094,7 +1135,8 @@ static s32 avc_init(void)
     avc_init_reference_buffer(ref_buf_canvas); //reference  buffer , need set before each frame start
     avc_init_assit_buffer(); //assitant buffer for microcode
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    avc_init_ie_me_parameter();
+    if(half_ucode_mode == 0)
+        avc_init_ie_me_parameter();
 #endif
     WRITE_HREG(ENCODER_STATUS , ENCODER_IDLE);
     amvenc_start();
@@ -1105,7 +1147,7 @@ static s32 avc_init(void)
 void amvenc_avc_start_cmd(int cmd, unsigned* input_info)
 {
 	if((cmd == ENCODER_IDR)||(cmd == ENCODER_SEQUENCE)){
-		pic_order_cnt_lsb = 0;
+		pic_order_cnt_lsb = 0;	
 		frame_number = 0;
 	}
 
@@ -1113,14 +1155,14 @@ void amvenc_avc_start_cmd(int cmd, unsigned* input_info)
 		frame_number = 0;
 	}
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if((idr_pic_id == 0)&&(cmd == ENCODER_IDR))
+	if((idr_pic_id == 0)&&(cmd == ENCODER_IDR)&&(half_ucode_mode == 0))
 		frame_start = 1;
 #endif
 
 	if(frame_start){
 		frame_start = 0;
 		encoder_status = ENCODER_IDLE ;
-		//WRITE_HREG(HENC_SCRATCH_3,0);  //mb count
+		//WRITE_HREG(HENC_SCRATCH_3,0);  //mb count 
 		//WRITE_HREG(VLC_TOTAL_BYTES ,0); //offset in bitstream buffer
 		amvenc_reset();
 		avc_init_encoder();
@@ -1131,18 +1173,20 @@ void amvenc_avc_start_cmd(int cmd, unsigned* input_info)
 			idr_pic_id = 0;
 		}
 		avc_init_input_buffer();
-		avc_init_output_buffer();
+		avc_init_output_buffer();		
 		avc_prot_init();
-		avc_init_assit_buffer();
+		avc_init_assit_buffer(); 
 		debug_level(0,"begin to new frame\n");
 	}
-	avc_init_dblk_buffer(dblk_buf_canvas);
-	avc_init_reference_buffer(ref_buf_canvas);
+	avc_init_dblk_buffer(dblk_buf_canvas);   
+	avc_init_reference_buffer(ref_buf_canvas); 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if((cmd == ENCODER_IDR)||(cmd == ENCODER_NON_IDR)){
-		set_input_format((amvenc_mem_type)input_info[0], (amvenc_frame_fmt)input_info[1], input_info[2], input_info[3], input_info[4],(unsigned char)input_info[5]);
+	if(half_ucode_mode == 0){
+		if((cmd == ENCODER_IDR)||(cmd == ENCODER_NON_IDR)){
+			set_input_format((amvenc_mem_type)input_info[0], (amvenc_frame_fmt)input_info[1], input_info[2], input_info[3], input_info[4],(unsigned char)input_info[5]);
+		}
+		avc_init_ie_me_parameter();
 	}
-	avc_init_ie_me_parameter();
 #endif
 	encoder_status = cmd;
 	WRITE_HREG(ENCODER_STATUS , cmd);
@@ -1216,26 +1260,30 @@ static long amvenc_avc_ioctl(struct file *file,
 		if((ref_buf_canvas & 0xff) == (ENC_CANVAS_OFFSET)){
 			 *((unsigned*)arg)  = 1;
 		}else{
-			 *((unsigned*)arg)  = 2;
+			 *((unsigned*)arg)  = 2;	
 		}
 		break;
 	case AMVENC_AVC_IOC_INPUT_UPDATE:
 		offset  = (unsigned*)arg ;
 		WRITE_HREG(QDCT_MB_WR_PTR, (dct_buff_start_addr+ *offset));
-		break;
+		break;    
 	case AMVENC_AVC_IOC_NEW_CMD:
 		amrisc_cmd = *((unsigned*)arg) ;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-		addr_info = (unsigned*)arg;
-		amvenc_avc_start_cmd(amrisc_cmd, &addr_info[1]);
+		if(half_ucode_mode == 0){
+			addr_info = (unsigned*)arg;
+			amvenc_avc_start_cmd(amrisc_cmd, &addr_info[1]);
+		}else{
+			amvenc_avc_start_cmd(amrisc_cmd, NULL);
+		}
 #else
 		amvenc_avc_start_cmd(amrisc_cmd, NULL);
 #endif
 		break;
 	case AMVENC_AVC_IOC_GET_STAGE:
 		*((unsigned*)arg)  = encoder_status;
-		break;
-	case AMVENC_AVC_IOC_GET_OUTPUT_SIZE:
+		break; 
+	case AMVENC_AVC_IOC_GET_OUTPUT_SIZE:	
 		*((unsigned*)arg) = READ_HREG(VLC_TOTAL_BYTES);
 		break;
 	case AMVENC_AVC_IOC_SET_QUANT:
@@ -1252,10 +1300,17 @@ static long amvenc_avc_ioctl(struct file *file,
 		    *((unsigned*)arg) = gAmvencbuff.bufspec->max_height;
 		else
 		    encoder_height = *((unsigned*)arg) ;
-		break;
+		break;	
 	case AMVENC_AVC_IOC_CONFIG_INIT:
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+		if((encoder_width<640)&&(encoder_height<480))
+			half_ucode_mode = 1;
+		else
+			half_ucode_mode = 0;
+		debug_level(1,"avc init as mode %d\n",half_ucode_mode);
+#endif
 		avc_init();
-		break;
+		break;		
 	case AMVENC_AVC_IOC_FLUSH_CACHE:
 		addr_info  = (unsigned*)arg ;
 		switch(addr_info[0]){
@@ -1295,7 +1350,7 @@ static long amvenc_avc_ioctl(struct file *file,
 			default:
 			buf_start = dct_buff_start_addr;
 			break;
-		}
+		}	    
 		cache_flush(buf_start + addr_info[1] ,addr_info[2] - addr_info[1]);
 		break;
 	case AMVENC_AVC_IOC_GET_BUFFINFO:
@@ -1368,13 +1423,13 @@ int  init_avc_device(void)
 {
     int  r =0;
     r =register_chrdev(0,DEVICE_NAME,&amvenc_avc_fops);
-    if(r<=0)
+    if(r<=0) 
     {
         amlog_level(LOG_LEVEL_HIGH,"register amvenc_avc device error\r\n");
         return  r  ;
     }
     avc_device_major= r ;
-
+    
     amvenc_avc_class = class_create(THIS_MODULE, DEVICE_NAME);
 
     amvenc_avc_dev = device_create(amvenc_avc_class, NULL,
@@ -1388,7 +1443,7 @@ int uninit_avc_device(void)
 
     class_destroy(amvenc_avc_class);
 
-    unregister_chrdev(avc_device_major, DEVICE_NAME);
+    unregister_chrdev(avc_device_major, DEVICE_NAME);	
     return 0;
 }
 
@@ -1473,7 +1528,7 @@ static int __init amvenc_avc_driver_init_module(void)
 static void __exit amvenc_avc_driver_remove_module(void)
 {
     amlog_level(LOG_LEVEL_INFO, "amvenc_avc module remove.\n");
-
+	
     platform_driver_unregister(&amvenc_avc_driver);
 }
 
