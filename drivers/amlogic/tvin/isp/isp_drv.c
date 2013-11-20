@@ -967,6 +967,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
 		case CAM_COMMAND_SET_AE_LEVEL:
 			devp->ae_info.manul_level = devp->cam_param->exposure_level;
+			isp_set_manual_exposure(devp);
 			break;
                 // af related
                 case CAM_COMMAND_AF:

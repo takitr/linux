@@ -110,6 +110,12 @@ MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
 #define AF_FLAG_AE			0x00000002
 #define AF_FLAG_AWB			0x00000004
 
+#define P1DB 1149
+#define N1DB  913
+#define P2DB 1289
+#define N2DB  813
+
+
 static unsigned int best_step_debug = 0;
 
 static unsigned int af_sm_dg = 0;
@@ -159,6 +165,40 @@ void isp_sm_init(isp_dev_t *devp)
 	sm_state.cap_sm.tr_time = devp->wave->torch_rising_time;
 	/*init for wave*/
 	sm_state.flash = ISP_FLASH_STATUS_NULL;
+}
+
+void isp_set_manual_exposure(isp_dev_t *devp)
+{
+	struct xml_algorithm_ae_s *aep = devp->isp_ae_parm;
+	struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+	int i;
+	int manual_target;
+	if((aepa->targ > aep->targethigh)||(aepa->targ < aep->targetlow))
+	{
+		return;
+	}
+	printk("devp->ae_info.manul_level=%d\n",devp->ae_info.manul_level);
+	i = devp->ae_info.manul_level;
+	manual_target = aep->targetmid;
+	if(i > 0)
+	{
+		for(;i>0;i--)
+		{
+			manual_target = (manual_target*P1DB+512) >> 10;
+		}
+	}
+	else if(i < 0)
+	{
+		for(;i<0;i++)
+		{
+			manual_target = (manual_target*N1DB+512) >> 10;
+		}
+	}
+	aepa->targ = manual_target;
+    if(aepa->targ > aep->targethigh)
+		aepa->targ = aep->targethigh;
+    if(aepa->targ < aep->targetlow)
+		aepa->targ = aep->targetlow;	
 }
 
 void af_sm_init(isp_dev_t *devp)
@@ -237,7 +277,6 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	unsigned int avg_env;
 	unsigned int avg_envo;
 	int avg, avgo;
-	static short targ;
 	static short temp;
 	int i;
 	static int k = 0;
@@ -272,7 +311,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * ae_ratio3) >> 10;
 			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * ae_ratio4) >> 10;
 			aepa->pre_gain = 400;
-			targ = aep->targetlow;
+			aepa->targ = aep->targetmid;
 			temp = 1;
 			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;
 			aepa->alert_g = ((aepa->pixel_sum >> 4) * aep->ratio_g) >> 7;	 //grgb
@@ -437,22 +476,22 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						printk("avg=%d,avg_envo=%d,aepa->cur_gain=%d,avg_env=%d,avg_env_sum=%d,avg_sum=%d,luma_win[9]=%d,sub[9]=%d\n",avg,avg_envo,aepa->cur_gain,avg_env,avg_env_sum,avg_sum,ae->luma_win[9],sub_avg[9]);
 						if(ae_debug6)
 						printk("ph->hist.gamma[58]=%d,%d\n",ph->hist.gamma[58],sum);
-						if(1)//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
+						if(devp->ae_info.manul_level==0)//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
 						{
 							//targ = aep->targetlow;
 							if((sum > aepa->max_lumasum4)||((sum > aepa->max_lumasum3)&&(temp==2)))
 							{
 								temp = 2;
-								targ--;
-								if(targ<30)
-									targ = 30;
+								aepa->targ--;
+								if(aepa->targ<(aep->targetmid-50))
+									aepa->targ = aep->targetmid-50;
 							}
 							else if((sum < aepa->max_lumasum1)||((sum < aepa->max_lumasum2)&&(temp==0)))
 							{
 								temp = 0;
-								targ++;
-								if(targ>aep->targetlow)
-									targ = aep->targetlow;
+								aepa->targ++;
+								if(aepa->targ>(aep->targetmid+5))
+									aepa->targ = aep->targetmid+5;
 							}
 							else 
 							{
@@ -464,6 +503,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							sm_state.env = ENV_LOW;
 							isp_set_ae_thrlpf(aep->thr_r_low, aep->thr_g_low, aep->thr_b_low, aep->lpftype_low);
 						}
+						/*
 						else if((avg_envo >= aep->env_hign)||((avg_envo >= aep->env_hign2mid)&&targ == (aep->targethigh)))
 						{
 							targ = aep->targethigh;
@@ -479,16 +519,16 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							radium_outer = aep->radium_outer_m;
 							sm_state.env = ENV_MID;
 							isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
-						}
+						}*/
 						if(ae_debug6)
-							printk("targ=%d,temp=%d\n",targ,temp);
+							printk("targ=%d,temp=%d\n",aepa->targ,temp);
 						step = AE_LUMA_AVG_CHECK;
 						break;
 					case AE_LUMA_AVG_CHECK:
 						if(ae_debug5)
-						printk("avg=%d,targ=%d,radium_inner=%d,radium_outer=%d\n",avg,targ,radium_inner,radium_outer);
-						if(((sm_state.status == ISP_AE_STATUS_UNSTABLE)&&(((avg - targ) > radium_inner)||((targ - avg) > radium_inner)))
-							||(((avg - targ) > radium_outer)||((targ - avg) > radium_outer))
+						printk("avg=%d,targ=%d,radium_inner=%d,radium_outer=%d\n",avg,aepa->targ,radium_inner,radium_outer);
+						if(((sm_state.status == ISP_AE_STATUS_UNSTABLE)&&(((avg - aepa->targ) > radium_inner)||((aepa->targ - avg) > radium_inner)))
+							||(((avg - aepa->targ) > radium_outer)||((aepa->targ - avg) > radium_outer))
 							)
 						{
 							step = AE_EXPOSURE_ADJUST;
@@ -511,7 +551,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							step = AE_SUCCESS;
 							break;
 						}
-						targrate = (targ * aepa->cur_gain)/avg;
+						targrate = (aepa->targ * aepa->cur_gain)/avg;
 						if(ae_debug1)
 							printk("targrate = %d\n",targrate);
 						if(targrate > aepa->max_gain)
