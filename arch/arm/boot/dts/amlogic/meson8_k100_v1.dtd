@@ -1431,7 +1431,7 @@ sdio{
 			gpio_rst = "GPIOH_4";
 			mirror_flip = <0>;
 			vertical_flip = <0>;	
-			config_path = "/system/etc/myconfig";
+			config_path = "/system/etc/camera_isp_cfg/ov5647_k100";
 			bt_path = "gpio";
 			status = "okay";
 		};
