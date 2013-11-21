@@ -1828,8 +1828,7 @@ static void osd1_update_disp_geometry(void)
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2, data32);
 			/* adjust display x-axis */
 			if (osd_ext_hw.scale[OSD1].h_enable) {
-				data32 = (osd_ext_hw.dispdata[OSD1].x_start & 0xfff)|
-				    ((osd_ext_hw.dispdata[OSD1].x_start +
+				data32 = (osd_ext_hw.dispdata[OSD1].x_start & 0xfff)|((osd_ext_hw.dispdata[OSD1].x_start +
 				      (osd_ext_hw.scaledata[OSD1].x_end - osd_ext_hw.scaledata[OSD1].x_start) * 2 + 1) & 0xfff) << 16;
 				aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W3, data32);
 			}
@@ -1837,17 +1836,11 @@ static void osd1_update_disp_geometry(void)
 			/* adjust display y-axis */
 			if (osd_ext_hw.scale[OSD1].v_enable) {
 				if (osd_ext_hw.scan_mode == SCAN_MODE_INTERLACE) {
-					data32 = ((osd_ext_hw.dispdata[OSD1].y_start >> 1) & 0xfff)|
-					    (((((osd_ext_hw.dispdata[OSD1].y_start +
-						 (osd_ext_hw.scaledata[OSD1].y_end -
-						  osd_ext_hw.scaledata[OSD1].y_start) * 2) + 1) >> 1) -
-					      1) & 0xfff) << 16;
+					data32 = ((osd_ext_hw.dispdata[OSD1].y_start >> 1) & 0xfff)|(((((osd_ext_hw.dispdata[OSD1].y_start +
+						 (osd_ext_hw.scaledata[OSD1].y_end -osd_ext_hw.scaledata[OSD1].y_start) * 2) + 1) >> 1) -1) & 0xfff) << 16;
 				} else {
-					data32 = (osd_ext_hw.dispdata[OSD1].y_start & 0xfff)
-					    |
-					    (((osd_ext_hw.dispdata[OSD1].y_start +
-					       (osd_ext_hw.scaledata[OSD1].y_end -
-						osd_ext_hw.scaledata[OSD1].y_start) * 2)) & 0xfff) << 16;
+					data32 = (osd_ext_hw.dispdata[OSD1].y_start & 0xfff)|(((osd_ext_hw.dispdata[OSD1].y_start +
+						 (osd_ext_hw.scaledata[OSD1].y_end -osd_ext_hw.scaledata[OSD1].y_start) * 2)) & 0xfff) << 16;
 				}
 				aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W4, data32);
 			}
@@ -1858,25 +1851,18 @@ static void osd1_update_disp_geometry(void)
 			data32 = (osd_ext_hw.free_scale_data[OSD1].x_start & 0x1fff) |
 						(osd_ext_hw.free_scale_data[OSD1].x_end & 0x1fff) << 16;
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W1, data32);
-			data32 = ((osd_ext_hw.free_scale_data[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
-					| ((osd_ext_hw.free_scale_data[OSD1].y_end + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16;
+			data32 = ((osd_ext_hw.free_scale_data[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) |
+				((osd_ext_hw.free_scale_data[OSD1].y_end + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16;
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2, data32);
 		} else if (osd_ext_hw.rotate[OSD1].on_off > 0
 				&& osd_ext_hw.rotate[OSD1].angle > 0){
 			/* enable osd rotation */
 			data32 = (osd_ext_hw.rotation_pandata[OSD1].x_start & 0x1fff) | (osd_ext_hw.rotation_pandata[OSD1].x_end & 0x1fff) << 16;
 			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W1,data32);
-			data32 = ((osd_ext_hw.rotation_pandata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
+			/*data32 = ((osd_ext_hw.rotation_pandata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_ext_hw.rotation_pandata[OSD1].y_end  + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
-			//aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
-			//aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
-		}else if (osd_hw.rotate[OSD1].on_off > 0
-				&& osd_hw.rotate[OSD1].angle > 0){
-			data32 = (osd_ext_hw.rotation_pandata[OSD1].x_start & 0x1fff) | (osd_ext_hw.rotation_pandata[OSD1].x_end & 0x1fff) << 16;
-			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W1,data32);
-			data32 = ((osd_ext_hw.rotation_pandata[OSD1].y_start + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff)
-					| ((osd_ext_hw.rotation_pandata[OSD1].y_end  + osd_ext_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
-			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);
+			aml_write_reg32(P_VPU_PROT1_Y_START_END, data32);
+			aml_write_reg32(P_VIU2_OSD1_BLK0_CFG_W2,data32);*/
 		}else{
 			/* normal mode */
 			data32 =
@@ -2159,20 +2145,6 @@ void osd_ext_clone_pan(u32 index)
 			}else{
 				if (osd_ext_hw.pandata[index].y_start < height_osd2){
 					offset += g_rotation_height + 1;
-				}else{
-					offset = 0;
-				}
-			}
-		}else if (osd_hw.rotate[index].on_off > 0 && osd_hw.rotate[index].angle > 0){
-			if (osd_hw.pandata[index].y_start < height_osd0) {
-				if (osd_ext_hw.pandata[index].y_start >= height_osd2){
-					offset -= osd_hw.pandata[index].y_end - osd_hw.pandata[index].y_start + 1;
-				}else{
-					offset = 0;
-				}
-			} else{
-				if (osd_ext_hw.pandata[index].y_start < height_osd2){
-					offset += osd_hw.pandata[index].y_end - osd_hw.pandata[index].y_start + 1;
 				}else{
 					offset = 0;
 				}
