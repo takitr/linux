@@ -16,8 +16,7 @@
 #define    PARA_FOURTH_GROUP_START  20+7
 #define    PARA_FIFTH_GROUP_START  	21+7
 #define    PARA_SIXTH_GROUP_START	22+7
-#define    PARA_SEVENTH_GROUP_START	23+7
-#define    PARA_END					23+7		
+#define    PARA_END					22+7		
 
 typedef  struct {
 	char *name;

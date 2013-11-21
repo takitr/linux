@@ -44,7 +44,6 @@ struct logo_input_para{
 	vmode_t vout_mode;
 	int	progress;
 	int	loaded;
-	int needscaler;
 };
 typedef struct logo_input_para logo_input_para_t ;
 typedef  struct {

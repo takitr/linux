@@ -60,39 +60,17 @@ static  int  bmp_decode(logo_object_t *plogo)
 	int height=plogo->parser->logo_pic_info.height;
 	int line_length=width*bpp;
 	int bmp_size=line_length*height;
-	int dstWidth, dstHeight, oldoffset, dstWidthBit, x, y;
-	char *pNewTmp = NULL; 
 
 	if(NULL==in || NULL==out)  return FAIL;
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"in addr:0x%p  out addr:0x%p,bmp size :%d,osd width:%d,h=%d, bmp_width:%d, height=%d.\n",in,out,bmp_size,plogo->dev->vinfo->width,plogo->dev->vinfo->height, width, height);
 	//decode data to out buffer
-	if(plogo->para.needscaler) {
-		bmp_data=(char*)(in+bmp_header->bmp_file_header->bfOffBits);
-		amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"data offset:%d\n",bmp_header->bmp_file_header->bfOffBits);
-		dstWidth = plogo->dev->vinfo->width;
-		dstHeight = plogo->dev->vinfo->height;
-		dstWidthBit = ( 4 - dstWidth * 3 % 4 )%4 + dstWidth * 3;
-
-		for( i=0; i<dstHeight; i++ )
-		{ 
-			pNewTmp = out + dstWidthBit * i; 
-			for( j=0; j<dstWidth * 3; j += 3 ) 
-			{ 
-				x = (int) (j*width/dstWidth); 
-				y = (int) (i*height/dstHeight); 
-				oldoffset = ((height-1-y)*width*3 + x)-((height-1-y)*width*3 + x)%3; //correct positon in 3 byte mode
-				memcpy(pNewTmp+j, bmp_data + oldoffset, 3);
-			} 
-		} 
-	} else {
-		bmp_data=(char*)(in+bmp_header->bmp_file_header->bfOffBits+line_length*(height-1));
-		amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"data offset:%d\n",bmp_header->bmp_file_header->bfOffBits);
-		for (i=0;i<height ;i++)
-		{
-			memcpy(out,bmp_data,line_length);
-			out+=width*bpp;
-			bmp_data-=line_length;
-		}
+	bmp_data=(char*)(in+bmp_header->bmp_file_header->bfOffBits+line_length*(height-1));
+	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"data offset:%d\n",bmp_header->bmp_file_header->bfOffBits);
+	for (i=0;i<height ;i++)
+	{
+		memcpy(out,bmp_data,line_length);
+		out+=width*bpp;
+		bmp_data-=line_length;
 	}
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"get bmp data completed\n");
 	return SUCCESS;

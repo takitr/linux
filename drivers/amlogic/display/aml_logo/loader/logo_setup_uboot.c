@@ -78,8 +78,6 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 	{"progress",LOGO_PROGRESS_ENABLE,PARA_FIFTH_GROUP_START-1,PARA_FIFTH_GROUP_START+1,PARA_FIFTH_GROUP_START,PARA_SIXTH_GROUP_START-1},
 //loaded
 	{"loaded",LOGO_LOADED,PARA_SIXTH_GROUP_START-1,PARA_SIXTH_GROUP_START+1,PARA_SIXTH_GROUP_START,PARA_END},
-//need scaler
-	{"needscaler",LOGO_NEEDSCALER,PARA_SEVENTH_GROUP_START-1,PARA_SEVENTH_GROUP_START+1,PARA_SEVENTH_GROUP_START,PARA_END},
 
 //tail	
 	{"tail",INVALID_INFO,PARA_END,0,0,PARA_END+1},
@@ -120,10 +118,6 @@ static inline int install_logo_info(logo_object_t *plogo,char *para)
 				case PARA_SIXTH_GROUP_START:
 				plogo->para.loaded=1;
 				amlog_level(LOG_LEVEL_MAX,"logo has been loaded\n");
-				break;	
-				case PARA_SEVENTH_GROUP_START:
-				plogo->para.needscaler=1;
-				amlog_level(LOG_LEVEL_MAX,"logo need scaler\n");
 				break;	
 			}
 			para_info_pair[prev].next_idx=next;
