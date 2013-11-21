@@ -30,7 +30,7 @@
 
 #define ENC_CANVAS_OFFSET  AMVENC_CANVAS_INDEX
 
-#define LOG_LEVEL_VAR 0
+#define LOG_LEVEL_VAR 2
 
 #define PUT_INTERVAL        (HZ/100)
 #ifdef CONFIG_AM_VDEC_MJPEG_LOG
@@ -80,23 +80,21 @@ static u32 stat;
 
 static u32 encoder_width = 1280;
 static u32 encoder_height = 720;
+static jpegenc_frame_fmt encoder_input_format;
 static jpegenc_frame_fmt input_format;
 static jpegenc_frame_fmt output_format;
 
 
 static s32 jpegenc_poweron(void);
 static void dma_flush(unsigned buf_start , unsigned buf_size );
-static u32 qppicture  =26;
-static u32 process_irq = 0;
+
 
 static int encode_inited = 0;
 static int encode_opened = 0;
 
 static const char jpeg_enc_id[] = "jpegenc-dev";
 
-#define AMVENC_BUFFER_LEVEL_480P   0
-#define AMVENC_BUFFER_LEVEL_720P   1
-#define AMVENC_BUFFER_LEVEL_1080P 2
+
 
 typedef struct
 {
@@ -196,7 +194,7 @@ void prepare_jpeg_header(void)
 			pic_format = 0;
 			break;
 	}
-	//pic_format = 2;
+
 
     pic_width           = encoder_width;
     pic_height          = encoder_height;
@@ -382,14 +380,12 @@ void prepare_jpeg_header(void)
                        (0                                               << 0));     // data: Al = 0
    debug_level(0,"jpeg header bytes is %d \n",header_bytes);  
    WRITE_HREG(HCODEC_HENC_SCRATCH_1 , header_bytes); // Send MEM_OFFSET
-    // Put header file to DDR
-   // stimulus_event(1 , (0x1 << 28) | (header_bytes << 0));
 
 }
 void init_jpeg_encoder()
 {
 	unsigned long data32 ;
-    int i, j;
+    int i;
     int pic_format;             // 0=RGB; 1=YUV; 2=YUV422; 3=YUV420
     int pic_x_start, pic_x_end, pic_y_start, pic_y_end;
 
@@ -410,30 +406,7 @@ void init_jpeg_encoder()
     
     int header_bytes;
     
-    // Wait until stimulus done storing the test configuration
-   debug_level(0,"Initialize JPEG Encoder ....\n");
-    
-#if 0    
-// Load the test configuration into C   
-    pic_format          = (*P_DOS_SCRATCH0)         & 0x3;
-    pic_x_start         = (*P_DOS_SCRATCH1)         & 0x3fff;
-    pic_x_end           = ((*P_DOS_SCRATCH1)>>16)   & 0x3fff;
-    pic_y_start         = (*P_DOS_SCRATCH2)         & 0x3fff;
-    pic_y_end           = ((*P_DOS_SCRATCH2)>>16)   & 0x3fff;
-    pic_width           = pic_x_end - pic_x_start + 1;
-    pic_height          = pic_y_end - pic_y_start + 1;
-    q_sel_comp0         = (*P_DOS_SCRATCH3)         & 0xff;
-    q_sel_comp1         = ((*P_DOS_SCRATCH3)>>8)    & 0xff;
-    q_sel_comp2         = ((*P_DOS_SCRATCH3)>>16)   & 0xff;
-    dc_huff_sel_comp0   = (*P_DOS_SCRATCH4)         & 0xf;
-    dc_huff_sel_comp1   = ((*P_DOS_SCRATCH4)>>4)    & 0xf;
-    dc_huff_sel_comp2   = ((*P_DOS_SCRATCH4)>>8)    & 0xf;
-    ac_huff_sel_comp0   = ((*P_DOS_SCRATCH4)>>12)   & 0xf;
-    ac_huff_sel_comp1   = ((*P_DOS_SCRATCH4)>>16)   & 0xf;
-    ac_huff_sel_comp2   = ((*P_DOS_SCRATCH4)>>20)   & 0xf;
-    lastcoeff_sel       = ((*P_DOS_SCRATCH5)>>4)    & 0x3;
-    jdct_intr_sel       = ((*P_DOS_SCRATCH5)>>8)    & 0x7;
-#else
+    debug_level(0,"Initialize JPEG Encoder ....\n");   
 	if(output_format >= MAX_FRAME_FMT){
 		debug_level(0,"Input format is wrong!!!!\n");
 	}
@@ -454,7 +427,7 @@ void init_jpeg_encoder()
 			pic_format = 0;
 			break;
 	}
-	//pic_format = 2;
+
     pic_x_start         = 0;
     pic_x_end           = encoder_width -1;
     pic_y_start         = 0;
@@ -474,7 +447,6 @@ void init_jpeg_encoder()
     ac_huff_sel_comp2   = AC_HUFF_SEL_COMP2;
     lastcoeff_sel       =  JDCT_LASTCOEFF_SEL;
     jdct_intr_sel       =  JDCT_INTR_SEL;
-#endif
 
     if (pic_format == 2) { // YUV422
         h_factor_comp0 = 1; v_factor_comp0 = 0;
@@ -807,17 +779,7 @@ int  zigzag(int i)
     return zigzag_i;
 }   /* zigzag */
 
-/*
-static DEFINE_SPINLOCK(lock);
-
-static void avc_put_timer_func(unsigned long arg)
-{
-    struct timer_list *timer = (struct timer_list *)arg;
-    timer->expires = jiffies + PUT_INTERVAL;
-
-    add_timer(timer);
-}
-*/        
+       
 static void jpegenc_init_output_buffer()
 {
 	unsigned mem_offset;
@@ -831,29 +793,46 @@ static void jpegenc_init_output_buffer()
 	WRITE_HREG(VLC_VB_CONTROL, 1);
 	WRITE_HREG(VLC_VB_CONTROL, ((0<<14)|(7<<3)|(1<<1)|(0<<0)));
 }
-
 /****************************************/
+
 static void jpegenc_canvas_init(void)
 {
     u32 canvas_width, canvas_height;
     int start_addr = gJpegEncBuff.buf_start;
 	int y_size , uv_size;
+	int offset;
+	int bpp;
+
+
     canvas_width = ((encoder_width+15)>>4)<<4;
     canvas_height = ((encoder_height+15)>>4)<<4;
+	switch(encoder_input_format){
+		case FMT_NV21:
+		case FMT_NV12:	
+		bpp = 12;
+		break;
+		case FMT_RGB888:
+		bpp = 24;
+		break;
+		case FMT_YUV422_SINGLE:
+		bpp = 16;
+		break;
+		default:
+		bpp = 12;
+		
+	}
     y_size = canvas_width*canvas_height;
     uv_size = canvas_width*canvas_height/2 ;
         
 	gJpegEncBuff.bufspec = (BuffInfo_t*)&jpegenc_buffspec;
-	
-	gJpegEncBuff.bufspec->dec0_y = start_addr;
-	gJpegEncBuff.bufspec->dec0_uv = start_addr + y_size;
-	gJpegEncBuff.bufspec->bitstream= start_addr + y_size + uv_size ;
+	offset = canvas_width*canvas_height*bpp/8;
+	gJpegEncBuff.bufspec->bitstream= start_addr + offset;
 
-	
 	/*input dct buffer config */ 
     dct_buff_start_addr = start_addr;   //(w>>4)*(h>>4)*864
-    dct_buff_end_addr = dct_buff_start_addr + y_size + uv_size -1 ;
+    dct_buff_end_addr = dct_buff_start_addr + offset -1 ;
     debug_level(0,"dct_buff_start_addr is %x \n",dct_buff_start_addr);
+#if 0
 
     canvas_config(ENC_CANVAS_OFFSET,
         gJpegEncBuff.bufspec->dec0_y,
@@ -869,6 +848,7 @@ static void jpegenc_canvas_init(void)
         canvas_width , canvas_height/2,
         CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
     
+#endif
 
 	/*output stream buffer config*/
     BitstreamStart  = gJpegEncBuff.bufspec->bitstream;
@@ -1010,7 +990,7 @@ static int  set_jpeg_input_format (jpegenc_mem_type type, jpegenc_frame_fmt inpu
     unsigned picsize_x, picsize_y;
     debug_level(0,"************begin set input format**************\n");
 	debug_level(0,"type is %d\n",type);
-	debug_level(0,"fmt is %d\n",fmt);
+	debug_level(0,"fmt is %d\n",input_fmt);
 	debug_level(0,"input is %d\n",input);
 	debug_level(0,"offset is %d\n",offset);
 	debug_level(0,"size is %d\n",size);
@@ -1040,7 +1020,12 @@ static int  set_jpeg_input_format (jpegenc_mem_type type, jpegenc_frame_fmt inpu
             r2y_en = 1;
 
         if(input_fmt == FMT_YUV422_SINGLE){
-            iformat = 10;
+            iformat = 0;
+            canvas_config(ENC_CANVAS_OFFSET+6,
+                input, 
+                picsize_x*2, picsize_y, 
+                CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+           input = ENC_CANVAS_OFFSET+6;            
         }else if(input_fmt == FMT_YUV444_SINGLE){
             iformat = 1;
             canvas_config(ENC_CANVAS_OFFSET+6,
@@ -1123,17 +1108,6 @@ static int  set_jpeg_input_format (jpegenc_mem_type type, jpegenc_frame_fmt inpu
     return ret;
 }
 #endif
-
-/*
-static void init_scaler(void)
-{
-}
-
-static void avc_local_init(void)
-{
-
-}
-*/
 
 static int encoder_status;
 static irqreturn_t jpegenc_isr(int irq, void *dev_id)
@@ -1354,8 +1328,9 @@ void jpegenc_start_cmd(int cmd, unsigned* input_info)
 
 void jpegenc_stop(void)
 {
-	int i;
 #if 0	
+//register dump 
+	int i;
 		/*MFDIN*/
 	for( i = 0x1010 ;i < 0x101b ; i++){
 		debug_level(0,"MFDIN register 0x%x :  0x%x \n",i, READ_HREG(i)); 	
@@ -1381,7 +1356,7 @@ void jpegenc_stop(void)
 static int jpegenc_open(struct inode *inode, struct file *file)
 {
     int r = 0;
-    debug_level(1,"avc open\n");
+    debug_level(1,"jpegenc open\n");
     if(encode_opened>0){
         debug_level(2, "jpegenc open busy.\n");
         return -EBUSY;
@@ -1408,7 +1383,7 @@ static int jpegenc_release(struct inode *inode, struct file *file)
     }
     if(encode_opened>0)
         encode_opened--;
-    debug_level(1,"avc release\n");
+    debug_level(1,"jpegenc release\n");
     if(BitstreamStartVirtAddr){
 		iounmap(BitstreamStartVirtAddr);
 		BitstreamStartVirtAddr = NULL;
@@ -1461,8 +1436,10 @@ static long jpegenc_ioctl(struct file *file,
 		encoder_width = *((unsigned*)arg) ;
 		break;
 	case JPEGENC_IOC_SET_ENCODER_HEIGHT:
-
 		encoder_height = *((unsigned*)arg) ;
+		break;	
+	case JPEGENC_IOC_INPUT_FORMAT	:
+		encoder_input_format = *((unsigned*)arg) ;
 		break;	
 	case JPEGENC_IOC_CONFIG_INIT:
 		jpegenc_init();

@@ -51,6 +51,7 @@
 #define JPEGENC_IOC_FLUSH_CACHE 				_IOW(JPEGENC_IOC_MAGIC, 0x0a, unsigned int)
 #define JPEGENC_IOC_FLUSH_DMA 					_IOW(JPEGENC_IOC_MAGIC, 0x0b, unsigned int)
 #define JPEGENC_IOC_GET_BUFFINFO 				_IOW(JPEGENC_IOC_MAGIC, 0x0c, unsigned int)
+#define JPEGENC_IOC_INPUT_FORMAT 				_IOW(JPEGENC_IOC_MAGIC, 0x0d, unsigned int)
 
 typedef enum{
     LOCAL_BUFF = 0,
