@@ -3,6 +3,12 @@
 #ifndef AMLSD_H
 #define AMLSD_H
 
+
+#define AML_MMC_MAJOR_VERSION   1
+#define AML_MMC_MINOR_VERSION   01
+#define AML_MMC_VERSION         ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
+#define AML_MMC_VER_MESSAGE     "2013-11-21: support write protect"
+
 extern unsigned sdhc_debug;
 extern unsigned sdio_debug;
 #define DEBUG_SD_OF		1
@@ -83,6 +89,8 @@ struct sd_caps {
 };
 
 extern int storage_flag;
+
+void aml_mmc_ver_msg_show (void);
 extern void aml_sdhc_init_debugfs(struct mmc_host *mmc);
 extern void aml_sdhc_print_reg(struct amlsd_host* host);
 extern void aml_sdio_init_debugfs(struct mmc_host *mmc);
@@ -109,6 +117,7 @@ void of_amlsd_pwr_off(struct amlsd_platform* pdata);
 int of_amlsd_init(struct amlsd_platform* pdata);
 void of_amlsd_xfer_pre(struct amlsd_platform* pdata);
 void of_amlsd_xfer_post(struct amlsd_platform* pdata);
+int of_amlsd_ro (struct amlsd_platform* pdata);
 
 void aml_sd_uart_detect (struct amlsd_platform* pdata);
 irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id);

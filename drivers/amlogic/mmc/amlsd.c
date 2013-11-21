@@ -61,6 +61,11 @@
 static struct proc_dir_entry *proc_card;
 static struct mtd_partition *card_table[16];
 
+void aml_mmc_ver_msg_show (void)
+{
+    printk("mmc driver version: %d.%02d, %s\n", AML_MMC_MAJOR_VERSION, AML_MMC_MINOR_VERSION, AML_MMC_VER_MESSAGE);
+}
+
 static inline int card_proc_info (struct seq_file *m, char* dev_name, int i)
 {
 	struct mtd_partition *this = card_table[i];
@@ -670,19 +675,35 @@ void of_amlsd_pwr_off(struct amlsd_platform* pdata)
 }
 int of_amlsd_init(struct amlsd_platform* pdata)
 {
+    int ret;
+
 	BUG_ON(!pdata);
-	if(pdata->gpio_cd)
-		amlogic_gpio_request_one(pdata->gpio_cd, GPIOF_IN, MODULE_NAME);
-	if(pdata->gpio_ro)
-		amlogic_gpio_request_one(pdata->gpio_ro, GPIOF_IN, MODULE_NAME);
+
+	if(pdata->gpio_cd) {
+		ret = amlogic_gpio_request_one(pdata->gpio_cd, GPIOF_IN, MODULE_NAME);
+        CHECK_RET(ret);
+    }
+	if(pdata->gpio_ro) {
+		ret = amlogic_gpio_request_one(pdata->gpio_ro, GPIOF_IN, MODULE_NAME);
+        if (!ret) { // ok
+            ret = amlogic_set_pull_up_down(pdata->gpio_ro, 1, MODULE_NAME); // 0:pull down, 1:pull up 
+            CHECK_RET(ret);
+        } else {
+            sdio_err("request gpio_ro pin fail!\n");
+        }
+    }
 	if(pdata->gpio_power){
-		if(pdata->power_level)
-			amlogic_gpio_request_one(pdata->gpio_power,
+		if(pdata->power_level) {
+			ret = amlogic_gpio_request_one(pdata->gpio_power,
 						GPIOF_OUT_INIT_LOW, MODULE_NAME);
-		else
-			amlogic_gpio_request_one(pdata->gpio_power,
+            CHECK_RET(ret);
+        } else {
+			ret = amlogic_gpio_request_one(pdata->gpio_power,
 						GPIOF_OUT_INIT_HIGH, MODULE_NAME);
+            CHECK_RET(ret);
+        }
 	}
+
 	if(pdata->port == MESON_SDIO_PORT_A)
 		wifi_setup_dt();
 	return 0;
@@ -789,6 +810,16 @@ void of_amlsd_xfer_post(struct amlsd_platform* pdata)
     // }
     // printk(KERN_ERR "CMD%d: put pinctrl\n", pdata->host->opcode);
     // aml_dbg_print_pinmux(); // for debug
+}
+
+int of_amlsd_ro (struct amlsd_platform* pdata)
+{
+    int ret = 0; // 0--read&write, 1--read only
+
+    if (pdata->gpio_ro)
+        ret = amlogic_get_value(pdata->gpio_ro, MODULE_NAME);
+    // sdio_err("read-only?--%s\n", ret?"YES":"NO");
+    return ret; 
 }
 
 // void of_init_pins (struct amlsd_platform* pdata)

@@ -982,11 +982,11 @@ static int aml_sdio_probe(struct platform_device *pdev)
 
     print_tmp("%s() begin!\n", __FUNCTION__);
 
+    aml_mmc_ver_msg_show();
+
 	host = aml_sdio_init_host();
 	if(!host)
 		goto fail_init_host;
-    
-    printk("mmc driver version: %2d.%02d\n", host->version>>8, host->version&0xff);
 
 	if(amlsd_get_reg_base(pdev, host))
 		goto fail_init_host;

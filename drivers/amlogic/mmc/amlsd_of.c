@@ -188,6 +188,7 @@ int amlsd_get_platform_data(struct platform_device* pdev,
 		pdata->xfer_post = of_amlsd_xfer_post;
 		// pdata->cd = of_amlsd_detect;
 		pdata->irq_init = of_amlsd_irq_init;
+        pdata->ro = of_amlsd_ro;
     }
     return 0;
 }

@@ -13,10 +13,6 @@
 #include <linux/mmc/host.h>
 #include <linux/earlysuspend.h>
 
-#define AML_MMC_MAJOR_VERSION   1
-#define AML_MMC_MINOR_VERSION   00
-#define AML_MMC_VERSION     ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
-
 enum aml_mmc_waitfor {
 	XFER_INIT,
 	XFER_START,				/* 1 */

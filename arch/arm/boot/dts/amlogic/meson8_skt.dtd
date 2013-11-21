@@ -363,6 +363,7 @@ void root_func(){
 //$$ L2 PROP_STR = "gpio_dat3"
 //$$ L2 PROP_STR = "jtag_pin"
 //$$ L2 PROP_STR = "gpio_cd"
+//$$ L2 PROP_STR = "gpio_ro"
 //$$ L2 PROP_U32 = "irq_in"
 //$$ L2 PROP_U32 = "irq_out"
 //$$ L2 PROP_U32 = "card_type"
@@ -379,6 +380,7 @@ void root_func(){
             gpio_dat3 = "CARD_4";
             jtag_pin = "CARD_0";
             gpio_cd = "CARD_6";
+            gpio_ro = "GPIOZ_0";
             irq_in = <3>;
             irq_out = <5>;
             card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
