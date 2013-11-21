@@ -629,14 +629,14 @@ err:
 /*-------------------port function---------------------*/
 
 //return 1: no inserted  0: inserted
-int of_amlsd_detect(struct amlsd_platform* pdata)
-{
-	int ret=0;
-	if(pdata->gpio_cd)
-		ret = amlogic_get_value(pdata->gpio_cd, MODULE_NAME);
-    // printk("\033[0;40;32m of_amlsd_detect port %d, card %s \033[0m\n", pdata->port, ret?"OUT":"in");
-	return ret;
-}
+// int of_amlsd_detect(struct amlsd_platform* pdata)
+// {
+	// int ret=0;
+	// if(pdata->gpio_cd)
+		// ret = amlogic_get_value(pdata->gpio_cd, MODULE_NAME);
+    // // printk("\033[0;40;32m of_amlsd_detect port %d, card %s \033[0m\n", pdata->port, ret?"OUT":"in");
+	// return ret;
+// }
 
 void of_amlsd_irq_init(struct amlsd_platform* pdata)
 {
@@ -1012,16 +1012,16 @@ static void aml_sd_uart_detect (struct amlsd_platform* pdata)
             /* } */
         } else {
             if (!pdata->is_in) { // status change, last time is out, and now is in
-                pdata->is_in = true;
                 // printk("\033[0;40;35m normal SD card in \033[0m\n");
                 printk("normal card in\n");
-                aml_uart_switch(pdata, 0);
-                aml_jtag_gpioao();
-                if(pdata->caps & MMC_CAP_4_BIT_DATA)
-                    pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
             }/*  else { */
-                // printk("\033[0;40;35m normal SD card in again---------------- \033[0m\n");
+            // printk("\033[0;40;35m normal SD card in again---------------- \033[0m\n");
             /* } */
+            pdata->is_in = true;
+            aml_uart_switch(pdata, 0);
+            aml_jtag_gpioao();
+            if(pdata->caps & MMC_CAP_4_BIT_DATA)
+                pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
         }
     } else {
         if (pdata->is_in) { // status change, last time is in, and now is out

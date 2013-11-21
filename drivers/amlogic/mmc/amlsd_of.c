@@ -186,7 +186,7 @@ int amlsd_get_platform_data(struct platform_device* pdev,
 		pdata->pwr_off = of_amlsd_pwr_off;
 		pdata->xfer_pre = of_amlsd_xfer_pre;
 		pdata->xfer_post = of_amlsd_xfer_post;
-		pdata->cd = of_amlsd_detect;
+		// pdata->cd = of_amlsd_detect;
 		pdata->irq_init = of_amlsd_irq_init;
     }
     return 0;

@@ -1019,6 +1019,9 @@ static int aml_sdio_probe(struct platform_device *pdev)
             }
 		}
 		dev_set_name(&mmc->class_dev, "%s", pdata->pinname);
+        if (pdata->caps & MMC_CAP_NONREMOVABLE) {
+            pdata->is_in = true;
+        }
 
 		pdata->host = host;
         // host->pdata = pdata; // should not do this here, it will conflict with aml_sdio_request
