@@ -497,7 +497,8 @@ static void dwc_otg_hcd_power_save(dwc_otg_hcd_t * hcd, int power_on)
 	}
 	
 	DWC_WRITE_REG32(&hcd->core_if->pcgcctl, pcgcctl.d32);
-//	DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
+	if(!hcd->auto_pm_suspend_flag)
+		DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
 }
 /** dwc_otg_hcd suspend */
 int dwc_otg_hcd_suspend(dwc_otg_hcd_t * hcd)

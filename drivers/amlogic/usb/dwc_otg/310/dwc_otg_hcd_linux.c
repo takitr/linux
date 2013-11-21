@@ -713,10 +713,12 @@ void hcd_stop(struct usb_hcd *hcd)
 int hcd_suspend(struct usb_hcd *hcd)
 {
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(hcd);
+	dwc_otg_hcd->auto_pm_suspend_flag = (hcd->flags>>31)&1;
 
 	DWC_DEBUGPL(DBG_HCD, "HCD SUSPEND\n");
 
 	dwc_otg_hcd_suspend(dwc_otg_hcd);
+	hcd->flags &= (~(1<<31));
 
 	return 0;
 }
@@ -725,11 +727,12 @@ int hcd_suspend(struct usb_hcd *hcd)
 int hcd_resume(struct usb_hcd *hcd)
 {
 	dwc_otg_hcd_t *dwc_otg_hcd = hcd_to_dwc_otg_hcd(hcd);
-
+	dwc_otg_hcd->auto_pm_suspend_flag = (hcd->flags>>31)&1;
+	
 	DWC_DEBUGPL(DBG_HCD, "HCD RESUME\n");
 	
 	dwc_otg_hcd_resume(dwc_otg_hcd);
-
+	hcd->flags &= (~(1<<31));
 	return 0;
 }
 

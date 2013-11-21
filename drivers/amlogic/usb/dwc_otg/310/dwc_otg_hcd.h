@@ -575,6 +575,7 @@ struct dwc_otg_hcd {
 	uint64_t hfnum_other_frrem_accum_b;
 #endif
 	uint8_t  ssplit_lock;
+	uint8_t  auto_pm_suspend_flag;
 };
 
 /** @name Transaction Execution Functions */
