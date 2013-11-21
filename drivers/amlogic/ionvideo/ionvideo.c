@@ -352,6 +352,7 @@ static void buffer_queue(struct vb2_buffer *vb) {
 static int start_streaming(struct vb2_queue *vq, unsigned int count) {
     struct ionvideo_dev *dev = vb2_get_drv_priv(vq);
     is_actived = 1;
+    dev->receiver_register = 1;
     dprintk(dev, 2, "%s\n", __func__);
     return ionvideo_start_generating(dev);
 }
