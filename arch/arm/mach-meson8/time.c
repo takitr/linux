@@ -374,7 +374,7 @@ static void meson_clkevt_set_mode(enum clock_event_mode mode,
 		break;
 		case CLOCK_EVT_MODE_SHUTDOWN:
 		case CLOCK_EVT_MODE_UNUSED:
-			printk(KERN_INFO"Disable timer %p %s\n",dev, clk->name);
+			//printk(KERN_INFO"Disable timer %p %s\n",dev, clk->name);
 			aml_set_reg32_bits(clk->mux_reg, 0, clk->bit_enable, 1);
 		break;
 	}
@@ -468,8 +468,8 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 	aml_write_reg32(clk->reg, 9999);
 	
 	meson_timer_init_device(&(clk->clockevent));
-	printk(KERN_ERR"Local timer: %s (%p) for CPU%d initialized\n",
-		clk->clockevent.name,clk,cpu);
+//	printk(KERN_ERR"Local timer: %s (%p) for CPU%d initialized\n",
+//		clk->clockevent.name,clk,cpu);
 
 	meson_evt = &clk->clockevent;
 	evt->name = meson_evt->name;
