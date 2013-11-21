@@ -247,7 +247,7 @@ int ppmgr2_init(struct ppmgr2_device *ppd) {
 }
 
 int ppmgr2_canvas_config(struct ppmgr2_device *ppd, int dst_width, int dst_height, int dst_fmt, void* phy_addr, int index) {
-    int canvas_width = dst_width;
+    int canvas_width = ALIGN(dst_width, 32);
     int canvas_height = dst_height;
 
     if (!ppd->phy_addr) {

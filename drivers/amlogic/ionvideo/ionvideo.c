@@ -150,12 +150,14 @@ static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
     /* video seekTo clear list */
 
     if (!vf_peek(RECEIVER_NAME)) {
+        msleep(10);
         return;
     }
     spin_lock_irqsave(&dev->slock, flags);
     if (list_empty(&dma_q->active)) {
         dprintk(dev, 3, "No active queue to serve\n");
         spin_unlock_irqrestore(&dev->slock, flags);
+        msleep(10);
         return;
     }
     buf = list_entry(dma_q->active.next, struct ionvideo_buffer, list);
