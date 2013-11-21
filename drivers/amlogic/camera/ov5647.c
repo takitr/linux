@@ -3478,6 +3478,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
         dev->vops->stop_tvin_service(0);
         fh->stream_on        = 0;
 	}
+	dev->ae_on = false;
 	return ret;
 }
 
