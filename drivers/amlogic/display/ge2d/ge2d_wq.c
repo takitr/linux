@@ -441,7 +441,7 @@ static void build_ge2d_config(config_para_t *cfg, src_dst_para_t *src, src_dst_p
 static  int  
 setup_display_property(src_dst_para_t *src_dst,int index)
 {
-#define   REG_OFFSET		0x20
+#define   REG_OFFSET		(0x20<<2)
 	canvas_t   	canvas;
 	unsigned	int  	data32;
 	unsigned	int 	bpp;
