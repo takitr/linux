@@ -645,6 +645,7 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 	pr_info("%s ok\n", __func__);
 }
 //@todo
+
 int start_tvin_service(int no ,vdin_parm_t *para)
 {
 	struct tvin_frontend_s *fe;
@@ -654,6 +655,7 @@ int start_tvin_service(int no ,vdin_parm_t *para)
                 printk(KERN_ERR "[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
                 return -1;
         }
+	devp->start_time = jiffies_to_msecs(jiffies);
         if (devp->flags & VDIN_FLAG_DEC_STARTED) {
 		pr_err("%s: port 0x%x, decode started already.\n",__func__,para->port);
 		ret = -EBUSY;
@@ -733,7 +735,10 @@ EXPORT_SYMBOL(start_tvin_service);
 int stop_tvin_service(int no)
 {
 	struct vdin_dev_s *devp;
+	unsigned int end_time;
 	devp = vdin_devp[no];
+	end_time = jiffies_to_msecs(jiffies);
+	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
 	if(!(devp->flags&VDIN_FLAG_DEC_STARTED)){
 		pr_err("%s:decode hasn't started.\n",__func__);
 		return -EBUSY;

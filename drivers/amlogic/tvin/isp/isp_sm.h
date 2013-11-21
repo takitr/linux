@@ -93,6 +93,7 @@ typedef enum af_state_e {
 	AF_SUCCESS,
 } af_state_t;
 typedef enum isp_capture_state_e {
+	CAPTURE_NULL,
 	CAPTURE_INIT,
 	CAPTURE_PRE_WAIT,//for time lapse
 	CAPTURE_FLASH_ON,//turn on flash for red eye

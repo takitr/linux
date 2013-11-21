@@ -178,7 +178,7 @@ typedef struct vdin_dev_s {
 	unsigned int			cycle;
 	unsigned int			hcnt64_tag;
 	unsigned int			cycle_tag;
-        
+        unsigned int                    start_time;//ms vdin start time    
         unsigned short                  scaler4h;//for vscaler
         unsigned short                  scaler4w;//for hscaler
 } vdin_dev_t;

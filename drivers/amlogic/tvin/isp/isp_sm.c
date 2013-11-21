@@ -1585,15 +1585,20 @@ int isp_capture_sm(isp_dev_t *devp)
 			}
 			break;
 		case CAPTURE_SINGLE:
+			if(parm->sigle_count <= 1){
+				ret = TVIN_BUF_NULL;
+				cap_sm->capture_state = CAPTURE_NULL;
+				return ret;
+			}
 			if(cap_sm->adj_cnt <= parm->sigle_count){
 				for(j=0;j<4;j++)
 					cur_ac += devp->blnr_stat.ac[j];
-					if(capture_debug)
-						pr_info("[cap_sm]%u:field[%u] ac_sum %u.\n",__LINE__,cap_sm->adj_cnt,cur_ac);
-					if(cur_ac > cap_sm->max_ac_sum){
-						cap_sm->max_ac_sum = cur_ac;
-						ret = TVIN_BUF_TMP;
-					}
+				if(capture_debug)
+					pr_info("[cap_sm]%u:field[%u] ac_sum %u.\n",__LINE__,cap_sm->adj_cnt,cur_ac);
+				if(cur_ac > cap_sm->max_ac_sum){
+					cap_sm->max_ac_sum = cur_ac;
+					ret = TVIN_BUF_TMP;
+				}
 			}else{
 				ret = TVIN_BUF_RECYCLE_TMP;
 				if(parm->multi_capture_num > 0){
@@ -1607,6 +1612,7 @@ int isp_capture_sm(isp_dev_t *devp)
 						pr_info("[cap_sm]%u:single->capture end.\n",__LINE__);
 				}
 			}
+			
 			break;
 		case CAPTURE_MULTI:
 			if(cap_sm->adj_cnt % parm->skip_step == 0) {
