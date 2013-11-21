@@ -621,6 +621,12 @@ static irqreturn_t vh264_4k2k_isr(int irq, void *dev_id)
 
         total_dec_frame_buffering = max_dec_frame_buffering + DISPLAY_BUFFER_NUM;
 
+        if ((frame_width == 0) || (frame_height == 0)) {
+            frame_width = mb_width << 4;
+            frame_height = mb_height << 4;
+            frame_ar = frame_height * 0x100 / frame_width;
+        }
+
         mb_width = (mb_width+3) & 0xfffffffc;
         mb_height = (mb_height+3) & 0xfffffffc;
 
@@ -1118,7 +1124,7 @@ static void vh264_4k2k_local_init(void)
 
     frame_width = vh264_4k2k_amstream_dec_info.width;
     frame_height = vh264_4k2k_amstream_dec_info.height;
-    frame_dur = vh264_4k2k_amstream_dec_info.rate;
+    frame_dur = (vh264_4k2k_amstream_dec_info.rate == 0) ? 3600 : vh264_4k2k_amstream_dec_info.rate;
     frame_ar = frame_height * 0x100 / frame_width;
 
     printk("H264_4K2K: decinfo: %dx%d rate=%d\n", frame_width, frame_height, frame_dur);

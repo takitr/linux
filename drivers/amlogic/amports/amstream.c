@@ -1046,6 +1046,11 @@ static int amstream_open(struct inode *inode, struct file *file)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (this->type & PORT_TYPE_VIDEO) {
         vdec_poweron(VDEC_1);
+        memset(&amstream_dec_info, 0, sizeof(amstream_dec_info));
+    }
+#else
+    if (this->type & PORT_TYPE_VIDEO) {
+        memset(&amstream_dec_info, 0, sizeof(amstream_dec_info));
     }
 #endif
 
