@@ -1071,8 +1071,6 @@ void aml_sd_uart_detect (struct amlsd_platform* pdata)
         if(pdata->caps & MMC_CAP_4_BIT_DATA)
             pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
     }
-    
-    mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
 
     return;
 }
@@ -1083,6 +1081,8 @@ irqreturn_t aml_irq_cd_thread(int irq, void *data)
 
     mdelay(500);
     aml_sd_uart_detect(pdata);
+    
+    mmc_detect_change(pdata->mmc, msecs_to_jiffies(500));
 
 	return IRQ_HANDLED;
 }
