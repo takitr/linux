@@ -987,7 +987,7 @@ static int aml_uart_switch(struct amlsd_platform* pdata, bool on)
 #endif
 }
 
-static void aml_sd_uart_detect (struct amlsd_platform* pdata)
+void aml_sd_uart_detect (struct amlsd_platform* pdata)
 {
     static bool is_jtag = false;
 

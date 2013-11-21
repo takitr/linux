@@ -905,6 +905,11 @@ static int aml_sdio_resume(struct platform_device *pdev)
         if(aml_card_type_sdio(pdata)) {
             wifi_setup_dt();
         }
+
+        // detect if a card is insert or inset if it is removable
+        if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
+            aml_sd_uart_detect(pdata);
+        }
 		mmc = pdata->mmc;
 		//mmc_power_restore_host(mmc);
 		ret = mmc_resume_host(mmc);

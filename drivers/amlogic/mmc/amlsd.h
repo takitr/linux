@@ -110,6 +110,7 @@ int of_amlsd_init(struct amlsd_platform* pdata);
 void of_amlsd_xfer_pre(struct amlsd_platform* pdata);
 void of_amlsd_xfer_post(struct amlsd_platform* pdata);
 
+void aml_sd_uart_detect (struct amlsd_platform* pdata);
 irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id);
 irqreturn_t aml_irq_cd_thread(int irq, void *data);
 void aml_sduart_pre (struct amlsd_platform* pdata);
