@@ -41,7 +41,7 @@ static  int  setup_parser_output_addr(logo_object_t *plogo)
 	screen_mem_start=plogo->platform_res[plogo->para.output_dev_type].mem_start;
 	screen_size=plogo->dev->vinfo->width*plogo->dev->vinfo->height*(plogo->parser->decoder.bmp.color_depth>>3);
 	//double buffer ,bottom part .
-	plogo->parser->output_addr=(char *)phys_to_virt(screen_mem_start) ;
+	plogo->parser->output_addr=(char *)phys_to_virt(screen_mem_start + screen_size);
 	plogo->need_transfer=TRUE;
 	amlog_mask_level(LOG_MASK_PARSER,LOG_LEVEL_LOW,"bmp decode output addr:0x%p,%s\n",plogo->parser->output_addr,plogo->need_transfer?"transfer":"no transfer");
 	return 0;
