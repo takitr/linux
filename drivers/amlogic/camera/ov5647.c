@@ -97,8 +97,7 @@ static struct v4l2_fract ov5647_frmintervals_active = {
 static int ov5647_have_open=0;
 
 extern configure *cf;
-
-static int is_capture = 0;
+static camera_mode_t ov5647_work_mode = CAMERA_PREVIEW;
 static struct class *cam_class;
 static unsigned int g_ae_manual_exp;
 static unsigned int g_ae_manual_ag;
@@ -2028,10 +2027,10 @@ bool OV5647_set_af_new_step(unsigned int af_step){
 void OV5647_set_new_format(int width,int height,int fr){
     int index = 0;
     current_fr = fr;
-    printk("sum:%d,is_capture:%d,fr:%d\n",cf->aet.sum,is_capture,fr);
+    printk("sum:%d,mode:%d,fr:%d\n",cf->aet.sum,ov5647_work_mode,fr);
     while(index < cf->aet.sum){
         if(width == cf->aet.aet[index].info->fmt_hactive && height == cf->aet.aet[index].info->fmt_vactive \
-                && fr == cf->aet.aet[index].info->fmt_main_fr && is_capture == cf->aet.aet[index].info->fmt_capture){
+                && fr == cf->aet.aet[index].info->fmt_main_fr && ov5647_work_mode == cf->aet.aet[index].info->fmt_capture){
             break;	
         }
         index++;	
@@ -2673,7 +2672,7 @@ static int OV5647_FlashCtrl(struct ov5647_device *dev, int flash_mode)
     return 0;
 }
 
-static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int is_capture, int width, int height)
+static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int ov5647_work_mode, int width, int height)
 {
     int i = 0;
     int arry_size = 0;
@@ -2682,7 +2681,7 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int i
     res_type = get_size_type(width, height);
     if (res_type == SIZE_NULL_TYPE)
         return NULL;
-    if (is_capture == 1) {
+    if (ov5647_work_mode == CAMERA_CAPTURE) {
         tmp_resolution_param = capture_resolution_array;
         arry_size = ARRAY_SIZE(capture_resolution_array);
     } else {
@@ -2703,7 +2702,7 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     int rc = -1;
     int i=0;
     unsigned char t = dev->cam_info.interface;
-    if(i_index != -1 && is_capture == 0){
+    if(i_index != -1 && ov5647_work_mode != CAMERA_CAPTURE){
         res_param = &debug_prev_resolution_array[i_index];
     }
     if (!res_param->reg_script[t]) {
@@ -2868,6 +2867,12 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 			set_focus_zone(dev, value);
 		}
 		break;
+	case V4L2_CID_FOCUS_AUTO:
+		printk("V4L2_CID_FOCUS_AUTO\n");
+		if(ov5647_qctrl[8].default_value!=value){
+			ov5647_qctrl[8].default_value=value;
+			OV5647_AutoFocus(dev,value);
+		}
   case V4L2_CID_PRIVACY:       
         break;
 	default:
@@ -3292,7 +3297,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
     if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
-        is_capture = 1;
+        ov5647_work_mode = CAMERA_CAPTURE;
         res_param = get_resolution_param(dev, 1, fh->width,fh->height);
         if (!res_param) {
             printk("error, resolution param not get\n");
@@ -3301,7 +3306,10 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
         set_resolution_param(dev, res_param);
     }
     else {
-        is_capture = 0;
+        if(fh->width == 1280 && fh->height == 720){
+        	ov5647_work_mode = CAMERA_RECORD;
+        }else
+        	ov5647_work_mode = CAMERA_PREVIEW;
         res_param = get_resolution_param(dev, 0, fh->width,fh->height);
         if (!res_param) {
             printk("error, resolution param not get\n");
@@ -3405,16 +3413,15 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.frame_rate = ov5647_frmintervals_active.denominator;
     para.h_active = ov5647_h_active;
     para.v_active = ov5647_v_active;
-    if(is_capture == 0){
-   		para.dest_hactive = dest_hactive;
-   		para.dest_vactive = dest_vactive;
-		dev->cam_para->cam_mode = CAMERA_PREVIEW;	
-   	}else{
+    if(ov5647_work_mode != CAMERA_CAPTURE){
+        para.dest_hactive = dest_hactive;
+        para.dest_vactive = dest_vactive;
+    }else{
         para.skip_count = 2;
-   		para.dest_hactive = 0;
-   		para.dest_vactive = 0;	
-		dev->cam_para->cam_mode = CAMERA_CAPTURE;	
-   	}
+        para.dest_hactive = 0;
+        para.dest_vactive = 0;		
+    }
+    dev->cam_para->cam_mode = ov5647_work_mode;
     para.hsync_phase = 1;
     para.vsync_phase  = 1;
     para.hs_bp = 0;
@@ -3814,7 +3821,7 @@ static int ov5647_open(struct file *file)
 
     ov5647_start_thread(fh);
     ov5647_have_open = 1;
-    is_capture = 0;
+    ov5647_work_mode = CAMERA_PREVIEW;
     dev->pindex.effect_index = 0;
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
