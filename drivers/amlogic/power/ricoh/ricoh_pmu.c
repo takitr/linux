@@ -203,6 +203,7 @@ struct aml_dvfs_driver rn5t618_dvfs_driver = {
     .set_voltage = rn5t618_set_voltage, 
     .get_voltage = rn5t618_get_voltage,
 };
+extern struct aml_pmu_driver rn5t618_pmu_driver;
 #endif
 
 static int ricoh_pmu_check_device(struct i2c_client *client)
@@ -258,6 +259,7 @@ static int ricoh_pmu_probe(struct i2c_client *client,
     #if defined(CONFIG_AML_DVFS) && defined(CONFIG_RN5T618)
         aml_dvfs_register_driver(&rn5t618_dvfs_driver);
     #endif
+        aml_pmu_register_driver(&rn5t618_pmu_driver);
     }
 #endif
     /*
@@ -293,6 +295,7 @@ static int ricoh_pmu_remove(struct i2c_client *client)
 #if defined(CONFIG_AML_DVFS) && defined(CONFIG_RN5T618)
     aml_dvfs_unregister_driver(&rn5t618_dvfs_driver);
 #endif
+    aml_pmu_clear_driver();
 #endif
 
     platform_device_del(pdev);

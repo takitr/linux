@@ -827,40 +827,78 @@ static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, v
 /*
  * add for debug 
  */
-static int     rn5t618_regs_base = 0;
-static ssize_t rn5t618_reg_base_show(struct device *dev, struct device_attribute *attr, char *buf)
+int printf_usage(void)
 {
-    return sprintf(buf, "rn5t618_regs_base: 0x%02x\n", rn5t618_regs_base); 
+
+    printk(" \n"
+           "usage:\n"
+           "echo [r/w/] [addr] [value] > pmu_reg\n"
+           "Example:\n"
+           "   echo r 0x33 > pmu_reg        ---- read  register 0x33\n"
+           "   echo w 0x33 0xa5 > pmu_reg   ---- write register 0x33 to 0xa5\n"
+           " \n");
+    return 0;
 }
 
-static ssize_t rn5t618_reg_base_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-    int tmp = simple_strtoul(buf, NULL, 16);
-    if (tmp > 255) {
-        RICOH_DBG("Invalid input value\n");
-        return -1;
-    }
-    rn5t618_regs_base = tmp;
-    RICOH_DBG("Set register base to 0x%02x\n", rn5t618_regs_base);
-    return count;
-}
-
-static ssize_t rn5t618_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t pmu_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
     uint8_t data;
-    rn5t618_read(rn5t618_regs_base, &data);
-    return sprintf(buf, "reg[0x%02x] = 0x%02x\n", rn5t618_regs_base, data);
+    return printf_usage(); 
 }
 
-static ssize_t rn5t618_reg_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t pmu_reg_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    uint8_t data = simple_strtoul(buf, NULL, 16);
-    if (data > 255) {
-        RICOH_DBG("Invalid input value\n");
-        return -1;
+    int ret;
+    int addr;
+    uint8_t value;
+    char *arg[3] = {}, *para, *buf_work, *p;
+    int i;
+
+    buf_work = kstrdup(buf, GFP_KERNEL);
+    p = buf_work;
+    for (i = 0; i < 3; i++) {
+        para = strsep(&p, " ");
+        if (para == NULL) {
+            break;
+        }
+        arg[i] = para;
     }
-    rn5t618_write(rn5t618_regs_base, data);
-    return count; 
+    if (i < 2 || i > 3) {
+        ret = 1;
+        goto error;
+    }
+    switch (arg[0][0]) {
+    case 'r':
+        addr = simple_strtoul(arg[1], NULL, 16);
+        ret = rn5t618_read(addr, &value);
+        if (!ret) {
+            printk("reg[0x%02x] = 0x%02x\n", addr, value);
+        }
+        break;
+
+    case 'w':
+        if (i != 3) {                       // parameter is not enough
+            ret = 1;
+            break;
+        }
+        addr  = simple_strtoul(arg[1], NULL, 16);
+        value = simple_strtoul(arg[2], NULL, 16);
+        ret = rn5t618_write(addr, value);
+        if (!ret) {
+            printk("set reg[0x%02x] to 0x%02x\n", addr, value);
+        }
+        break;
+
+    default:
+        ret = 1;
+        break;
+    }
+error:
+    kfree(buf_work);
+    if (ret == 1) {
+        printf_usage();
+    }
+    return count;
 }
 
 static ssize_t aml_pmu_vddao_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -1025,8 +1063,7 @@ static ssize_t report_delay_store(struct device *dev, struct device_attribute *a
 }
 
 static struct device_attribute rn5t618_supply_attrs[] = {
-    RICOH_ATTR(rn5t618_reg_base),
-    RICOH_ATTR(rn5t618_reg),
+    RICOH_ATTR(pmu_reg),
     RICOH_ATTR(aml_pmu_vddao),
     RICOH_ATTR(dbg_info),
     RICOH_ATTR(battery_para),
@@ -1308,7 +1345,7 @@ static void rn5t618_irq_work_func(struct work_struct *work)
     enable_irq(supply->irq);
 }
 
-static struct aml_pmu_driver rn5t618_pmu_driver = {
+struct aml_pmu_driver rn5t618_pmu_driver = {
     .name                           = "rn5t618",
     .pmu_get_coulomb                = rn5t618_get_coulomber, 
     .pmu_clear_coulomb              = rn5t618_clear_coulomber,
@@ -1421,7 +1458,6 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     dwc_otg_power_register_notifier(&supply->otg_nb);
     dwc_otg_charger_detect_register_notifier(&supply->usb_nb);
 #endif
-    aml_pmu_register_driver(&rn5t618_pmu_driver);
     if (supply->irq == RN5T618_IRQ_NUM) {
         INIT_WORK(&supply->irq_work, rn5t618_irq_work_func); 
         ret = request_irq(supply->irq, 
@@ -1593,7 +1629,7 @@ static void rn5t618_battery_exit(void)
     platform_driver_unregister(&rn5t618_battery_driver);
 }
 
-subsys_initcall(rn5t618_battery_init);
+module_init(rn5t618_battery_init);
 module_exit(rn5t618_battery_exit);
 
 MODULE_DESCRIPTION("RICOH PMU RN5T618 battery driver");
