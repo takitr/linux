@@ -15,6 +15,12 @@
 #include <asm/io.h>
 #include <mach/am_regs.h>
 #include "remote_main.h"
+#ifdef CONFIG_AML_HDMI_TX
+#ifdef CONFIG_ARCH_MESON8
+extern int cec_power_flag;
+unsigned char cec_repeat = 10;
+#endif
+#endif
 extern char *remote_log_buf;
 static int repeat_count = 0;
 static int dbg_printk(const char *fmt, ...)
@@ -385,6 +391,19 @@ int remote_hw_reprot_key(struct remote *remote_data)
 		}
 	}
 	else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg){	//repeate key
+#ifdef CONFIG_AML_HDMI_TX
+#ifdef CONFIG_ARCH_MESON8
+       extern int rc_long_press_pwr_key;
+		if((remote_data->repeat_release_code == 0x1a) && (!cec_repeat)) {
+            rc_long_press_pwr_key = 1;
+		    cec_repeat = 10;
+		    mdelay(20);
+		}
+		if(remote_data->repeat_release_code == 0x1a)
+ 		    cec_repeat--;
+
+#endif
+#endif
 		if (remote_data->repeat_enable) {
 			repeat_count++;
 			if (remote_data->repeat_tick < jiffies) {

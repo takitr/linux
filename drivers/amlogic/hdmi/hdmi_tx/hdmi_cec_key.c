@@ -50,14 +50,14 @@ __u16 cec_key_map[128] = {
     0 , 0, 0, 0, 0, 0, 0, 0,//0x30
     0 , 0, 0, 0, 0, 0, 0, 0,
     
-    KEY_POWER , KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_MUTE, KEY_PLAYPAUSE, KEY_STOP, KEY_PLAYPAUSE, 0,//0x40
-    KEY_REWIND, KEY_FASTFORWARD, 0, KEY_PREVIOUSSONG, KEY_NEXTSONG, 0, 0, 0,
+    KEY_POWER , KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_MUTE, KEY_PLAYPAUSE, KEY_STOP, KEY_PLAYPAUSE, KEY_RECORD,//0x40
+    KEY_REWIND, KEY_FASTFORWARD, KEY_EJECTCD, KEY_NEXTSONG, KEY_PREVIOUSSONG, 0, 0, 0,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x50
     0 , 0, 0, 0, 0, 0, 0, 0,
     KEY_PLAYCD, KEY_PLAYPAUSE, KEY_RECORD, KEY_PAUSECD, KEY_STOPCD, KEY_MUTE, 0, KEY_TUNER,//0x60
     0 , KEY_MEDIA, 0, 0, KEY_POWER, 0, 0, 0,
     0 , KEY_BLUE, KEY_RED, KEY_GREEN, KEY_YELLOW, 0, 0, 0,//0x70
-    0 , 0, 0, 0, 0, 0, 0, 0,
+    0 , 0, 0, 0, 0, 0, 0, 0x2fd,
 };
 
 void cec_send_event(cec_rx_message_t* pcec_message)
@@ -86,15 +86,13 @@ void cec_send_event(cec_rx_message_t* pcec_message)
     if(cec_key_flag) {
         input_event(remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 1);
         input_sync(remote_cec_dev);
-        hdmitx_cec_dbg_print("CEC:cec_key_map[operands[0]]:%d\n",cec_key_map[operands[0]]);
+        hdmitx_cec_dbg_print("CEC:key map:%d\n",cec_key_map[operands[0]]);
     }
     else{
         input_event(remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 0);
         input_sync(remote_cec_dev);
-        hdmitx_cec_dbg_print("CEC:cec_key_map[operands[0]]:%d\n",cec_key_map[operands[0]]);
+        hdmitx_cec_dbg_print("CEC:key map:%d\n",cec_key_map[operands[0]]);
     }   
-
-    hdmitx_cec_dbg_print("CEC:cec_send_event\n");
 }
 
 
@@ -113,7 +111,8 @@ void cec_send_event_irq(void)
     
     switch(cec_rx_msg_buf.cec_rx_message[cec_rx_msg_buf.rx_write_pos].content.msg.operands[0]){
     case 0x33:
-        cec_system_audio_mode_request();
+        //cec_system_audio_mode_request();
+        //cec_set_system_audio_mode();
         break;
     case 0x35:
         break;
@@ -125,9 +124,7 @@ void cec_send_event_irq(void)
     input_sync(remote_cec_dev);	
     input_event(remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 0);
     input_sync(remote_cec_dev);
-    hdmitx_cec_dbg_print("CEC:cec_key_map[operands_irq[0]]:%d\n",cec_key_map[operands_irq[0]]);       		
-   	
-    hdmitx_cec_dbg_print("CEC:cec_send_event_irq\n");  	 	
+    hdmitx_cec_dbg_print("CEC:key map:%d\n",cec_key_map[operands_irq[0]]);      		  	 	
 }
 
 void cec_user_control_pressed_irq(void)

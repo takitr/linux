@@ -59,10 +59,10 @@
 
 type_printk input_dbg;
 #ifdef CONFIG_AML_HDMI_TX
-extern void cec_inactive_source(void);
-extern void cec_set_standby(void);
+#ifdef CONFIG_ARCH_MESON6
 extern int cec_power_flag;
 unsigned char cec_repeat = 10;
+#endif
 #endif
 
 static DEFINE_MUTEX(remote_enable_mutex);
@@ -390,14 +390,16 @@ static inline int remote_hw_reprot_key(struct remote *remote_data)
 			return -1;
 		}
 #ifdef CONFIG_AML_HDMI_TX
-		//printk("last_scan_code:%x\n", last_scan_code);
+#ifdef CONFIG_ARCH_MESON6
 		if((((scan_code >> 16) & 0xff) == 0x1a) && (!cec_repeat)) {
+            extern int rc_long_press_pwr_key;
+            rc_long_press_pwr_key = 1;
 		    cec_repeat = 10;
-		    cec_set_standby();
 		    mdelay(20);
 		}
 		if(((scan_code >> 16) & 0xff) == 0x1a)
  		    cec_repeat--;
+#endif
 #endif
 		if (remote_data->repeat_enable) {
 			if ((remote_data->repeat_tick < jiffies)&&(repeat_flag == 1)) {

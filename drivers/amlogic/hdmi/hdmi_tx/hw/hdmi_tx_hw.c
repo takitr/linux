@@ -1362,7 +1362,7 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
 void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
 #ifdef CONFIG_ARCH_MESON8
-    aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 0xf, 23, 4); //Enable reg1[23:24]:HDMI SDA(5v)/SCL(5V)
+    aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 0xe, 23, 4); //Enable reg1[23:24]:HDMI SDA(5v)/SCL(5V) bit23: gpioh_3 cec
 #endif
     unsigned int tmp_add_data;
     

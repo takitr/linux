@@ -26,6 +26,9 @@ unsigned long hdmi_rd_reg(unsigned long addr);
 
 void hdmi_wr_reg(unsigned long addr, unsigned long data);
 
+unsigned long aocec_rd_reg(unsigned long addr);
+void aocec_wr_reg(unsigned long addr, unsigned long data);
+
 typedef struct {
     unsigned short cbus_addr;
     unsigned char gate_bit;
