@@ -1381,13 +1381,13 @@ void hdmi_pre_set_change_mode(void)
     //msleep(10);
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_TMDS_PHY_CNTL, PHY_OFF);
     hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_AVMUTE_CNTL, AVMUTE_SET);
-    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_ENABLE);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_ENABLE);
 //    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_CBUS_RST, 0);
-    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
     //msleep(50);
-    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_DISABLE);
-    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_CLEAR);
-    msleep(20);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_DISABLE);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_CLEAR);
+//    msleep(20);
     printk("%s[%d]\n", __func__, __LINE__);
     hdmitx_device.internal_mode_change = 0;
 }
