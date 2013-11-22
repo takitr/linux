@@ -117,6 +117,25 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
         r = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG1_BIT, GAIN_GRBG1_WID);
         g = RD_BITS(ISP_GAIN_GRBG01, GAIN_GRBG0_BIT, GAIN_GRBG0_WID);
         pr_info("%s: r:%d, g:%d b:%d.\n",__func__,r,g,b);
+	}else if(!strcmp(parm[0],"read_ae")){
+	    int i;
+		struct isp_ae_stat_s *ae = &devp->isp_ae;
+		for(i=0;i<16;i++)
+		pr_info("ae->luma_win[%d]=%d.\n",i,ae->luma_win[i]);
+		for(i=0;i<3;i++)
+		pr_info("ae->bayer_over_info[%d]=%d.\n",i,ae->bayer_over_info[i]);		
+	}else if(!strcmp(parm[0],"read_awb")){
+	    int i;
+		struct isp_awb_stat_s *awb = &devp->isp_awb;
+		for(i=0;i<3;i++)
+		pr_info("awb->rgb.rgb_sum[%d]=%d.\n",i,awb->rgb.rgb_sum[i]);
+		pr_info("awb->rgb.rgb_count=%d.\n",awb->rgb.rgb_count);	
+		for(i=0;i<4;i++)
+		pr_info("awb->yuv_low[%d].sum=%d,count=%d\n",i,awb->yuv_low[i].sum,awb->yuv_low[i].count);	
+		for(i=0;i<4;i++)
+		pr_info("awb->yuv_mid[%d].sum=%d,count=%d\n",i,awb->yuv_mid[i].sum,awb->yuv_mid[i].count);
+		for(i=0;i<4;i++)
+		pr_info("awb->yuv_high[%d].sum=%d,count=%d\n",i,awb->yuv_high[i].sum,awb->yuv_high[i].count);	
 	}
 	return len;
 }
@@ -743,6 +762,7 @@ static int isp_thread(isp_dev_t *devp) {
 	}
     if(kthread_should_stop())
         break;
+	msleep(30);
 	}
 }
 

@@ -496,19 +496,19 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							{
 								temp = 0;
 								aepa->targ++;
-								if(aepa->targ>(aep->targetmid+5))
-									aepa->targ = aep->targetmid+5;
+								if(aepa->targ>(aep->targetmid+15))
+									aepa->targ = aep->targetmid+15;
 							}
 							else 
 							{
 								temp = 1;
 								//targ = 80;
 							}
-							radium_inner = aep->radium_inner_l;
-							radium_outer = aep->radium_outer_l;
-							sm_state.env = ENV_LOW;
-							isp_set_ae_thrlpf(aep->thr_r_low, aep->thr_g_low, aep->thr_b_low, aep->lpftype_low);
 						}
+						radium_inner = aep->radium_inner_l;
+						radium_outer = aep->radium_outer_l;
+						sm_state.env = ENV_LOW;
+						isp_set_ae_thrlpf(aep->thr_r_low, aep->thr_g_low, aep->thr_b_low, aep->lpftype_low);
 						/*
 						else if((avg_envo >= aep->env_hign)||((avg_envo >= aep->env_hign2mid)&&targ == (aep->targethigh)))
 						{
