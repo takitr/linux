@@ -492,7 +492,10 @@ void tsync_avevent_locked(avevent_t event, u32 param)
     switch (event) {
     case VIDEO_START:
         tsync_video_started = 1;
-        if (tsync_enable && !get_vsync_pts_inc_mode()) {
+        /*set tsync mode to vmaster to avoid video block caused by avpts-diff too much
+          threshold 120s is an arbitrary value*/  
+        t = abs(timestamp_apts_get()-timestamp_vpts_get())/TIME_UNIT90K;
+        if (tsync_enable && !get_vsync_pts_inc_mode() && t<120) {
             tsync_mode = TSYNC_MODE_AMASTER;
         } else {
             tsync_mode = TSYNC_MODE_VMASTER;
@@ -646,7 +649,8 @@ void tsync_avevent_locked(avevent_t event, u32 param)
             }
             tsync_dec_reset_flag = 0;
             tsync_dec_reset_video_start = 0;
-        } else {
+        } else if(tsync_mode == TSYNC_MODE_AMASTER)
+        {
             timestamp_pcrscr_set(param);
         }
        
