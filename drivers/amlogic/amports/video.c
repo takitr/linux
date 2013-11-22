@@ -687,7 +687,7 @@ static void vpp_settings_v(vpp_frame_par_t *framePtr)
                    vpp_filter->vpp_vsc_start_phase_step);
 }
 
-static void zoom_display_horz(void)
+static void zoom_display_horz(int hscale)
 {
     VSYNC_WR_MPEG_REG(VD1_IF0_LUMA_X0 + cur_dev->viu_off,
                    (zoom_start_x_lines << VDIF_PIC_START_BIT) |
@@ -706,8 +706,8 @@ static void zoom_display_horz(void)
                    (zoom_end_x_lines / 2   << VDIF_PIC_END_BIT));
 
     VSYNC_WR_MPEG_REG(VIU_VD1_FMT_W + cur_dev->viu_off,
-                   ((zoom_end_x_lines - zoom_start_x_lines + 1) << VD1_FMT_LUMA_WIDTH_BIT) |
-                   ((zoom_end_x_lines / 2 - zoom_start_x_lines / 2 + 1) << VD1_FMT_CHROMA_WIDTH_BIT));
+                   (((zoom_end_x_lines - zoom_start_x_lines + 1) >> hscale) << VD1_FMT_LUMA_WIDTH_BIT) |
+                   (((zoom_end_x_lines / 2 - zoom_start_x_lines / 2 + 1) >> hscale) << VD1_FMT_CHROMA_WIDTH_BIT));
 
     VSYNC_WR_MPEG_REG(VD2_IF0_LUMA_X0,
                    (zoom_start_x_lines << VDIF_PIC_START_BIT) |
@@ -726,8 +726,8 @@ static void zoom_display_horz(void)
                    (zoom_end_x_lines / 2   << VDIF_PIC_END_BIT));
 
     VSYNC_WR_MPEG_REG(VIU_VD2_FMT_W + cur_dev->viu_off,
-                   ((zoom_end_x_lines - zoom_start_x_lines + 1) << VD1_FMT_LUMA_WIDTH_BIT) |
-                   ((zoom_end_x_lines / 2 - zoom_start_x_lines / 2 + 1) << VD1_FMT_CHROMA_WIDTH_BIT));
+                   (((zoom_end_x_lines - zoom_start_x_lines + 1) >> hscale) << VD1_FMT_LUMA_WIDTH_BIT) |
+                   (((zoom_end_x_lines / 2 - zoom_start_x_lines / 2 + 1) >> hscale) << VD1_FMT_CHROMA_WIDTH_BIT));
 }
 
 static void zoom_display_vert(void)
@@ -1049,6 +1049,11 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         r &= 0xffffffbf;
     }
 #endif
+
+    if (frame_par->hscale_skip_count) {
+        r |= VDIF_CHROMA_HZ_AVG | VDIF_LUMA_HZ_AVG;
+    }
+
     VSYNC_WR_MPEG_REG(VD1_IF0_GEN_REG + cur_dev->viu_off, r);
     VSYNC_WR_MPEG_REG(VD2_IF0_GEN_REG, r);
 
@@ -1943,6 +1948,7 @@ SET_FILTER:
         u32 vin_type = cur_dispbuf->type & VIDTYPE_TYPEMASK;
 
         {
+            if (frame_par_ready_to_set)
             viu_set_dcu(cur_frame_par, cur_dispbuf);
         }
 
@@ -1997,7 +2003,7 @@ SET_FILTER:
 
             zoom_start_x_lines = cur_frame_par->VPP_hd_start_lines_;
             zoom_end_x_lines   = cur_frame_par->VPP_hd_end_lines_;
-            zoom_display_horz();
+            zoom_display_horz(cur_frame_par->hscale_skip_count);
 
             zoom_start_y_lines = zoom_start_y;
             zoom_end_y_lines   = zoom_end_y;

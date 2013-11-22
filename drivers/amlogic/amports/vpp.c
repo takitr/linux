@@ -23,6 +23,9 @@
 #include <linux/err.h>
 #include <linux/amlogic/vout/vinfo.h>
 #include <mach/am_regs.h>
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#include <mach/vpu.h>
+#endif
 #include <linux/amlogic/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
@@ -53,7 +56,7 @@
 #define MAX_NONLINEAR_FACTOR    0x40
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-#define VPP_SPEED_FACTOR 1296
+#define VPP_SPEED_FACTOR 0x110ULL
 #endif
 
 const u32 vpp_filter_coefs_bicubic_sharp[] = {
@@ -277,31 +280,32 @@ vpp_process_speed_check(u32 width_in,
                         const vinfo_t *vinfo)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    // processing line numbers (height_in)
-    // output screen hight (height_out) vs. screen height (height_screen) ratio, output frame rate
-
-    // if (((height_in/1296) * (height_screen / height_out) * ((vinfo->sync_duration_num/vinfo->sync_duration_den)/60)) > 1) {
-    if (!get_prot_on() && ((height_in * height_screen * vinfo->sync_duration_num) > (VPP_SPEED_FACTOR * height_out * vinfo->sync_duration_den * 60))) {
-        // @60hz output, vpp can process 1296 lines when output window fully running, it's a measured result and can be adjustable
-        return 1;
+    if (height_in > height_out) {
+        if (div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
+                    height_out * vinfo->sync_duration_den * 256) > get_vpu_clk()) {
+            return SPEED_CHECK_VSKIP;
+        } else {
+            return SPEED_CHECK_DONE;
+        }
+    } else if (next_frame_par->hscale_skip_count== 0) {
+        if (div_u64(VPP_SPEED_FACTOR * width_in * vinfo->sync_duration_num * height_screen,
+                    vinfo->sync_duration_den * 256) > get_vpu_clk()) {
+            return SPEED_CHECK_HSKIP;
+        } else {
+            return SPEED_CHECK_DONE;
+        }
     }
 
-    // no skip
-    return 0;
+    return SPEED_CHECK_DONE;
 
 #else
-
-   if((height_in > 1080)&&(next_frame_par->vscale_skip_count== 0 )){
-   		return 1;
-   }
-
     if (video_speed_check_width * video_speed_check_height * height_out > height_screen * width_in * height_in) {
-        return 0;
+        return SPEED_CHECK_DONE;
     }
 
     amlog_mask(LOG_MASK_VPP, "vpp_process_speed_check failed\n");
 
-    return 1;
+    return SPEED_CHECK_VSKIP;
 #endif
 }
 
@@ -346,6 +350,7 @@ vpp_set_filters2(u32 width_in,
 #endif
 
     next_frame_par->vscale_skip_count = 0;
+    next_frame_par->hscale_skip_count = 0;
 
     if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
         next_frame_par->vscale_skip_count++;
@@ -542,7 +547,6 @@ RESTART:
                            vpp_flags & VPP_FLAG_INTERLACE_OUT);
 
     /* horizontal */
-
     filter->vpp_hf_start_phase_slope = 0;
     filter->vpp_hf_end_phase_slope   = 0;
     filter->vpp_hf_start_phase_step  = ratio_x << 6;
@@ -627,23 +631,34 @@ RESTART:
      * if we need skip half resolution on source side for progressive
      * frames.
      */
-    if ((next_frame_par->vscale_skip_count < 4)&&(!(vpp_flags & VPP_FLAG_VSCALE_DISABLE))&&
-        vpp_process_speed_check(next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1,
-                                (next_frame_par->VPP_vd_end_lines_ - next_frame_par->VPP_vd_start_lines_ + 1) / (next_frame_par->vscale_skip_count + 1) ,
-                                next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
-                                height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0),
-                                next_frame_par,
-                                vinfo)) {
-        if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
-            next_frame_par->vscale_skip_count += 2;
-        } else {
-            next_frame_par->vscale_skip_count++;
-        }
+    if ((next_frame_par->vscale_skip_count < 4)&&(!(vpp_flags & VPP_FLAG_VSCALE_DISABLE))) {
+        int skip = vpp_process_speed_check(
+                       (next_frame_par->VPP_hd_end_lines_ - next_frame_par->VPP_hd_start_lines_ + 1) / (next_frame_par->hscale_skip_count + 1),
+                       (next_frame_par->VPP_vd_end_lines_ - next_frame_par->VPP_vd_start_lines_ + 1) / (next_frame_par->vscale_skip_count + 1),
+                       next_frame_par->VPP_vsc_endp - next_frame_par->VPP_vsc_startp,
+                       height_out >> ((vpp_flags & VPP_FLAG_INTERLACE_OUT) ? 1 : 0),
+                       next_frame_par,
+                       vinfo);
 
-        goto RESTART;
+        if (skip == SPEED_CHECK_VSKIP) {
+            if (vpp_flags & VPP_FLAG_INTERLACE_IN) {
+                next_frame_par->vscale_skip_count += 2;
+            } else {
+                next_frame_par->vscale_skip_count++;
+            }
+            goto RESTART;
+
+        } else if (skip == SPEED_CHECK_HSKIP) {
+            next_frame_par->hscale_skip_count = 1;
+        }
     }
 
     filter->vpp_hsc_start_phase_step = ratio_x << 6;
+
+    if (next_frame_par->hscale_skip_count) {
+        filter->vpp_hf_start_phase_step >>= 1;
+        next_frame_par->VPP_line_in_length_ >>= 1;
+    }
 
     next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
 }

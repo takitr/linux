@@ -39,6 +39,10 @@
 #define ASPECT_4_3      ((3<<8)/4)
 #define ASPECT_16_9     ((9<<8)/16)
 
+#define SPEED_CHECK_DONE	0
+#define SPEED_CHECK_HSKIP	1
+#define SPEED_CHECK_VSKIP	2
+
 typedef enum {
     F2V_IT2IT = 0,
     F2V_IB2IB,
@@ -104,6 +108,7 @@ typedef struct {
 
     u32 VPP_postproc_misc_;
     u32 vscale_skip_count;
+    u32 hscale_skip_count;
 } vpp_frame_par_t;
 
 extern void

@@ -199,7 +199,7 @@ static unsigned int get_vpu_clk_level(unsigned int video_clk)
 	return clk_level;
 }
 
-static unsigned int get_vpu_clk(void)
+unsigned int get_vpu_clk(void)
 {
 	unsigned int clk_freq;
 	unsigned int clk_source, clk_div;

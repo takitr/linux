@@ -38,6 +38,7 @@ typedef enum {
 #define VPU_MEM_POWER_ON		0
 #define VPU_MEM_POWER_DOWN		1
 
+extern unsigned int get_vpu_clk(void);
 extern unsigned int get_vpu_clk_vmod(unsigned int vmod);
 extern int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod);
 extern int release_vpu_clk_vmod(unsigned int vmod);
