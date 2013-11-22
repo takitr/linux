@@ -53,7 +53,7 @@ static int  update_table_item(u32 addr,u32 val)
 {
 	int i;
 
-	if(item_count > MAX_TABLE_ITEM) return -1;
+	if(item_count > (MAX_TABLE_ITEM-1)) return -1;
 
 	//new comer,then add it .
 	rdma_table[item_count].addr=addr;
@@ -228,6 +228,7 @@ static int  osd_rdma_init(void)
 		printk("%s: failed to remap rmda_table_addr\n", __func__);
 		return -1;
 	}
+
 	return 0;
 }
 
