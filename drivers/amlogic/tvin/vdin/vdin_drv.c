@@ -737,8 +737,7 @@ int stop_tvin_service(int no)
 	struct vdin_dev_s *devp;
 	unsigned int end_time;
 	devp = vdin_devp[no];
-	end_time = jiffies_to_msecs(jiffies);
-	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
+	
 	if(!(devp->flags&VDIN_FLAG_DEC_STARTED)){
 		pr_err("%s:decode hasn't started.\n",__func__);
 		return -EBUSY;
@@ -760,6 +759,8 @@ int stop_tvin_service(int no)
 	devp->flags &= (~VDIN_FLAG_DEC_STARTED);
 	/* free irq */
 	free_irq(devp->irq,(void *)devp);
+	end_time = jiffies_to_msecs(jiffies);
+	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
 	return 0;
 }
 EXPORT_SYMBOL(stop_tvin_service);
@@ -1310,14 +1311,7 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	}
 	/*check vs is valid base on the time during continuous vs*/
         vdin_check_cycle(devp);
-        /*check the skip frame*/
-        if(devp->frontend && devp->frontend->sm_ops){
-    	        sm_ops = devp->frontend->sm_ops;
-                if(sm_ops->check_frame_skip && 
-        	        sm_ops->check_frame_skip(devp->frontend)) {
-            	        goto irq_handled;
-                }
-        }
+        
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	if (devp->flags & VDIN_FLAG_DEC_STOP_ISR){
 		vdin_hw_disable(devp->addr_offset);
@@ -1352,12 +1346,20 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 			recycle_tmp_vfs(devp->vfp);
 			tmp_vf_put(curr_wr_vfe,devp->vfp);
 			curr_wr_vfe = NULL;
-        /*function of capture end,the reserved is the best*/
+                /*function of capture end,the reserved is the best*/
 		} else if(ret == TVIN_BUF_RECYCLE_TMP) {
-            tmp_to_rd(devp->vfp);
+                        tmp_to_rd(devp->vfp);
 			goto irq_handled;
-        }
+                }
 	}
+	/*check the skip frame*/
+        if(devp->frontend && devp->frontend->sm_ops){
+    	        sm_ops = devp->frontend->sm_ops;
+                if(sm_ops->check_frame_skip && 
+        	        sm_ops->check_frame_skip(devp->frontend)) {
+            	        goto irq_handled;
+                }
+        }
 
         next_wr_vfe = provider_vf_peek(devp->vfp);
 

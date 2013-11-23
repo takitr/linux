@@ -827,6 +827,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
+		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 16;
