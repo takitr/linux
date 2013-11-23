@@ -29,7 +29,7 @@
 #include <linux/kthread.h>
 #include <linux/highmem.h>
 #include <linux/freezer.h>
-#include <media/videobuf-vmalloc.h>
+#include <media/videobuf-res.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <linux/wakelock.h>
@@ -40,6 +40,7 @@
 #include <linux/amlogic/mipi/am_mipi_csi2.h>
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <linux/amlogic/vmapi.h>
+#include "common/vm.h"
 
 #include <mach/am_regs.h>
 #include <mach/pinmux.h>
@@ -58,6 +59,8 @@ static struct early_suspend ov5647_early_suspend;
 #include "common/config_parser.h"
 
 #define OV5647_CAMERA_MODULE_NAME "ov5647"
+#define MAGIC_RE_MEM 0x123039dc
+#define OV5647_RES0_CANVAS_INDEX CAMERA_USER_CANVAS_INDEX
 
 
 /* Wake up at about 30 fps */
@@ -270,7 +273,19 @@ static struct v4l2_frmivalenum ov5647_frmivalenum[]={
                 {
                         .discrete	={
                                 .numerator	= 1,
-                                .denominator	= 15,
+                                .denominator	= 30,
+                        }
+                }
+        },{
+                .index 		= 0,
+                .pixel_format	= V4L2_PIX_FMT_NV21,
+                .width		= 1920,
+                .height		= 1080,
+                .type		= V4L2_FRMIVAL_TYPE_DISCRETE,
+                {
+                        .discrete	={
+                                .numerator	= 1,
+                                .denominator	= 30,
                         }
                 }
         },{
@@ -501,6 +516,8 @@ struct ov5647_buffer {
 	struct videobuf_buffer vb;
 
 	struct ov5647_fmt        *fmt;
+	
+	unsigned int canvas_id;
 };
 
 struct ov5647_dmaqueue {
@@ -586,6 +603,8 @@ struct ov5647_fh {
 	struct ov5647_fmt            *fmt;
 	unsigned int               width, height;
 	struct videobuf_queue      vb_vidq;
+
+	struct videobuf_res_privdata res;
 
 	enum v4l2_buf_type         type;
 	int			   input; 	/* Input Number on bars */
@@ -1811,10 +1830,10 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
-		.active_frmsize		= {1920, 1080},
-		.active_fps			= 15,
+		.active_frmsize		= {1280, 720},
+		.active_fps			= 30,
 		.size_type			= SIZE_1080P_1920X1080,
-		.reg_script[0]			= OV5647_preview_1080P_script,
+		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},{
 		.frmsize			= {2592, 1944},
@@ -1858,10 +1877,10 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
-		.active_frmsize		= {1920, 1080},
-		.active_fps			= 15,
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
 		.size_type			= SIZE_1080P_1920X1080,
-		.reg_script[0]			= OV5647_preview_1080P_script,
+		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	}
 };
@@ -2750,8 +2769,8 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     }
     ov5647_frmintervals_active.numerator = 1;
     ov5647_frmintervals_active.denominator = res_param->active_fps;
-    ov5647_h_active = res_param->frmsize.width;
-    ov5647_v_active = res_param->frmsize.height;
+    ov5647_h_active = res_param->active_frmsize.width;
+    ov5647_v_active = res_param->active_frmsize.height;
     OV5647_set_new_format(ov5647_h_active,ov5647_v_active,current_fr);// should set new para
 }    /* OV5647_set_resolution */
 
@@ -2788,6 +2807,38 @@ unsigned char v4l_2_ov5647(int val)
 	if(ret<4) return ret*0x20+0x80;
 	else if(ret<8) return ret*0x20+0x20;
 	else return 0;
+}
+
+static int convert_canvas_index(unsigned int v4l2_format, unsigned int start_canvas)
+{
+	int canvas = start_canvas;
+
+	switch(v4l2_format){
+	case V4L2_PIX_FMT_RGB565X:
+	case V4L2_PIX_FMT_VYUY:
+		canvas = start_canvas;
+		break;
+	case V4L2_PIX_FMT_YUV444:
+	case V4L2_PIX_FMT_BGR24:
+	case V4L2_PIX_FMT_RGB24:
+		canvas = start_canvas;
+		break; 
+	case V4L2_PIX_FMT_NV12:
+	case V4L2_PIX_FMT_NV21: 
+		canvas = start_canvas | ((start_canvas+1)<<8);
+		break;
+	case V4L2_PIX_FMT_YVU420:
+	case V4L2_PIX_FMT_YUV420:
+		if(V4L2_PIX_FMT_YUV420 == v4l2_format){
+			canvas = start_canvas|((start_canvas+1)<<8)|((start_canvas+2)<<16);
+		}else{
+			canvas = start_canvas|((start_canvas+2)<<8)|((start_canvas+1)<<16);
+		}
+		break;
+	default:
+		break;
+	}
+	return canvas;
 }
 
 static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
@@ -2898,18 +2949,24 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 static void ov5647_fillbuff(struct ov5647_fh *fh, struct ov5647_buffer *buf)
 {
 	struct ov5647_device *dev = fh->dev;
-	void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	//void *vbuf = videobuf_to_vmalloc(&buf->vb);
+	void *vbuf = (void *)videobuf_to_res(&buf->vb);
 	vm_output_para_t para = {0};
 	dprintk(dev,1,"%s\n", __func__);
 	if (!vbuf)
 		return;
 	/*  0x18221223 indicate the memory type is MAGIC_VMAL_MEM*/
+	if(buf->canvas_id == 0)
+		buf->canvas_id = convert_canvas_index(fh->fmt->fourcc, OV5647_RES0_CANVAS_INDEX+buf->vb.i*3);
 	para.mirror = ov5647_qctrl[2].default_value&3;// not set
 	para.v4l2_format = fh->fmt->fourcc;
-	para.v4l2_memory = 0x18221223;
+	para.v4l2_memory = MAGIC_RE_MEM;//0x18221223;
 	para.zoom = ov5647_qctrl[10].default_value;
 	para.angle = ov5647_qctrl[11].default_value;
 	para.vaddr = (unsigned)vbuf;
+	para.ext_canvas = buf->canvas_id;
+	para.width = buf->vb.width;
+	para.height = buf->vb.height;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
@@ -3052,10 +3109,14 @@ static void ov5647_stop_thread(struct ov5647_dmaqueue  *dma_q)
 static int
 buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
-	struct ov5647_fh  *fh = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5647_fh *fh  = container_of(res, struct ov5647_fh, res);
 	struct ov5647_device *dev  = fh->dev;
     //int bytes = fh->fmt->depth >> 3 ;
-	*size = (fh->width*fh->height*fh->fmt->depth)>>3;
+	int height = fh->height;
+	if(height==1080)
+		height = 1088;
+	*size = (fh->width*height*fh->fmt->depth)>>3;  
 	if (0 == *count)
 		*count = 32;
 
@@ -3070,7 +3131,8 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 
 static void free_buffer(struct videobuf_queue *vq, struct ov5647_buffer *buf)
 {
-	struct ov5647_fh  *fh = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5647_fh *fh  = container_of(res, struct ov5647_fh, res);
 	struct ov5647_device *dev  = fh->dev;
 
 	dprintk(dev, 1, "%s, state: %i\n", __func__, buf->vb.state);
@@ -3079,7 +3141,7 @@ static void free_buffer(struct videobuf_queue *vq, struct ov5647_buffer *buf)
 	if (in_interrupt())
 		BUG();
 
-	videobuf_vmalloc_free(&buf->vb);
+	videobuf_res_free(vq, &buf->vb);
 	dprintk(dev, 1, "free_buffer: freed\n");
 	buf->vb.state = VIDEOBUF_NEEDS_INIT;
 }
@@ -3090,7 +3152,8 @@ static int
 buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 						enum v4l2_field field)
 {
-	struct ov5647_fh     *fh  = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5647_fh *fh  = container_of(res, struct ov5647_fh, res);
 	struct ov5647_device    *dev = fh->dev;
 	struct ov5647_buffer *buf = container_of(vb, struct ov5647_buffer, vb);
 	int rc;
@@ -3134,7 +3197,8 @@ static void
 buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 {
 	struct ov5647_buffer    *buf  = container_of(vb, struct ov5647_buffer, vb);
-	struct ov5647_fh        *fh   = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5647_fh *fh  = container_of(res, struct ov5647_fh, res);
 	struct ov5647_device       *dev  = fh->dev;
 	struct ov5647_dmaqueue *vidq = &dev->vidq;
 
@@ -3147,7 +3211,8 @@ static void buffer_release(struct videobuf_queue *vq,
 			   struct videobuf_buffer *vb)
 {
 	struct ov5647_buffer   *buf  = container_of(vb, struct ov5647_buffer, vb);
-	struct ov5647_fh       *fh   = vq->priv_data;
+	struct videobuf_res_privdata *res = vq->priv_data;
+	struct ov5647_fh *fh  = container_of(res, struct ov5647_fh, res);
 	struct ov5647_device      *dev  = (struct ov5647_device *)fh->dev;
 
 	dprintk(dev, 1, "%s\n", __func__);
@@ -3172,7 +3237,7 @@ static int vidioc_querycap(struct file *file, void  *priv,
 	struct ov5647_device *dev = fh->dev;
 
 	strcpy(cap->driver, "ov5647");
-	strcpy(cap->card, "ov5647");
+	strcpy(cap->card, "ov5647.canvas");
 	strlcpy(cap->bus_info, dev->v4l2_dev.name, sizeof(cap->bus_info));
 	cap->version = OV5647_CAMERA_VERSION;
 	cap->capabilities =	V4L2_CAP_VIDEO_CAPTURE |
@@ -3307,7 +3372,9 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
         set_resolution_param(dev, res_param);
     }
     else {
-        if(fh->width == 1280 && fh->height == 720){
+    	printk("preview resolution is %dX%d\n",fh->width,  fh->height);
+        if((fh->width == 1280 && fh->height == 720) || 
+        	(fh->width == 1920 && fh->height == 1080)){
         	ov5647_work_mode = CAMERA_RECORD;
         }else
         	ov5647_work_mode = CAMERA_PREVIEW;
@@ -3362,7 +3429,15 @@ static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *p)
 {
 	struct ov5647_fh  *fh = priv;
 
-	return (videobuf_querybuf(&fh->vb_vidq, p));
+	int ret = videobuf_querybuf(&fh->vb_vidq, p);
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+	if(ret == 0){
+		p->reserved  = convert_canvas_index(fh->fmt->fourcc, OV5647_RES0_CANVAS_INDEX+p->index*3);
+	}else{
+		p->reserved = 0;
+	}
+#endif		
+	return ret;
 }
 
 static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p)
@@ -3427,7 +3502,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.vsync_phase  = 1;
     para.hs_bp = 0;
     para.vs_bp = 2;
-    para.cfmt = TVIN_YUV422;
+    para.cfmt = TVIN_NV21;
     para.dfmt = TVIN_NV21;
     para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
     para.bt_path = dev->cam_info.bt_path;
@@ -3574,7 +3649,7 @@ static int vidioc_enum_framesizes(struct file *file, void *fh,struct v4l2_frmsiz
                               "   before fsize->index== %d\n",fsize->index);//potti
               if (fsize->index >= ARRAY_SIZE(prev_resolution_array))
                       return -EINVAL;
-              frmsize = &prev_resolution_array[fsize->index].active_frmsize;
+              frmsize = &prev_resolution_array[fsize->index].frmsize;
               printk("ov5647_prev_resolution[fsize->index]"
                               "   after fsize->index== %d\n",fsize->index);
               fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
@@ -3744,6 +3819,8 @@ static int ov5647_open(struct file *file)
 {
     struct ov5647_device *dev = video_drvdata(file);
     struct ov5647_fh *fh = NULL;
+    resource_size_t mem_start = 0;
+    unsigned int mem_size = 0;
     int retval = 0;
 #if CONFIG_CMA
     retval = vm_init_buf(24*SZ_1M);
@@ -3816,10 +3893,15 @@ static int ov5647_open(struct file *file)
     }
     /* Resets frame counters */
     dev->jiffies = jiffies;
-    videobuf_queue_vmalloc_init(&fh->vb_vidq, &ov5647_video_qops,
-            NULL, &dev->slock, fh->type, V4L2_FIELD_INTERLACED,
-            sizeof(struct ov5647_buffer), fh,NULL);
 
+    get_vm_buf_info(&mem_start, &mem_size, NULL);
+    fh->res.start = mem_start;
+    fh->res.end = mem_start+mem_size-1;
+    fh->res.magic = MAGIC_RE_MEM;
+    fh->res.priv = NULL;
+    videobuf_queue_res_init(&fh->vb_vidq, &ov5647_video_qops,
+    			NULL, &dev->slock, fh->type, V4L2_FIELD_INTERLACED,
+    			sizeof(struct ov5647_buffer), (void*)&fh->res, NULL);
     ov5647_start_thread(fh);
     ov5647_have_open = 1;
     ov5647_work_mode = CAMERA_PREVIEW;
