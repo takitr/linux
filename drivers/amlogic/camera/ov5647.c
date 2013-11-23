@@ -3414,10 +3414,10 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.h_active = ov5647_h_active;
     para.v_active = ov5647_v_active;
     if(ov5647_work_mode != CAMERA_CAPTURE){
+	para.skip_count = 2;
         para.dest_hactive = dest_hactive;
         para.dest_vactive = dest_vactive;
     }else{
-        para.skip_count = 2;
         para.dest_hactive = 0;
         para.dest_vactive = 0;		
     }
