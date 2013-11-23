@@ -112,7 +112,7 @@ static unsigned int current_fmt;
 static unsigned int current_fr = 0;//50 hz
 static unsigned int aet_index;
 static unsigned int last_af_step = 0;
-static int i_index = 3;
+static int i_index = -1;
 static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
@@ -1782,8 +1782,8 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 
 static resolution_param_t  debug_prev_resolution_array[] = {
 	{
-		.frmsize			= {640, 480},
-		.active_frmsize		= {352, 288},
+		.frmsize			= {352, 288},
+		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
 		.size_type			= SIZE_CIF_352X288,
 		.reg_script[0]			= OV5647_preview_VGA_script,
@@ -1829,8 +1829,8 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 
 static resolution_param_t  prev_resolution_array[] = {
 	{
-		.frmsize			= {640, 480},
-		.active_frmsize		= {352, 288},
+		.frmsize			= {352, 288},
+		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
 		.size_type			= SIZE_CIF_352X288,
 		.reg_script[0]			= OV5647_preview_VGA_script,
@@ -2678,6 +2678,7 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int o
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
     resulution_size_type_t res_type = SIZE_NULL_TYPE;
+    printk("target resolution is %dX%d\n", width, height);
     res_type = get_size_type(width, height);
     if (res_type == SIZE_NULL_TYPE)
         return NULL;
