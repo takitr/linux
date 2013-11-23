@@ -760,9 +760,8 @@ static int isp_thread(isp_dev_t *devp) {
 			func->set_af_new_step(devp->af_info.cur_step);
 		}
 	}
-    if(kthread_should_stop())
-        break;
-	msleep(30);
+        if(kthread_should_stop())
+                break;
 	}
 }
 
@@ -956,7 +955,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	cmd = param->cam_command;
 	devp->cam_param = param;
 	if(ioctl_debug)
-	 	pr_info("[%s..]%s:cmd: %s .\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd));
+	 	pr_info("[%s..]%s:cmd: %s run mode %u.\n",DEVICE_NAME,__func__,cam_cmd_to_str(cmd),devp->cam_param->cam_mode);
 	switch(cmd) {
                 case CAM_COMMAND_INIT:
 		        break;
@@ -974,7 +973,9 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	                devp->flag |= ISP_FLAG_SET_EFFECT;
 		        break;
                 case CAM_COMMAND_AWB:
-	                devp->flag |= ISP_FLAG_AWB;
+			if(!(devp->flag & ISP_FLAG_CAPTURE)){
+	               	        devp->flag |= ISP_FLAG_AWB;
+			}
 		        break;
 		case CAM_COMMAND_MWB:
 			devp->flag &= (~ISP_FLAG_AWB);
@@ -990,8 +991,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			break;
                 // ae related
                 case CAM_COMMAND_AE_ON:
-		        isp_sm_init(devp);
-		        devp->flag |= ISP_FLAG_AE;
+			if(!(devp->flag & ISP_FLAG_CAPTURE)){
+		        	isp_sm_init(devp);
+		        	devp->flag |= ISP_FLAG_AE;
+			}
 		        break;
                 case CAM_COMMAND_AE_OFF:
 		        devp->flag &= (~ISP_FLAG_AE);
@@ -1011,26 +1014,30 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			af_sm_init(devp);
 		        break;
                 case CAM_COMMAND_TOUCH_FOCUS:
-			//devp->isp_af_parm = &param->xml_scenes->af;
-			devp->isp_af_parm->x = param->xml_scenes->af.x;
-			devp->isp_af_parm->y = param->xml_scenes->af.y;
-			x0 = devp->isp_af_parm->x>devp->af_info.radius?devp->isp_af_parm->x-devp->af_info.radius:0;
-			y0 = devp->isp_af_parm->y>devp->af_info.radius?devp->isp_af_parm->y-devp->af_info.radius:0;
-			x1 = devp->isp_af_parm->x + devp->af_info.radius;
-			y1 = devp->isp_af_parm->y + devp->af_info.radius;
-			if(x1 >= devp->info.h_active)
-				x1 = devp->info.h_active - 1;
-			if(y1 >= devp->info.v_active)
-				y1 = devp->info.v_active - 1;
-			if(ioctl_debug)
-				pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
+			if(!(devp->flag & ISP_FLAG_CAPTURE)){
+			        //devp->isp_af_parm = &param->xml_scenes->af;
+			        devp->isp_af_parm->x = param->xml_scenes->af.x;
+			        devp->isp_af_parm->y = param->xml_scenes->af.y;
+			        x0 = devp->isp_af_parm->x>devp->af_info.radius?devp->isp_af_parm->x-devp->af_info.radius:0;
+			        y0 = devp->isp_af_parm->y>devp->af_info.radius?devp->isp_af_parm->y-devp->af_info.radius:0;
+			        x1 = devp->isp_af_parm->x + devp->af_info.radius;
+			        y1 = devp->isp_af_parm->y + devp->af_info.radius;
+			        if(x1 >= devp->info.h_active)
+				        x1 = devp->info.h_active - 1;
+			        if(y1 >= devp->info.v_active)
+				        y1 = devp->info.v_active - 1;
+			        if(ioctl_debug)
+				        pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);
-			isp_set_af_scan_stat(x0,y0,x1,y1);
-			devp->flag |= ISP_FLAG_TOUCH_AF;
-			af_sm_init(devp);
+			        isp_set_af_scan_stat(x0,y0,x1,y1);
+			        devp->flag |= ISP_FLAG_TOUCH_AF;
+			        af_sm_init(devp);
+			}
 		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
-			devp->flag |= ISP_FLAG_AF;
+			if(!(devp->flag & ISP_FLAG_CAPTURE)){
+			        devp->flag |= ISP_FLAG_AF;
+			}
 		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_OFF:
 			devp->flag &= (~ISP_FLAG_AF);

@@ -239,6 +239,7 @@ unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
     struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
     struct cam_function_s *func = &devp->cam_param->cam_function;
 
+    aepa->max_step = func->get_aet_max_step();
     format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
     aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
     ae_sens.new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
@@ -272,6 +273,8 @@ unsigned int isp_tune_exposure(isp_dev_t *devp)
 int isp_ae_save_current_para(isp_dev_t *devp)
 {
     struct cam_function_s *func = &devp->cam_param->cam_function;
+    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+    aepa->max_step = func->get_aet_max_step();
 
     if (func && func->get_aet_gain_by_step)
         aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
