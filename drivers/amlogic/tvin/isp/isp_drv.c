@@ -829,7 +829,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
-		devp->isp_af_parm->valid_step_cnt = 16;
+		devp->isp_af_parm->valid_step_cnt = 8;
 		devp->isp_af_parm->af_fail_ratio = 120;
 		devp->isp_af_parm->af_step_mid_thre= 250;
 		devp->isp_af_parm->af_step_max_thre = 550;
@@ -852,8 +852,8 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->isp_af_parm->step[15] = 550;
 		if(af_ave_step_en){
 			int temp;
-			for(temp=0;temp<16;temp++)
-				devp->isp_af_parm->step[temp] = 100+30*temp;
+			for(temp=0;temp<8;temp++)
+				devp->isp_af_parm->step[temp] = 100+60*temp;
 		}
 		devp->isp_af_parm->jump_offset = 100;
 		devp->isp_af_parm->field_delay = 2;
@@ -1008,7 +1008,8 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			devp->flag |= ISP_FLAG_AF;
 		        break;
                 case CAM_COMMAND_FULLSCAN:
-			isp_set_af_scan_stat(0,0,devp->info.h_active-1,devp->info.v_active-1);
+				//isp_set_af_scan_stat(0,0,devp->info.h_active-1,devp->info.v_active-1);
+				isp_set_af_scan_stat(devp->af_info.x0,devp->af_info.y0,devp->af_info.x1,devp->af_info.y1);
 			devp->flag |= ISP_FLAG_TOUCH_AF;
 			devp->cmd_state = CAM_STATE_DOING;
 			af_sm_init(devp);

@@ -1314,6 +1314,7 @@ void isp_af_sm(isp_dev_t *devp)
 			}
 			break;
 		case AF_CALC_GREAT:
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
 			af_info->great_step = get_best_step(af_info,af_alg);
 			af_info->cur_step = (af_info->great_step > af_alg->jump_offset) ? (af_info->great_step - af_alg->jump_offset) : 0;
 			if(af_sm_dg&1)
@@ -1321,6 +1322,7 @@ void isp_af_sm(isp_dev_t *devp)
 			atomic_set(&af_info->writeable,1);
 			af_delay = 0;
 			sm_state.af_state = AF_GET_FINE_INFO;
+			}
 			break;
 		case AF_GET_FINE_INFO:
 			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
@@ -1333,7 +1335,8 @@ void isp_af_sm(isp_dev_t *devp)
 			}
 			break;
 		case AF_SUCCESS:
-			if(af_delay >= 2){
+			//if(af_delay >= 2){
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= 5)){
 				/*get last blnr*/
 				memcpy(&af_info->last_blnr,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 		                /* get last fv */
@@ -1371,6 +1374,7 @@ void isp_af_sm(isp_dev_t *devp)
 					af_info->af_retry_cnt = 0;
 					af_info->adj_duration_cnt = 0;
 					af_info->last_move = false;
+					af_delay = 0;
 					if(devp->flag & ISP_FLAG_TOUCH_AF)
 						devp->flag &= (~ISP_FLAG_TOUCH_AF);
 					if(devp->flag & ISP_FLAG_AF)
@@ -1386,6 +1390,7 @@ void isp_af_sm(isp_dev_t *devp)
 					af_info->af_retry_cnt = 0;
 					af_info->adj_duration_cnt = 0;
 					af_info->last_move = false;
+					af_delay = 0;
 					af_info->cur_step= af_info->last_great_step;
 					if(af_sm_dg&0x1)
 						pr_info("[af_sm..]:af_info->final_step:%d.\n",af_info->cur_step);
@@ -1413,7 +1418,7 @@ void isp_af_save_current_para(isp_dev_t *devp)
 	af_info->adj_duration_cnt = 0;
 	af_info->last_move = false;
 	sm_state.af_state = AF_NULL;
-	if(sm_state.af_state < AF_INIT)
+	if(sm_state.af_state == AF_SUCCESS)
 		af_info->capture_step = af_info->cur_step;
 	else
 		af_info->capture_step = 0;
