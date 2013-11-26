@@ -850,10 +850,28 @@ void osd_set_scale_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 
 void osd_get_window_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
 {
-	*x0 = osd_hw.free_dst_data[index].x_start;
-	*x1 = osd_hw.free_dst_data[index].x_end;
-	*y0 = osd_hw.free_dst_data[index].y_start;
-	*y1 = osd_hw.free_dst_data[index].y_end;
+    const vinfo_t *vinfo;
+    vinfo = get_current_vinfo();
+    if (vinfo) {
+        switch (vinfo->mode) {
+ 		        case VMODE_480I:
+ 		        case VMODE_480CVBS:
+ 		        case VMODE_576I:
+ 		        case VMODE_576CVBS:
+ 		        case VMODE_1080I:
+ 		        case VMODE_1080I_50HZ:
+ 		        	  *y0 = osd_hw.free_dst_data[index].y_start*2;
+ 			          *y1 = osd_hw.free_dst_data[index].y_end*2;
+ 		        break;
+ 		        default:
+ 		        	  *y0 = osd_hw.free_dst_data[index].y_start;
+ 			          *y1 = osd_hw.free_dst_data[index].y_end;
+ 		        break;
+        }
+    }
+
+	  *x0 = osd_hw.free_dst_data[index].x_start;
+	  *x1 = osd_hw.free_dst_data[index].x_end;
 }
 
 void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
@@ -878,7 +896,7 @@ void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 		osd_hw.free_dst_data[index].y_start = y0/2;
 		osd_hw.free_dst_data[index].y_end = (vinfo->height-1-y0) -(vinfo->height-1-y1)/2;
 #endif
-		osd_hw.free_dst_data[index].y_start = y0;
+		osd_hw.free_dst_data[index].y_start = y0/2;
 		osd_hw.free_dst_data[index].y_end = y1/2;
 		break;
 		default:
@@ -1811,7 +1829,7 @@ static   void  osd2_update_order(void)
 		VSYNCOSD_CLR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
 		break;
 		case  OSD_ORDER_10:
-		VSYNCOSD_CLR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		VSYNCOSD_SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
 		break;
 		default:
 		break;
@@ -1826,7 +1844,7 @@ static   void  osd1_update_order(void)
 		VSYNCOSD_CLR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
 		break;
 		case  OSD_ORDER_10:
-		VSYNCOSD_CLR_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
+		VSYNCOSD_SET_MPEG_REG_MASK(VPP_MISC,VPP_POST_FG_OSD2|VPP_PRE_FG_OSD2);
 		break;
 		default:
 		break;
