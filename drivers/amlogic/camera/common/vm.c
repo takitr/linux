@@ -814,6 +814,32 @@ int get_canvas_index_res(int ext_canvas, int v4l2_format, int *depth, int width,
 	return canvas;
 }
 
+static void vm_dump_mem(char *path, vm_output_para_t* para)
+{
+        struct file *filp = NULL;
+        loff_t pos = 0;
+        void * buf = NULL;
+        int i = 0;
+        unsigned int size = para->width * para->height * 3;
+
+        mm_segment_t old_fs = get_fs();
+        set_fs(KERNEL_DS);
+        filp = filp_open(path,O_RDWR|O_CREAT,0666);
+
+        if(IS_ERR(filp)){
+                printk(KERN_ERR"create %s error.\n",path);
+                return;
+        }
+
+
+        buf = phys_to_virt(para->vaddr);
+        vfs_write(filp,buf, size, &pos);
+
+        vfs_fsync(filp, 0);
+        filp_close(filp,NULL);
+        set_fs(old_fs);
+}
+
 int vm_fill_buffer(struct videobuf_buffer* vb , vm_output_para_t* para)
 {
 	//vm_contig_memory_t *mem = NULL;
@@ -1019,7 +1045,11 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+#ifndef GE2D_NV
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+#else
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+#endif
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 		ge2d_config->dst_xy_swap = 0;
@@ -1109,7 +1139,11 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_para.index>>16)&0xff;
+#ifndef GE2D_NV
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+#else
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+#endif
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 		ge2d_config->dst_xy_swap = 0;
@@ -1275,7 +1309,11 @@ int vm_sw_post_process(int canvas , int addr)
 		offset = canvas_work_v.addr - canvas_work_y.addr;
 		buffer_v_start = io_mapping_map_atomic_wc( mapping_wc, offset );
 
+#ifndef GE2D_NV
 		if(output_para.v4l2_format == V4L2_PIX_FMT_YUV420){
+#else
+		if(output_para.v4l2_format == V4L2_PIX_FMT_YVU420){
+#endif
 			for(i=uv_height;i>0;i--) { /* copy y */
 				memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
 				poss+=uv_width;

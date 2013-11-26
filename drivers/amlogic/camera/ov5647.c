@@ -3527,6 +3527,12 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct videobuf_queue *q = &fh->vb_vidq;
 	struct ov5647_device *dev = fh->dev;
 	resolution_param_t* res_param = NULL;
+
+        f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN-1) ) & (~(CANVAS_WIDTH_ALIGN-1));
+	if ((f->fmt.pix.pixelformat==V4L2_PIX_FMT_YVU420) ||
+            (f->fmt.pix.pixelformat==V4L2_PIX_FMT_YUV420)){
+                f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN*2-1) ) & (~(CANVAS_WIDTH_ALIGN*2-1));
+        }
 	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
 		return ret;

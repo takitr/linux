@@ -61,4 +61,11 @@ extern int vm_buffer_init(void);
 extern void vm_local_init(void) ;
 static DEFINE_MUTEX(vm_mutex);
 
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TV
+#define CANVAS_WIDTH_ALIGN 32
+#else
+#define CANVAS_WIDTH_ALIGN 8
+#endif
+
 #endif /* _VM_INCLUDE__ */
