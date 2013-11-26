@@ -62,6 +62,7 @@ static struct early_suspend ov5647_early_suspend;
 #define MAGIC_RE_MEM 0x123039dc
 #define OV5647_RES0_CANVAS_INDEX CAMERA_USER_CANVAS_INDEX
 
+static int capture_proc = 0;
 
 /* Wake up at about 30 fps */
 #define WAKE_NUMERATOR 30
@@ -274,6 +275,30 @@ static struct v4l2_frmivalenum ov5647_frmivalenum[]={
                         .discrete	={
                                 .numerator	= 1,
                                 .denominator	= 30,
+                        }
+                }
+        },{
+                .index 		= 0,
+                .pixel_format	= V4L2_PIX_FMT_NV21,
+                .width		= 1280,
+                .height		= 960,
+                .type		= V4L2_FRMIVAL_TYPE_DISCRETE,
+                {
+                        .discrete	={
+                                .numerator	= 1,
+                                .denominator	= 30,
+                        }
+                }
+        },{
+                .index 		= 0,
+                .pixel_format	= V4L2_PIX_FMT_NV21,
+                .width		= 2048,
+                .height		= 1536,
+                .type		= V4L2_FRMIVAL_TYPE_DISCRETE,
+                {
+                        .discrete	={
+                                .numerator	= 1,
+                                .denominator	= 15,
                         }
                 }
         },{
@@ -558,6 +583,7 @@ typedef enum resulution_size_type{
 	SIZE_720P_1280X720,
 	SIZE_960P_1280X960,
 	SIZE_1080P_1920X1080,
+	SIZE_1080P_2048X1536,
 	SIZE_H1080P_2592X1944
 } resulution_size_type_t;
 
@@ -1664,6 +1690,7 @@ struct aml_camera_i2c_fig_s OV5647_5M_script_mipi[] = {
 	  {0xffff, 0xff},
 };
 struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
+#if 0
   {0x0100,0x00},
 	{0x0103,0x01},
 	{0x3035,0x11},
@@ -1816,6 +1843,114 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 	{0x3a0b,0x7b},
 	{0x3a0d,0x10},
 	{0x3a0e,0x0d},
+#endif
+#if 1
+{0x0100, 0x01},
+{0x3000, 0x0f},
+{0x3001, 0xff},
+{0x3002, 0xe4},
+//{0x300a, 0x0,
+              
+//{0x300b, 0x0,
+              
+{0x0100, 0x00},
+{0x0103, 0x01},
+{0x3013, 0x08},
+{0x5000, 0x03},
+{0x5001, 0x00},
+{0x5a00, 0x08},
+{0x3a18, 0x01},
+{0x3a19, 0xe0},
+{0x3c01, 0x80},
+{0x3b07, 0x0c},
+{0x3630, 0x2e},
+{0x3632, 0xe2},
+{0x3633, 0x23},
+{0x3634, 0x44},
+{0x3620, 0x64},
+{0x3621, 0xe0},
+{0x3600, 0x37},
+{0x3704, 0xa0},
+{0x3703, 0x5a},
+{0x3715, 0x78},
+{0x3717, 0x01},
+{0x3731, 0x02},
+{0x370b, 0x60},
+{0x3705, 0x1a},
+{0x3f05, 0x02},
+{0x3f06, 0x10},
+{0x3f01, 0x0a},
+{0x3a08, 0x00},
+{0x3a0a, 0x00},
+{0x3a0f, 0x58},
+{0x3a10, 0x50},
+{0x3a1b, 0x58},
+{0x3a1e, 0x50},
+{0x3a11, 0x60},
+{0x3a1f, 0x28},
+{0x0100, 0x01},
+{0x4000, 0x89},
+{0x4001, 0x02},
+{0x4002, 0xc5},
+{0x4004, 0x06},
+{0x4005, 0x1a},
+{0x3503, 0x13},
+{0x3501, 0x10},
+{0x3502, 0x80},
+{0x350a, 0x00},
+{0x350b, 0x7f},
+{0x350c, 0x00},
+{0x350d, 0x00},
+{0x3011, 0x22},
+              
+{0x3000, 0x00},
+{0x3001, 0x00},
+{0x3002, 0x00},
+{0x3035, 0x11},
+{0x3036, 0x64},
+{0x303c, 0x11},
+{0x3820, 0x00},
+{0x3821, 0x06},
+{0x3612, 0x4b},
+{0x3618, 0x04},
+{0x3708, 0x24},
+{0x3709, 0x12},
+{0x370c, 0x00},
+{0x380c, 0x0a},
+{0x380d, 0x96},
+{0x380e, 0x07},
+{0x380f, 0xb0},
+{0x3814, 0x11},
+{0x3815, 0x11},
+{0x3808, 0x0a},
+{0x3809, 0x20},
+{0x380a, 0x07},
+{0x380b, 0x98},
+{0x3800, 0x00},
+{0x3801, 0x0c},
+{0x3802, 0x00},
+{0x3803, 0x04},
+{0x3804, 0x0a},
+{0x3805, 0x33},
+{0x3806, 0x07},
+{0x3807, 0xa3},
+{0x3000, 0x0f},
+{0x3001, 0xff},
+{0x3002, 0xe4},
+/*{0x3208, 0x00},
+{0x3503, 0x13},
+{0x3502, 0xa0},
+{0x3501, 0x6e},
+{0x3500, 0x00},
+{0x3208, 0x10},
+{0x3208, 0xa0},
+{0x3208, 0x00},
+{0x3503, 0x13},
+{0x350b, 0xa0},
+{0x350a, 0x00},
+{0x3508, 0x10},
+{0x3208, 0xa0},*/
+#endif
 	{0xffff, 0xff},
 };
 
@@ -1856,10 +1991,10 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},{
-		.frmsize			= {2592, 1944},
+		.frmsize			= {2048, 1536},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
-		.size_type			= SIZE_H1080P_2592X1944,
+		.size_type			= SIZE_1080P_2048X1536,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
 	}
@@ -1902,6 +2037,13 @@ static resolution_param_t  prev_resolution_array[] = {
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
+	},{
+		.frmsize			= {2048, 1536},
+		.active_frmsize		= {2592, 1944},
+		.active_fps			= 7.5,
+		.size_type			= SIZE_1080P_2048X1536,
+		.reg_script[0]			= OV5647_capture_5M_script,
+		.reg_script[1]			= OV5647_5M_script_mipi,
 	}
 };
 	
@@ -2602,6 +2744,7 @@ static void OV5647_set_param_banding(struct ov5647_device *dev,enum  camera_nigh
     }
 }
 
+static int set_focus_zone(struct ov5647_device *dev, int value);
 
 static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
 {
@@ -2612,13 +2755,15 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
         case CAM_FOCUS_MODE_AUTO:       
             printk("auto focus mode start\n");
             bDoingAutoFocusMode = true;
-            dev->cam_para->cam_command = CAM_COMMAND_FULLSCAN;
+            /*dev->cam_para->cam_command = CAM_COMMAND_FULLSCAN;
             dev->fe_arg.port = TVIN_PORT_ISP;
             dev->fe_arg.index = 0;
             dev->fe_arg.arg = (void *)(dev->cam_para);
             if(dev->vops != NULL){
                 dev->vops->tvin_fe_func(0,&dev->fe_arg);
-            }
+            }*/
+	    printk(" set camera  focus zone =%d. \n ",ov5647_qctrl[13].default_value);
+	    set_focus_zone(dev, ov5647_qctrl[13].default_value);
             break;
         case CAM_FOCUS_MODE_CONTI_VID:
         case CAM_FOCUS_MODE_CONTI_PIC:
@@ -2673,6 +2818,8 @@ static resulution_size_type_t get_size_type(int width, int height)
     resulution_size_type_t rv = SIZE_NULL_TYPE;
     if (width * height >= 2500 * 1900)
         rv = SIZE_H1080P_2592X1944;
+    else if (width * height >= 2000 * 1500)
+        rv = SIZE_1080P_2048X1536;
     else if (width * height >= 1900 * 1000)
         rv = SIZE_1080P_1920X1080;
     else if (width * height >= 1200 * 900)
@@ -2901,9 +3048,9 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 		}
 		break;
 	case V4L2_CID_BACKLIGHT_COMPENSATION:
-        if(ov5647_qctrl[9].default_value!=value){
+		if(ov5647_qctrl[9].default_value!=value){
 			ov5647_qctrl[9].default_value=value;
-            ret = OV5647_FlashCtrl(dev,value);
+			ret = OV5647_FlashCtrl(dev,value);
 			printk(KERN_INFO " set light compensation =%d. \n ",value);
 		}
 		break;
@@ -2946,8 +3093,8 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 			ov5647_qctrl[8].default_value=value;
 			OV5647_AutoFocus(dev,value);
 		}
-  case V4L2_CID_PRIVACY:       
-        break;
+	case V4L2_CID_PRIVACY:       
+		break;
 	default:
    		ret=-1;
 		break;
@@ -3304,6 +3451,20 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 
 }
 
+static int vidioc_s_crop(struct file *file, void *fh,
+					const struct v4l2_crop *a)
+{
+	if (a->c.width == 0 && a->c.height == 0) {
+		printk("disable capture proc\n");
+		//capture_proc = 0;
+	} else {
+		printk("enable capture proc\n");
+		capture_proc = 1;
+	}
+		
+	return 0;
+}
+
 static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 					struct v4l2_format *f)
 {
@@ -3383,34 +3544,39 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	fh->height        = f->fmt.pix.height;
 	fh->vb_vidq.field = f->fmt.pix.field;
 	fh->type          = f->type;
-    if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
-        ov5647_work_mode = CAMERA_CAPTURE;
-        res_param = get_resolution_param(dev, 1, fh->width,fh->height);
-        if (!res_param) {
-            printk("error, resolution param not get\n");
-            goto out;
-        }
-        set_resolution_param(dev, res_param);
-    }
-    else {
-    	printk("preview resolution is %dX%d\n",fh->width,  fh->height);
-        if((fh->width == 1280 && fh->height == 720) || 
-        	(fh->width == 1920 && fh->height == 1080)){
-        	ov5647_work_mode = CAMERA_RECORD;
-        }else
-        	ov5647_work_mode = CAMERA_PREVIEW;
-        res_param = get_resolution_param(dev, 0, fh->width,fh->height);
-        if (!res_param) {
-            printk("error, resolution param not get\n");
-            goto out;
-        }
-        set_resolution_param(dev, res_param);
-        /** set target ***/
-        if(t_index == -1){
-            dest_hactive = 0;
-            dest_vactive = 0;
-        }
-    }
+	if(f->fmt.pix.pixelformat==V4L2_PIX_FMT_RGB24){
+		ov5647_work_mode = CAMERA_CAPTURE;
+		/*res_param = get_resolution_param(dev, 1, fh->width,fh->height);
+		if (!res_param) {
+			printk("error, resolution param not get\n");
+			goto out;
+		}*/
+		// set_resolution_param(dev, res_param);
+	} else {
+		printk("preview resolution is %dX%d\n",fh->width,  fh->height);
+		if((fh->width == 1280 && fh->height == 720) || 
+			(fh->width == 1920 && fh->height == 1080)){
+			ov5647_work_mode = CAMERA_RECORD;
+			capture_proc = 0;
+		}else
+			ov5647_work_mode = CAMERA_PREVIEW;
+			
+		if (capture_proc == 0) {
+			printk("loading sensor setting\n");
+		        res_param = get_resolution_param(dev, 0, fh->width,fh->height);
+		        if (!res_param) {
+		            printk("error, resolution param not get\n");
+		            goto out;
+		        }
+		        set_resolution_param(dev, res_param);
+		        /** set target ***/
+		        if(t_index == -1){
+		            dest_hactive = 0;
+		            dest_vactive = 0;
+		        }
+		} else
+			capture_proc = 2;
+	}
 	ret = 0;
 out:
 	mutex_unlock(&q->vb_lock);
@@ -3497,6 +3663,17 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	if (i != fh->type)
 		return -EINVAL;
 
+	if (capture_proc) {
+		printk("vidioc_streamon in capture process\n");
+		ret =  videobuf_streamon(&fh->vb_vidq);
+		if(ret == 0){
+			fh->stream_on        = 1;
+		}
+		if (capture_proc == 2)
+			capture_proc = 0;
+		return 0;
+	}
+
     memset( &para, 0, sizeof( para ));
     //para.port  = TVIN_PORT_CAMERA;
 
@@ -3573,10 +3750,16 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 		return -EINVAL;
 	if (i != fh->type)
 		return -EINVAL;
+		
 	ret = videobuf_streamoff(&fh->vb_vidq);
+	if (capture_proc) {
+		printk("vidioc_streamoff in capture process\n");
+		fh->stream_on        = 0;
+		return 0;
+	}
 	if(ret == 0 ){
-        dev->vops->stop_tvin_service(0);
-        fh->stream_on        = 0;
+		dev->vops->stop_tvin_service(0);
+		fh->stream_on        = 0;
 	}
 	dev->ae_on = false;
 	return ret;
@@ -3753,6 +3936,8 @@ static int vidioc_g_ctrl(struct file *file, void *priv,
 		if (ctrl->id == ov5647_qctrl[i].id) {
             if( (V4L2_CID_FOCUS_AUTO == ctrl->id)
                     && bDoingAutoFocusMode){
+                //bDoingAutoFocusMode = false;
+                //ret = 0;
                 dev->cam_para->cam_command = CAM_COMMAND_GET_STATE;
                 dev->fe_arg.port = TVIN_PORT_ISP;
                 dev->fe_arg.index = 0;
@@ -3839,8 +4024,9 @@ static int ov5647_open(struct file *file)
     resource_size_t mem_start = 0;
     unsigned int mem_size = 0;
     int retval = 0;
+    capture_proc = 0;
 #if CONFIG_CMA
-    retval = vm_init_buf(24*SZ_1M);
+    retval = vm_init_buf(28*SZ_1M);
     if(retval <0)
         return -1;
 #endif
@@ -3990,6 +4176,7 @@ static int ov5647_close(struct file *file)
     struct video_device  *vdev = video_devdata(file);
     int i=0;
     ov5647_have_open = 0;
+    capture_proc = 0;
     ov5647_stop_thread(vidq);
     videobuf_stop(&fh->vb_vidq);
     if(fh->stream_on){
@@ -4116,6 +4303,7 @@ static const struct v4l2_ioctl_ops ov5647_ioctl_ops = {
 	.vidioc_enum_framesizes = vidioc_enum_framesizes,
 	.vidioc_g_parm = vidioc_g_parm,
 	.vidioc_enum_frameintervals = vidioc_enum_frameintervals,
+	.vidioc_s_crop        = vidioc_s_crop,
 #ifdef CONFIG_VIDEO_V4L1_COMPAT
 	.vidiocgmbuf          = vidiocgmbuf,
 #endif
