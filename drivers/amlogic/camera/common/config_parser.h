@@ -11,7 +11,7 @@
 #define EFFECT_MAX 16
 #define AET_MAX 32
 #define HW_MAX 16
-#define WB_MAX 9
+#define WB_MAX 10
 #define CAPTURE_ITEM_MAX 5
 #define GAMMA_MAX 257
 #define SCENE_MAX 202

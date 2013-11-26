@@ -660,7 +660,7 @@ int parse_wb(buffer_para_t *buf_para,int *remained,int *offset){
     cf->wb.sum = sum;
     /**parser body***/
     check = 0;
-    while(check < sum && iter != NULL){
+    while(check < sum){
         iter = search_string(buf_para,offset,remained,"wb","wb");
         if(iter == NULL){
             return -WRONG_FORMAT;
@@ -677,7 +677,6 @@ int parse_wb(buffer_para_t *buf_para,int *remained,int *offset){
             if(iter == NULL)
             	break;
             iter += 1;
-           // printk("wb:%x\n",cf->wb.wb[check].export[i]);
         }
         check++;
      }
@@ -701,7 +700,7 @@ int parse_capture(buffer_para_t *buf_para,int *remained,int *offset){
     //printk("capture sum:%d\n",sum);
     /**parser body***/
     check = 0;
-    while(check < sum && iter != NULL){
+    while(check < sum){
         iter = search_string(buf_para,offset,remained,"capture","capture");
         if(iter == NULL){
         		printk("search wrong\n");
@@ -771,7 +770,7 @@ int parse_scene(buffer_para_t *buf_para,int *remained,int *offset){
          return -NO_MEM;
     } //alloc mem
     check = 0;
-    while(check < sum && iter != NULL){
+    while(check < sum){
         iter = search_string(buf_para,offset,remained,"scenes","scenes");
         if(iter == NULL){
             printk("scene wrong config format\n");
@@ -1213,11 +1212,6 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
         }
         scene = para->xml_scenes;
         memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
-        if(cf->aet_valid == 1){
-            scene->ae.aet_fmt_gain = sensor_aet_info->format_transfer_parameter;        	
-        }
-        else
-            scene->ae.aet_fmt_gain = 0;
         memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 97,104*sizeof(unsigned int));
         // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
     }else{
@@ -1300,10 +1294,10 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
         }
         capture = para->xml_capture;
         capture->ae_try_max_cnt = (unsigned int)(cf->capture.capture[pindex.capture_index].export[0]);
-		capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
-        capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
-		capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
-		capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
+	    capture->sigle_count = (unsigned int)(cf->capture.capture[pindex.capture_index].export[3]);
+	    capture->skip_step = (unsigned int)(cf->capture.capture[pindex.capture_index].export[4]);
+	    capture->multi_capture_num = (unsigned int)(cf->capture.capture[pindex.capture_index].export[5]);
+	    capture->af_mode = (cam_scanmode_t)(cf->capture.capture[pindex.capture_index].export[2]);
         capture->eyetime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[6]);
         capture->pretime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[7]);
         capture->postime = (unsigned int)(cf->capture.capture[pindex.capture_index].export[8]);

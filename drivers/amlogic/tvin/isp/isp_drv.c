@@ -81,13 +81,13 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 {
 	isp_dev_t *devp;
 	unsigned int addr,data;
-	char *parm[3]={NULL},*ps,*token,*buf_orig;
+	char *parm[3]={NULL},*buf_orig;
 	int n=0;
 	if(!buf)
 		return len;
 	buf_orig = kstrdup(buf, GFP_KERNEL);
 	devp = dev_get_drvdata(dev);
-	parse_param(buf,&parm);
+	parse_param(buf_orig,&parm);
 	if(!strcmp(parm[0],"r")){
 		addr = simple_strtol(parm[1],NULL,16);
 		data = isp_rd(addr);
@@ -136,6 +136,13 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		pr_info("awb->yuv_mid[%d].sum=%d,count=%d\n",i,awb->yuv_mid[i].sum,awb->yuv_mid[i].count);
 		for(i=0;i<4;i++)
 		pr_info("awb->yuv_high[%d].sum=%d,count=%d\n",i,awb->yuv_high[i].sum,awb->yuv_high[i].count);	
+	}else if(!strcmp(parm[0],"wb_test")){
+		unsigned int flag = simple_strtol(parm[1],NULL,10);
+		if(flag)
+			devp->flag |= ISP_FLAG_TEST_WB;
+		else
+			devp->flag &= (~ISP_FLAG_TEST_WB);
+		pr_info("%s wb test.\n",flag?"start":"stop");
 	}
 	return len;
 }
@@ -827,6 +834,9 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->wave = devp->cam_param->xml_wave;
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
+		/*test for wb test disable gamma & lens*/
+		if(devp->flag & ISP_FLAG_TEST_WB)
+			disable_gc_lns(false);
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 8;
@@ -1132,8 +1142,8 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		ret = max(isp_capture_sm(devp),ret);
 	if(isr_debug&&ret)
 		pr_info("%s isp %d buf.\n",__func__,ret);
-	
-	tasklet_schedule(&devp->isp_task);
+	if(!(devp->flag & ISP_FLAG_TEST_WB))
+		tasklet_schedule(&devp->isp_task);
         return ret;
 }
 

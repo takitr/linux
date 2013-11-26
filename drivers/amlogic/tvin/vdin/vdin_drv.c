@@ -123,6 +123,9 @@ static bool invert_top_bot = false;
 module_param(invert_top_bot,bool,0644);
 MODULE_PARM_DESC(invert_top_bot,"invert field type top or bottom");
 
+static unsigned short v_cut_offset = 2;
+module_param(v_cut_offset,ushort,0664);
+MODULE_PARM_DESC(v_cut_offset,"the cut window vertical offset for isp");
 
 /*
 *the check flag in vdin_isr
@@ -527,6 +530,8 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
         if(devp->frontend && devp->frontend->sm_ops){
 	        sm_ops = devp->frontend->sm_ops;
 	        sm_ops->get_sig_propery(devp->frontend, &devp->prop);
+		if(devp->flags & VDIN_FLAG_MANUAL_CONVERTION)
+			devp->prop.dest_cfmt = devp->dest_cfmt;
         }
 	
 	vdin_get_format_convert(devp);
@@ -708,24 +713,20 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		return -1;
 	}
 	//disable cut window?
-	devp->parm.cutwin.he = 0;
-	devp->parm.cutwin.hs = 0;
 	if(para->port == TVIN_PORT_ISP) {
-		devp->parm.cutwin.ve = 2;
-		devp->parm.cutwin.vs = 2;
-	} else {
-		devp->parm.cutwin.ve = 0;
-		devp->parm.cutwin.vs = 0;
-	}
+		devp->parm.cutwin.ve = v_cut_offset;
+		devp->parm.cutwin.vs = v_cut_offset;
+	} 
         /*add for scaler down*/
-	devp->scaler4w = para->dest_hactive;
-	devp->scaler4h = para->dest_vactive;
-     
+	if(!(devp->flags & VDIN_FLAG_MANUAL_CONVERTION)) {
+		devp->scaler4w = para->dest_hactive;
+		devp->scaler4h = para->dest_vactive;
+	}
         #ifdef CONFIG_ARCH_MESON6
         switch_mod_gate_by_name("vdin", 1);
         #endif
 	vdin_start_dec(devp);
-	devp->flags = VDIN_FLAG_DEC_OPENED;
+	devp->flags |= VDIN_FLAG_DEC_OPENED;
 	devp->flags |= VDIN_FLAG_DEC_STARTED;
 	return 0;
 }
@@ -1958,6 +1959,8 @@ static void vdin_dump_state(vdin_dev_t *devp)
 * 5.enable vdin0-nr path or vdin0-mem
 * echo output2nr >/sys/class/vdin/vdin0/attr
 * echo output2mem >/sys/class/vdin/vdin0/attr
+* 6.modify for vdin fmt & color fmt convertion
+* echo w h cfmt >/sys/class/isp/isp0/attr
 */
 static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
 {
@@ -2117,12 +2120,18 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
                         return len;
                 vdin_vf_unfreeze(devp->vfp);
         }
-        else if(!strcmp(parm[0],"hvscaler")){
-                if(parm[1] && parm[2]){
-                        devp->scaler4w = simple_strtoul(parm[1],NULL,10);
-                        devp->scaler4h = simple_strtoul(parm[2],NULL,10);
+        else if(!strcmp(parm[0],"convertion")){
+                if(parm[1] && parm[2] && parm[3]){
+                        devp->scaler4w  = simple_strtoul(parm[1],NULL,10);
+                        devp->scaler4h  = simple_strtoul(parm[2],NULL,10);
+			devp->dest_cfmt = simple_strtoul(parm[3],NULL,10); 
+			devp->flags |= VDIN_FLAG_MANUAL_CONVERTION;
+			pr_info("enable manual convertion w=%u h=%u dest_cfmt=%s.\n",
+				devp->scaler4w,devp->scaler4h,tvin_color_fmt_str(devp->dest_cfmt));
                 } else {
-                        pr_info("%u %u\n",devp->scaler4w,devp->scaler4h);
+                	devp->flags &= (~VDIN_FLAG_MANUAL_CONVERTION);
+                        pr_info("disable manual convertion w=%u h=%u dest_cfmt=%s.\n",
+				devp->scaler4w,devp->scaler4h,tvin_color_fmt_str(devp->dest_cfmt));
                 }
         }
         else if(!strcmp(parm[0],"state")){
@@ -2249,6 +2258,56 @@ static ssize_t vdin_isr_log_store(struct device *dev,
 
 static DEVICE_ATTR(isr_log,  0664, vdin_isr_log_show, vdin_isr_log_store);
 #endif
+static void parse_param(char *buf_orig,char **parm)
+{
+	char *ps, *token;
+	unsigned int n=0;
+	ps = buf_orig;
+        while(1) {
+                token = strsep(&ps, " \n");
+                if (token == NULL)
+                        break;
+                if (*token == '\0')
+                        continue;
+                parm[n++] = token;
+        }
+}
+
+static ssize_t vdin_crop_show(struct device * dev,
+struct device_attribute *attr, char * buf)
+{
+        int len = 0;
+        struct vdin_dev_s *devp = dev_get_drvdata(dev);
+        tvin_cutwin_t *crop = &devp->parm.cutwin;
+
+        len += sprintf(buf+len,"hs_offset %u,he_offset %u,vs_offset %u,ve_offset %u.\n",
+				crop->hs,crop->he,crop->vs,crop->ve);
+	return len;
+}
+
+static ssize_t vdin_crop_store(struct device * dev,
+struct device_attribute *attr, const char * buf, size_t count)
+{
+	char *parm[4]={NULL},*buf_orig;
+	struct vdin_dev_s *devp = dev_get_drvdata(dev);
+	tvin_cutwin_t *crop = &devp->parm.cutwin;
+	if(!buf)
+		return count;
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,parm);
+	
+	crop->hs = simple_strtol(parm[0],NULL,10);
+	crop->he = simple_strtol(parm[1],NULL,10);
+	crop->vs = simple_strtol(parm[2],NULL,10);
+	crop->ve = simple_strtol(parm[3],NULL,10);
+
+	pr_info("hs_offset %u,he_offset %u,vs_offset %u,ve_offset %u.\n",	
+                                crop->hs,crop->he,crop->vs,crop->ve);
+			
+	return count;
+}
+
+static DEVICE_ATTR(crop, 0664, vdin_crop_show, vdin_crop_store);
 
 static int memp = -1;
 
@@ -2620,7 +2679,8 @@ static int vdin_drv_probe(struct platform_device *pdev)
         ret = device_create_file(vdevp->dev,&dev_attr_isr_log);
         #endif
         ret = device_create_file(vdevp->dev,&dev_attr_attr);
-	    ret = device_create_file(vdevp->dev,&dev_attr_cm2);
+        ret = device_create_file(vdevp->dev,&dev_attr_cm2);
+	ret = device_create_file(vdevp->dev,&dev_attr_crop);
 
 	if(ret < 0) {
 		pr_err("%s: fail to create vdin attribute files.\n", __func__);

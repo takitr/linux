@@ -316,18 +316,38 @@ struct v4l2_querymenu ov5647_qmenu_wbmode[] = {
         .reserved   = 0,
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
-        .index      = CAM_WB_INCANDESCENCE,
-        .name       = "incandescent",
-        .reserved   = 0,
-    },{
-        .id         = V4L2_CID_DO_WHITE_BALANCE,
         .index      = CAM_WB_DAYLIGHT,
         .name       = "daylight",
         .reserved   = 0,
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_INCANDESCENCE,
+        .name       = "incandescent",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_TUNGSTEN,
+        .name       = "tungsten",
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
         .index      = CAM_WB_FLUORESCENT,
         .name       = "fluorescent", 
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_MANUAL,
+        .name       = "manual", 
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_SHADE,
+        .name       = "shade", 
+        .reserved   = 0,
+    },{
+        .id         = V4L2_CID_DO_WHITE_BALANCE,
+        .index      = CAM_WB_TWILIGHT,
+        .name       = "twilight", 
         .reserved   = 0,
     },{
         .id         = V4L2_CID_DO_WHITE_BALANCE,
@@ -640,7 +660,7 @@ struct aml_camera_i2c_fig_s OV5647_VGA_script_mipi[] = {
           {0x3618, 0x00},
           {0x5000, 0x06},
 
-          {0x5000, 0x86},
+          {0x5000, 0x06},
           {0x5001, 0x00},
           {0x5002, 0x41},
           {0x5003, 0x08},
@@ -799,7 +819,7 @@ struct aml_camera_i2c_fig_s OV5647_preview_VGA_script[] = {
 	{0x583b,0x28},
 	{0x583c,0x2c},
 	{0x583d,0xce},
-	{0x5000,0x86},
+	{0x5000,0x06},
 	{0x5001,0x00},
 	{0x5002,0x41},			
 	{0x5180,0x08},
@@ -895,7 +915,7 @@ struct aml_camera_i2c_fig_s OV5647_720P_script_mipi[] = {
           {0x3618, 0x00},
           {0x5000, 0x06},
 
-          {0x5000, 0x86},
+          {0x5000, 0x06},
           {0x5001, 0x00},
           {0x5002, 0x41},
 
@@ -1055,7 +1075,7 @@ struct aml_camera_i2c_fig_s OV5647_preview_720P_script[] = {
 	{0x583b,0x28},
 	{0x583c,0x2c},
 	{0x583d,0xce},
-	{0x5000,0x86},
+	{0x5000,0x06},
 	{0x5001,0x00},
 	{0x5002,0x41},
 	{0x5180,0x08},
@@ -1215,7 +1235,7 @@ struct aml_camera_i2c_fig_s OV5647_preview_960P_script[] = {
 	{0x583b,0x28},  
 	{0x583c,0x2c},  
 	{0x583d,0xce},  
-	{0x5000,0x86},  
+	{0x5000,0x06},  
 	{0x5001,0x00},  
 	{0x5002,0x41},	
 	{0x5180,0x08},
@@ -1302,7 +1322,7 @@ struct aml_camera_i2c_fig_s OV5647_1080P_script_mipi[] = {
           {0x3618, 0x04},
           {0x5000, 0x06},
 
-          {0x5000, 0x86},
+          {0x5000, 0x06},
           {0x5001, 0x00},
           {0x5002, 0x41},
 
@@ -1463,7 +1483,7 @@ struct aml_camera_i2c_fig_s OV5647_preview_1080P_script[] = {
 	{0x583b,0x28},
 	{0x583c,0x2c},
 	{0x583d,0xce},
-	{0x5000,0x86},
+	{0x5000,0x06},
 	{0x5001,0x00},
 	{0x5002,0x41},
 	{0x5180,0x08},
@@ -1558,7 +1578,7 @@ struct aml_camera_i2c_fig_s OV5647_5M_script_mipi[] = {
           {0x3618, 0x04},
           {0x5000, 0x06},
 
-          {0x5000, 0x86},
+          {0x5000, 0x06},
           {0x5001, 0x00},
           {0x5002, 0x41},
           {0x5003, 0x08},
@@ -1717,7 +1737,7 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 	{0x583b,0x28},
 	{0x583c,0x2c},
 	{0x583d,0xce},
-	{0x5000,0x86},
+	{0x5000,0x06},
 	{0x5001,0x00},
 	{0x5002,0x41},
 	{0x5180,0x08},
@@ -2369,15 +2389,16 @@ static CLASS_ATTR(version_debug, 0664, version_info_show, version_info_store);
 *************************************************************************/
 
 static wb_pair_t wb_pair[] = {
-	{CAM_WB_AUTO,"CAM_WB_AUTO"},
-	{CAM_WB_DAYLIGHT,"CAM_WB_DAYLIGHT"},
-	{CAM_WB_INCANDESCENCE,"CAM_WB_INCANDESCENCE"},
-	{CAM_WB_FLUORESCENT,"CAM_WB_FLUORESCENT"},
-	{CAM_WB_CLOUD,"CAM_WB_CLOUD"},
-	{CAM_WB_SHADE,"CAM_WB_SHADE"},
-	{CAM_WB_TWILIGHT,"CAM_WB_TWILIGHT"},
-	{CAM_WB_WARM_FLUORESCENT,"CAM_WB_WARM_FLUORESCENT"},
-	{CAM_WB_TUNGSTEN,"CAM_WB_TUNGSTEN"}
+    {CAM_WB_AUTO,"CAM_WB_AUTO"},
+    {CAM_WB_CLOUD,"CAM_WB_CLOUD"},
+    {CAM_WB_DAYLIGHT,"CAM_WB_DAYLIGHT"},
+    {CAM_WB_INCANDESCENCE,"CAM_WB_INCANDESCENCE"},
+    {CAM_WB_TUNGSTEN,"CAM_WB_TUNGSTEN"},
+    {CAM_WB_FLUORESCENT,"CAM_WB_FLUORESCENT"},
+    {CAM_WB_MANUAL,"CAM_WB_MANUAL"},
+    {CAM_WB_SHADE,"CAM_WB_SHADE"},
+    {CAM_WB_TWILIGHT,"CAM_WB_TWILIGHT"},
+    {CAM_WB_WARM_FLUORESCENT,"CAM_WB_WARM_FLUORESCENT"},
 };
 
 void OV5647_set_param_wb(struct ov5647_device *dev,enum  camera_wb_flip_e para)//white balance
@@ -3490,7 +3511,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.h_active = ov5647_h_active;
     para.v_active = ov5647_v_active;
     if(ov5647_work_mode != CAMERA_CAPTURE){
-	para.skip_count = 2;
+	    para.skip_count = 2;
         para.dest_hactive = dest_hactive;
         para.dest_vactive = dest_vactive;
     }else{
@@ -3502,23 +3523,14 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.vsync_phase  = 1;
     para.hs_bp = 0;
     para.vs_bp = 2;
-    para.cfmt = TVIN_NV21;
+    para.cfmt = TVIN_YUV422;
     para.dfmt = TVIN_NV21;
     para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
     para.bt_path = dev->cam_info.bt_path;
     current_fmt = 0;
     if(dev->cam_para == NULL)
     	return -EINVAL;
-    if(generate_para(dev->cam_para,dev->pindex) == 0){
-        para.reserved = (int)(dev->cam_para);
-    }else{
-        free_para(dev->cam_para);
-        para.reserved = 0;
-    }
-    printk("aet_fmt_gain:%d\n",dev->cam_para->xml_scenes->ae.aet_fmt_gain);
-    dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
-    dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
-    dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;
+    para.reserved = (int)(dev->cam_para);
     if (CAM_MIPI == dev->cam_info.interface)
     {
             para.csi_hw_info.lanes = 2;
@@ -3532,7 +3544,12 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
             para.csi_hw_info.urgent = 1;
             para.csi_hw_info.clk_channel = dev->cam_info.clk_channel; //clock channel a or b
     }
-
+    if(cf->aet_valid == 1){
+        dev->cam_para->xml_scenes->ae.aet_fmt_gain = sensor_aet_info->format_transfer_parameter;        	
+    }
+    else
+        dev->cam_para->xml_scenes->ae.aet_fmt_gain = 0;
+    printk("aet_fmt_gain:%d\n",dev->cam_para->xml_scenes->ae.aet_fmt_gain);
     printk("ov5647,h=%d, v=%d, dest_h:%d, dest_v:%d,frame_rate=%d,\n", 
             ov5647_h_active, ov5647_v_active, para.dest_hactive,para.dest_vactive,ov5647_frmintervals_active.denominator);
     ret =  videobuf_streamon(&fh->vb_vidq);
@@ -3909,6 +3926,15 @@ static int ov5647_open(struct file *file)
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
     dev->pindex.capture_index = 0;
+    if(generate_para(dev->cam_para,dev->pindex) != 0){
+        printk("generate para failed\n");
+        free_para(dev->cam_para);
+        kfree(dev->cam_para);
+        return -EINVAL;
+    }
+    dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
+    dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
+    dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;  
     dev->ae_on = false;
     /**creat class file**/		
     cam_class = class_create(THIS_MODULE,"camera"); 
@@ -4000,11 +4026,11 @@ static int ov5647_close(struct file *file)
             video_device_node_name(vdev), dev->users);
     //ov5647_h_active=800;
     //ov5647_v_active=600;
-    ov5647_qctrl[0].default_value= CAM_WB_AUTO;
+    ov5647_qctrl[0].default_value=0;
     ov5647_qctrl[1].default_value=4;
     ov5647_qctrl[2].default_value=0;
     ov5647_qctrl[3].default_value=CAM_BANDING_50HZ;
-    ov5647_qctrl[4].default_value=0;
+    ov5647_qctrl[4].default_value=CAM_WB_AUTO;
 
     ov5647_qctrl[5].default_value=4;
     ov5647_qctrl[6].default_value=0;

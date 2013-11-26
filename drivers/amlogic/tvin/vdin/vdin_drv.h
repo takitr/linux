@@ -34,7 +34,7 @@
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 
-#define VDIN_VER "Ref.2013/11/12a"
+#define VDIN_VER "Ref.2013/11/25b"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
@@ -53,6 +53,8 @@
 #define VDIN_FLAG_OUTPUT_TO_NR		0x00000400
 /*flag for force vdin buffer recycle*/
 #define VDIN_FLAG_FORCE_RECYCLE         0x00000800
+/*flag for vdin scale down,color fmt convertion*/
+#define VDIN_FLAG_MANUAL_CONVERTION     0x00001000
 
 /*values of vdin isr bypass check flag */
 #define VDIN_BYPASS_STOP_CHECK          0x00000001
@@ -181,6 +183,7 @@ typedef struct vdin_dev_s {
         unsigned int                    start_time;//ms vdin start time    
         unsigned short                  scaler4h;//for vscaler
         unsigned short                  scaler4w;//for hscaler
+        unsigned short                  dest_cfmt;//for color fmt convertion
 } vdin_dev_t;
 
 #endif /* __TVIN_VDIN_DRV_H */
