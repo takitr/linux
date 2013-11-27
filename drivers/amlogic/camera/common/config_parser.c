@@ -929,6 +929,8 @@ int parse_config(char *path){
         printk("malloc buffer failed\n");
         return -NO_MEM;
     }
+    buf_para.buffer = buffer;
+
     memset(cf,0,sizeof(configure));
     file_size = camera_open_config(path);
     if(file_size < 0){
@@ -951,7 +953,6 @@ int parse_config(char *path){
             read_offset = BUFFER_SIZE;
         }
     }
-    buf_para.buffer = buffer;
     buf_para.data_start = 0;
     buf_para.data_size = read_offset;
     buf_para.buffer_len = BUFFER_SIZE;
