@@ -597,6 +597,8 @@ typedef struct resolution_param {
 
 static LIST_HEAD(ov5647_devicelist);
 
+struct ov5647_fh;
+
 struct ov5647_device {
 	struct list_head			ov5647_devicelist;
 	struct v4l2_subdev			sd;
@@ -617,6 +619,8 @@ struct ov5647_device {
 
 	/* Input Number */
 	int			   input;
+
+	struct ov5647_fh           *dev;
 
 	/* platform device data from board initting. */
 	aml_cam_info_t cam_info;
@@ -660,7 +664,7 @@ struct ov5647_fh {
 
 static inline struct ov5647_fh *to_fh(struct ov5647_device *dev)
 {
-	return container_of(dev, struct ov5647_fh, dev);
+	return dev->dev;
 }
 
 /* ------------------------------------------------------------------
@@ -3012,6 +3016,7 @@ static int convert_canvas_index(unsigned int v4l2_format, unsigned int start_can
 static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 {
 	int ret=0;
+	struct ov5647_fh *fh = to_fh(dev);
 	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
 	switch(PROP_ID)  {
 	case V4L2_CID_BRIGHTNESS:
@@ -3036,14 +3041,18 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(ov5647_qctrl[4].default_value!=value){
 			ov5647_qctrl[4].default_value=value;
-			OV5647_set_param_wb(dev,value);
+			if(fh->stream_on)
+				OV5647_set_param_wb(dev,value);
 			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 		}
 		break;
 	case V4L2_CID_EXPOSURE:
 		if(ov5647_qctrl[5].default_value!=value){
 			ov5647_qctrl[5].default_value=value;
-			OV5647_set_param_exposure(dev,value);
+			if(fh->stream_on) {
+				//printk("fh->stream_on is %d\n", fh->stream_on);
+				OV5647_set_param_exposure(dev,value);
+			}
 			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 		}
 		break;
@@ -3057,7 +3066,8 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 	case V4L2_CID_COLORFX:
 		if(ov5647_qctrl[6].default_value!=value){
 			ov5647_qctrl[6].default_value=value;
-			OV5647_set_param_effect(dev,value);
+			if(fh->stream_on)
+				OV5647_set_param_effect(dev,value);
 		}
 		break;
 	case V4L2_CID_WHITENESS:
@@ -4144,6 +4154,7 @@ static int ov5647_open(struct file *file)
     printk("open successfully\n");
     dev->vops = get_vdin_v4l2_ops();
 		bDoingAutoFocusMode=false;
+    dev->dev = fh;
     return 0;
 }
 
