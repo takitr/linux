@@ -1220,11 +1220,14 @@ static  void  osd1_update_disp_freescale_enable(void)
 	int dst_w, dst_h;
 	int bot_ini_phase;
 	int vsc_ini_rcv_num, vsc_ini_rpt_p0_num;
+	int vsc_bot_rcv_num, vsc_bot_rpt_p0_num;
 	int hsc_ini_rcv_num, hsc_ini_rpt_p0_num;
 
 	int hf_bank_len = 4;
 	int vf_bank_len = 4;
 
+	vsc_bot_rcv_num = 6;
+	vsc_bot_rpt_p0_num = 2;
 	hsc_ini_rcv_num = hf_bank_len;
 	vsc_ini_rcv_num = vf_bank_len;
 	hsc_ini_rpt_p0_num = (hf_bank_len/2 - 1) > 0 ?  (hf_bank_len/2 - 1): 0;
@@ -1271,8 +1274,8 @@ static  void  osd1_update_disp_freescale_enable(void)
 		VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_ini_rcv_num, 3, 4);
 		VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_ini_rpt_p0_num, 8, 2);
 		if (osd_hw.field_out_en){  //interface output
-			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_ini_rcv_num, 11, 4);
-			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_ini_rpt_p0_num, 16, 2);
+			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_bot_rcv_num, 11, 4);
+			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, vsc_bot_rpt_p0_num, 16, 2);
 			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 1, 23, 1);
 		}else{
 			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 0, 11, 4);
