@@ -34,6 +34,7 @@
 #include <mach/io.h>
 #include <mach/register.h>
 #include <linux/sched/rt.h>
+#include <linux/notifier.h>
 #include "cpufreq_governor.h"
 
 /* greater than 80% avg load across online CPUs increases frequency */
@@ -66,6 +67,7 @@ static cpumask_var_t new_mask;
 struct cpufreq_governor cpufreq_gov_hotplug;
 #endif
 static struct task_struct *cpu_hotplug_task;
+static struct task_struct *cpu_idle_task;
 static int cpu_hotplug_flag = 0;
 static DEFINE_PER_CPU(struct hg_cpu_dbs_info_s, hp_cpu_dbs_info);
 
@@ -477,6 +479,37 @@ static void hg_exit(struct dbs_data *dbs_data)
 {
 	kfree(dbs_data->tuners);
 }
+static void cpu_idle_thread()
+{
+	int cpu = get_cpu();
+	put_cpu();
+	struct hg_cpu_dbs_info_s *dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
+	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
+	struct dbs_data *dbs_data = policy->governor_data;
+	struct cpu_dbs_common_info *cdbs = dbs_data->cdata->get_cpu_cdbs(cpu);
+	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
+	unsigned int sampling_rate = hg_tuners->sampling_rate;
+
+	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
+	while(1){
+		if (kthread_should_stop())
+			break;
+		if(!mutex_trylock(&dbs_info->cdbs.timer_mutex))
+			goto wait_next_event;
+		if (!dbs_info->enable) {
+			mutex_unlock(&dbs_info->cdbs.timer_mutex);
+			goto wait_next_event;
+		}
+		gov_cancel_work(dbs_data, policy);
+		gov_queue_work(dbs_data, policy,
+						delay_for_sampling_rate(sampling_rate), false);
+		mutex_unlock(&dbs_info->cdbs.timer_mutex);
+wait_next_event:
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule();
+		set_current_state(TASK_RUNNING);
+	}
+}
 static void cpu_hotplug_thread(int *hotplug_flag)
 {
 	int i, j,target_cpu = 1;
@@ -605,9 +638,11 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 	/* check for frequency increase based on max_load */
 	if (max_load > hg_tuners->up_threshold) {
 		/* increase to highest frequency supported */
-		if (policy->cur < policy->max)
+		if (policy->cur < policy->max){
+			dbs_info->requested_freq = policy->max;
 			__cpufreq_driver_target(policy, policy->max,
 					CPUFREQ_RELATION_H);
+		}
 		goto out;
 	}
 
@@ -625,9 +660,8 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 		}
 	}
 
-	if ((max_load_freq >
-	    (hg_tuners->up_threshold - hg_tuners->down_differential) *
-	     policy->cur) && (policy->cur < policy->max)) {
+	if ((max_load > hg_tuners->up_threshold - hg_tuners->down_differential)
+		 &&(policy->cur < policy->max)) {
 		unsigned int freq_next;
 
 		freq_next = hispeed_freq;
@@ -640,7 +674,9 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 		if(freq_next == policy->cur)
 			goto out;
 
-		 __cpufreq_driver_target(policy, freq_next,
+		dbs_info->requested_freq = freq_next;
+
+		__cpufreq_driver_target(policy, freq_next,
 					 CPUFREQ_RELATION_L);
 		goto out;
 	}
@@ -663,7 +699,9 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 		if(freq_next == policy->cur)
 			goto out;
 
-		 __cpufreq_driver_target(policy, freq_next,
+		dbs_info->requested_freq = freq_next;
+
+		__cpufreq_driver_target(policy, freq_next,
 					 CPUFREQ_RELATION_L);
 	}
 out:
@@ -690,9 +728,72 @@ static void hg_dbs_timer(struct work_struct *work)
 	mutex_unlock(&dbs_info->cdbs.timer_mutex);
 }
 
+static void cpufreq_hotplug_idle_start(void)
+{
+#if 0
+	int cpu = get_cpu();
+	put_cpu();
+	struct hg_cpu_dbs_info_s *dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
+	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
+	struct dbs_data *dbs_data = policy->governor_data;
+	struct cpu_dbs_common_info *cdbs = dbs_data->cdata->get_cpu_cdbs(cpu);
+	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
+	unsigned int sampling_rate = hg_tuners->sampling_rate;
+
+	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
+
+	if(!mutex_trylock(&dbs_info->cdbs.timer_mutex))
+		return;
+	if (!dbs_info->enable) {
+		mutex_unlock(&dbs_info->cdbs.timer_mutex);
+		return;
+	}
+
+	if (dbs_info->requested_freq != policy->min) {
+		/*
+		 * Entering idle while not at lowest speed.  On some
+		 * platforms this can hold the other CPU(s) at that speed
+		 * even though the CPU is idle. Set a timer to re-evaluate
+		 * speed so this idle CPU doesn't hold the other CPUs above
+		 * min indefinitely.  This should probably be a quirk of
+		 * the CPUFreq driver.
+		 */
+		if (!pending)
+			cpufreq_interactive_timer_resched(pcpu);
+	}
+
+	mutex_unlock(&dbs_info->cdbs.timer_mutex);
+#endif
+}
+static void cpufreq_hotplug_idle_end(void)
+{
+	wake_up_process(cpu_idle_task);
+}
+
+static int cpufreq_hotplug_idle_notifier(struct notifier_block *nb,
+					     unsigned long val, void *data)
+{
+	switch (val) {
+	case IDLE_START:
+		cpufreq_hotplug_idle_start();
+		break;
+	case IDLE_END:
+		cpufreq_hotplug_idle_end();
+		break;
+	}
+
+	return 0;
+}
+
+static struct notifier_block cpufreq_hotplug_idle_nb = {
+	.notifier_call = cpufreq_hotplug_idle_notifier,
+};
+
+
 define_get_cpu_dbs_routines(hg_cpu_dbs_info);
 
 static struct hg_ops hg_ops = {
+	.notifier_block = &cpufreq_hotplug_idle_nb,
 };
 
 static struct common_dbs_data hg_dbs_cdata = {
@@ -766,6 +867,17 @@ static int __init cpufreq_gov_dbs_init(void)
 	get_task_struct(cpu_hotplug_task);
 	cpu_hotplug_flag = CPU_HOTPLUG_NONE;
 
+	/*******************cpu idle task******************/
+	cpu_idle_task =
+		kthread_create_on_cpu(cpu_idle_thread, NULL, 0,
+			       "cpu_idle_gdbs");
+	if (IS_ERR(cpu_idle_task)){
+		printk("------ Error: create hotplug scaling idle thread fail\n");
+		return PTR_ERR(cpu_idle_task);
+	}
+	sched_setscheduler_nocheck(cpu_idle_task, SCHED_FIFO, &param);
+	get_task_struct(cpu_idle_task);
+
 	err = cpufreq_register_governor(&cpufreq_gov_hotplug);
 
 	return err;
@@ -775,6 +887,8 @@ static void __exit cpufreq_gov_dbs_exit(void)
 {
 	cpufreq_unregister_governor(&cpufreq_gov_hotplug);
 	free_cpumask_var(new_mask);
+	kthread_stop(cpu_idle_task);
+	put_task_struct(cpu_idle_task);
 	kthread_stop(NULL_task);
 	kthread_stop(cpu_hotplug_task);
 	put_task_struct(cpu_hotplug_task);

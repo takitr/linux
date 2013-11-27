@@ -16,6 +16,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/cpu.h>
 #include <asm/cputime.h>
 #include <linux/cpufreq.h>
 #include <linux/cpumask.h>
@@ -26,6 +27,7 @@
 #include <linux/tick.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
+#include <linux/notifier.h>
 
 #include "cpufreq_governor.h"
 
@@ -198,7 +200,7 @@ void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 }
 EXPORT_SYMBOL_GPL(gov_queue_work);
 
-static inline void gov_cancel_work(struct dbs_data *dbs_data,
+void gov_cancel_work(struct dbs_data *dbs_data,
 		struct cpufreq_policy *policy)
 {
 	struct cpu_dbs_common_info *cdbs;
@@ -255,6 +257,7 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	struct cs_cpu_dbs_info_s *cs_dbs_info = NULL;
 	struct hg_cpu_dbs_info_s *hg_dbs_info = NULL;
 	struct od_ops *od_ops = NULL;
+	struct hg_ops *hg_ops = NULL;
 	struct od_dbs_tuners *od_tuners = NULL;
 	struct cs_dbs_tuners *cs_tuners = NULL;
 	struct hg_dbs_tuners *hg_tuners = NULL;
@@ -411,6 +414,10 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			cs_dbs_info->enable = 1;
 			cs_dbs_info->requested_freq = policy->cur;
 		}else if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			for_each_cpu(j, policy->cpus) {
+				hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(j);
+				hg_dbs_info->enable = 1;
+			}
 			hg_tuners = dbs_data->tuners;
 			max_periods = max(DEFAULT_HOTPLUG_IN_SAMPLING_PERIODS,
 					DEFAULT_HOTPLUG_OUT_SAMPLING_PERIODS);
@@ -423,13 +430,15 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			}
 			for (i = 0; i < max_periods; i++)
 				hg_tuners->hotplug_load_history[i] = 50;
+
+			hg_ops = dbs_data->cdata->gov_ops;
+			idle_notifier_register(hg_ops->notifier_block);
 		}
 		else if(dbs_data->cdata->governor == GOV_ONDEMAND) {
 			od_dbs_info->rate_mult = 1;
 			od_dbs_info->sample_type = OD_NORMAL_SAMPLE;
 			od_ops->powersave_bias_init_cpu(cpu);
 		}
-
 		mutex_unlock(&dbs_data->mutex);
 
 		/* Initiate timer time stamp */
@@ -447,13 +456,23 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 	case CPUFREQ_GOV_STOP:
 		if (dbs_data->cdata->governor == GOV_CONSERVATIVE)
 			cs_dbs_info->enable = 0;
+		if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			for_each_cpu(j, policy->cpus) {
+				hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(j);
+				hg_dbs_info->enable = 0;
+			}
+			mutex_lock(&dbs_data->mutex);
+			hg_ops = dbs_data->cdata->gov_ops;
+			idle_notifier_unregister(hg_ops->notifier_block);
+			mutex_unlock(&dbs_data->mutex);
+		}
 
 		gov_cancel_work(dbs_data, policy);
 
 		mutex_lock(&dbs_data->mutex);
 		mutex_destroy(&cpu_cdbs->timer_mutex);
-
 		mutex_unlock(&dbs_data->mutex);
+
 		if(dbs_data->cdata->governor == GOV_HOTPLUG){
 			hg_tuners = dbs_data->tuners;
 			if(hg_tuners->hotplug_load_history){

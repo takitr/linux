@@ -153,6 +153,8 @@ struct cpu_dbs_common_info {
 struct hg_cpu_dbs_info_s {
 	struct cpu_dbs_common_info cdbs;
 	struct cpufreq_frequency_table *freq_table;
+	unsigned int requested_freq;
+	unsigned int enable:1;
 };
 struct od_cpu_dbs_info_s {
 	struct cpu_dbs_common_info cdbs;
@@ -258,8 +260,7 @@ struct cs_ops {
 };
 
 struct hg_ops {
-	int (*io_busy)(void);
-	void (*powersave_bias_init_cpu)(int cpu);
+	struct notifier_block *notifier_block;
 };
 static inline int delay_for_sampling_rate(unsigned int sampling_rate)
 {
@@ -295,6 +296,8 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		struct common_dbs_data *cdata, unsigned int event);
 void gov_queue_work(struct dbs_data *dbs_data, struct cpufreq_policy *policy,
 		unsigned int delay, bool all_cpus);
+void gov_cancel_work(struct dbs_data *dbs_data,
+		struct cpufreq_policy *policy);
 void od_register_powersave_bias_handler(unsigned int (*f)
 		(struct cpufreq_policy *, unsigned int, unsigned int),
 		unsigned int powersave_bias);
