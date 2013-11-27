@@ -24,6 +24,21 @@
 #define VM_IOC_ENABLE_PP _IOW(VM_IOC_MAGIC,0X01,unsigned int)
 #define VM_IOC_CONFIG_FRAME  _IOW(VM_IOC_MAGIC,0X02,unsigned int)
 
+typedef  struct vm_device_s{
+	char  			name[20];
+        struct platform_device  *pdev;
+        int                     task_running;
+        int                     dump;
+        char                    *dump_path;
+	unsigned int 		open_count;
+	int	 		major;
+	unsigned  int 		dbg_enable;
+	struct class 		*cla;
+	struct device		*dev;
+	resource_size_t buffer_start;
+	unsigned int buffer_size;
+	struct io_mapping *mapping;
+}vm_device_t;
 
 typedef struct display_frame_s{
 	int frame_top;
@@ -60,5 +75,12 @@ extern void get_vm_buf_info(resource_size_t* start,unsigned int* size,struct io_
 extern int vm_buffer_init(void);
 extern void vm_local_init(void) ;
 static DEFINE_MUTEX(vm_mutex);
+
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TV
+#define CANVAS_WIDTH_ALIGN 32
+#else
+#define CANVAS_WIDTH_ALIGN 8
+#endif
 
 #endif /* _VM_INCLUDE__ */

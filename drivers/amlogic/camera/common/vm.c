@@ -83,6 +83,7 @@ static int VM_CANVAS_ID = 24;
 /*same as tvin pool*/
 #endif
 
+static vm_device_t  vm_device;
 static int vm_skip_count = 0 ; //deprecated
 #if 0
 new interface please refer to http://wiki-china.amlogic.com/%E5%86%85%E9%83%A8%E4%B
@@ -138,21 +139,21 @@ static struct v4l2_frmsize_discrete canvas_config_wh[]={
 				    };
 #else
 static int vmdecbuf_size[] ={
-			0xE79C00,//5M
+			0xEE5000,//5M
 			0x900000,//3M
 			0x591000,//2M
 			0x384000,//1M3
 			0x240000,//1M
-			0xE1000,//VGA
+			0xF0000,//VGA
 			0x3C000,//QVGA
 			};
 static struct v4l2_frmsize_discrete canvas_config_wh[]={
-					{2592,1952},
+					{2624,1984},
 					{2048,1536},
 					{1600,1216},
 					{1280,960},
 					{1024,768},
-					{640,480},
+					{640,512},
 					{320,256},
 				    };
 #endif
@@ -814,6 +815,32 @@ int get_canvas_index_res(int ext_canvas, int v4l2_format, int *depth, int width,
 	return canvas;
 }
 
+static void vm_dump_mem(char *path, void *phy_addr, vm_output_para_t* para)
+{
+        struct file *filp = NULL;
+        loff_t pos = 0;
+        void * buf = NULL;
+        int i = 0;
+        unsigned int size = para->bytesperline * para->height;
+
+        mm_segment_t old_fs = get_fs();
+        set_fs(KERNEL_DS);
+        filp = filp_open(path,O_RDWR|O_CREAT,0666);
+
+        if(IS_ERR(filp)){
+                printk(KERN_ERR"create %s error.\n",path);
+                return;
+        }
+
+
+        buf = phys_to_virt(phy_addr);
+        vfs_write(filp,buf, size, &pos);
+
+        vfs_fsync(filp, 0);
+        filp_close(filp,NULL);
+        set_fs(old_fs);
+}
+
 int vm_fill_buffer(struct videobuf_buffer* vb , vm_output_para_t* para)
 {
 	//vm_contig_memory_t *mem = NULL;
@@ -1019,7 +1046,11 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_para.index>>8)&0xff;
+#ifndef GE2D_NV
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+#else
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+#endif
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 		ge2d_config->dst_xy_swap = 0;
@@ -1109,7 +1140,11 @@ int vm_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* 
 		ge2d_config->dst_planes[0].w = cd.width;
 		ge2d_config->dst_planes[0].h = cd.height;
 		ge2d_config->dst_para.canvas_index=(output_para.index>>16)&0xff;
+#ifndef GE2D_NV
 		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CR|GE2D_LITTLE_ENDIAN;
+#else
+		ge2d_config->dst_para.format=GE2D_FORMAT_S8_CB|GE2D_LITTLE_ENDIAN;
+#endif
 		ge2d_config->dst_para.width = output_para.width/2;
 		ge2d_config->dst_para.height = output_para.height/2;
 		ge2d_config->dst_xy_swap = 0;
@@ -1275,7 +1310,11 @@ int vm_sw_post_process(int canvas , int addr)
 		offset = canvas_work_v.addr - canvas_work_y.addr;
 		buffer_v_start = io_mapping_map_atomic_wc( mapping_wc, offset );
 
+#ifndef GE2D_NV
 		if(output_para.v4l2_format == V4L2_PIX_FMT_YUV420){
+#else
+		if(output_para.v4l2_format == V4L2_PIX_FMT_YVU420){
+#endif
 			for(i=uv_height;i>0;i--) { /* copy y */
 				memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
 				poss+=uv_width;
@@ -1315,6 +1354,7 @@ static int vm_task(void *data) {
 	vframe_t *vf;
 	int src_canvas;
 	int timer_count = 0 ;
+    vm_device_t *devp = (vm_device_t*) data;
 struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 	ge2d_context_t *context=create_ge2d_work_queue();
 	config_para_ex_t ge2d_config;
@@ -1361,6 +1401,10 @@ struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 			/* step1 convert 422 format to other format.*/
 			if (is_need_ge2d_pre_process())
 				src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
+                        if (devp->dump == 2) {
+                                vm_dump_mem(devp->dump_path, output_para.vaddr, &output_para);
+                                devp->dump = 0;
+                        }
 			local_vf_put(vf);
 #ifdef CONFIG_AMLCAP_LOG_TIME_USEFORFRAMES
 			do_gettimeofday(&end);
@@ -1494,7 +1538,7 @@ int start_vm_task(void) {
 	/* init the device. */
 	vm_local_init();
 	if(!task) {
-		task=kthread_create(vm_task,0,"vm");
+		task=kthread_create(vm_task, &vm_device,"vm");
 		if(IS_ERR(task)) {
 			amlog_level(LOG_LEVEL_HIGH, "thread creating error.\n");
 			return -1;
@@ -1502,6 +1546,7 @@ int start_vm_task(void) {
 		wake_up_process(task);
 	}
     task_running = 1;
+    vm_device.task_running = task_running;
 	return 0;
 }
 
@@ -1522,6 +1567,7 @@ int start_simulate_task(void)
 void stop_vm_task(void) {
     if(task){
         task_running = 0;
+        vm_device.task_running = task_running;
         send_sig(SIGTERM, task, 1);
         up(&vb_start_sema);
         kthread_stop(task);
@@ -1555,20 +1601,6 @@ void set_vm_status(int flag) {
 * file op section.
 *
 ************************************************************************/
-
-typedef  struct {
-	char  			name[20];
-	unsigned int 		open_count;
-	int	 		major;
-	unsigned  int 		dbg_enable;
-	struct class 		*cla;
-	struct device		*dev;
-	resource_size_t buffer_start;
-	unsigned int buffer_size;
-	struct io_mapping *mapping;
-}vm_device_t;
-
-static vm_device_t  vm_device;
 
 void set_vm_buf_info(resource_size_t start,unsigned int size) {
 	vm_device.buffer_start=start;
@@ -1675,6 +1707,74 @@ static const struct file_operations vm_fops = {
 	.release = vm_release,
 };
 
+static ssize_t vm_attr_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        ssize_t len = 0;
+        vm_device_t *devp;
+        int i;
+
+        devp = dev_get_drvdata(dev);
+        if (0 == devp->task_running){
+                len += sprintf(buf+len, "vm does not start\n");
+                return len;
+        }
+
+        len += sprintf(buf+len, "vm parameters below\n");
+
+        return len;
+}
+
+static ssize_t vm_attr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
+{
+        vm_device_t *devp;
+
+        unsigned int n=0, fps=0;
+
+        unsigned char ret=0;
+        char *buf_orig, *ps, *token;
+        char *parm[6] = {NULL};
+
+        if(!buf)
+                return len;
+
+        buf_orig = kstrdup(buf, GFP_KERNEL);
+        //printk(KERN_INFO "input cmd : %s",buf_orig);
+        devp = dev_get_drvdata(dev);
+        if (0 == devp->task_running){
+                len += sprintf(buf+len, "vm does not start\n");
+                return len;
+        }
+
+        ps = buf_orig;
+        while (1) {
+                if ( n >=ARRAY_SIZE(parm) ){
+                        printk("parm array overflow, n=%d, ARRAY_SIZE(parm)=%d\n", n, ARRAY_SIZE(parm));
+                        return len;
+                }
+                token = strsep(&ps, " \n");
+                if (token == NULL)
+                        break;
+                if (*token == '\0')
+                        continue;
+                parm[n++] = token;
+        }
+
+        if ( 0 == strcmp(parm[0],"before")){
+                devp->dump = 1;
+                devp->dump_path = parm[1];
+                printk("this not support\n");
+        } else if ( 0 == strcmp(parm[0],"after")){
+                devp->dump = 2;
+                devp->dump_path = parm[1];
+                printk("after ge2d processed, store to %s\n", parm[1]);
+        }
+
+        kfree(buf_orig);
+        return len;
+}
+
+static DEVICE_ATTR(dump, 0664, vm_attr_show, vm_attr_store);
+
 int init_vm_device(void)
 {
 	int  ret=0;
@@ -1699,6 +1799,13 @@ int init_vm_device(void)
 		amlog_level(LOG_LEVEL_HIGH,"create vm device error\n");
 		goto unregister_dev;
 	}
+
+    //dump func
+    device_create_file( vm_device.dev, &dev_attr_dump);
+    vm_device.dump = 0;
+
+    dev_set_drvdata( vm_device.dev,  &vm_device);
+    platform_set_drvdata( vm_device.pdev,  &vm_device);
 
 	if(vm_buffer_init()<0) goto unregister_dev;
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
@@ -1825,6 +1932,7 @@ static int vm_driver_probe(struct platform_device *pdev)
 	set_vm_buf_info(mem->start,buf_size);
 #endif
 
+	vm_device.pdev = pdev;
 	init_vm_device();
 
 
