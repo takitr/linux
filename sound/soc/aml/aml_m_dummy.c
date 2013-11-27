@@ -30,8 +30,8 @@
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 
-#include "aml_dai.h"
-#include "aml_pcm.h"
+#include "aml_i2s_dai.h"
+#include "aml_i2s.h"
 #include "aml_audio_hw.h"
 
 #ifdef CONFIG_USE_OF

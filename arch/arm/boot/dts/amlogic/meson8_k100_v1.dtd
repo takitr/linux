@@ -1199,17 +1199,17 @@ sdio{
 
 
 /// ***************************************************************************************
-///	-	Audio
+/// -   Audio
 //$$ MODULE="Audio"
-//$$ DEVICE="audio_platform"
+//$$ DEVICE="audio_i2s"
 //$$ L2 PROP_STR = "status"
     audio_platform{
-        compatible = "amlogic,aml-audio";
-        dev_name = "aml-audio.0";
+        compatible = "amlogic,aml-i2s";
+        dev_name = "aml-i2s.0";
         status = "okay";
     };
 
-//$$ DEVICE="audio_dai"
+//$$ DEVICE="audio_i2s_dai"
 //$$ L2 PROP_STR = "status"
     audio_dai{
         compatible = "amlogic,aml-i2s-dai";
@@ -1225,6 +1225,30 @@ sdio{
     audio_spdif_codec{
         compatible = "amlogic,aml-spdif-codec";
         dev_name = "spdif-dit.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm2BT_codec"
+//$$ L2 PROP_STR = "status"
+    audio_pcm2BT_codec{
+        compatible = "amlogic,pcm2BT-codec";
+        dev_name = "pcm2bt.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm_dai"
+//$$ L2 PROP_STR = "status"
+    audio_pcm_dai{
+        compatible = "amlogic,aml-pcm-dai";
+        dev_name = "aml-pcm-dai.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm"
+//$$ L2 PROP_STR = "status"
+    audio_pcm{
+        compatible = "amlogic,aml-pcm";
+        dev_name = "aml-pcm.0";
         status = "okay";
     };
 
@@ -1257,6 +1281,8 @@ sdio{
         mute_gpio = "GPIOY_15";
         //mute_inv;
         hp_paraments = <800 300 0 5 1>;
+        pinctrl-names = "aml_snd_m8";
+        pinctrl-0 = <&audio_pins>;
         status = "okay";
         
     };
@@ -2067,6 +2093,16 @@ sdio{
 						"GPIODV_10","GPIODV_11","GPIODV_12","GPIODV_13","GPIODV_14","GPIODV_15",	//G2~G7
 						"GPIODV_18","GPIODV_19","GPIODV_20","GPIODV_21","GPIODV_22","GPIODV_23";	//B2~B7
 			amlogic,enable-output=<1>;
+        };
+//$$ MATCH "Audio_pin_0_match" = "&audio_pins"
+//$$ L2 PROP_U32 4 = "amlogic,setmask"
+//$$ L2 PROP_U32 10 = "amlogic,clrmask"
+//$$ L2 PROP_STR 6 = "amlogic,pins"
+        audio_pins:audio_pin{
+            amlogic,setmask=<3 0x78000000>;
+            amlogic,clrmask=<4 0x3c000
+                             5 0x1000>;
+            amlogic,pins ="GPIOX_4","GPIOX_5","GPIOX_6","GPIOX_7";
         };
 	};
 

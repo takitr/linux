@@ -26,7 +26,7 @@
 #include <mach/pinmux.h>
 #include "aml_audio_hw.h"
 #include "aml_spdif_dai.h"
-#include "aml_pcm.h"
+#include "aml_i2s.h"
 #include <linux/of.h>
 
 #define DEBUG_ALSA_SPDIF_DAI

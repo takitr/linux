@@ -121,4 +121,4 @@ config SND_AML_M8
 config SND_AML_M8_PCM
 	tristate "M8 evaluation board with PCM2BT"
 	depends on SND_AML_SOC
-	select SND_SOC_PCM2BT
+	select SND_SOC_PCM2BT if SND_AML_M8_PCM

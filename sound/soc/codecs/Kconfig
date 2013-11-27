@@ -532,3 +532,5 @@ config SND_SOC_TPA6130A2
 	tristate
 config SND_SOC_DUMMY_CODEC
        tristate
+config SND_SOC_PCM2BT
+       tristate
