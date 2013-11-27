@@ -1303,7 +1303,8 @@ static long amvenc_avc_ioctl(struct file *file,
 		break;	
 	case AMVENC_AVC_IOC_CONFIG_INIT:
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-		if((encoder_width<640)&&(encoder_height<480))
+		addr_info = (unsigned*)arg;
+		if(*addr_info == 1)
 			half_ucode_mode = 1;
 		else
 			half_ucode_mode = 0;
