@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.26a"
+#define ISP_VER					"2013.11.28a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -49,9 +49,16 @@
 #define ISP_FLAG_TOUCH_AF			0x00002000
 #define ISP_FLAG_SKIP_BUF			0x00004000
 #define ISP_FLAG_TEST_WB			0x00008000
+#define ISP_FLAG_RECONFIG                       0x00010000
 
 #define ISP_AF_SM_MASK				ISP_FLAG_AF|ISP_FLAG_TOUCH_AF
 
+typedef enum bayer_fmt_e {
+	RAW_BGGR = 0,
+	RAW_RGGB,
+	RAW_GBRG,
+	RAW_GRBG,//3
+} bayer_fmt_t;
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	tvin_color_fmt_t dfmt;

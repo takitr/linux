@@ -57,7 +57,7 @@ static volatile unsigned int ae_flag = 0;
 static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
 static unsigned int af_ave_step_en = 1;
-
+static unsigned int def_config = 0;
 static void parse_param(char *buf_orig,char **parm)
 {
 	char *ps, *token;
@@ -110,7 +110,7 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		unsigned int width,height;
 		width = simple_strtol(parm[1],NULL,10);
 		height = simple_strtol(parm[2],NULL,10);
-		isp_set_init(width,height,width+26,height+16);
+		isp_test_pattern(width,height,width+26,height+16);
 	} else if(!strcmp(parm[0],"rgb")){
         unsigned int b,r,g;
         b = RD_BITS(ISP_GAIN_GRBG23, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);
@@ -135,7 +135,8 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		for(i=0;i<4;i++)
 		pr_info("awb->yuv_mid[%d].sum=%d,count=%d\n",i,awb->yuv_mid[i].sum,awb->yuv_mid[i].count);
 		for(i=0;i<4;i++)
-		pr_info("awb->yuv_high[%d].sum=%d,count=%d\n",i,awb->yuv_high[i].sum,awb->yuv_high[i].count);	
+		pr_info("awb->yuv_high[%d].sum=%d,count=%d\n",i,awb->yuv_high[i].sum,awb->yuv_high[i].count);
+		//echo wb_test 1 >/sys/class/isp/isp0/debug --disable 3a,disable gamma correction,lensd
 	}else if(!strcmp(parm[0],"wb_test")){
 		unsigned int flag = simple_strtol(parm[1],NULL,10);
 		if(flag)
@@ -143,6 +144,20 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		else
 			devp->flag &= (~ISP_FLAG_TEST_WB);
 		pr_info("%s wb test.\n",flag?"start":"stop");
+	//echo reconfigure h w bayer_fmt >/sys/class/isp/isp0/debug
+	}else if(!strcmp(parm[0],"reconfigure")){
+		unsigned int width,height,bayer;
+		if(parm[1] && parm[2] && parm[3]){
+			width = simple_strtol(parm[1],NULL,10);//width
+			height = simple_strtol(parm[2],NULL,10);//height
+			bayer = simple_strtol(parm[3],NULL,10);//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+			devp->flag |= ISP_FLAG_RECONFIG;
+			isp_load_def_setting(width,height,bayer);
+			pr_info("default setting:%ux%u bayer=%u.\n",width,height,bayer);
+		}else{
+			devp->flag &= (~ISP_FLAG_RECONFIG);
+			pr_info("config according to configure file.\n");
+		}
 	}
 	return len;
 }
@@ -824,19 +839,23 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_ON);
         devp->cam_param = (cam_parameter_t*)parm->reserved;
 	if(IS_ERR_OR_NULL(devp->cam_param)){
-		pr_err("[%s..]%s camera parameter error use default 720x480 test pattern config.\n",DEVICE_NAME,__func__);
-		isp_set_init(720,480,746,496);
+		pr_err("[%s..] camera parameter error use default config.\n",__func__);
+		isp_load_def_setting(info->h_active,info->v_active,0);
 	} else {
 		devp->isp_ae_parm = &devp->cam_param->xml_scenes->ae;
 		devp->isp_awb_parm = &devp->cam_param->xml_scenes->awb;
 		//devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
+		isp_hw_enable(false);
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
 		/*test for wb test disable gamma & lens*/
 		if(devp->flag & ISP_FLAG_TEST_WB)
 			disable_gc_lns(false);
+		/*enable isp hw*/
+		isp_hw_enable(true);
+		
 		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
 		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
 		devp->isp_af_parm->valid_step_cnt = 8;
@@ -905,6 +924,7 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
         memset(&devp->info,0,sizeof(isp_info_t));
 	/*power down isp hw*/
+	isp_hw_enable(false);
 	switch_vpu_mem_pd_vmod(VPU_ISP,VPU_MEM_POWER_DOWN);
 
 }
@@ -1082,6 +1102,9 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	if(IS_ERR_OR_NULL(devp->cam_param)){
 		pr_info("%s:null pointer error.\n",__func__);
 	}
+	if(devp->flag & ISP_FLAG_RECONFIG)
+		return ret;
+	
 	if(awb_enable){
                 isp_get_awb_stat(&devp->isp_awb);
 	}

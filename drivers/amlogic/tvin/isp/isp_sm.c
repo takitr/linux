@@ -154,6 +154,54 @@ static inline int find_step(cam_function_t *func, unsigned int low, unsigned int
 	return (mid + 1);
 }
 
+static unsigned int aet_gain_pre = 0, format_gain_pre = 0;
+
+static unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
+{
+    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
+    struct cam_function_s *func = &devp->cam_param->cam_function;
+    unsigned int aet_gain_new = 0, format_gain_new = 0;
+
+    aepa->max_step = func->get_aet_max_step();
+    format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
+    aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
+    if (aet_gain_new == 0) {
+        pr_info("[isp] %s: cal ae error, aet_gain_pre:%d, format_gain_pre:%d ... ...\n", __func__, \
+                aet_gain_pre, format_gain_pre);
+        return 0;
+    }
+    ae_sens.new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
+    ae_sens.shutter = 1;
+    ae_sens.gain = 1;
+    pr_info("[isp] %s: format_gain_new:%d, aet_gain_new:%d new_step:%d... ...\n", __func__, \
+            format_gain_new, aet_gain_new, ae_sens.new_step);
+
+    if (func && func->set_aet_new_step) {
+        func->set_aet_new_step(ae_sens.new_step, ae_sens.shutter, ae_sens.gain);
+        pr_info("[isp] %s: write new step to sensor... ...\n", __func__);
+    }
+
+    return 0;
+}
+
+static struct isp_awb_gain_s awb_gain, awb_gain_pre;
+
+unsigned int isp_awb_load_pre_para(isp_dev_t *devp)
+{
+    if ((awb_gain_pre.r_val == 0) &&
+        (awb_gain_pre.r_val == 0) &&
+        (awb_gain_pre.r_val == 0)) {
+        pr_info("[isp] %s cal awb error, r:%d g:%d b:%d ... ...\n",
+                    __func__, awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
+        return 0;
+    }
+    memcpy(&awb_gain, &awb_gain_pre, sizeof(struct isp_awb_gain_s));
+    isp_awb_set_gain(awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
+    pr_info("[isp] %s r:%d g:%d b:%d ... ...\n",
+                __func__, awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
+
+    return 0;
+}
 void isp_sm_init(isp_dev_t *devp)
 {
 	sm_state.isp_ae_parm.tf_ratio = devp->wave->torch_flash_ratio;
@@ -169,6 +217,8 @@ void isp_sm_init(isp_dev_t *devp)
 	sm_state.cap_sm.tr_time = devp->wave->torch_rising_time;
 	/*init for wave*/
 	sm_state.flash = ISP_FLASH_STATUS_NULL;
+    isp_ae_cal_new_para(devp);     // cal and set new ae value
+    isp_awb_load_pre_para(devp);  // cal and set new awb value
 }
 
 void isp_set_manual_exposure(isp_dev_t *devp)
@@ -232,26 +282,17 @@ void isp_ae_low_gain()
 	sm_state.isp_ae_parm.isp_ae_state = AE_LOW_GAIN;
 }
 
-static unsigned int aet_gain_new = 0, format_gain_new = 0, aet_gain_pre = 0, format_gain_pre = 0;
-
-unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
+int isp_ae_save_current_para(isp_dev_t *devp)
 {
-    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
     struct cam_function_s *func = &devp->cam_param->cam_function;
-
+    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
     aepa->max_step = func->get_aet_max_step();
-    format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
-    aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
-    ae_sens.new_step = find_step(func, 0, aepa->max_step, aet_gain_new);
-    ae_sens.shutter = 1;
-    ae_sens.gain = 1;
-    pr_info("[isp] %s: format_gain_new:%d, aet_gain_new:%d new_step:%d... ...\n", __func__, \
-            format_gain_new, aet_gain_new, ae_sens.new_step);
 
-    if (func && func->set_aet_new_step) {
-        func->set_aet_new_step(ae_sens.new_step, ae_sens.shutter, ae_sens.gain);
-        pr_info("[isp] %s: write new step to sensor... ...\n", __func__);
-    }
+    if (func && func->get_aet_gain_by_step)
+        aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
+    format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
+    pr_info("[isp] %s format_gain_pre:%d aet_gain_pre:%d ... ...\n",
+                __func__, format_gain_pre, aet_gain_pre);
 
     return 0;
 }
@@ -268,21 +309,6 @@ unsigned int isp_tune_exposure(isp_dev_t *devp)
 	gain_target = (gain_cur*exposure_extra + 512) >> 10;
 	new_step = find_step(func, 0, aepa->max_step, gain_target);
 	return new_step;
-}
-
-int isp_ae_save_current_para(isp_dev_t *devp)
-{
-    struct cam_function_s *func = &devp->cam_param->cam_function;
-    struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
-    aepa->max_step = func->get_aet_max_step();
-
-    if (func && func->get_aet_gain_by_step)
-        aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
-    format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
-    pr_info("[isp] %s format_gain_pre:%d aet_gain_pre:%d ... ...\n",
-                __func__, format_gain_pre, aet_gain_pre);
-
-    return 0;
 }
 
 void isp_ae_base_sm(isp_dev_t *devp)
@@ -686,18 +712,6 @@ static inline int matrix_yuv709_rgb_b(unsigned int y, unsigned int u, unsigned i
 //static unsigned int r_val = 256;
 //static unsigned int g_val = 390;//256;
 //static unsigned int b_val = 256;
-
-static struct isp_awb_gain_s awb_gain, awb_gain_pre;
-
-unsigned int isp_awb_load_pre_para(isp_dev_t *devp)
-{
-    memcpy(&awb_gain, &awb_gain_pre, sizeof(struct isp_awb_gain_s));
-    isp_awb_set_gain(awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
-    pr_info("[isp] %s r:%d g:%d b:%d ... ...\n",
-                __func__, awb_gain.r_val, awb_gain.g_val,awb_gain.b_val);
-
-    return 0;
-}
 
 int isp_awb_save_current_para(isp_dev_t *devp)
 {

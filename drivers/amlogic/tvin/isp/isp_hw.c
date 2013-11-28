@@ -572,6 +572,8 @@ void disable_gc_lns(bool flag)
 void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h)
 {
 	unsigned int mux = 0;
+
+	
 	switch(fe_port){
 		case TVIN_PORT_CAMERA:
 			mux = 1;
@@ -584,6 +586,7 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 			break;
 	}
 	WR_BITS(VPU_MISC_CTRL,mux,ISP_IN_SEL_BIT,ISP_IN_SEL_WID);
+	
 	isp_top_init(&regs->top,w,h);
 	isp_set_test_pattern(&regs->tp);
 	isp_set_clamp_gain(&regs->cg);
@@ -602,12 +605,27 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	isp_set_lnsd(&regs->lnsd);
 	isp_set_lnsd_test(w,h);
 	isp_set_gamma_table(&regs->lut_gc);
+	//enable isp
+	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
+	WR_BITS(ISP_TIMING_MODE,0,5,1);
 	pr_info("[%s..]%s: init ok(w:%d,h:%d).\n",DEVICE_NAME,__func__,w,h);
+}
+
+void isp_hw_enable(bool flag)
+{
+	if(flag){
+		WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
+		WR_BITS(ISP_TIMING_MODE,0,5,1);
+	}else{
+		WR_BITS(ISP_TIMING_MODE,1,5,1);
+		WR_BITS(ISP_FRM_SOFT_RST,1,0,1);
+	}
+		
 }
 /*
 *just enable test pattern
 */
-void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal)
+void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal)
 {
         // pat gen
         WRITE_VCBUS_REG(ISP_PAT_GEN_CTRL, 0x0);
@@ -654,6 +672,44 @@ void isp_set_init(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsi
 
         WRITE_VCBUS_REG(ISP_RST_DLY_NUM,htotal*6);
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,1,28,1);
+}
+/*
+*just enable demosaicing,matrix
+*/
+void isp_load_def_setting(unsigned int w,unsigned int h,unsigned char bayer_fmt)
+{
+	//reset isp
+	WR_BITS(ISP_TIMING_MODE,1,5,1);
+	WR_BITS(ISP_FRM_SOFT_RST,1,0,1);
+	//disable pattern generator
+	WR_BITS(ISP_PAT_GEN_CTRL,0,ISP_PAT_ENABLE_BIT,ISP_PAT_ENABLE_WID);
+	//disable gamma & lnsd
+	disable_gc_lns(false);
+	//disable nr,pk
+	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
+	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);
+	//disable defect pixel
+	WR_BITS(ISP_DFT_CTRL,0,ISP_DFT_ENABLE_BIT,ISP_DFT_ENABLE_WID);
+	WR_BITS(ISP_DFT_CTRL,0,DFTMAP_CORRECT_MODE_BIT,DFTMAP_CORRECT_MODE_WID);
+	//disable clamp gain
+	WR(ISP_CLAMPGAIN_CTRL,bayer_fmt<<24);
+	WR(ISP_GAIN_BSCORE_GRBG,0x3000000);
+	WR(ISP_CLAMP_GRBG01,0x0);
+	WR(ISP_CLAMP_GRBG23,0x0);
+	WR(ISP_GAIN_GRBG01, 0x1000100);
+	WR(ISP_GAIN_GRBG23, 0x1000100);
+	
+	WR(ISP_HV_SIZE,w<<REG_HSIZE_BIT|h);
+        WR(ISP_HBLANK, w<<REG_TOTAL_W_BIT|10);
+	// demosaicing
+        WR(ISP_DMS_CTRL0, bayer_fmt<<24);
+        WR(ISP_DMS_CTRL1, 0x00120510);
+	//matrix
+	isp_set_matrix(NULL,h);
+	//enable
+	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
+	WR_BITS(ISP_TIMING_MODE,0,5,1);
+	
 }
 
 /*
