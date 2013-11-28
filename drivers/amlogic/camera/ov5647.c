@@ -1898,7 +1898,7 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 {0x4002, 0xc5},
 {0x4004, 0x06},
 {0x4005, 0x1a},
-{0x3503, 0x13},
+{0x3503, 0x03},
 {0x3501, 0x10},
 {0x3502, 0x80},
 {0x350a, 0x00},
@@ -2137,7 +2137,7 @@ static CLASS_ATTR(aet_debug, 0664, aet_manual_show, aet_manual_store);
 static bool OV5647_set_aet_new_step(unsigned int new_step, bool exp_mode, bool ag_mode){
   unsigned int exp = 0, ag = 0, vts = 0;
 
-  if ((!exp_mode) || (!ag_mode) || (new_step > sensor_aet_info[current_fmt].tbl_max_step))
+  if (((!exp_mode) && (!ag_mode)) || (new_step > sensor_aet_info[current_fmt].tbl_max_step))
 		return(false);
 	else
 	{

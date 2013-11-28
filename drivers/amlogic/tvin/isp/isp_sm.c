@@ -332,7 +332,8 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	static int sum = 0;
 	int step = 0;
 	unsigned short targrate;
-	unsigned int targstep, newstep;
+	unsigned int targstep; 
+	static unsigned int newstep;
 	u8 lpfcoef;
 	u8 radium_outer;
 	u8 radium_inner;
@@ -385,16 +386,32 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			break;
 		case AE_ORI_SET:
 			newstep = find_step(func,0,aepa->max_step,aepa->pre_gain);
-			ae_sens.send = 1;
-			ae_sens.new_step = newstep;
-			ae_sens.shutter = 1;
-			ae_sens.gain = 1;
-			//printk("ae_sens.send \n");
-			sm_state.status = ISP_AE_STATUS_UNSTABLE;
-			if(ae_debug&0x10)
-			printk("ISP_AE_STATUS_UNSTABLE\n");
-			sm_state.ae_down = false;
-			sm_state.isp_ae_parm.isp_ae_state = AE_REST;
+			if(aep->ae_skip[1] == 0x1)
+			{
+				ae_sens.send = 1;
+				ae_sens.new_step = newstep;
+				ae_sens.shutter = 1;
+				ae_sens.gain = 1;
+				//printk("ae_sens.send \n");
+				sm_state.status = ISP_AE_STATUS_UNSTABLE;
+				if(ae_debug&0x10)
+				printk("ISP_AE_STATUS_UNSTABLE\n");
+				sm_state.ae_down = false;
+				sm_state.isp_ae_parm.isp_ae_state = AE_REST;
+			}
+			else
+			{
+				ae_sens.send = 1;
+				ae_sens.new_step = newstep;
+				ae_sens.shutter = 1;
+				ae_sens.gain = 0;
+				//printk("ae_sens.send \n");
+				sm_state.status = ISP_AE_STATUS_UNSTABLE;
+				if(ae_debug&0x10)
+				printk("ISP_AE_STATUS_UNSTABLE\n");
+				sm_state.ae_down = false;
+				sm_state.isp_ae_parm.isp_ae_state = AE_GAIN_ADJUST;//AE_REST;
+			}
 			break;
 		case AE_LOW_GAIN:
 			aepa->cur_gain = func->get_aet_current_gain;
@@ -615,17 +632,34 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							step = AE_SET_NEWSTEP;
 						break;
 					case AE_SET_NEWSTEP:
-						ae_sens.send = 1;
-						ae_sens.new_step = newstep;
-						ae_sens.shutter = 1;
-						ae_sens.gain = 1;
-						//printk("ae_sens.send \n");
-						sm_state.status = ISP_AE_STATUS_UNSTABLE;
-						if(ae_debug&0x10)
-						printk("ISP_AE_STATUS_UNSTABLE\n");
-						sm_state.ae_down = false;
-						sm_state.isp_ae_parm.isp_ae_state = AE_REST;
-						step = AE_SUCCESS;
+						if(aep->ae_skip[1] == 0x1)
+						{
+							ae_sens.send = 1;
+							ae_sens.new_step = newstep;
+							ae_sens.shutter = 1;
+							ae_sens.gain = 1;
+							//printk("ae_sens.send \n");
+							sm_state.status = ISP_AE_STATUS_UNSTABLE;
+							if(ae_debug&0x10)
+							printk("ISP_AE_STATUS_UNSTABLE\n");
+							sm_state.ae_down = false;
+							sm_state.isp_ae_parm.isp_ae_state = AE_REST;
+							step = AE_SUCCESS;
+						}
+						else
+						{
+							ae_sens.send = 1;
+							ae_sens.new_step = newstep;
+							ae_sens.shutter = 1;
+							ae_sens.gain = 0;
+							//printk("ae_sens.send \n");
+							sm_state.status = ISP_AE_STATUS_UNSTABLE;
+							if(ae_debug&0x10)
+							printk("ISP_AE_STATUS_UNSTABLE\n");
+							sm_state.ae_down = false;
+							sm_state.isp_ae_parm.isp_ae_state = AE_GAIN_ADJUST;//AE_REST;
+							step = AE_SUCCESS;
+						}
 						break;
 					case AE_MAX_CHECK_STOP:
 						if(ae_debug4)
@@ -650,9 +684,17 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			}
 			break;
 		case AE_GAIN_ADJUST:
-			//if(func&&func->set_aet_new_step)
-			//func->set_aet_new_step(newstep,false,true);
-			sm_state.isp_ae_parm.isp_ae_state = AE_REST;
+			if(ae_sens.send == 0)
+			{
+				ae_sens.send = 1;
+				ae_sens.new_step = newstep;
+				ae_sens.shutter = 0;
+				ae_sens.gain = 1;
+
+				//if(func&&func->set_aet_new_step)
+				//func->set_aet_new_step(newstep,false,true);
+				sm_state.isp_ae_parm.isp_ae_state = AE_REST;
+			}
 			break;
 		case AE_REST:
 			sm_state.ae_down = true;
