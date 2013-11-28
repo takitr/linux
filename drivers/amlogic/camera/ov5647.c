@@ -1982,10 +1982,10 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.reg_script[1]			= OV5647_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
-		.active_frmsize		= {1280, 960},
+		.active_frmsize		= {2592, 1944},
 		.active_fps			= 30,
 		.size_type			= SIZE_960P_1280X960,
-		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[0]			= OV5647_capture_5M_script,//OV5647_preview_960P_script,
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
@@ -1994,14 +1994,14 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
-	},{
+	},/*{
 		.frmsize			= {2048, 1536},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
 		.size_type			= SIZE_1080P_2048X1536,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
-	}
+	}*/
 };
 
 
@@ -2029,10 +2029,10 @@ static resolution_param_t  prev_resolution_array[] = {
 		.reg_script[1]			= OV5647_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
-		.active_frmsize		= {1280, 960},
+		.active_frmsize		= {2592, 1944},
 		.active_fps			= 30,
 		.size_type			= SIZE_960P_1280X960,
-		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[0]			= OV5647_capture_5M_script,//OV5647_preview_960P_script,
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
@@ -2041,14 +2041,14 @@ static resolution_param_t  prev_resolution_array[] = {
 		.size_type			= SIZE_1080P_1920X1080,
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
-	},{
+	},/*{
 		.frmsize			= {2048, 1536},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
 		.size_type			= SIZE_1080P_2048X1536,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
-	}
+	}*/
 };
 	
 
@@ -3040,20 +3040,20 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 		break;
 	case V4L2_CID_DO_WHITE_BALANCE:
 		if(ov5647_qctrl[4].default_value!=value){
+			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 			ov5647_qctrl[4].default_value=value;
 			if(fh->stream_on)
 				OV5647_set_param_wb(dev,value);
-			printk(KERN_INFO " set camera  white_balance=%d. \n ",value);
 		}
 		break;
 	case V4L2_CID_EXPOSURE:
 		if(ov5647_qctrl[5].default_value!=value){
 			ov5647_qctrl[5].default_value=value;
+			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 			if(fh->stream_on) {
 				//printk("fh->stream_on is %d\n", fh->stream_on);
 				OV5647_set_param_exposure(dev,value);
 			}
-			printk(KERN_INFO " set camera  exposure=%d. \n ",value);
 		}
 		break;
 	case V4L2_CID_BACKLIGHT_COMPENSATION:
@@ -3073,8 +3073,9 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 	case V4L2_CID_WHITENESS:
 		if(ov5647_qctrl[3].default_value!=value){
 			ov5647_qctrl[3].default_value=value;
-			OV5647_set_param_banding(dev,value);
 			printk(KERN_INFO " set camera  banding=%d. \n ",value);
+			OV5647_set_param_banding(dev,value);
+			
 		}
 		break;
 	case V4L2_CID_ZOOM_ABSOLUTE:
@@ -3094,14 +3095,18 @@ static int ov5647_setting(struct ov5647_device *dev,int PROP_ID,int value )
 		if(ov5647_qctrl[13].default_value!=value){
 			ov5647_qctrl[13].default_value=value;
 			printk(" set camera  focus zone =%d. \n ",value);
-			set_focus_zone(dev, value);
+			if(fh->stream_on) {
+				set_focus_zone(dev, value);
+			}
 		}
 		break;
 	case V4L2_CID_FOCUS_AUTO:
 		printk("V4L2_CID_FOCUS_AUTO\n");
 		if(ov5647_qctrl[8].default_value!=value){
 			ov5647_qctrl[8].default_value=value;
-			OV5647_AutoFocus(dev,value);
+			if(fh->stream_on) {
+				OV5647_AutoFocus(dev,value);
+			}
 		}
 	case V4L2_CID_PRIVACY:       
 		break;
