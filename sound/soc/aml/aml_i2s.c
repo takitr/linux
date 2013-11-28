@@ -68,7 +68,8 @@ static int audio_type_info = -1;
 static int audio_sr_info = -1;
 extern unsigned audioin_mode;
 
-
+static DEFINE_MUTEX(gate_mutex);
+static unsigned audio_gate_status = 0;
 
 EXPORT_SYMBOL(aml_i2s_playback_start_addr);
 EXPORT_SYMBOL(aml_i2s_capture_start_addr);
@@ -442,7 +443,8 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 {
 	ALSA_TRACE();
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct aml_runtime_data *prtd;
+	struct aml_runtime_data *prtd = runtime->private_data;
+	audio_stream_t *s ;		
 	int ret = 0;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		snd_soc_set_runtime_hwparams(substream, &aml_i2s_hardware);
@@ -466,17 +468,17 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 		printk("set period error\n");
 		goto out;
 	}
-
-	prtd = kzalloc(sizeof(struct aml_runtime_data), GFP_KERNEL);
-	if (prtd == NULL) {
-		printk("alloc aml_runtime_data error\n");
-		ret = -ENOMEM;
-		goto out;
+	if(!prtd){
+		prtd = kzalloc(sizeof(struct aml_runtime_data), GFP_KERNEL);
+		if (prtd == NULL) {
+			printk("alloc aml_runtime_data error\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+		prtd->substream = substream;
+		runtime->private_data = prtd;
 	}
-
-	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);			
-	//WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
-	prtd->substream = substream;
+//	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);
 #if USE_HRTIMER == 0    
 	prtd->timer.function = &aml_i2s_timer_callback;
 	prtd->timer.data = (unsigned long)substream;
@@ -489,9 +491,18 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 
     printk("hrtimer inited..\n");
 #endif
-	runtime->private_data = prtd;
 
 	spin_lock_init(&prtd->s.lock);
+	s= &prtd->s;
+	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
+	mutex_lock(&gate_mutex);
+	if(audio_gate_status == 0){
+		audio_aiu_pg_enable(1);
+		ALSA_DEBUG("aml_pcm_open  device type %x \n", s->device_type);
+		
+	}
+	audio_gate_status  |= s->device_type;
+	mutex_unlock(&gate_mutex);		
  out:
 	return ret;
 }
@@ -501,16 +512,22 @@ static int aml_i2s_close(struct snd_pcm_substream *substream)
 	struct aml_runtime_data *prtd = substream->runtime->private_data;
 	audio_stream_t *s = &prtd->s;	
 	ALSA_TRACE();
-	if(s->device_type == AML_AUDIO_SPDIFOUT){
-	//	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);
-
-    }			
+	mutex_lock(&gate_mutex);
+	audio_gate_status  &= ~s->device_type;	
+	if(audio_gate_status == 0){
+		ALSA_DEBUG("aml_pcm_close  device type %x \n", s->device_type);		
+		audio_aiu_pg_enable(0);
+	}
+	mutex_unlock(&gate_mutex);		
+//	if(s->device_type == AML_AUDIO_SPDIFOUT)
+//		WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);			
 #if USE_HRTIMER == 0
 	del_timer_sync(&prtd->timer);
 #else
     hrtimer_cancel(&prtd->hrtimer);
 #endif
-	kfree(prtd);
+	if(prtd)
+		kfree(prtd);
 	return 0;
 }
 

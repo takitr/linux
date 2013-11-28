@@ -3,9 +3,10 @@
 
 #include <mach/am_regs.h>
 #include <mach/clock.h>
+#include <linux/spinlock.h>
 /* clock gate control */
 
-#define CLK_GATE_ON(_MOD) \
+#define __CLK_GATE_ON(_MOD) \
 	do{                     \
 		if(GCLK_ref[GCLK_IDX_##_MOD]++ == 0){ \
 			if (0) printk(KERN_INFO "gate on %s %x, %x\n", GCLK_NAME_##_MOD, GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
@@ -14,18 +15,35 @@
 	}while(0)
 
 
-#define CLK_GATE_OFF(_MOD) \
+#define __CLK_GATE_OFF(_MOD) \
 	do{                             \
-		if(GCLK_ref[GCLK_IDX_##_MOD] == 0)    \
-			break;                  \
-		if(--GCLK_ref[GCLK_IDX_##_MOD] == 0){ \
+		if(--GCLK_ref[GCLK_IDX_##_MOD] <= 0){ \
 			if (0) printk(KERN_INFO "gate off %s %x, %x\n", GCLK_NAME_##_MOD, GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
 			CLEAR_CBUS_REG_MASK(GCLK_REG_##_MOD, GCLK_MASK_##_MOD); \
+			GCLK_ref[GCLK_IDX_##_MOD] = 0; \
 		} \
 	}while(0)
 
 #define IS_CLK_GATE_ON(_MOD) (READ_CBUS_REG(GCLK_REG_##_MOD) & (GCLK_MASK_##_MOD))
 #define GATE_INIT(_MOD) GCLK_ref[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD)?1:0
+	
+extern spinlock_t gate_lock;
+
+#define CLK_GATE_ON(_MOD) \
+	do{                     \
+		int flags; \
+		spin_lock_irqsave(&gate_lock, flags); \
+		__CLK_GATE_ON(_MOD); \
+		spin_unlock_irqrestore(&gate_lock, flags); \
+	}while(0)
+	
+#define CLK_GATE_OFF(_MOD) \
+	do{                     \
+		int flags; \
+		spin_lock_irqsave(&gate_lock, flags); \
+		__CLK_GATE_OFF(_MOD); \
+		spin_unlock_irqrestore(&gate_lock, flags); \
+	}while(0)
 
 #define GCLK_IDX_DDR         0
 #define GCLK_NAME_DDR      "DDR"

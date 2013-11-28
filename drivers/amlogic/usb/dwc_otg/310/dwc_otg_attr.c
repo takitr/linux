@@ -319,7 +319,7 @@
  To power down the USB:
  echo 0 > /sys/devices/lm0/buspower
  */
-
+#include <mach/am_regs.h>
 #include "dwc_otg_os_dep.h"
 #include "dwc_os.h"
 #include "dwc_otg_driver.h"
@@ -328,7 +328,9 @@
 #include "dwc_otg_pcd_if.h"
 #include "dwc_otg_hcd_if.h"
 #include "dwc_otg_cil.h"
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#include <mach/mod_gate.h>
+#endif
 /*
  * MACROs for defining sysfs attribute
  */
@@ -741,7 +743,27 @@ static ssize_t peri_sleepm_store(struct device *_dev,
 	uint32_t in = simple_strtoul(buf, NULL, 16);
 	ctrl.d32 = DWC_READ_REG32(&otg_dev->core_if->usb_peri_reg->ctrl);
 	ctrl.b.sleepm = in?0:1;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+	if(!in)
+	{
+		if(lm_dev->id== 0)
+			switch_mod_gate_by_name("usb0", 1);
+		else
+			switch_mod_gate_by_name("usb1", 1);
+
+	}
+#endif
 	DWC_WRITE_REG32(&otg_dev->core_if->usb_peri_reg->ctrl,ctrl.d32);
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+	if(in)
+	{
+		if(lm_dev->id== 0)
+			switch_mod_gate_by_name("usb0", 0);
+		else
+			switch_mod_gate_by_name("usb1", 0);
+	}
+#endif
 	return count;
 }
 

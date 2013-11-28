@@ -60,7 +60,7 @@ unsigned int acodec_regbank[252] = {0x00, 0x05, 0x00, 0x01, 0x7d, 0x02, 0x7d, 0x
                                    };
 
 extern void audio_set_i2s_clk(unsigned freq, unsigned fs_config);
-
+extern unsigned audio_aiu_pg_enable(unsigned char enable);
 void adac_wr_reg (unsigned long addr, unsigned long data)
 {
     // Write high byte for 16-bit register
@@ -1133,9 +1133,10 @@ static const struct snd_soc_dapm_route aml_m8_audio_map[] = {
 
 static int aml_m8_soc_probe(struct snd_soc_codec *codec){
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	
+	audio_aiu_pg_enable(1);
 	aml_m8_codec_reset(codec);
-    codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
+	audio_aiu_pg_enable(0);
+    	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
 #if 0	
 	aml_m8_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	snd_soc_add_codec_controls(codec, amlm8_snd_controls,

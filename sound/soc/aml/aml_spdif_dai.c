@@ -154,15 +154,11 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 			sample_rate	=	AUDIO_CLK_FREQ_441;
 			break;
 	};		
-	//audio_set_clk(sample_rate, AUDIO_CLK_256FS);
-	//audio_util_set_dac_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);	
-	//audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
     printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
     if(set_clock != sample_rate){
         set_clock = sample_rate;
         audio_set_958_clk(sample_rate, AUDIO_CLK_256FS);
     }
-	//audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 	audio_util_set_dac_958_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);
 
 	switch(runtime->format){
@@ -233,7 +229,7 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
                 aout_notifier_call_chain(AOUT_EVENT_RAWDATA_AC_3,substream);
         }
         else if(IEC958_mode_codec == 3){
-                aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS_HD,substream);
+                aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DTS,substream);
         }
         else if(IEC958_mode_codec == 4){
                 aout_notifier_call_chain(AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS,substream);
@@ -261,12 +257,49 @@ void	aml_alsa_hw_reprepare(void)
 static int aml_dai_spdif_startup(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {	  	
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_DEBUG();
+    	ALSA_TRACE();	
+	int ret = 0;
+    	struct snd_pcm_runtime *runtime = substream->runtime;
+    	struct aml_runtime_data *prtd = runtime->private_data;
+	audio_stream_t *s;	
+	if(!prtd){
+		prtd = (struct aml_runtime_data *)kzalloc(sizeof(struct aml_runtime_data), GFP_KERNEL);
+		if (prtd == NULL) {
+			printk("alloc aml_runtime_data error\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+		prtd->substream = substream;
+		runtime->private_data = prtd;		
+	}
+	s = &prtd->s; 
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+		s->device_type = AML_AUDIO_SPDIFOUT;
+		audio_spdifout_pg_enable(1);
+	}	
+	else{
+		s->device_type = AML_AUDIO_SPDIFIN;
+	}	
+		
 	return 0;
+out:
+	return ret;
 }
-
+static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	ALSA_DEBUG();
+    	ALSA_TRACE();	
+    	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct snd_dma_buffer *buf = &substream->dma_buffer;	
+		
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+		memset((void*)runtime->dma_area,0,snd_pcm_lib_buffer_bytes(substream));
+		audio_spdifout_pg_enable(0);	
+	}
+	
+}
 
 
 static int aml_dai_spdif_prepare(struct snd_pcm_substream *substream,
@@ -279,7 +312,6 @@ static int aml_dai_spdif_prepare(struct snd_pcm_substream *substream,
     	struct aml_runtime_data *prtd = runtime->private_data;
 	audio_stream_t *s = &prtd->s;	
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		s->device_type = AML_AUDIO_SPDIFOUT;
 		if(playback_substream_handle != (unsigned)substream)
 			playback_substream_handle = (unsigned)substream;
 		aml_hw_iec958_init((struct snd_pcm_substream *)playback_substream_handle);		
@@ -292,7 +324,6 @@ static int aml_dai_spdif_prepare(struct snd_pcm_substream *substream,
 			ppp[0] = 0x78787878;
 			ppp[1] = 0x78787878;
 		}		
-		s->device_type = AML_AUDIO_SPDIFIN;
 	}	
 
 	return 0;
@@ -310,18 +341,7 @@ static int aml_dai_spdif_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
-				struct snd_soc_dai *dai)
-{
-	ALSA_DEBUG();
-    	struct snd_pcm_runtime *runtime = substream->runtime;
-	struct snd_dma_buffer *buf = &substream->dma_buffer;	
-		
-	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
-		memset((void*)runtime->dma_area,0,snd_pcm_lib_buffer_bytes(substream));
-	}
-	
-}
+
 
 #ifdef CONFIG_PM
 static int aml_dai_spdif_suspend(struct snd_soc_dai *cpu_dai)
@@ -347,6 +367,7 @@ static struct snd_soc_dai_ops spdif_dai_ops = {
 	.prepare = aml_dai_spdif_prepare,
 	.hw_params	= aml_dai_spdif_hw_params,
 	.shutdown	= aml_dai_spdif_shutdown,
+	.startup	= aml_dai_spdif_startup,	
 };
 
 static struct snd_soc_dai_driver aml_spdif_dai[] = {

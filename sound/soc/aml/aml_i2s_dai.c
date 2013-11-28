@@ -1,19 +1,25 @@
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/interrupt.h>
-#include <linux/device.h>
+#include <linux/moduleparam.h>
+#include <linux/platform_device.h>
+#include <linux/init.h>
+#include <linux/errno.h>
+#include <linux/ioctl.h>
 #include <linux/delay.h>
-#include <linux/clk.h>
+#include <linux/slab.h>
+#include <linux/dma-mapping.h>
+#include <linux/soundcard.h>
+#include <linux/timer.h>
+#include <linux/debugfs.h>
+#include <linux/major.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
-#include <sound/pcm_params.h>
 #include <sound/initval.h>
+#include <sound/control.h>
 #include <sound/soc.h>
-
-#include <mach/hardware.h>
-//#include <sound/soc-dai.h>
-
+#include <sound/pcm_params.h>
+#include <mach/am_regs.h>
+#include <mach/pinmux.h>
 #include "aml_i2s_dai.h"
 #include "aml_pcm.h"
 #include "aml_i2s.h"
@@ -66,7 +72,30 @@ static int aml_dai_i2s_startup(struct snd_pcm_substream *substream,
 #ifdef AML_DAI_DEBUG
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 #endif
+	int ret = 0;
+    	struct snd_pcm_runtime *runtime = substream->runtime;
+    	struct aml_runtime_data *prtd = (struct aml_runtime_data *)runtime->private_data;
+	audio_stream_t *s;	
+	if(prtd == NULL){
+		prtd = (struct aml_runtime_data *)kzalloc(sizeof(struct aml_runtime_data), GFP_KERNEL);
+		if (prtd == NULL) {
+			printk("alloc aml_runtime_data error\n");
+			ret = -ENOMEM;
+			goto out;
+		}
+		prtd->substream = substream;
+		runtime->private_data = prtd;		
+	}
+	s = &prtd->s; 
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
+		s->device_type = AML_AUDIO_I2SOUT;
+	}	
+	else{
+		s->device_type = AML_AUDIO_I2SIN;	
+	}	
 	return 0;
+out:
+	return ret;
 }
 
 static void aml_dai_i2s_shutdown(struct snd_pcm_substream *substream,

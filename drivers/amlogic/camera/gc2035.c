@@ -3036,7 +3036,7 @@ static int gc2035_open(struct file *file)
     }
 #endif
 
-#ifdef CONFIG_ARCH_MESON6
+#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 1);
 #endif	
 	aml_cam_init(&dev->cam_info);
@@ -3166,7 +3166,7 @@ static int gc2035_close(struct file *file)
 	power_down_gc2035(dev);
 #endif
 	aml_cam_uninit(&dev->cam_info);
-#ifdef CONFIG_ARCH_MESON6
+#ifdef MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 	switch_mod_gate_by_name("ge2d", 0);
 #endif	
 	wake_unlock(&(dev->wake_lock));

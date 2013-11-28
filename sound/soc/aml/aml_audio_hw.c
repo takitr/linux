@@ -1225,3 +1225,55 @@ unsigned int audio_hdmi_init_ready()
 {
 	return 	READ_MPEG_REG_BITS(AIU_HDMI_CLK_DATA_CTRL, 0, 2);
 }
+/* power gate control for iec958 audio out */
+unsigned audio_spdifout_pg_enable(unsigned char enable)
+{
+	if(enable){
+			WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 1,14, 1);					
+			AUDIO_CLK_GATE_ON(AIU_IEC958);
+			AUDIO_CLK_GATE_ON(AIU_ICE958_AMCLK);
+	}
+	else{
+			AUDIO_CLK_GATE_OFF(AIU_IEC958);
+			AUDIO_CLK_GATE_OFF(AIU_ICE958_AMCLK);	
+			WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL8, 0,14, 1);								
+	}
+	return 0;
+}
+/*
+	power gate control for normal aiu  domain including i2s in/out
+	TODO: move i2s out /adc related gate to i2s cpu dai driver 
+*/
+unsigned audio_aiu_pg_enable(unsigned char enable)
+{
+	if(enable){
+		AUDIO_CLK_GATE_ON(AIU_AMCLK_MEASURE);
+		AUDIO_CLK_GATE_ON(AIU_AIFIFO2);
+		AUDIO_CLK_GATE_ON(AIU_AUD_MIXER);
+		AUDIO_CLK_GATE_ON(AIU_MIXER_REG);
+		AUDIO_CLK_GATE_ON(AIU_AI_TOP_GLUE);
+		AUDIO_CLK_GATE_ON(AIU_AOCLK);   		
+		AUDIO_CLK_GATE_ON(AIU_I2S_OUT);
+		AUDIO_CLK_GATE_ON(AIU_ADC);		
+        AUDIO_CLK_GATE_ON(AUD_IN);
+        AUDIO_CLK_GATE_ON(AIU_IEC958);
+        AUDIO_CLK_GATE_ON(AIU_PCLK);
+        AUDIO_CLK_GATE_ON(AIU_ICE958_AMCLK);
+        AUDIO_CLK_GATE_ON(AIU_TOP_LEVEL);
+	}
+	else{
+		AUDIO_CLK_GATE_OFF(AIU_AMCLK_MEASURE);
+		AUDIO_CLK_GATE_OFF(AIU_AIFIFO2);
+		AUDIO_CLK_GATE_OFF(AIU_AUD_MIXER);
+		AUDIO_CLK_GATE_OFF(AIU_MIXER_REG);
+		AUDIO_CLK_GATE_OFF(AIU_AI_TOP_GLUE);
+		AUDIO_CLK_GATE_OFF(AIU_AOCLK);   		
+		AUDIO_CLK_GATE_OFF(AIU_I2S_OUT);
+		AUDIO_CLK_GATE_OFF(AIU_ADC);			
+        AUDIO_CLK_GATE_OFF(AUD_IN);
+        AUDIO_CLK_GATE_OFF(AIU_IEC958);
+        AUDIO_CLK_GATE_OFF(AIU_PCLK);
+        AUDIO_CLK_GATE_OFF(AIU_ICE958_AMCLK);   
+        AUDIO_CLK_GATE_OFF(AIU_TOP_LEVEL);
+	}
+}

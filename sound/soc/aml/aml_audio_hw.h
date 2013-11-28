@@ -1,6 +1,13 @@
 #ifndef __AML_AUDIO_HW_H__
 #define __AML_AUDIO_HW_H__
-
+#include <mach/power_gate.h>
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON6
+#define AUDIO_CLK_GATE_ON(a)
+#define AUDIO_CLK_GATE_OFF(a)
+#else
+#define AUDIO_CLK_GATE_ON(a) CLK_GATE_ON(a)
+#define AUDIO_CLK_GATE_OFF(a) CLK_GATE_OFF(a)
+#endif
 
 typedef struct {
     unsigned short pll;
@@ -129,6 +136,8 @@ void audio_util_set_dac_format(unsigned format);
 unsigned int audio_hdmi_init_ready(void);
 unsigned int read_iec958_rd_ptr(void);
 void audio_in_spdif_enable(int flag);
+unsigned audio_spdifout_pg_enable(unsigned char enable);
+unsigned audio_aiu_pg_enable(unsigned char enable);
 
 #include "mach/cpu.h"
 
