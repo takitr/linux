@@ -330,10 +330,9 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
 /*setup delayed workstruct in aml_sdio_request*/
 static void aml_sdio_timeout(struct work_struct *data)
 {
-    static int timeout_cnt = 0;
-    unsigned long flags;
     //struct amlsd_host* host = (void*)data;
     struct amlsd_host *host = container_of(data, struct amlsd_host, timeout);
+    unsigned long flags;
     // struct mmc_request *mrq = host->mrq;
     u32 virqs = readl(host->base + SDIO_IRQS);
     struct sdio_status_irq* irqs = (void*)&virqs;
@@ -354,18 +353,12 @@ static void aml_sdio_timeout(struct work_struct *data)
         //mod_timer(&host->timeout_tlist, jiffies + 10);
         schedule_delayed_work(&host->timeout, 10);
         spin_unlock_irqrestore(&host->mrq_lock, flags);
-        if(irqs->sdio_cmd_int) {
-            timeout_cnt++;
-            if (timeout_cnt > 100)
-                goto timeout_handle;
+        if(irqs->sdio_cmd_int)
             sdio_err("%s: irq have been occured\n", mmc_hostname(host->mmc));
-        }
         else
             sdio_err("%s: isr have been run\n",  mmc_hostname(host->mmc));
 		return;
 	}
-timeout_handle:
-    timeout_cnt = 0;
 
     if (!(irqc->arc_cmd_int_en)) {
         sdio_err("%s: arc_cmd_int_en is not enable\n",  mmc_hostname(host->mmc));
@@ -1054,8 +1047,10 @@ static int aml_sdio_probe(struct platform_device *pdev)
 		if(pdata->port_init)
 			pdata->port_init(pdata);
 
-       //init sdio reg here
-        aml_sdio_init_param(pdata);
+        if (i == 0) {
+            //init sdio reg here
+            aml_sdio_init_param(pdata);
+        }
 
         aml_sduart_pre(pdata);
 
@@ -1127,9 +1122,6 @@ int aml_sdio_remove(struct platform_device *pdev)
 		mmc_remove_host(mmc);
 		mmc_free_host(mmc);
 	}
-    
-    aml_devm_pinctrl_put(host);
-
     kfree(host);
 	return 0;
 }
