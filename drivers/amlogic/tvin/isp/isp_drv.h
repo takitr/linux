@@ -82,6 +82,7 @@ typedef struct flash_property_s {
 /*parameters used for ae in sm or driver*/
 typedef struct isp_ae_info_s {
 	int manul_level;//each step 2db
+	atomic_t writeable;
 } isp_ae_info_t;
 
 /*for af debug*/

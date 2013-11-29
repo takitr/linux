@@ -319,6 +319,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	struct vframe_prop_s *ph = devp->frontend.private_data;
+	struct isp_ae_info_s *ae_info = &devp->ae_info;
 	u8  sub_avg[16] = {0};
 	unsigned int avg_sum = 0;
 	unsigned int avg_env_sum = 0;
@@ -388,10 +389,11 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			newstep = find_step(func,0,aepa->max_step,aepa->pre_gain);
 			if(aep->ae_skip[1] == 0x1)
 			{
-				ae_sens.send = 1;
+				//ae_sens.send = 1;
 				ae_sens.new_step = newstep;
 				ae_sens.shutter = 1;
 				ae_sens.gain = 1;
+				atomic_set(&ae_info->writeable,1);
 				//printk("ae_sens.send \n");
 				sm_state.status = ISP_AE_STATUS_UNSTABLE;
 				if(ae_debug&0x10)
@@ -401,10 +403,11 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			}
 			else
 			{
-				ae_sens.send = 1;
+				//ae_sens.send = 1;
 				ae_sens.new_step = newstep;
 				ae_sens.shutter = 1;
 				ae_sens.gain = 0;
+				atomic_set(&ae_info->writeable,1);
 				//printk("ae_sens.send \n");
 				sm_state.status = ISP_AE_STATUS_UNSTABLE;
 				if(ae_debug&0x10)
@@ -634,10 +637,10 @@ void isp_ae_base_sm(isp_dev_t *devp)
 					case AE_SET_NEWSTEP:
 						if(aep->ae_skip[1] == 0x1)
 						{
-							ae_sens.send = 1;
 							ae_sens.new_step = newstep;
 							ae_sens.shutter = 1;
 							ae_sens.gain = 1;
+							atomic_set(&ae_info->writeable,1);
 							//printk("ae_sens.send \n");
 							sm_state.status = ISP_AE_STATUS_UNSTABLE;
 							if(ae_debug&0x10)
@@ -648,10 +651,10 @@ void isp_ae_base_sm(isp_dev_t *devp)
 						}
 						else
 						{
-							ae_sens.send = 1;
 							ae_sens.new_step = newstep;
 							ae_sens.shutter = 1;
 							ae_sens.gain = 0;
+							atomic_set(&ae_info->writeable,1);
 							//printk("ae_sens.send \n");
 							sm_state.status = ISP_AE_STATUS_UNSTABLE;
 							if(ae_debug&0x10)
@@ -684,12 +687,12 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			}
 			break;
 		case AE_GAIN_ADJUST:
-			if(ae_sens.send == 0)
+			if(atomic_read(&ae_info->writeable) <= 0)
 			{
-				ae_sens.send = 1;
 				ae_sens.new_step = newstep;
 				ae_sens.shutter = 0;
 				ae_sens.gain = 1;
+				atomic_set(&ae_info->writeable,1);
 
 				//if(func&&func->set_aet_new_step)
 				//func->set_aet_new_step(newstep,false,true);
@@ -698,7 +701,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			break;
 		case AE_REST:
 			sm_state.ae_down = true;
-			if(ae_sens.send == 0)
+			if(atomic_read(&ae_info->writeable) <= 0)
 				k++;
 			//printk("func->check_mains_freq =%x\n",func->check_mains_freq);
 			//if(func->check_mains_freq)
