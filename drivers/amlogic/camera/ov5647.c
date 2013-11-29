@@ -3935,11 +3935,18 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 static int vidioc_queryctrl(struct file *file, void *priv,
 			    struct v4l2_queryctrl *qc)
 {
+	struct ov5647_fh *fh = priv;
+	struct ov5647_device *dev = fh->dev;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(ov5647_qctrl); i++)
 		if (qc->id && qc->id == ov5647_qctrl[i].id) {
-			memcpy(qc, &(ov5647_qctrl[i]),sizeof(*qc));
+			if (V4L2_CID_BACKLIGHT_COMPENSATION == ov5647_qctrl[i].id) {
+				if (dev->cam_info.flash_support) 
+					memcpy(qc, &(ov5647_qctrl[i]),sizeof(*qc));
+			} else {
+				memcpy(qc, &(ov5647_qctrl[i]),sizeof(*qc));
+			}
 			return (0);
 		}
 	return -EINVAL;
