@@ -175,10 +175,10 @@ int amlsd_get_platform_data(struct platform_device* pdev,
 		SD_PARSE_GPIO_NUM_PROP(child, "gpio_ro", str, pdata->gpio_ro);
 		SD_PARSE_GPIO_NUM_PROP(child, "gpio_power", str, pdata->gpio_power);
 
+        SD_PARSE_GPIO_NUM_PROP(child, "gpio_dat3", str, pdata->gpio_dat3);
 		SD_PARSE_STRING_PROP(child, "pinname", str, pdata->pinname);
         SD_PARSE_GPIO_NUM_PROP(child, "jtag_pin", str, pdata->jtag_pin);
 		SD_PARSE_U32_PROP(child, "card_type", prop, pdata->card_type);
-        SD_PARSE_GPIO_NUM_PROP(child, "gpio_dat3", str, pdata->gpio_dat3);
 
 		pdata->port_init = of_amlsd_init;
 		pdata->pwr_pre = of_amlsd_pwr_prepare;

@@ -7,7 +7,7 @@
 #define AML_MMC_MAJOR_VERSION   1
 #define AML_MMC_MINOR_VERSION   01
 #define AML_MMC_VERSION         ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
-#define AML_MMC_VER_MESSAGE     "2013-11-21: support write protect"
+#define AML_MMC_VER_MESSAGE     "2013-11-28: revert pinctrl modification"
 
 extern unsigned sdhc_debug;
 extern unsigned sdio_debug;
