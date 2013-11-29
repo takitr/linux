@@ -6,6 +6,11 @@ choice
 	prompt "Meson SoC"
 	default ARCH_MESON8
 
+config ARCH_MESON6
+    bool "Meson6 series"
+    help
+        Enable support for Amlogic Meson6 based system
+
 config ARCH_MESON8
     bool "Meson8 series"
     help
@@ -73,6 +78,7 @@ config MESON_CPU_EMULATOR
 		help
 		Enable support for Meson serial CPU running at VLSI Emulator
 
+source "arch/arm/mach-meson6/Kconfig"
 source "arch/arm/mach-meson8/Kconfig"
 
 config MESON_CUSTOM_BOARD_SUPPORT
@@ -83,6 +89,7 @@ config MESON_CUSTOM_BOARD_SUPPORT
 
 menu "Meson development boards"
 
+source "arch/arm/mach-meson6/Kconfig.boards"
 source "arch/arm/mach-meson8/Kconfig.boards"
 
 #if MESON_CUSTOM_BOARD_SUPPORT
