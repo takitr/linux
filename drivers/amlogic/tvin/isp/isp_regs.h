@@ -390,7 +390,21 @@
 #define PAT_DFT_GAINGRBG3_WID		    6
 //Bit  5: 0, reg_isp_pat_dft_gaingrbg3   lazy or active pixel gain of green channel (phase3). <32 means lazy pixel, >32 means active, 32: means normal; default=0  
 
-// address 0x2d1c~ 0x2d1f null
+#define ISP_PAT_HVTOTAL                     0x2d1c 
+//Bit 31:16, reg_isp_pat_vtotal             default=490    
+//Bit 15: 0, reg_isp_pat_htotal             default=760
+#define ISP_PAT_VDE_SLINE                   0x2d1d
+//Bit 31:29, reserved  
+//Bit 15: 0, reg_isp_pat_vde_sline          default=64
+#define ISP_OUTHS_PARA                      0x2d1e 
+//Bit 31:16, reg_ouths_pre_dist             represent the output hsyn inter-distance when need some output hsyn in the head of each frame  default=0        
+//Bit 15: 8, reserved                     
+//Bit  7: 0, reg_ouths_pre_num              how many output hsyn is needed in the head of each frame   default=0        
+#define ISP_FRM_DONE_PARA                   0x2d1f 
+//Bit 31:17, reserved                      
+//Bit    16, reg_isp_intr_sel               isp interrupt source select  0--generated global reset 1--isp real frame process done  default=0       
+//Bit 15: 0, reg_frm_done_dlynum            how many time frame done delay as the finally done  default=128        
+
 
 
 /*********** Clamp and Gain module registers************/

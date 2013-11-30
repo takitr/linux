@@ -471,7 +471,7 @@ typedef struct xml_top_s {
         unsigned int reg_map[XML_TOP];
 } xml_top_t;
 
-#define XML_TP 24 // test pattern
+#define XML_TP 20 // test pattern
 typedef struct xml_tp_s {
         unsigned int reg_map[XML_TP];
 } xml_tp_t;

@@ -123,7 +123,7 @@ static bool invert_top_bot = false;
 module_param(invert_top_bot,bool,0644);
 MODULE_PARM_DESC(invert_top_bot,"invert field type top or bottom");
 
-static unsigned short v_cut_offset = 2;
+static unsigned short v_cut_offset = 0;
 module_param(v_cut_offset,ushort,0664);
 MODULE_PARM_DESC(v_cut_offset,"the cut window vertical offset for isp");
 
@@ -713,10 +713,9 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		return -1;
 	}
 	//disable cut window?
-	if(para->port == TVIN_PORT_ISP) {
-		devp->parm.cutwin.ve = v_cut_offset;
-		devp->parm.cutwin.vs = v_cut_offset;
-	} 
+	devp->parm.cutwin.ve = v_cut_offset;
+	devp->parm.cutwin.vs = v_cut_offset;
+		
         /*add for scaler down*/
 	if(!(devp->flags & VDIN_FLAG_MANUAL_CONVERTION)) {
 		devp->scaler4w = para->dest_hactive;

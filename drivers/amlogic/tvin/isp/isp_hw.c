@@ -211,15 +211,17 @@ void isp_top_init(xml_top_t *top,unsigned int w,unsigned int h)
 	int i = 0;
 	if(top){
 		//for(i=0;i < XML_TOP;i++)
-//			WR(ISP_VCBUS_BASE+offset[i],top->reg_map[i]);
+                //	WR(ISP_VCBUS_BASE+offset[i],top->reg_map[i]);
 	}
 	/*config input size*/
 	WR(ISP_HV_SIZE,w<<REG_HSIZE_BIT|h);
         WR(ISP_HBLANK,w<<REG_TOTAL_W_BIT|10);
+	/*config output timming*/
+	WR(ISP_OUTHS_PARA,0x100000a);
 	return;
 }
 /*
-*reg 0x08~0x1f
+*reg 0x08~0x1b
 */
 void isp_set_test_pattern(xml_tp_t *tp)
 {
