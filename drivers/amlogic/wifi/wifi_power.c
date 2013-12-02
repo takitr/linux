@@ -22,6 +22,9 @@
 #define WIFI_POWER_DEVICE_NAME   "wifi_power"
 #define WIFI_POWER_CLASS_NAME   "wifi_power"
 
+#define POWER_UP    _IO('m',1)
+#define POWER_DOWN  _IO('m',2)
+
 static dev_t wifi_power_devno;
 static struct cdev *wifi_power_cdev = NULL;
 static struct device *devp=NULL;
@@ -31,6 +34,8 @@ static int wifi_power_probe(struct platform_device *pdev);
 static int wifi_power_remove(struct platform_device *pdev);
 static int  wifi_power_open(struct inode *inode,struct file *file);
 static int  wifi_power_release(struct inode *inode,struct file *file);
+static void usb_wifi_power(int is_power);
+static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
 
 static const struct of_device_id amlogic_wifi_power_dt_match[]={
 	{	.compatible = "amlogic,wifi_power",
@@ -49,6 +54,7 @@ static struct platform_driver wifi_power_driver = {
 };
 
 static const struct file_operations wifi_power_fops = {
+	.unlocked_ioctl = wifi_power_ioctl,
     .open	= wifi_power_open,
     .release	= wifi_power_release,
 };
@@ -70,6 +76,34 @@ static int  wifi_power_release(struct inode *inode,struct file *file)
 {
     int ret = 0;
     return ret;
+}
+
+static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{	
+	switch (cmd) 
+	{
+    	case POWER_UP:
+    		usb_wifi_power(0);
+    		mdelay(100);
+    		usb_wifi_power(1);
+    		mdelay(500);
+   	        usb_wifi_power(0);
+    
+    		printk(KERN_INFO "Set usb wifi power up!\n");
+    		break;
+    		
+    	case POWER_DOWN:
+   	        usb_wifi_power(1);     
+           
+    		printk(KERN_INFO "Set usb wifi power down!\n");
+    		break;	
+    
+    	default:
+    		printk(KERN_ERR "usb wifi_power_ioctl: default !!!\n");
+    		return  - EINVAL;
+	}
+	
+	return 0;
 }
 
 int wifi_set_power(int val)
@@ -263,7 +297,7 @@ static int wifi_power_probe(struct platform_device *pdev)
 	        pdata->power_gpio = amlogic_gpio_name_map_num(str);
 	        printk("wifi_power power_gpio is %d\n",pdata->power_gpio);
 	        ret = amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
-	        pdata->usb_set_power(0);    //power on   
+	        //mcli pdata->usb_set_power(0);    //power on   
 	     }
 	}
     pdev->dev.platform_data = pdata;
