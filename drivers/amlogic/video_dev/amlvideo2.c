@@ -266,12 +266,20 @@ static struct amlvideo2_fmt *get_format(struct v4l2_format *f)
 }
 
 /* buffer for one video frame */
+struct amlvideo2_frame_info{
+	int x;
+	int y;
+	int w;
+	int h;
+};
+
 struct amlvideo2_node_buffer {
 	/* common v4l buffer stuff -- must be first */
 	struct videobuf_buffer vb;
 
 	struct amlvideo2_fmt        *fmt;
 	int canvas_id;
+	struct amlvideo2_frame_info axis;
 };
 
 struct amlvideo2_node_dmaqueue {
@@ -337,6 +345,7 @@ struct amlvideo2_output {
 	int height;
 	u32 v4l2_format;
 	int angle;
+	struct amlvideo2_frame_info* frame;
 };
 
 static struct v4l2_frmsize_discrete amlvideo2_prev_resolution[]= 
@@ -541,10 +550,39 @@ static int get_output_format(int v4l2_format)
 	return format;
 }
 
+static void output_axis_adjust(int src_w, int src_h, int* dst_w, int* dst_h, int angle)
+{
+    int w = 0, h = 0,disp_w = 0, disp_h =0;
+    disp_w = *dst_w;
+    disp_h = *dst_h;
+    if (angle %180 !=0) {
+        h = min((int)src_w, disp_h);
+        w = src_h * h / src_w;
+        if(w > disp_w ){
+            h = (h * disp_w)/w ;
+            w = disp_w;
+        }
+    }else{
+        if ((src_w < disp_w) && (src_h < disp_h)) {
+            w = src_w;
+            h = src_h;
+        } else if ((src_w * disp_h) > (disp_w * src_h)) {
+            w = disp_w;
+            h = disp_w * src_h / src_w;
+        } else {
+            h = disp_h;
+            w = disp_h * src_w / src_h;
+        }
+    }
+    *dst_w = w;
+    *dst_h = h;
+}
+
 
 int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para_ex_t* ge2d_config, struct amlvideo2_output* output)
 {
 	int src_top ,src_left ,src_width, src_height;
+	int dst_top ,dst_left ,dst_width, dst_height;
 	canvas_t cs0,cs1,cs2,cd;
 	int current_mirror = 0;
 	int cur_angle = 0;
@@ -555,6 +593,11 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 	src_width = vf->width;
 	src_height = vf->height;
 
+	dst_top = 0;
+	dst_left = 0;
+	dst_width = output->width;
+	dst_height = output->height;
+
 	current_mirror = 0;
 	cur_angle = output->angle;
 	if(current_mirror == 1)
@@ -563,8 +606,74 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 		cur_angle = cur_angle%360;
 
 	if(src_width<src_height)
-		cur_angle = 90;
-	/* data operating. */ 
+		cur_angle = (cur_angle+90)%360;
+
+       output_axis_adjust(src_width,src_height,&dst_width,&dst_height,cur_angle);
+	dst_top = (output->height-dst_height)/2;
+	dst_left = (output->width-dst_width)/2;
+	dst_top = dst_top&0xfffffffe;
+	dst_left = dst_left&0xfffffffe;
+	/* data operating. */
+
+	memset(ge2d_config,0,sizeof(config_para_ex_t));
+	if((dst_left!=output->frame->x)||(dst_top!=output->frame->y)
+	  ||(dst_width!=output->frame->w)||(dst_height!=output->frame->h)){
+		ge2d_config->alu_const_color= 0;//0x000000ff;
+		ge2d_config->bitmask_en  = 0;
+		ge2d_config->src1_gb_alpha = 0;//0xff;
+		ge2d_config->dst_xy_swap = 0;
+
+		canvas_read(output_canvas&0xff,&cd);
+		ge2d_config->src_planes[0].addr = cd.addr;
+		ge2d_config->src_planes[0].w = cd.width;
+		ge2d_config->src_planes[0].h = cd.height;
+		ge2d_config->dst_planes[0].addr = cd.addr;
+		ge2d_config->dst_planes[0].w = cd.width;
+		ge2d_config->dst_planes[0].h = cd.height;
+
+		ge2d_config->src_key.key_enable = 0;
+		ge2d_config->src_key.key_mask = 0;
+		ge2d_config->src_key.key_mode = 0;
+
+		ge2d_config->src_para.canvas_index=output_canvas;
+		ge2d_config->src_para.mem_type = CANVAS_TYPE_INVALID;
+		ge2d_config->src_para.format = get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN;;
+		ge2d_config->src_para.fill_color_en = 0;
+		ge2d_config->src_para.fill_mode = 0;
+		ge2d_config->src_para.x_rev = 0;
+		ge2d_config->src_para.y_rev = 0;
+		ge2d_config->src_para.color = 0;
+		ge2d_config->src_para.top = 0;
+		ge2d_config->src_para.left = 0;
+		ge2d_config->src_para.width = output->width;
+		ge2d_config->src_para.height = output->height;
+
+		ge2d_config->src2_para.mem_type = CANVAS_TYPE_INVALID;
+
+		ge2d_config->dst_para.canvas_index=output_canvas;
+		ge2d_config->dst_para.mem_type = CANVAS_TYPE_INVALID;
+		ge2d_config->dst_para.format = get_output_format(output->v4l2_format)|GE2D_LITTLE_ENDIAN;;
+		ge2d_config->dst_para.fill_color_en = 0;
+		ge2d_config->dst_para.fill_mode = 0;
+		ge2d_config->dst_para.x_rev = 0;
+		ge2d_config->dst_para.y_rev = 0;
+		ge2d_config->dst_para.color = 0;
+		ge2d_config->dst_para.top = 0;
+		ge2d_config->dst_para.left = 0;
+		ge2d_config->dst_para.width = output->width;
+		ge2d_config->dst_para.height = output->height;
+
+		if(ge2d_context_config_ex(context,ge2d_config)<0) {
+			printk("++ge2d configing error.\n");
+			return -2;
+		}
+		fillrect(context, 0, 0, output->width, output->height, (ge2d_config->dst_para.format&GE2D_FORMAT_YUV)?0x008080ff:0);
+		output->frame->x = dst_left;
+		output->frame->y = dst_top;
+		output->frame->w = dst_width;
+		output->frame->h = dst_height;
+		memset(ge2d_config,0,sizeof(config_para_ex_t));
+	}
 	ge2d_config->alu_const_color= 0;//0x000000ff;
 	ge2d_config->bitmask_en  = 0;
 	ge2d_config->src1_gb_alpha = 0;//0xff;
@@ -647,7 +756,7 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 		printk("++ge2d configing error.\n");
 		return -1;
 	}
-	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,0,0,output->width,output->height);
+	stretchblt_noalpha(context,src_left ,src_top ,src_width, src_height,output->frame->x,output->frame->y,output->frame->w,output->frame->h);
 
 	/* for cr of  yuv420p or yuv420sp. */
 	if((output->v4l2_format==V4L2_PIX_FMT_YUV420)
@@ -690,7 +799,7 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 			return -1;
 		}
 		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			0, 0, ge2d_config->dst_para.width,ge2d_config->dst_para.height);
+			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
 	} 
 	/* for cb of yuv420p or yuv420sp. */
 	if(output->v4l2_format==V4L2_PIX_FMT_YUV420||
@@ -732,7 +841,7 @@ int amlvideo2_ge2d_pre_process(vframe_t* vf, ge2d_context_t *context,config_para
 			return -1;
 		}
 		stretchblt_noalpha(context, src_left, src_top, src_width, src_height,
-			0, 0, ge2d_config->dst_para.width, ge2d_config->dst_para.height);
+			output->frame->x/2,output->frame->y/2,output->frame->w/2,output->frame->h/2);
 	}
 	return output_canvas;
 }
@@ -759,7 +868,7 @@ static int amlvideo2_fillbuff(struct amlvideo2_fh *fh, struct amlvideo2_node_buf
 	if (!vbuf)
 		return -1;
 	
-	memset(&ge2d_config,0,sizeof(config_para_ex_t));
+	//memset(&ge2d_config,0,sizeof(config_para_ex_t));
 	memset(&output,0,sizeof(struct amlvideo2_output));
 
 	output.v4l2_format= fh->fmt->fourcc;
@@ -768,6 +877,7 @@ static int amlvideo2_fillbuff(struct amlvideo2_fh *fh, struct amlvideo2_node_buf
 	output.height = buf->vb.height;
 	output.canvas_id = buf->canvas_id;
 	output.angle = node->qctl_regs[0];
+	output.frame = &buf->axis;
 
 	magic = MAGIC_RE_MEM;
 	switch(magic){
@@ -1398,9 +1508,9 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	int ret;
 	struct amlvideo2_fh  *fh  = priv;
 	vdin_parm_t para;
-        const vinfo_t *vinfo;
+	const vinfo_t *vinfo;
 
-        vinfo = get_current_vinfo();
+	vinfo = get_current_vinfo();
 	if ((fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) || (i != fh->type))
 		return -EINVAL;
 	ret = videobuf_streamon(&fh->vb_vidq);
@@ -1418,13 +1528,17 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 			para.vs_bp = 0;
 			para.dfmt = TVIN_NV21;//TVIN_YUV422;
 			para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;	
+			int dst_w = fh->width, dst_h = fh->height;
 			if(vinfo->width<vinfo->height){
-				para.dest_hactive = fh->height;
-				para.dest_vactive = fh->width;
+				dst_w = fh->height;
+				dst_h = fh->width;
+				output_axis_adjust(vinfo->height,vinfo->width, (int *)&dst_h,(int *)&dst_w,0);
 			}else{
-				para.dest_hactive = fh->width;
-				para.dest_vactive = fh->height;
+				output_axis_adjust(vinfo->width,vinfo->height, (int *)&dst_w,(int *)&dst_h,0);	
 			}
+			para.dest_hactive = dst_w;
+			para.dest_vactive = dst_h;
+			printk("amlvideo2--vidioc_streamon: para.h_active: %d, para.v_active: %d, para.dest_hactive: %d, para.dest_vactive: %d, fh->width: %d, fh->height: %d \n",para.h_active,para.v_active, para.dest_hactive, para.dest_vactive,fh->width,fh->height);
 			//start_tvin_service((fh->node->vid== 0)?0:1,&para);
 			//start_tvin_service(1,&para);
 			vops.start_tvin_service(1,&para);
