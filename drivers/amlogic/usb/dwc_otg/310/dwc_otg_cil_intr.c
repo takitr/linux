@@ -426,6 +426,7 @@ host:
 			dwc_otg_core_init(core_if);
 		dwc_otg_enable_global_interrupts(core_if);
 		cil_hcd_start(core_if);
+		core_if->suspend_mode = 0;
 	}
 }
 
