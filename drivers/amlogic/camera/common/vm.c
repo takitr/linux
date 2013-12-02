@@ -1897,7 +1897,7 @@ EXPORT_SYMBOL(vm_deinit_buf);
 
 void __init vm_reserve_cma(void)
 {
-    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 36 * SZ_1M, 0, 0);
+    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 68 * SZ_1M, 0, 0);
     if(ret)
         pr_err("%s : dma_declare_contiguous failed\n", __func__);
 }

@@ -1419,35 +1419,6 @@ void invalidate_bh_lrus(void)
 }
 EXPORT_SYMBOL_GPL(invalidate_bh_lrus);
 
-
-
-static void __evict_bh_lru(void *arg)
-{
-    struct buffer_head *bh = arg;
-	struct bh_lru *b = &get_cpu_var(bh_lrus);
-	int i;
-
-	for (i = 0; i < BH_LRU_SIZE; i++) {
-        if(b->bhs[i] == bh)
-        {
-            brelse(b->bhs[i]);
-            memcpy(&b->bhs[i], &b->bhs[i+1], BH_LRU_SIZE - i - 1);
-            b->bhs[BH_LRU_SIZE] = NULL;
-            break;
-        }
-	}
-
-	put_cpu_var(bh_lrus);
-}
-
-
-void evict_bh_lru(struct buffer_head *bh)
-{
-	on_each_cpu(__evict_bh_lru, bh, 1);
-}
-EXPORT_SYMBOL_GPL(evict_bh_lru);
-
-
 void set_bh_page(struct buffer_head *bh,
 		struct page *page, unsigned long offset)
 {
@@ -3169,9 +3140,6 @@ drop_buffers(struct page *page, struct buffer_head **buffers_to_free)
 
 	bh = head;
 	do {
-        /* Evict buffer_head from lru for page of CMA migrate type */
-        evict_bh_lru(bh); 
-
 		if (buffer_write_io_error(bh) && page->mapping)
 			set_bit(AS_EIO, &page->mapping->flags);
 		if (buffer_busy(bh))
