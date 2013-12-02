@@ -75,6 +75,12 @@ enum {
 	/* GC0328  */
         V4L2_IDENT_GC0328 = 38,
 
+        /* AR0543  */
+        V4L2_IDENT_AR0543 = 39,
+        
+        /* AR0833  */
+        V4L2_IDENT_AR0833 = 40,
+
 	/* module tvaudio: reserved range 50-99 */
 	V4L2_IDENT_TVAUDIO = 50,	/* A tvaudio chip, unknown which it is exactly */
 

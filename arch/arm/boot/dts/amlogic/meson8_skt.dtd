@@ -878,6 +878,36 @@ void root_func(){
 		pinctrl-0 = <&aml_cam_gpio_pins> ;
 		pinctrl-1 = <&aml_cam_csi_pins> ;
 
+///	-	ar0543
+//$$ DEVICE="ar0543"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "config_path"
+//$$ L2 PROP_U32 = "mclk"
+//$$ L2 PROP_STR = "bt_path"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_STR = "clk_channel"
+		cam_0{
+			cam_name = "ar0543";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_6";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;
+			config_path = "/system/etc/camera_isp_cfg/ar0543_skt";
+			mclk = <12000>;
+			bt_path = "csi";
+			interface = "mipi";
+			clk_channel = "a";
+			status = "okay";
+		};
+
 ///	-	ov5647
 //$$ DEVICE="ov5647"
 //$$ L2 PROP_STR = "status"
@@ -900,8 +930,24 @@ void root_func(){
 			vertical_flip = <0>;	
 			config_path = "/system/etc/camera_isp_cfg/ov5647_cw0767";
 			bt_path = "csi";
-			interface = "dvp";
+			interface = "mipi";
 			clk_channel = "b";
+			status = "okay";
+		};
+		
+		cam_2{
+			cam_name = "ar0833";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_6";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;
+			config_path = "/system/etc/camera_isp_cfg/ar0833_skt";
+			mclk = <12000>;
+			bt_path = "csi";
+			interface = "mipi";
+			clk_channel = "a";
 			status = "okay";
 		};
 	};	

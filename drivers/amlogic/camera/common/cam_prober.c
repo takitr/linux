@@ -81,17 +81,6 @@ static int aml_i2c_get_byte(struct i2c_adapter *adapter,
 	return buff[0];
 }
 
-static int aml_i2c_get_byte_add8(struct i2c_adapter *adapter, 
-		unsigned short dev_addr, unsigned short addr)
-{
-	unsigned char buff[4];
-	buff[0] = (unsigned char)(addr & 0xff);
-       
-	if (aml_camera_read_buff(adapter, dev_addr, buff, 1, 1) <0)
-		return -1;
-	return buff[0];
-}
-
 static int aml_i2c_put_byte(struct i2c_adapter *adapter, 
 		unsigned short dev_addr, unsigned short addr, unsigned char data)
 {
@@ -105,29 +94,80 @@ static int aml_i2c_put_byte(struct i2c_adapter *adapter,
 }
 
 
-/*static int aml_i2c_put_word(struct i2c_adapter *adapter, 
+static int aml_i2c_get_byte_add8(struct i2c_adapter *adapter, 
+		unsigned short dev_addr, unsigned short addr)
+{
+	unsigned char buff[4];
+	buff[0] = (unsigned char)(addr & 0xff);
+       
+	if (aml_camera_read_buff(adapter, dev_addr, buff, 1, 1) <0)
+		return -1;
+	return buff[0];
+}
+
+static int aml_i2c_put_byte_add8(struct i2c_adapter *adapter, 
+		unsigned short dev_addr, unsigned short addr, unsigned char data)
+{
+	unsigned char buff[4];
+	buff[0] = (unsigned char)(addr & 0xff);
+	buff[1] = data;
+	if (aml_camera_write_buff(adapter, dev_addr, buff, 2) <0)
+		return -1;
+	return  0;
+}
+
+int aml_i2c_put_word(struct i2c_adapter *adapter, 
 		unsigned short dev_addr, unsigned short addr, unsigned short data)
 {
 	unsigned char buff[4];
 	buff[0] = (unsigned char)((addr >> 8) & 0xff);
 	buff[1] = (unsigned char)(addr & 0xff);
-	buff[2] = (unsigned char)(data & 0xff);
-	buff[3] = (unsigned char)((data >> 8) & 0xff);
+	buff[2] = (unsigned char)((data >> 8) & 0xff);
+	buff[3] = (unsigned char)(data & 0xff);
 	if (aml_camera_write_buff(adapter, dev_addr, buff, 4) <0)
 		return -1;
 	return 0;
-}*/
+}
 
-static int aml_i2c_put_byte_add8(struct i2c_adapter *adapter, 
-		unsigned short dev_addr, unsigned char addr, unsigned char data)
+static int aml_i2c_get_word(struct i2c_adapter *adapter, 
+		unsigned short dev_addr, unsigned short addr)
+{
+	int ret;
+	unsigned char buff[4];
+	buff[0] = (unsigned char)((addr >> 8) & 0xff);
+	buff[1] = (unsigned char)(addr & 0xff);
+	if (aml_camera_read_buff(adapter, dev_addr, buff, 2, 2) <0)
+		return -1;
+	ret =  (buff[0]<< 8)|(buff[1]);
+	return ret;
+}
+
+static int aml_i2c_get_word_add8(struct i2c_adapter *adapter, 
+		unsigned short dev_addr, unsigned short addr)
+{
+	int ret;
+	unsigned char buff[4];
+	buff[0] = (unsigned char)((addr >> 8) & 0xff);
+	buff[1] = (unsigned char)(addr & 0xff);
+	if (aml_camera_read_buff(adapter, dev_addr, buff, 2, 2) <0)
+		return -1;
+	ret =  buff[0] | (buff[1] << 8);
+	return ret;
+}
+
+
+static int aml_i2c_put_word_add8(struct i2c_adapter *adapter, 
+		unsigned short dev_addr, unsigned char addr, unsigned short data)
 {
 	unsigned char buff[4];
 	buff[0] = (unsigned char)(addr & 0xff);
-	buff[1] = (unsigned char)(data & 0xff);
-	if (aml_camera_write_buff(adapter, dev_addr, buff, 2) <0)
+	buff[1] = (unsigned char)(data >> 8 & 0xff);
+	buff[2] = (unsigned char)(data & 0xff);
+	if (aml_camera_write_buff(adapter, dev_addr, buff, 3) <0)
 		return -1;
 	return  0;
 }
+
 
 extern struct i2c_client *
 i2c_new_existing_device(struct i2c_adapter *adap, 
@@ -364,6 +404,31 @@ int ov5647_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_AR0543
+int ar0543_v4l2_probe(struct i2c_adapter *adapter)
+{
+ 	int ret = 0, reg_val;
+	reg_val = aml_i2c_get_word(adapter, 0x36, 0x3000);
+	printk("reg:0x%x\n",reg_val);
+	if (reg_val == 0x4800)
+		ret = 1;
+	return ret;
+}
+#endif
+
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_AR0833
+int ar0833_v4l2_probe(struct i2c_adapter *adapter)
+{
+ 	int ret = 0, reg_val;
+	reg_val = aml_i2c_get_word(adapter, 0x36, 0x3000);
+	printk("reg:0x%x\n",reg_val);
+	if (reg_val == 0x4B03)
+		ret = 1;
+	return ret;
+}
+#endif
+
 
 typedef struct {
 	unsigned char addr;
@@ -536,6 +601,24 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = hi2056_v4l2_probe,
 	},
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_AR0543
+	{
+		.addr = 0x36,
+		.name = "ar0543",
+		.pwdn = 0,
+		.max_cap_size = SIZE_2592X1944,
+		.probe_func = ar0543_v4l2_probe,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_AR0833
+	{
+		.addr = 0x36,
+		.name = "ar0833",
+		.pwdn = 0,
+		.max_cap_size = SIZE_2592X1944,
+		.probe_func = ar0833_v4l2_probe,
+	},
+#endif
 };
 
 static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)
@@ -623,9 +706,11 @@ static resulution_size_t get_res_size(const char* res_str)
 }
 
 #ifdef CONFIG_ARCH_MESON8
-static inline void cam_enable_clk(void)
+static inline void cam_enable_clk(int clk)
 {
 	aml_set_reg32_bits(P_HHI_GEN_CLK_CNTL, 1, 11, 5);
+	if (clk == 12000)
+		aml_set_reg32_bits(P_HHI_GEN_CLK_CNTL, 1, 0, 7);
 }
 
 static inline void cam_disable_clk(void)
@@ -633,7 +718,7 @@ static inline void cam_disable_clk(void)
 	aml_set_reg32_bits(P_HHI_GEN_CLK_CNTL, 0, 11, 5); //close clock
 }
 #elif defined CONFIG_ARCH_MESON6
-static inline void cam_enable_clk(void)
+static inline void cam_enable_clk(int clk)
 {
 	aml_set_reg32_bits(P_HHI_GEN_CLK_CNTL, 1, 8, 5); 
 }
@@ -643,7 +728,7 @@ static inline void cam_disable_clk(void)
 	aml_set_reg32_bits(P_HHI_GEN_CLK_CNTL, 0, 8, 5);  //close clock
 }
 #else
-static inline void cam_enable_clk(void)
+static inline void cam_enable_clk(int clk)
 {
 }
 
@@ -666,7 +751,7 @@ void aml_cam_init(aml_cam_info_t* cam_dev)
 		pin_ctrl = pinctrl_get_select((struct device*)(&cam_pdev->dev), "gpio");
 
 	//select XTAL as camera clock
-	cam_enable_clk();
+	cam_enable_clk(cam_dev->mclk);
 	
 	msleep(20);
 	// set camera power enable
@@ -740,7 +825,7 @@ static int fill_csi_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
                 }
 	}
 
-    return ret;
+        return ret;
 
 }
 static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
@@ -749,6 +834,7 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 	int ret = 0;
 	aml_cam_dev_info_t* cam_info = NULL;
 	struct i2c_adapter *adapter;
+	unsigned mclk = 0;
 	
 	if (!p_node || !cam_dev)
 		return -1;
@@ -857,6 +943,40 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 			cam_dev->bt_path = BT_PATH_GPIO;
 	}
 
+	ret = of_property_read_u32(p_node, "mclk", &mclk);
+	if (ret) {
+		cam_dev->mclk = 24000;
+	} else {
+		cam_dev->mclk = mclk;
+	}
+	
+	ret = of_property_read_string(p_node, "flash_support", &str);
+	if (ret) {
+		printk("failed to read camera flash_support\n");
+		cam_dev->flash_support = 0;
+	} else {
+		printk("camera interface:%s\n", str);
+		if (strncmp("flash_support", str, 1) == 0){
+                        cam_dev->flash_support = 1;
+                        of_property_read_u32(p_node, "flash_ctrl_level", &cam_dev->flash_ctrl_level);
+                        ret = of_property_read_string(p_node, "flash_ctrl_pin", &str);
+			if (ret) {
+				printk("%s: faild to get flash_ctrl_pin!\n", cam_dev->name);
+				cam_dev->flash_support = 0;
+			} else {
+				ret = amlogic_gpio_name_map_num(str);
+				if (ret < 0) {
+					printk("%s: faild to map flash_ctrl_pin !\n", cam_dev->name);
+					cam_dev->flash_support = 0;
+					cam_dev->flash_ctrl_level = 0;
+				}
+				cam_dev->flash_ctrl_pin = ret;  
+			}
+                }else{
+                        cam_dev->flash_support = 0;
+                }
+	}
+
 	ret = of_property_read_string(p_node, "interface", &str);
 	if (ret) {
 		printk("failed to read camera interface \"mipi or dvp\"\n");
@@ -908,7 +1028,7 @@ err_out:
 
 static int  do_read_work(char argn ,char **argv)
 {
-	unsigned int dev_addr, reg_addr, result;     
+	unsigned int dev_addr, reg_addr, data_len = 1, result;     
 	unsigned int i2c_bus;    
 	struct i2c_adapter *adapter;   
 
@@ -942,14 +1062,27 @@ static int  do_read_work(char argn ,char **argv)
         
 	dev_addr = simple_strtol(argv[2],NULL,16);
 	reg_addr = simple_strtol(argv[3],NULL,16);
-	
+	if (argn == 5) {
+		printk("argv[4] is %s\n", argv[4]);
+		data_len = simple_strtol(argv[4],NULL,16);
+	}
 	
 	if (reg_addr > 256) {
-		result = aml_i2c_get_byte(adapter, dev_addr, reg_addr);
-		printk("register [0x%04x]=0x%02x\n", reg_addr, result);
+		if (data_len != 2) {
+			result = aml_i2c_get_byte(adapter, dev_addr, reg_addr);
+			printk("register [0x%04x]=0x%02x\n", reg_addr, result);
+		} else {
+			result = aml_i2c_get_word(adapter, dev_addr, reg_addr);
+			printk("register [0x%04x]=0x%04x\n", reg_addr, result);
+		}
 	} else {
-		result = aml_i2c_get_byte_add8(adapter, dev_addr, reg_addr);
-		printk("register [0x%02x]=0x%02x\n", reg_addr, result);
+		if (data_len != 2) {
+			result = aml_i2c_get_byte_add8(adapter, dev_addr, reg_addr);
+			printk("register [0x%02x]=0x%02x\n", reg_addr, result);
+		} else {
+			result = aml_i2c_get_word_add8(adapter, dev_addr, reg_addr);
+			printk("register [0x%02x]=0x%04x\n", reg_addr, result);
+		}
 	}
 		
 	return 0;
@@ -957,15 +1090,15 @@ static int  do_read_work(char argn ,char **argv)
 
 static int do_write_work(char argn ,char **argv)
 {
-	unsigned int dev_addr, reg_addr, reg_val, ret = 0;     
+	unsigned int dev_addr, reg_addr, reg_val, data_len = 1, ret = 0;     
 	unsigned int i2c_bus;    
 	struct i2c_adapter *adapter;   
 
 
-	/*if (argn < 5){
+	if (argn < 5){
 		printk("args num error");
 		return -1;
-	}*/
+	}
 	
 	if (!strncmp(argv[1], "i2c_bus_ao", 9))
 		i2c_bus = AML_I2C_MASTER_AO;
@@ -992,22 +1125,43 @@ static int do_write_work(char argn ,char **argv)
 	dev_addr = simple_strtol(argv[2],NULL,16);
 	reg_addr = simple_strtol(argv[3],NULL,16);
 	reg_val = simple_strtol(argv[4],NULL,16);
+	if (argn == 6)
+		data_len = simple_strtol(argv[5],NULL,16);
 	if (reg_addr > 256) {
-		if(aml_i2c_put_byte(adapter, dev_addr, reg_addr, reg_val) < 0) {
-			printk("write error\n");
-			ret = -1;
+		if (data_len != 2) {
+			if(aml_i2c_put_byte(adapter, dev_addr, reg_addr, reg_val) < 0) {
+				printk("write error\n");
+				ret = -1;
+			} else {
+				printk("write ok\n");
+				ret = 0;
+			}
 		} else {
-			printk("write ok\n");
-			ret = 0;
+			if(aml_i2c_put_word(adapter, dev_addr, reg_addr, reg_val) < 0) {
+				printk("write error\n");
+				ret = -1;
+			} else {
+				printk("write ok\n");
+				ret = 0;
+			}
 		}
-		
 	} else {
-		if (aml_i2c_put_byte_add8(adapter, dev_addr, reg_addr, reg_val) < 0){
-			printk("write error\n");
-			ret = -1;
+		if (data_len != 2) {
+			if (aml_i2c_put_byte_add8(adapter, dev_addr, reg_addr, reg_val) < 0){
+				printk("write error\n");
+				ret = -1;
+			} else {
+				printk("write ok\n");
+				ret = 0;
+			}
 		} else {
-			printk("write ok\n");
-			ret = 0;
+			if (aml_i2c_put_word_add8(adapter, dev_addr, reg_addr, reg_val) < 0){
+				printk("write error\n");
+				ret = -1;
+			} else {
+				printk("write ok\n");
+				ret = 0;
+			}
 		}
 	}
 		
@@ -1021,10 +1175,10 @@ static ssize_t show_help(struct class* class, struct class_attribute* attr,
 	char* buf)
 {
 	ssize_t size = 0;
-	printk( "echo [read | write] i2c_bus_type device_address register_address [value] > i2c_debug\n"
+	printk( "echo [read | write] i2c_bus_type device_address register_address [value] [data_len] > i2c_debug\n"
 		"i2c_bus_type are: i2c_bus_ao, i2c_bus_a, i2c_bus_b, i2c_bus_c, i2c_bus_d\n"
-		"e.g.: echo read i2c_bus_ao 0x3c 0x18\n"
-		"      echo write i2c_bus_ao 0x3c 0x18 0x24\n");
+		"e.g.: echo read i2c_bus_ao 0x3c 0x18 1\n"
+		"      echo write i2c_bus_ao 0x3c 0x18 0x24 1\n");
 	return size;
 }
 
@@ -1034,20 +1188,20 @@ static ssize_t store_i2c_debug(struct class* class, struct class_attribute* attr
 	int argn;
 	char * buf_work,*p,*para;
 	char cmd;
-	char * argv[4];
+	char * argv[6];
 	
 	buf_work = kstrdup(buf, GFP_KERNEL);
 	p = buf_work;
 	
-	for(argn = 0; argn < 5; argn++){
+	for(argn = 0; argn < 6; argn++){
 		para = strsep(&p," ");
 		if(para == NULL)
 			break;
 		argv[argn] = para;
-		//printk("argv[%d] = %s\n",argn,para);
+		printk("argv[%d] = %s\n",argn,para);
 	}
 	
-	if(argn < 4 || argn > 5)
+	if(argn < 4 || argn > 6)
 		goto end;
 		
 	cmd = argv[0][0];

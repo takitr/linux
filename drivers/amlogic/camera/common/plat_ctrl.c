@@ -31,6 +31,7 @@
 #include <media/videobuf-vmalloc.h>
 
 #include <linux/i2c.h>
+#include "plat_ctrl.h"
 
 /****************************************************************
  *   i2c functions
@@ -44,8 +45,7 @@ static int camera_read_buff(struct i2c_client *client,char *buf, int addr_len, i
 			.flags	= 0,
 			.len	= addr_len,
 			.buf	= buf,
-		},
-		{
+		},{
 			.addr	= client->addr,
 			.flags	= I2C_M_RD,
 			.len	= data_len,
@@ -70,11 +70,10 @@ static int  camera_write_buff(struct i2c_client *client,char *buf, int len)
 
 	};
 
-	if (i2c_transfer(client->adapter, msg, 1) < 0)
-	{
+	if (i2c_transfer(client->adapter, msg, 1) < 0) {
+		printk("i2c error\n");
 		return -1;
-	}
-	else
+	} else
 		return 0;
 }
 
@@ -110,11 +109,10 @@ int i2c_get_word(struct i2c_client *client,unsigned short addr)
 		return -1;
     else
     {
-        data = buff[1];
-        data = (data << 8) | buff[0];
+		data = buff[0];
+		data = (data << 8) | buff[1];
         return data;
     }
-
 }
 
 int i2c_put_byte(struct i2c_client *client, unsigned short addr, unsigned char data)
@@ -133,8 +131,9 @@ int i2c_put_word(struct i2c_client *client, unsigned short addr, unsigned short 
     unsigned char buff[4];
     buff[0] = (unsigned char)((addr >> 8) & 0xff);
     buff[1] = (unsigned char)(addr & 0xff);
-    buff[2] = (unsigned char)(data & 0xff);
-    buff[3] = (unsigned char)((data >> 8) & 0xff);
+	buff[2] = (unsigned char)((data >> 8) & 0xff);
+	buff[3] = (unsigned char)(data & 0xff);
+	
 	if (camera_write_buff(client, buff, 4) <0)
 		return -1;
 	return 0;
@@ -155,6 +154,47 @@ int i2c_put_byte_add8(struct i2c_client *client,char *buf, int len)
 	if (camera_write_buff(client, buf, len) <0)
 		return -1;
 	return  0;
+}
+
+int cam_i2c_send_msg(struct i2c_client *client, cam_i2c_msg_t i2c_msg)
+{
+	unsigned char buff[4];
+	
+	switch (i2c_msg.type) {
+	case ADDR16_DATA16:
+		buff[0] = (unsigned char)((i2c_msg.addr >> 8) & 0xff);
+		buff[1] = (unsigned char)(i2c_msg.addr & 0xff);
+		buff[2] = (unsigned char)((i2c_msg.data >> 8) & 0xff);
+		buff[3] = (unsigned char)(i2c_msg.data & 0xff);
+		if (camera_write_buff(client, buff, 4) <0)
+			return -1;
+		break;
+	case ADDR16_DATA8:
+		buff[0] = (unsigned char)((i2c_msg.addr >> 8) & 0xff);
+		buff[1] = (unsigned char)(i2c_msg.addr & 0xff);
+		buff[2] = (unsigned char)(i2c_msg.data & 0xff);
+		if (camera_write_buff(client, buff, 3) <0)
+			return -1;
+		break;
+	case ADDR8_DATA16:
+		buff[0] = (unsigned char)(i2c_msg.addr & 0xff);
+		buff[1] = (unsigned char)((i2c_msg.data >> 8) & 0xff);
+		buff[2] = (unsigned char)(i2c_msg.data & 0xff);
+		if (camera_write_buff(client, buff, 3) <0)
+			return -1;
+		break;
+	case ADDR8_DATA8:
+		buff[0] = (unsigned char)(i2c_msg.addr & 0xff);
+		buff[1] = (unsigned char)(i2c_msg.data & 0xff);
+		if (camera_write_buff(client, buff, 2) <0)
+			return -1;
+	case TIME_DELAY:
+		msleep(i2c_msg.data);
+		break;
+	default:
+		break;
+	}
+	return 0;
 }
 
 
