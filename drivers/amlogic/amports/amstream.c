@@ -1691,7 +1691,7 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
             pbuf += sprintf(pbuf, "\tbuf size:%#x\n", p->buf_size);
             pbuf += sprintf(pbuf, "\tbuf canusesize:%#x\n", p->canusebuf_size);
             pbuf += sprintf(pbuf, "\tbuf regbase:%#lx\n", p->reg_base);
-            if (p->reg_base) {
+            if (p->reg_base && p->flag & BUF_FLAG_IN_USE) {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
                 switch_mod_gate_by_name("vdec", 1);
 #endif
@@ -1701,6 +1701,8 @@ static ssize_t bufs_show(struct class *class, struct class_attribute *attr, char
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
                 switch_mod_gate_by_name("vdec", 0);
 #endif
+            }else {
+                pbuf += sprintf(pbuf, "\tbuf no used.\n");
             }
         } else {
             u32 sub_wp, sub_rp, data_size;

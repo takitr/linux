@@ -2655,7 +2655,8 @@ static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, 
     last_frame_time = tmp;
     last_frame_count = frame_count;
     rate = cnt * HZ / time;
-    ret = sprintf(buf, "Frame rate is %d, and the panel refresh rate is %d, duration is: %d\n",
+	if(vinfo->sync_duration_den >0)
+        ret = sprintf(buf, "Frame rate is %d, and the panel refresh rate is %d, duration is: %d\n",
                   rate, vinfo->sync_duration_num / vinfo->sync_duration_den, time);
     return ret;
 }

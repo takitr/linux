@@ -512,8 +512,16 @@ static ssize_t amrisc_regs_show(struct class *class, struct class_attribute *att
     int rsize = sizeof(am_risc) / sizeof(struct am_reg);
     int i;
     unsigned  val;
-
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+	unsigned long flags;
+	
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    spin_lock_irqsave(&lock, flags);
+	if(!vdec_on(VDEC_1)){
+		spin_unlock_irqrestore(&lock, flags);
+		pbuf += sprintf(pbuf, "amrisc not power off\n");
+		return (pbuf - buf);
+	}
+#elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
     switch_mod_gate_by_type(MOD_VDEC, 1);
 #endif
     pbuf += sprintf(pbuf, "amrisc registers show:\n");
@@ -522,7 +530,9 @@ static ssize_t amrisc_regs_show(struct class *class, struct class_attribute *att
         pbuf += sprintf(pbuf, "%s(%#x)\t:%#x(%d)\n",
                         regs[i].name, regs[i].offset, val, val);
     }
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    spin_unlock_irqrestore(&lock, flags);
+#elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
     switch_mod_gate_by_type(MOD_VDEC, 0);
 #endif
     return (pbuf - buf);

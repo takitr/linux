@@ -3681,14 +3681,18 @@ static ssize_t frame_rate_show(struct class *cla, struct class_attribute* attr, 
     time -= last_frame_time;
     last_frame_time = tmp;
     last_frame_count = frame_count;
+    if(time == 0 )
+        return 0;
     rate = 100*cnt * HZ / time;
     vsync_rate = 100*vsync_count * HZ / time;
-    ret = sprintf(buf, "VFrame rate is %d.%02dfps, and the panel refresh rate is %d, duration is: %d,vsync_isr/s=%d.%02d,vsync_pts_inc=%d\n",
-                  rate/100,rate%100, vinfo->sync_duration_num / vinfo->sync_duration_den, time,vsync_rate/100,vsync_rate%100,vsync_pts_inc);
-    if((debugflags& DEBUG_FLAG_CALC_PTS_INC) && time>HZ*10 && vsync_rate>0){
-	if((vsync_rate*vsync_pts_inc/100)!=90000){
-	  vsync_pts_inc=90000*100/(vsync_rate);
+	if(vinfo->sync_duration_den > 0){
+       ret = sprintf(buf, "VFrame rate is %d.%02dfps, and the panel refresh rate is %d, duration is: %d,vsync_isr/s=%d.%02d,vsync_pts_inc=%d\n",
+                     rate/100,rate%100, vinfo->sync_duration_num / vinfo->sync_duration_den, time,vsync_rate/100,vsync_rate%100,vsync_pts_inc);
 	}
+    if((debugflags& DEBUG_FLAG_CALC_PTS_INC) && time>HZ*10 && vsync_rate>0){
+        if((vsync_rate*vsync_pts_inc/100)!=90000){
+            vsync_pts_inc=90000*100/(vsync_rate);
+        }
     }
     vsync_count=0;
     return ret;
