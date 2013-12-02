@@ -1549,7 +1549,7 @@ void AR0543_manual_set_aet(unsigned int exp,unsigned int ag,unsigned int vts){
 	
 	aml_i2c_put_word(adapter, 0x36, 0x3012, exp & 0xffff);
 	
-	//aml_i2c_put_word(adapter, 0x36, 0x0204, ag & 0xffff);
+	aml_i2c_put_word(adapter, 0x36, 0x0204, ag & 0xffff);
 	
 	aml_i2c_put_word(adapter, 0x36, 0x0340, vts & 0xffff);	
 }
@@ -1647,8 +1647,8 @@ bool AR0543_set_af_new_step(unsigned int af_step){
 	last_af_step = af_step;
     buf[0] = (af_step>>4)&0xff;
     buf[1] = (af_step<<4)&0xff;
-    //adapter = i2c_get_adapter(4);
-   // my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+    adapter = i2c_get_adapter(4);
+    my_i2c_put_byte_add8(adapter,0x0c,buf,2);
     return true;
 
 }
@@ -1794,9 +1794,9 @@ static ssize_t vcm_manual_store(struct class *cls,struct class_attribute *attr, 
     byte_l  = (vcm_data >> 0) & 0x000000ff;
     buff[0] = byte_h;
     buff[1] = byte_l;
-    /*adapter = i2c_get_adapter(4);
+    adapter = i2c_get_adapter(4);
     my_i2c_put_byte_add8(adapter,0x0c,buff,2);
-    */
+    
     return len;
 }
 
@@ -1805,8 +1805,8 @@ static ssize_t vcm_manual_show(struct class *cls,struct class_attribute *attr, c
 	size_t len = 0;
 	struct i2c_adapter *adapter;
 	unsigned int af;
-	//adapter = i2c_get_adapter(4);
-	//af = my_i2c_get_word(adapter,0x0c);
+	adapter = i2c_get_adapter(4);
+	af = my_i2c_get_word(adapter,0x0c);
 	printk("current vcm step :%x\n",af);
 	return len;
 }
@@ -1849,6 +1849,40 @@ void AR0543_init_regs(struct ar0543_device *dev)
 		i++;
 	}
 	return;
+}
+/*init for vcm  mode0:LSC mode1:DLC*/
+static void dw9714_init(unsigned char mode)
+{
+	char buf[3];
+	unsigned short dlc[4] = {
+		0xeca3,0xf248,0xa10d,0xdc51
+	};
+	struct i2c_adapter *adapter;
+	adapter = i2c_get_adapter(4);
+	if(mode){
+		buf[0]=dlc[0]>>8&&0xff;
+		buf[1]=dlc[0]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[1]>>8&&0xff;
+		buf[1]=dlc[1]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[2]>>8&&0xff;
+		buf[1]=dlc[2]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+		buf[0]=dlc[3]>>8&&0xff;
+		buf[1]=dlc[3]&&0xff;
+    	        my_i2c_put_byte_add8(adapter,0x0c,buf,2);
+	}
+}
+/* power down for dw9714*/
+static void dw9714_uninit(void)
+{
+    char buf[3];
+    struct i2c_adapter *adapter;
+	buf[0] = 0x80;
+	buf[1] = 0x0;
+	adapter = i2c_get_adapter(4);
+	my_i2c_put_byte_add8(adapter,0x0c,buf,2);	
 }
 
 static ssize_t version_info_store(struct class *cls,struct class_attribute *attr, const char* buf, size_t len)
@@ -3395,6 +3429,7 @@ static int ar0543_open(struct file *file)
     }
     AR0543_init_regs(dev);
     msleep(40);
+    dw9714_init(1);
     mutex_lock(&dev->mutex);
     dev->users++;
     if (dev->users > 1) {
@@ -3562,7 +3597,7 @@ static int ar0543_close(struct file *file)
     //ar0543_frmintervals_active.numerator = 1;
     //ar0543_frmintervals_active.denominator = 15;
     power_down_ar0543(dev);
-    //dw9714_uninit();
+    dw9714_uninit();
     msleep(10);
 
     aml_cam_uninit(&dev->cam_info);
