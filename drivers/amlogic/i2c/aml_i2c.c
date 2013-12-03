@@ -95,6 +95,7 @@ static void aml_i2c_set_platform_data(struct aml_i2c *i2c,
 	i2c->wait_xfer_interval = plat->wait_xfer_interval;
 	i2c->mode = plat->use_pio & 3;
 	i2c->irq = plat->use_pio >> 2;
+	i2c->master_no = plat->master_no;
 
 	if(IS_ERR(plat->master_state_name)){
 		printk("error: no master_state_name");
@@ -713,7 +714,7 @@ static ssize_t test_slave_device(struct class *class,
     }
     
     i = sscanf(buf, "%d%x%d%d%d%x%x%x%x", &bus_num, &slave_addr, &speed, &wnum, &rnum, 
-      &wbuf[0], &wbuf[1], &wbuf[2], &wbuf[3]);
+     (unsigned int *)&wbuf[0], (unsigned int *)&wbuf[1], (unsigned int *)&wbuf[2], (unsigned int *)&wbuf[3]);
     restart = !!(rnum & 0x80);
     rnum &= 0x7f;
     printk("bus_num=%d, slave_addr=%x, speed=%d, wnum=%d, rnum=%d\n",
@@ -843,10 +844,10 @@ static inline struct aml_i2c_platform   *aml_get_driver_data(
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
 		match = of_match_node(meson6_i2c_dt_match, pdev->dev.of_node);
-		return (struct aml_uart_platform *)match->data;
+		return (struct aml_i2c_platform *)match->data;
 	}
 #endif
-	return (struct aml_uart_platform *)
+	return (struct aml_i2c_platform *)
 			platform_get_device_id(pdev)->driver_data;
 }
 
@@ -854,52 +855,43 @@ static inline struct aml_i2c_platform   *aml_get_driver_data(
 
 static int aml_i2c_probe(struct platform_device *pdev)
 {
-    int ret;
-#ifdef CONFIG_OF
+	int ret;
 	struct aml_i2c_platform *plat;
 	int device_id=-1;
-#else
-    struct aml_i2c_platform *plat = (struct aml_i2c_platform *)(pdev->dev.platform_data);
-#endif
-//    struct resource *res;
-    resource_size_t *res_start;
-    struct aml_i2c *i2c = kzalloc(sizeof(struct aml_i2c), GFP_KERNEL);
+//    struct aml_i2c_platform *plat = (struct aml_i2c_platform *)(pdev->dev.platform_data);
 
-    printk("%s : %s\n", __FILE__, __FUNCTION__);
+	resource_size_t *res_start;
+	struct aml_i2c *i2c = kzalloc(sizeof(struct aml_i2c), GFP_KERNEL);
 
-#ifdef CONFIG_OF
-	//plat = aml_get_driver_data(pdev);
-	if (pdev->dev.of_node) {
-		ret = of_property_read_u32(pdev->dev.of_node,"device_id",&device_id);
-		if(ret){
+	printk("%s : %s\n", __FILE__, __FUNCTION__);
+
+	if (!pdev->dev.of_node) {
+			dev_err(&pdev->dev, "no platform data\n");
+			return -EINVAL;
+	}
+	
+	ret = of_property_read_u32(pdev->dev.of_node,"device_id",&device_id);
+	if(ret){
 			printk("don't find to match device_id\n");
 			return -1;
-		}
-		
-		pdev->id = device_id;
-		//if(device_id<sizeof(aml_i2c_properties_config)/sizeof(aml_i2c_properties_config[0])){
-		if(device_id<AML_I2C_DEVICE_NUM){
-			plat = (struct aml_i2c_platform*)aml_i2c_properties_config[device_id].drv_data;
-		}
-		ret=of_property_read_string(pdev->dev.of_node,"pinctrl-names",&plat->master_state_name);
-		printk("plat->state_name:%s\n",plat->master_state_name);
-		
 	}
-#endif
+		
+	pdev->id = device_id;
+	plat = (struct aml_i2c_platform*)aml_i2c_properties_config[device_id].drv_data;
+
+	ret=of_property_read_string(pdev->dev.of_node,"pinctrl-names",&plat->master_state_name);
+	printk("plat->state_name:%s\n",plat->master_state_name);
 	
-    i2c->ops = &aml_i2c_m1_ops;
-    i2c->dev=&pdev->dev;
+  i2c->ops = &aml_i2c_m1_ops;
+  i2c->dev=&pdev->dev;
 
-    /*master a or master b*/
-    i2c->master_no = plat->master_no;
-//    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    res_start = of_iomap(pdev->dev.of_node,0);
-    i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res_start);
-    printk("master_no = %d, maseter_regs=%p\n", i2c->master_no, i2c->master_regs);
+  res_start = of_iomap(pdev->dev.of_node,0);
+	i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res_start);
 
-    BUG_ON(!i2c->master_regs);
-    BUG_ON(!plat);
-    aml_i2c_set_platform_data(i2c, plat);
+  BUG_ON(!i2c->master_regs);
+  BUG_ON(!plat);
+	aml_i2c_set_platform_data(i2c, plat);
+	printk("master_no = %d, maseter_regs=%p\n", i2c->master_no, i2c->master_regs);
 
     /*lock init*/
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON3
@@ -919,55 +911,53 @@ static int aml_i2c_probe(struct platform_device *pdev)
     mutex_init(i2c->lock);
 #endif
 
-    /*setup adapter*/
-    i2c->adap.nr = pdev->id==-1? 0: pdev->id;
-    i2c->adap.class = I2C_CLASS_HWMON;
-    i2c->adap.algo = &aml_i2c_algorithm;
-    i2c->adap.retries = 2;
-    i2c->adap.timeout = 5;
+  /*setup adapter*/
+  i2c->adap.nr = pdev->id==-1? 0: pdev->id;
+  i2c->adap.class = I2C_CLASS_HWMON;
+  i2c->adap.algo = &aml_i2c_algorithm;
+  i2c->adap.retries = 2;
+  i2c->adap.timeout = 5;
 
-	if(pdev->dev.of_node){
-		i2c->adap.dev.of_node = pdev->dev.of_node;
-	}
+	i2c->adap.dev.of_node = pdev->dev.of_node;
 
-    //memset(i2c->adap.name, 0 , 48);
-    sprintf(i2c->adap.name, ADAPTER_NAME"%d", i2c->adap.nr);
-    i2c_set_adapdata(&i2c->adap, i2c);
-    ret = i2c_add_numbered_adapter(&i2c->adap);
-    if (ret < 0)
-    {
-            dev_err(&pdev->dev, "Adapter %s registration failed\n",
-                i2c->adap.name);
-            kzfree(i2c);
-            return -1;
-    }
-    dev_info(&pdev->dev, "add adapter %s(%p)\n", i2c->adap.name, &i2c->adap);
-    of_i2c_register_devices(&i2c->adap);
+  //memset(i2c->adap.name, 0 , 48);
+  sprintf(i2c->adap.name, ADAPTER_NAME"%d", i2c->adap.nr);
+  i2c_set_adapdata(&i2c->adap, i2c);
+  ret = i2c_add_numbered_adapter(&i2c->adap);
+  if (ret < 0)
+  {
+          dev_err(&pdev->dev, "Adapter %s registration failed\n",
+              i2c->adap.name);
+          kzfree(i2c);
+          return -1;
+  }
+  dev_info(&pdev->dev, "add adapter %s(%p)\n", i2c->adap.name, &i2c->adap);
+  of_i2c_register_devices(&i2c->adap);
 
-    /*need 2 different speed in 1 adapter, add a virtual one*/
-    if(plat->master_i2c_speed2){
-        i2c->master_i2c_speed2 = plat->master_i2c_speed2;
-        /*setup adapter 2*/
-        i2c->adap2.nr = i2c->adap.nr+1;
-        i2c->adap2.class = I2C_CLASS_HWMON;
-        i2c->adap2.algo = &aml_i2c_algorithm_s2;
-        i2c->adap2.retries = 2;
-        i2c->adap2.timeout = 5;
-        //memset(i2c->adap.name, 0 , 48);
-        sprintf(i2c->adap2.name, ADAPTER_NAME"%d", i2c->adap2.nr);
-        i2c_set_adapdata(&i2c->adap2, i2c);
-        ret = i2c_add_numbered_adapter(&i2c->adap2);
-        if (ret < 0)
-        {
-            dev_err(&pdev->dev, "Adapter %s registration failed\n",
-            i2c->adap2.name);
-            i2c_del_adapter(&i2c->adap);
-            kzfree(i2c);
-            return -1;
-        }
-        dev_info(&pdev->dev, "add adapter %s\n", i2c->adap2.name);
-    }
-    dev_info(&pdev->dev, "aml i2c bus driver.\n");
+  /*need 2 different speed in 1 adapter, add a virtual one*/
+  if(plat->master_i2c_speed2){
+      i2c->master_i2c_speed2 = plat->master_i2c_speed2;
+      /*setup adapter 2*/
+      i2c->adap2.nr = i2c->adap.nr+1;
+      i2c->adap2.class = I2C_CLASS_HWMON;
+      i2c->adap2.algo = &aml_i2c_algorithm_s2;
+      i2c->adap2.retries = 2;
+      i2c->adap2.timeout = 5;
+      //memset(i2c->adap.name, 0 , 48);
+      sprintf(i2c->adap2.name, ADAPTER_NAME"%d", i2c->adap2.nr);
+      i2c_set_adapdata(&i2c->adap2, i2c);
+      ret = i2c_add_numbered_adapter(&i2c->adap2);
+      if (ret < 0)
+      {
+          dev_err(&pdev->dev, "Adapter %s registration failed\n",
+          i2c->adap2.name);
+          i2c_del_adapter(&i2c->adap);
+          kzfree(i2c);
+          return -1;
+      }
+      dev_info(&pdev->dev, "add adapter %s\n", i2c->adap2.name);
+  }
+  dev_info(&pdev->dev, "aml i2c bus driver.\n");
 
 
 
@@ -1023,10 +1013,10 @@ static int aml_i2c_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_OF
 
-static bool pinmux_dummy_share(bool select)
-{
-    return select;
-}
+//static bool pinmux_dummy_share(bool select)
+//{
+//    return select;
+//}
 
 static struct aml_i2c_platform aml_i2c_driver_data_ao = {
     .wait_count         = 50000,
@@ -1045,7 +1035,7 @@ static struct aml_i2c_platform aml_i2c_driver_data_a = {
     .wait_read_interval  = 5,
     .wait_xfer_interval   = 5,
     .master_no          = AML_I2C_MASTER_A,
-    .use_pio            = (INT_I2C_MASTER0<<2)|I2C_INTERRUPT_MODE,
+    .use_pio            = 0,//(INT_I2C_MASTER0<<2)|I2C_INTERRUPT_MODE,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
     .master_state_name  = NULL,
 };
@@ -1056,7 +1046,7 @@ static struct aml_i2c_platform aml_i2c_driver_data_b = {
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
     .master_no          = AML_I2C_MASTER_B,
-    .use_pio            = (INT_I2C_MASTER1<<2)|I2C_INTERRUPT_MODE,
+    .use_pio            = 0,//(INT_I2C_MASTER1<<2)|I2C_INTERRUPT_MODE,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
     .master_state_name  = NULL,
 };
@@ -1067,7 +1057,7 @@ static struct aml_i2c_platform aml_i2c_driver_data_c = {
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
     .master_no          = AML_I2C_MASTER_C,
-    .use_pio            = (INT_I2C_MASTER2<<2)|I2C_INTERRUPT_MODE,
+    .use_pio            = 0,//(INT_I2C_MASTER2<<2)|I2C_INTERRUPT_MODE,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
     .master_state_name  = NULL,
 };
@@ -1078,7 +1068,7 @@ static struct aml_i2c_platform aml_i2c_driver_data_d = {
     .wait_read_interval = 5,
     .wait_xfer_interval = 5,
     .master_no          = AML_I2C_MASTER_D,
-    .use_pio            = (INT_I2C_MASTER3<<2)|I2C_INTERRUPT_MODE,
+    .use_pio            = 0,//(INT_I2C_MASTER3<<2)|I2C_INTERRUPT_MODE,
     .master_i2c_speed   = AML_I2C_SPPED_300K,
     .master_state_name  = NULL,
 };
