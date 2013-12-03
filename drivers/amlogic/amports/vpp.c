@@ -285,7 +285,7 @@ vpp_process_speed_check(s32 width_in,
     }
 
     if (height_in > height_out) {
-        if (div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
+        if (height_out == 0 || div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
                     height_out * vinfo->sync_duration_den * 256) > get_vpu_clk()) {
             return SPEED_CHECK_VSKIP;
         } else {
