@@ -331,6 +331,12 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if (!have_governor_per_policy()){
 			cdata->gdbs_data = dbs_data;
 		}
+
+		if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(policy->cpu);
+			mutex_init(&hg_dbs_info->hotplug_thread_mutex);
+		}
+
 		return 0;
 	case CPUFREQ_GOV_POLICY_EXIT:
 		if (!--dbs_data->usage_count) {
@@ -343,6 +349,11 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 
 				cpufreq_unregister_notifier(cs_ops->notifier_block,
 						CPUFREQ_TRANSITION_NOTIFIER);
+			}
+
+			if(dbs_data->cdata->governor == GOV_HOTPLUG){
+				hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(policy->cpu);
+				mutex_destroy(&hg_dbs_info->hotplug_thread_mutex);
 			}
 
 			cdata->exit(dbs_data);
@@ -457,11 +468,11 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if (dbs_data->cdata->governor == GOV_CONSERVATIVE)
 			cs_dbs_info->enable = 0;
 		if(dbs_data->cdata->governor == GOV_HOTPLUG){
+			mutex_lock(&dbs_data->mutex);
 			for_each_cpu(j, policy->cpus) {
 				hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(j);
 				hg_dbs_info->enable = 0;
 			}
-			mutex_lock(&dbs_data->mutex);
 			hg_ops = dbs_data->cdata->gov_ops;
 			idle_notifier_unregister(hg_ops->notifier_block);
 			mutex_unlock(&dbs_data->mutex);

@@ -521,10 +521,14 @@ static void cpu_hotplug_thread(int *hotplug_flag)
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
 
+	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
+
 	while(1){
 		if (kthread_should_stop())
 			break;
-		mutex_lock(&dbs_info->cdbs.timer_mutex);
+		mutex_lock(&dbs_info->hotplug_thread_mutex);
+		if(!dbs_info->enable)
+			goto wait_next_hotplug;
 		if(*hotplug_flag == CPU_HOTPLUG_PLUG){
 			*hotplug_flag = CPU_HOTPLUG_NONE;
 			j = 0;
@@ -560,8 +564,8 @@ clear_cpu:
 				}
 			}
 		}
-		mutex_unlock(&dbs_info->cdbs.timer_mutex);
-
+wait_next_hotplug:
+		mutex_unlock(&dbs_info->hotplug_thread_mutex);
 		set_current_state(TASK_INTERRUPTIBLE);
 		schedule();
 		set_current_state(TASK_RUNNING);

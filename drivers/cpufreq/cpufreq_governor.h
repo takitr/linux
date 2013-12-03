@@ -155,6 +155,7 @@ struct hg_cpu_dbs_info_s {
 	struct cpufreq_frequency_table *freq_table;
 	unsigned int requested_freq;
 	unsigned int enable:1;
+	struct mutex hotplug_thread_mutex;
 };
 struct od_cpu_dbs_info_s {
 	struct cpu_dbs_common_info cdbs;
