@@ -118,7 +118,7 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
-        reg = <0x1a300000 0x01400000>;
+        reg = <0x1a300000 0x01400000>;//same as following ppmgr
     };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
@@ -135,7 +135,7 @@ void root_func(){
 		reg = <0x05100000 0x01800000
 	   	 		0x06900000 0x00100000>;
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
- 		display_size_default = <2048 1536 2048 3072 32>;
+ 		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
 	};
 //$$ DEVICE = "mesonfb-ext"
 //$$ L2 PROP_STR = "status"
@@ -147,7 +147,7 @@ void root_func(){
 		status = "ok";
 		reg = <0x06a00000 0x01800000
 	       	 0x08200000 0x00100000>;
-		display_size_default = <2048 1536 2048 3072 32>;
+		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
 	 
 	};
 
@@ -191,20 +191,7 @@ void root_func(){
 		status = "okay";
 		reg = <0x1b700000 0x00f00000>;
 	};
-	
-/// ***************************************************************************************
-///	-	DISP&MM-BT656
-//$$ MODULE = "DISP&MM-BT656"
-//$$ DEVICE="amvdec_656in"
-//$$ L2 PROP_STR = "status"
-//$$ L2 PROP_U32 2 = "reg"
-//    amvdec_656in{
-//		compatible = "amlogic,amvdec_656in";
-//		dev_name = "amvdec_656in";
-//		status = "ok";
-//		reg = <0x1c600000 0x00100000>;
-//	};
-//	
+
 /// ***************************************************************************************
 ///	-	DISP&MM-VDIN
 //$$ MODULE = "DISP&MM-VDIN"

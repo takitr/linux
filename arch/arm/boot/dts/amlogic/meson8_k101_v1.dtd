@@ -78,7 +78,7 @@ void root_func(){
 		device_type = "memory";
 		aml_reserved_start = <0x05000000>; /**reserved memory start */
 		aml_reserved_end = <0x173fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x17400000 0x28c00000>;
+		linux,usable-memory = <0x00000000 0x04000000 0x17400000 0x28c00000>;//0x17400000+0x28c00000=0x40000000 1GB DDR
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -118,7 +118,7 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
-        reg = <0x0bd00000 0x01000000>;
+        reg = <0x0bd00000 0x01000000>;//same as following ppmgr
     };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
@@ -137,7 +137,7 @@ void root_func(){
 			0x06100000 0x00100000>;
 		rotation = <270>;
 		vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
-		display_size_default = <1024 768 1024 1536 32>;
+		display_size_default = <1024 768 1024 1536 32>;//1024x768x8=0x600000<0x01000000
 	};
 //$$ DEVICE = "mesonfb-ext"
 //$$ L2 PROP_STR = "status"
@@ -149,7 +149,7 @@ void root_func(){
 		status = "ok";
 		reg = <0x06200000 0x01000000
 	       	 0x07200000 0x00100000>;
-		display_size_default = <1024 768 1024 1536 32>;
+		display_size_default = <1024 768 1024 1536 32>;////1024x768x8=0x600000<0x01000000
 	 
 	};
 
@@ -193,20 +193,7 @@ void root_func(){
 		status = "okay";
 		reg = <0x0cd00000 0x00f00000>;
 	};
-	
-/// ***************************************************************************************
-///	-	DISP&MM-BT656
-//$$ MODULE = "DISP&MM-BT656"
-//$$ DEVICE="amvdec_656in"
-//$$ L2 PROP_STR = "status"
-//$$ L2 PROP_U32 2 = "reg"
-//    amvdec_656in{
-//		compatible = "amlogic,amvdec_656in";
-//		dev_name = "amvdec_656in";
-//		status = "ok";
-//		reg = <0x17400000 0x00100000>;
-//	};
-//
+
 /// ***************************************************************************************
 ///	-	DISP&MM-VDIN
 //$$ MODULE = "DISP&MM-VDIN"

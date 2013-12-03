@@ -103,7 +103,7 @@ void root_func(){
 		compatible = "amlogic,vpu";
 		dev_name = "vpu";	
 		status = "ok";
-		clk_level = <4>;
+		clk_level = <7>;
 		/**    	0: 106.25M		1: 127.5M		2: 159.375M
 				3: 182.15M		4: 212.5M		5: 255M
 		    	6: 318.75M		7: 364.3M					 */
@@ -118,7 +118,7 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
-        reg = <0xb400000 0x01400000>;
+        reg = <0xb400000 0x01400000>;//same as following ppmgr
     };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
@@ -135,7 +135,7 @@ void root_func(){
 		reg = <0x05100000 0x01800000
 	   	 		0x06900000 0x00100000>;
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
- 		display_size_default = <2048 1536 2048 3072 32>;
+ 		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
 	};
 
 /// ***************************************************************************************
@@ -179,19 +179,7 @@ void root_func(){
 		reg = <0xc800000 0x00f00000>;
 	};
 	
-/// ***************************************************************************************
-///	-	DISP&MM-BT656
-//$$ MODULE = "DISP&MM-BT656"
-//$$ DEVICE="amvdec_656in"
-//$$ L2 PROP_STR = "status"
-//$$ L2 PROP_U32 2 = "reg"
-//    amvdec_656in{
-//		compatible = "amlogic,amvdec_656in";
-//		dev_name = "amvdec_656in";
-//		status = "ok";
-//		reg = <0xd700000 0x00100000>;
-//	};
-//	
+
 /// ***************************************************************************************
 //$$ DEVICE="vdin1"
 //$$ L2 PROP_STR = "status"
@@ -798,7 +786,7 @@ sdio{
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
 		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
 		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
-		bl_pwm_duty_max_min=<100 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
+		bl_pwm_duty_max_min=<85 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
 	};
 //$$ DEVICE="lcd"
 //$$ L2 PROP_STR = "status"
@@ -882,7 +870,7 @@ sdio{
 		
 		lcd_model_name ="lcd_LP097QX1";	/** lcd model name for uboot driver */
 		lcd_model_config = <&lcd_LP097QX1>;	/** choose panel model config */
-		lcd_bits_user=<8>;	/** user defined lcd bits(6 or 8, decided by hardware design; only valid when lcd_bits_option=1) */
+		lcd_bits_user=<6>;	/** user defined lcd bits(6 or 8, decided by hardware design; only valid when lcd_bits_option=1) */
 		
 		/* below configs are decided by hardware design, you can modify them if needed. */
 		//ttl config
@@ -916,7 +904,7 @@ sdio{
 		mipi_dsi_lane_speed_user_min_max=<0 200 1000>; /** mipi_lane_speed_user(0=auto setting, 1=user define), speed_min,spend_max(unit in MHz, only valid when mipi_lane_speed_user=1)*/
 		lvds_vswing=<1>;	/** lvds_vswing_level(default level=1, support level 0,1,2,3,4) */
 		lvds_user_repack=<0 0>;	/** lvds_repack_user(0=auto setting, 1=user define), lvds_repack(0=JEIDA mode data mapping, 1=VESA mode data mapping. only valid when lvds_repack_user=1) */
-		edp_user_link_rate_lane_count=<1 1 4>;	/** edp_user(0=auto setting, 1=user define), link_rate(0=1.62G, 1=2.7G, only valid when edp_user=1), lane_count(support 1,2,4, only valid when edp_user=1) */
+		edp_user_link_rate_lane_count=<1 1 2>;	/** edp_user(0=auto setting, 1=user define), link_rate(0=1.62G, 1=2.7G, only valid when edp_user=1), lane_count(support 1,2,4, only valid when edp_user=1) */
 		edp_link_adaptive_vswing=<0 0>;	/** adaptive(0=fixed user defined vswing, 1=auto setting vswing by training), vswing(support level 0,1,2,3, user defined vswing, only valid when adaptive=0) */
 		rgb_base_coeff=<0xf0 0x74a>;	/** rgb_base, rgb_coeff */
 		video_on_pixel_line=<120 22>;	/** video_on_pixel, video_on_line */
@@ -973,7 +961,7 @@ sdio{
 		model_name="LP097QX1";	/** lcd model name */
 		interface="edp";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<197 147>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
-		lcd_bits_option=<8 0>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
+		lcd_bits_option=<8 1>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
 		
 		resolution=<2048 1536>;	/** horizontal resolution, vertical resolution */
 		period=<2219 1560>;		/** horizontal period(htotal), vertical period(vtotal) */
@@ -1009,7 +997,7 @@ sdio{
 		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-    lane_num=<4>;//lane num
+                lane_num=<4>;//lane num
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
@@ -1421,7 +1409,7 @@ sdio{
 			gpio_rst = "GPIOH_4";
 			mirror_flip = <0>;
 			vertical_flip = <0>;	
-			config_path = "/system/etc/myconfig";
+			config_path = "/system/etc/camera_isp_cfg/ov5647_k100";
 			bt_path = "gpio";
 			status = "okay";
 		};
