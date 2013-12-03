@@ -261,8 +261,8 @@ void af_sm_init(isp_dev_t *devp)
 	struct isp_af_info_s *af_info = &devp->af_info;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	/*init for af*/
-	if(sm_state.af_state)
-		devp->flag |= devp->af_info.flag_bk;
+	//if(sm_state.af_state)
+		//devp->flag |= devp->af_info.flag_bk;
 	if(devp->flag & ISP_AF_SM_MASK){
     	        sm_state.af_state = AF_INIT;
 	}
@@ -1331,7 +1331,7 @@ void isp_af_sm(isp_dev_t *devp)
 		case AF_INIT:
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			af_info->last_great_step = af_alg->af_step_max_thre;
-			if((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down)){
+			if(((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down))||!(devp->flag&ISP_FLAG_AE)){
 			/*awb brake,ae brake*/
 			af_info->flag_bk = (devp->flag&ISP_FLAG_AWB)|(devp->flag&ISP_FLAG_AE);
 			if(af_sm_dg&0x1)
@@ -1531,6 +1531,8 @@ void capture_sm_init(isp_dev_t *devp)
 		}else{
 			devp->flag &= (~ISP_FLAG_AF);
 		}
+		devp->af_info.flag_bk &= (~ISP_FLAG_AWB);
+		devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 		devp->flag &= (~ISP_FLAG_AWB);
 		devp->flag &= (~ISP_FLAG_AE);
 	}
@@ -1619,6 +1621,7 @@ int isp_capture_sm(isp_dev_t *devp)
 			break;			
 		case CAPTURE_LOW_GAIN:
 			if(sm_state.ae_down==true){
+				devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 				devp->flag &=(~ISP_FLAG_AE);
 				cap_sm->capture_state = CAPTURE_EYE_WAIT;
 				if(capture_debug)

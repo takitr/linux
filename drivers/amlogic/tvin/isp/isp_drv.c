@@ -773,8 +773,8 @@ static int isp_thread(isp_dev_t *devp) {
 	}
 	if(devp->flag & ISP_AF_SM_MASK) {
 		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
-			atomic_set(&devp->af_info.writeable,0);
 			func->set_af_new_step(devp->af_info.cur_step);
+			atomic_set(&devp->af_info.writeable,0);
 		}
 	}
         if(kthread_should_stop())
@@ -1003,6 +1003,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			}
 		        break;
 		case CAM_COMMAND_MWB:
+			devp->af_info.flag_bk &= (~ISP_FLAG_AWB);
 			devp->flag &= (~ISP_FLAG_AWB);
 	                devp->flag |= ISP_FLAG_MWB;
 		        break;
@@ -1022,6 +1023,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			}
 		        break;
                 case CAM_COMMAND_AE_OFF:
+			devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 		        devp->flag &= (~ISP_FLAG_AE);
 		        break;
 		case CAM_COMMAND_SET_AE_LEVEL:
@@ -1041,6 +1043,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        break;
                 case CAM_COMMAND_TOUCH_FOCUS:
 			if(!(devp->flag & ISP_FLAG_CAPTURE)){
+				devp->flag |= ISP_FLAG_TOUCH_AF;
 			        //devp->isp_af_parm = &param->xml_scenes->af;
 			        devp->isp_af_parm->x = param->xml_scenes->af.x;
 			        devp->isp_af_parm->y = param->xml_scenes->af.y;
@@ -1056,7 +1059,6 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 				        pr_info("focus win: center(%u,%u) left(%u %u) right(%u,%u).\n",devp->isp_af_parm->x,
 					devp->isp_af_parm->y,x0,y0,x1,y1);
 			        isp_set_af_scan_stat(x0,y0,x1,y1);
-			        devp->flag |= ISP_FLAG_TOUCH_AF;
 			        af_sm_init(devp);
 			}
 		        break;
