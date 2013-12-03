@@ -1342,6 +1342,11 @@ static void vh264_prot_init(void)
     {
         CLEAR_VREG_MASK(AV_SCRATCH_F, 1<<6);
     }
+
+#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
+    printk("vh264 meson8 prot init\n");
+    WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
+#endif
 }
 
 static void vh264_local_init(void)
