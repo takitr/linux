@@ -694,8 +694,7 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 		unsigned int freq_next;
 
 		freq_next = max_load_freq /
-				(hg_tuners->up_threshold -
-				 hg_tuners->down_differential);
+				(hg_tuners->down_threshold);
 
 		if (freq_next < policy->min)
 			freq_next = policy->min;
