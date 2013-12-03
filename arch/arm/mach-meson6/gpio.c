@@ -688,6 +688,20 @@ static int amlogic_gpio_probe(struct platform_device *pdev)
 	gpiochip_add(&amlogic_gpio_chip);
 	pullup_ops.meson_set_pullup=NULL;
 	dev_info(&pdev->dev, "Probed amlogic GPIO driver\n");
+#ifdef gpio_dump
+	int i;
+	for(i=0;i<GPIO_MAX;i++)
+		printk("%s,amlogic_pins[%d]=%d,%d,out en reg=%x,bit=%d,out val reg=%x,bit=%d,input reg=%x,bit=%d\n",
+		amlogic_pins[i].name,i,amlogic_pins[i].num,
+		gpio_amlogic_name_to_num(amlogic_pins[i].name),
+		(p_gpio_oen_addr[GPIO_REG(amlogic_pins[i].out_en_reg_bit)]&0xffff)>>2,
+		GPIO_BIT(amlogic_pins[i].out_en_reg_bit),
+		(p_gpio_output_addr[GPIO_REG(amlogic_pins[i].out_value_reg_bit)]&0xffff)>>2,
+		GPIO_BIT(amlogic_pins[i].out_value_reg_bit),
+		(p_gpio_input_addr[GPIO_REG(amlogic_pins[i].input_value_reg_bit)]&0xffff)>>2,
+		GPIO_BIT(amlogic_pins[i].input_value_reg_bit)
+	);
+#endif
 	return 0;
 }
 

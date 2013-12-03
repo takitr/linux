@@ -488,6 +488,7 @@ void early_clk_switch(int flag)
 }
 EXPORT_SYMBOL(early_clk_switch);
 #if 1
+#if 0
 #define PLL_COUNT 3
 //static char pll_flag[PLL_COUNT];
 static unsigned plls[PLL_COUNT] = {
@@ -503,6 +504,7 @@ static char plls_name[PLL_COUNT][32] = {
 //    "HHI_AUD_PLL_CNTL",
     "HHI_MPLL_CNTL",
 };
+#endif
 #define EARLY_PLL_COUNT 0
 static char early_pll_flag[EARLY_PLL_COUNT];
 static unsigned early_pll_settings[EARLY_PLL_COUNT][4];

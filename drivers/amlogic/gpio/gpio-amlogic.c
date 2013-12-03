@@ -153,7 +153,7 @@ EXPORT_SYMBOL(amlogic_gpio_direction_output);
 const char * amlogic_cat_gpio_owner(unsigned int pin)
 {
 	if(gpio_range_check(pin))
-		return -1;
+		return NULL;
 	return amlogic_pins[pin].gpio_owner;
 }
 EXPORT_SYMBOL(amlogic_cat_gpio_owner);

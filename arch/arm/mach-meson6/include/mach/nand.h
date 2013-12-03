@@ -689,7 +689,7 @@ struct aml_nand_device {
 	struct notifier_block nb;
 };
 
-
+#if 0
 static pinmux_item_t nand_set_pins[] = {
     {
         .reg = PINMUX_REG(2),
@@ -728,7 +728,7 @@ static pinmux_set_t nand_clear = {
     .chip_select = nand_chip_select,
     .pinmux = &nand_clr_pins[0]
 };
-
+#endif
 extern void aml_pinmux_set(const char *name);
 extern void aml_pinmux_clr();
 static void inline  nand_get_chip(void )

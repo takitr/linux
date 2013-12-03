@@ -32,7 +32,7 @@
 
 static int early_init_dt_probe(struct platform_device *pdev)
 {
-	char *str;
+	const char *str;
 	int ret;
 	int pin;
 	printk("-------%s:%d----------\n",__func__,__LINE__);
