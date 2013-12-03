@@ -37,7 +37,7 @@ static void set_hpll_clk_out(unsigned clk)
 #ifdef CONFIG_ARCH_MESON8
         case 2970:
             aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84e00);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce49c822);
+            aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce59c822);   // optimise HPLL VCO 2.97GHz performance
             aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x0123b100);
             aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
             
