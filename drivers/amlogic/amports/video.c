@@ -1838,7 +1838,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
             vf = video_vf_get();
 #ifdef USE_PROT
-            if (video_prot.video_started) {
+            if (video_prot.video_started || (video_prot.src_vframe_width != vf->width) || (video_prot.src_vframe_height != vf->height)) {
                 video_prot_init(&video_prot, vf);
                 video_prot.angle_changed |= 0x1;
                 video_prot.video_started = 0;
