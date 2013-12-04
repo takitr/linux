@@ -42,7 +42,10 @@
 #include <mach/mlvds_regs.h>
 #endif
 #include <mach/clock.h>
+#include <mach/cpu.h>
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #include <mach/vpu.h>
+#endif
 #include <asm/fiq.h>
 #include <linux/delay.h>
 #include <plat/regops.h>

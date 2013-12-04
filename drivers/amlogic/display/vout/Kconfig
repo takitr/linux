@@ -11,7 +11,7 @@ config AM_TV_OUTPUT
 
 config AM_LCD_OUTPUT
 	tristate "LCD output" 
-	default y
+	default n
 	help  
 		LCD output module
 
