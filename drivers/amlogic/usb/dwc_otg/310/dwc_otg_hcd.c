@@ -53,7 +53,7 @@ dwc_otg_hcd_t *dwc_otg_hcd_alloc_hcd(void)
  */
 void dwc_otg_hcd_connect_timeout(void *ptr)
 {
-	dwc_otg_hcd_t *hcd;
+	//dwc_otg_hcd_t *hcd;
 	DWC_DEBUGPL(DBG_HCDV, "%s(%p)\n", __func__, ptr);
 	DWC_PRINTF("Connect Timeout\n");
 	__DWC_ERROR("Device Not Connected/Responding\n");
@@ -486,7 +486,7 @@ static void dwc_otg_hcd_power_save(dwc_otg_hcd_t * hcd, int power_on)
 	pcgcctl_data_t pcgcctl = {.d32 = 0 };
 
 	uart.d32 = DWC_READ_REG32(&hcd->core_if->usb_peri_reg->dbg_uart);
-	pcgcctl.d32 = DWC_READ_REG32(&hcd->core_if->pcgcctl);
+	pcgcctl.d32 = DWC_READ_REG32(hcd->core_if->pcgcctl);
 
 	if(power_on){
 		pcgcctl.b.stoppclk = 0;
@@ -496,7 +496,7 @@ static void dwc_otg_hcd_power_save(dwc_otg_hcd_t * hcd, int power_on)
 		uart.b.set_iddq = 1;
 	}
 	
-	DWC_WRITE_REG32(&hcd->core_if->pcgcctl, pcgcctl.d32);
+	DWC_WRITE_REG32(hcd->core_if->pcgcctl, pcgcctl.d32);
 	if(!hcd->auto_pm_suspend_flag)
 		DWC_WRITE_REG32(&hcd->core_if->usb_peri_reg->dbg_uart,uart.d32);
 }
