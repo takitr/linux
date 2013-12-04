@@ -670,172 +670,111 @@ static cam_i2c_msg_t AR0543_preview_VGA_script[] = {
 };
 
 static cam_i2c_msg_t AR0543_VGA_script_mipi[] = {
-	//[Demo Initialization 1280 x 720 MCLK= 24MHz, PCLK=76.8MHz]
-	{1, 0x0103, 0x01},      //SOFTWARE_RESET (clears itself)
-	{TIME_DELAY, 0, 5},       //Initialization Time
-	    
-	    //stop_streaming
-	{1, 0x0100, 0x00},      // MODE_SELECT
-	
-	{2, 0x301A, 0x0218},      //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
-	{2, 0x3064, 0xB800},      // SMIA_TEST
-	{2, 0x31AE, 0x0202},      // two lane
-	{2, 0x0112, 0x0A0A},      // 10bit raw output
-	
-	{1, 0x0300, 0x05},	//vt_pix_clk_div = 0x5
-	{1, 0x0302, 0x01},	//vt_sys_clk_div = 0x1
-	{1, 0x0304, 0x02},	//pre_pll_clk_div = 0x2
-	{1, 0x0306, 0x12},	//pll_multiplier = 0x12
-	{1, 0x0308, 0x0A},	//op_pix_clk_div = 0xA
-	{1, 0x030A, 0x01},	//op_sys_clk_div = 0x1
-	        
-	  //stop_streaming
-	{1, 0x0100, 0x0 },      // MODE_SELECT 
-	{1, 0x0104, 0x01},      // GROUPED_PARAMETER_HOLD = 0x1
-	    
-	//1280 x 720  Timing settings 30fps
-	
-	{2, 0x3064, 0xB800},      // SMIA_TEST
-	{2, 0x31AE, 0x0202},      // two lane 201 tow 202
-	{2, 0x0112, 0x0A0A},      // 10bit raw output
-	
-	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ
-	
-	{1, 0x0300, 0x05},	//vt_pix_clk_div = 0x5
-	{1, 0x0302, 0x01},	//vt_sys_clk_div = 0x1
-	{1, 0x0304, 0x02},	//pre_pll_clk_div = 0x2
-	{1, 0x0306, 0x12},	//pll_multiplier = 0x12
-	{1, 0x0308, 0x0A},	//op_pix_clk_div = 0xA
-	{1, 0x030A, 0x01},	//op_sys_clk_div = 0x1
-	 
-	{2, 0x0344, 0x0008},      // X_ADDR_START   =  8
-	{2, 0x0346, 0x0008},      // Y_ADDR_START   =  8
-	{2, 0x0348, 0x0A01},      // X_ADDR_END      = 2561
-	{2, 0x034A, 0x0781},      // Y_ADDR_END       =  1921
-	
-	{2, 0x3040, 0x85C7},        // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3
-	{2, 0x034C, 0x0280},      // X_OUTPUT_SIZE    = 640
-	{2, 0x034E, 0x01E0},      // Y_OUTPUT_SIZE    =  480
-	
-	{2, 0x300C, 0x0A2C},      // LINE_LENGTH  2604
-	{2, 0x300A, 0x0229},      // FRAME_LINEs  553
-	
-	{2, 0x3014, 0x0678},      // fine_integration_time
-	{2, 0x3010, 0x0184},      // fine_correction
-	{1, 0x0104, 0x00  },    // GROUPED_PARAMETER_HOLD
-	    
-	    //start_streaming
-	{1, 0x0100, 0x01 },     // MODE_SELECT 
-	
-	//[LSC_85%]
-	{2, 0x3780, 0x0000}, 	// POLY_SC_ENABLE
-	{2, 0x3600, 0x01D0}, 	// P_GR_P0Q0     
-	{2, 0x3602, 0x278C}, 	// P_GR_P0Q1     
-	{2, 0x3604, 0x6D70}, 	// P_GR_P0Q2     
-	{2, 0x3606, 0x8B0D}, 	// P_GR_P0Q3     
-	{2, 0x3608, 0x974C}, 	// P_GR_P0Q4     
-	{2, 0x360A, 0x01F0}, 	// P_RD_P0Q0     
-	{2, 0x360C, 0x21CD}, 	// P_RD_P0Q1     
-	{2, 0x360E, 0x2F30}, 	// P_RD_P0Q2     
-	{2, 0x3610, 0x32CC}, 	// P_RD_P0Q3     
-	{2, 0x3612, 0x2D6A}, 	// P_RD_P0Q4     
-	{2, 0x3614, 0x0230}, 	// P_BL_P0Q0     
-	{2, 0x3616, 0x434D}, 	// P_BL_P0Q1     
-	{2, 0x3618, 0x2F8F}, 	// P_BL_P0Q2     
-	{2, 0x361A, 0xFDAF}, 	// P_BL_P0Q3     
-	{2, 0x361C, 0x79CF}, 	// P_BL_P0Q4     
-	{2, 0x361E, 0x0590}, 	// P_GB_P0Q0     
-	{2, 0x3620, 0xAE2B}, 	// P_GB_P0Q1     
-	{2, 0x3622, 0x7690}, 	// P_GB_P0Q2     
-	{2, 0x3624, 0x764D}, 	// P_GB_P0Q3     
-	{2, 0x3626, 0xF3AE}, 	// P_GB_P0Q4     
-	{2, 0x3640, 0xBFAC}, 	// P_GR_P1Q0     
-	{2, 0x3642, 0x992F}, 	// P_GR_P1Q1     
-	{2, 0x3644, 0x336F}, 	// P_GR_P1Q2     
-	{2, 0x3646, 0x272F}, 	// P_GR_P1Q3     
-	{2, 0x3648, 0xC350}, 	// P_GR_P1Q4     
-	{2, 0x364A, 0x9B6C}, 	// P_RD_P1Q0     
-	{2, 0x364C, 0xB66D}, 	// P_RD_P1Q1     
-	{2, 0x364E, 0x1030}, 	// P_RD_P1Q2     
-	{2, 0x3650, 0x622F}, 	// P_RD_P1Q3     
-	{2, 0x3652, 0xB0D1}, 	// P_RD_P1Q4     
-	{2, 0x3654, 0xE527}, 	// P_BL_P1Q0     
-	{2, 0x3656, 0xD20D}, 	// P_BL_P1Q1     
-	{2, 0x3658, 0x79AF}, 	// P_BL_P1Q2     
-	{2, 0x365A, 0x600F}, 	// P_BL_P1Q3     
-	{2, 0x365C, 0xA191}, 	// P_BL_P1Q4     
-	{2, 0x365E, 0xE7A8}, 	// P_GB_P1Q0     
-	{2, 0x3660, 0xDB0F}, 	// P_GB_P1Q1     
-	{2, 0x3662, 0x0A50}, 	// P_GB_P1Q2     
-	{2, 0x3664, 0x5FF0}, 	// P_GB_P1Q3     
-	{2, 0x3666, 0xBBF1}, 	// P_GB_P1Q4     
-	{2, 0x3680, 0x39D1}, 	// P_GR_P2Q0     
-	{2, 0x3682, 0x44AD}, 	// P_GR_P2Q1     
-	{2, 0x3684, 0xF5D1}, 	// P_GR_P2Q2     
-	{2, 0x3686, 0x8F52}, 	// P_GR_P2Q3     
-	{2, 0x3688, 0x36B3}, 	// P_GR_P2Q4     
-	{2, 0x368A, 0x4E71}, 	// P_RD_P2Q0     
-	{2, 0x368C, 0xC30C}, 	// P_RD_P2Q1     
-	{2, 0x368E, 0xC451}, 	// P_RD_P2Q2     
-	{2, 0x3690, 0xA352}, 	// P_RD_P2Q3     
-	{2, 0x3692, 0x1BB3}, 	// P_RD_P2Q4     
-	{2, 0x3694, 0x0431}, 	// P_BL_P2Q0     
-	{2, 0x3696, 0x5AED}, 	// P_BL_P2Q1     
-	{2, 0x3698, 0xC351}, 	// P_BL_P2Q2     
-	{2, 0x369A, 0xB011}, 	// P_BL_P2Q3     
-	{2, 0x369C, 0x2D93}, 	// P_BL_P2Q4     
-	{2, 0x369E, 0x3AD1}, 	// P_GB_P2Q0     
-	{2, 0x36A0, 0x76EC}, 	// P_GB_P2Q1     
-	{2, 0x36A2, 0x86F2}, 	// P_GB_P2Q2     
-	{2, 0x36A4, 0xC7F2}, 	// P_GB_P2Q3     
-	{2, 0x36A6, 0x5633}, 	// P_GB_P2Q4     
-	{2, 0x36C0, 0x494E}, 	// P_GR_P3Q0     
-	{2, 0x36C2, 0x7210}, 	// P_GR_P3Q1     
-	{2, 0x36C4, 0xB932}, 	// P_GR_P3Q2     
-	{2, 0x36C6, 0x8572}, 	// P_GR_P3Q3     
-	{2, 0x36C8, 0x3813}, 	// P_GR_P3Q4     
-	{2, 0x36CA, 0x442F}, 	// P_RD_P3Q0     
-	{2, 0x36CC, 0x3211}, 	// P_RD_P3Q1     
-	{2, 0x36CE, 0x8333}, 	// P_RD_P3Q2     
-	{2, 0x36D0, 0xEED2}, 	// P_RD_P3Q3     
-	{2, 0x36D2, 0x0DB4}, 	// P_RD_P3Q4     
-	{2, 0x36D4, 0xECC8}, 	// P_BL_P3Q0     
-	{2, 0x36D6, 0x04D1}, 	// P_BL_P3Q1     
-	{2, 0x36D8, 0xBBD2}, 	// P_BL_P3Q2     
-	{2, 0x36DA, 0xF8F2}, 	// P_BL_P3Q3     
-	{2, 0x36DC, 0x12F4}, 	// P_BL_P3Q4     
-	{2, 0x36DE, 0x3B0D}, 	// P_GB_P3Q0     
-	{2, 0x36E0, 0x3391}, 	// P_GB_P3Q1     
-	{2, 0x36E2, 0xD2F2}, 	// P_GB_P3Q2     
-	{2, 0x36E4, 0x94D3}, 	// P_GB_P3Q3     
-	{2, 0x36E6, 0x23F4}, 	// P_GB_P3Q4     
-	{2, 0x3700, 0xF011}, 	// P_GR_P4Q0     
-	{2, 0x3702, 0xD271}, 	// P_GR_P4Q1     
-	{2, 0x3704, 0x1154}, 	// P_GR_P4Q2     
-	{2, 0x3706, 0x0D13}, 	// P_GR_P4Q3     
-	{2, 0x3708, 0xDDB3}, 	// P_GR_P4Q4     
-	{2, 0x370A, 0x81D2}, 	// P_RD_P4Q0     
-	{2, 0x370C, 0xCA91}, 	// P_RD_P4Q1     
-	{2, 0x370E, 0x1C34}, 	// P_RD_P4Q2     
-	{2, 0x3710, 0x4991}, 	// P_RD_P4Q3     
-	{2, 0x3712, 0xDFB3}, 	// P_RD_P4Q4     
-	{2, 0x3714, 0xD271}, 	// P_BL_P4Q0     
-	{2, 0x3716, 0x9B12}, 	// P_BL_P4Q1     
-	{2, 0x3718, 0x3094}, 	// P_BL_P4Q2     
-	{2, 0x371A, 0x41D3}, 	// P_BL_P4Q3     
-	{2, 0x371C, 0x8335}, 	// P_BL_P4Q4     
-	{2, 0x371E, 0xF5B1}, 	// P_GB_P4Q0     
-	{2, 0x3720, 0xBC51}, 	// P_GB_P4Q1     
-	{2, 0x3722, 0x2574}, 	// P_GB_P4Q2     
-	{2, 0x3724, 0x39F2}, 	// P_GB_P4Q3     
-	{2, 0x3726, 0x9674}, 	// P_GB_P4Q4     
-	{2, 0x3782, 0x0468}, 	// POLY_ORIGIN_C 
-	{2, 0x3784, 0x0378}, 	// POLY_ORIGIN_R 
-	{2, 0x37C0, 0xE86A}, 	// P_GR_Q5       
-	{2, 0x37C2, 0xBBEB}, 	// P_RD_Q5       
-	{2, 0x37C4, 0xF82A}, 	// P_BL_Q5       
-	{2, 0x37C6, 0x840B}, 	// P_GB_Q5       
-	{2, 0x3780, 0x8000}, 	// POLY_SC_ENABLE
+// This file was generated by: AR0542 (A-5141) Register Wizard
+//   Version: 4.5.13.36518    Build Date: 07/08/2013
+// 
+// [PLL PARAMETERS]
+// 
+// Bypass PLL: Unchecked
+// Input Frequency: 24.000
+// Use Min Freq.: Unchecked
+// Target VT Frequency: 96.000
+// Target op_sys_clk Frequency: Unspecified
+// 
+// Target PLL VT Frequency: 96 MHz
+// Target PLL OP Frequency: 96 MHz
+// MT9P017 Input Clock Frequency: 24 MHz
+// MT9P017 VT (Internal) Pixel Clock Frequency: 96 MHz
+// MT9P017 OP (Output) Pixel Clock Frequency: 48 MHz
+// pre_pll_clk_div = 2
+// pll_multiplier = 40
+// vt_sys_clk_div = 1
+// vt_pix_clk_div = 5
+// op_sys_clk_div = 1
+// op_pix_clk_div = 10
+// ip_clk = 12 MHz
+// op_clk = 480 MHz
+// op_sys_clk = 480 MHz
+// 
+// [SENSOR PARAMETERS]
+// 
+// Requested Frames Per Second: 30.000
+// Output Columns: 640
+// Output Rows: 480
+// Use Binning: Checked
+// Allow Skipping: Unchecked
+// Blanking Computation: HB Max then VB
+// 
+// Max Frame Time: 33.3333 msec
+// Max Frame Clocks: 3200000.0 clocks (96 MHz)
+// Maximun Frame Rate: 199.602 fps
+// Pixel Clock: divided by 1
+// Skip Mode: 4x cols, 4x rows, Bin Mode: Yes
+// Horiz clks:  640 active + 5146 blank = 5786 total
+// Vert  rows:  480 active + 73 blank = 553 total
+// 
+// Actual Frame Clocks: 3200000 clocks
+// Row Time: 60.271 usec / 5786 clocks
+// Frame time: 33.333333 msec
+// Frames per Sec: 30 fps
+// 
+// 
+// 
+
+
+
+//[AR0542 (A-5141) Register Wizard Defaults]
+
+
+	{2,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)                               
+	{TIME_DELAY, 0, 5},      //Initialization Time                                      
+	                                                                                    
+	//stop_streaming                                                                    
+	{2,0x0100, 0x00},    // MODE_SELECT                                                 
+	{2,0x301A, 0x0218},    //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane                                                  
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	  //stop_streaming                                                                  
+	{1,0x0100, 0x0 },    // MODE_SELECT                                                 
+	{1,0x0104, 0x01},    // GROUPED_PARAMETER_HOLD = 0x1                                
+	                                                                                    
+	//1296 x 972  Timing settings 30fps                                                 
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane 201 tow 202                                      
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ                                        
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	{2,0x0344, 0x0018},    // X_ADDR_START   =  8                                       
+	{2,0x0346, 0x0014},    // Y_ADDR_START   =  8                                       
+	{2,0x0348, 0x0A11},    // X_ADDR_END      = 2597                                    
+	{2,0x034A, 0x078D},    // Y_ADDR_END       =  1949                                  
+	{2,0x3040, 0x85C7},    // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3 
+	{2,0x034C, 0x0280},    // X_OUTPUT_SIZE    = 1296                                   
+	{2,0x034E, 0x01E0},    // Y_OUTPUT_SIZE    =  972                                   
+	{2,0x300C, 0x169A},    // LINE_LENGTH  3151                                         
+	{2,0x300A, 0x0229},    // FRAME_LINEs  1100                                         
+	                                                                                    
+	{2,0x3014, 0x1356},    // fine_integration_time                                     
+	{2,0x3010, 0x0184},    // fine_correction  
+	{2,0x3012, 0x0228},    // Coarse Integration Time = 0x228                                          
+	{1,0x0104, 0x00},    // GROUPED_PARAMETER_HOLD                                      
+	                                                                                    
+	    //start_streaming                                                               
+	{1,0x0100, 0x01},    // MODE_SELECT    
 	{END_OF_SCRIPT, 0, 0},
 };
 
@@ -844,172 +783,107 @@ static cam_i2c_msg_t AR0543_preview_720P_script[] = {
 };
 
 static cam_i2c_msg_t AR0543_720P_script_mipi[] = {
-	//[Demo Initialization 1280 x 720 MCLK= 24MHz, PCLK=76.8MHz]
-	{1, 0x0103, 0x01},      //SOFTWARE_RESET (clears itself)
-	{TIME_DELAY, 0, 5},       //Initialization Time
-	    
-	    //stop_streaming
-	{1, 0x0100, 0x00},      // MODE_SELECT
-	
-	{2, 0x301A, 0x0218},      //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
-	{2, 0x3064, 0xB800},      // SMIA_TEST
-	{2, 0x31AE, 0x0202},      // two lane
-	{2, 0x0112, 0x0A0A},      // 10bit raw output
-	
-	{1, 0x0300, 0x05},	//vt_pix_clk_div = 0x5
-	{1, 0x0302, 0x01},	//vt_sys_clk_div = 0x1
-	{1, 0x0304, 0x02},	//pre_pll_clk_div = 0x2
-	{1, 0x0306, 0x20},	//pll_multiplier = 0x20
-	{1, 0x0308, 0x0A},	//op_pix_clk_div = 0xA
-	{1, 0x030A, 0x01},	//op_sys_clk_div = 0x1
-	        
-	  //stop_streaming
-	{1, 0x0100, 0x0 },      // MODE_SELECT 
-	{1, 0x0104, 0x01},      // GROUPED_PARAMETER_HOLD = 0x1
-	    
-	//1280 x 720  Timing settings 30fps
-	
-	{2, 0x3064, 0xB800},      // SMIA_TEST
-	{2, 0x31AE, 0x0202},      // two lane 201 tow 202
-	{2, 0x0112, 0x0A0A},      // 10bit raw output
-	
-	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ
-	
-	{1, 0x0300, 0x05},	//vt_pix_clk_div = 0x5
-	{1, 0x0302, 0x01},	//vt_sys_clk_div = 0x1
-	{1, 0x0304, 0x02},	//pre_pll_clk_div = 0x2
-	{1, 0x0306, 0x20},	//pll_multiplier = 0x20
-	{1, 0x0308, 0x0A},	//op_pix_clk_div = 0xA
-	{1, 0x030A, 0x01},	//op_sys_clk_div = 0x1
-	 
-	{2, 0x0344, 0x0008},      // X_ADDR_START   =  8
-	{2, 0x0346, 0x0008},      // Y_ADDR_START   =  8
-	{2, 0x0348, 0x0A25},      // X_ADDR_END      = 2597
-	{2, 0x034A, 0x079D},      // Y_ADDR_END       =  1949
-	
-	{2, 0x3040, 0x84C3},        // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3
-	{2, 0x034C, 0x0500},      // X_OUTPUT_SIZE    = 1280
-	{2, 0x034E, 0x02D0},      // Y_OUTPUT_SIZE    =  720
-	
-	{2, 0x300C, 0x0C3C},      // LINE_LENGTH  3151
-	{2, 0x300A, 0x0331},      // FRAME_LINEs  1100
-	
-	{2, 0x3014, 0x08F8},      // fine_integration_time
-	{2, 0x3010, 0x0184},      // fine_correction
-	{1, 0x0104, 0x00  },    // GROUPED_PARAMETER_HOLD
-	    
-	    //start_streaming
-	{1, 0x0100, 0x01 },     // MODE_SELECT 
-	
-	//[LSC_85%]
-	{2, 0x3780, 0x0000}, 	// POLY_SC_ENABLE
-	{2, 0x3600, 0x01D0}, 	// P_GR_P0Q0     
-	{2, 0x3602, 0x278C}, 	// P_GR_P0Q1     
-	{2, 0x3604, 0x6D70}, 	// P_GR_P0Q2     
-	{2, 0x3606, 0x8B0D}, 	// P_GR_P0Q3     
-	{2, 0x3608, 0x974C}, 	// P_GR_P0Q4     
-	{2, 0x360A, 0x01F0}, 	// P_RD_P0Q0     
-	{2, 0x360C, 0x21CD}, 	// P_RD_P0Q1     
-	{2, 0x360E, 0x2F30}, 	// P_RD_P0Q2     
-	{2, 0x3610, 0x32CC}, 	// P_RD_P0Q3     
-	{2, 0x3612, 0x2D6A}, 	// P_RD_P0Q4     
-	{2, 0x3614, 0x0230}, 	// P_BL_P0Q0     
-	{2, 0x3616, 0x434D}, 	// P_BL_P0Q1     
-	{2, 0x3618, 0x2F8F}, 	// P_BL_P0Q2     
-	{2, 0x361A, 0xFDAF}, 	// P_BL_P0Q3     
-	{2, 0x361C, 0x79CF}, 	// P_BL_P0Q4     
-	{2, 0x361E, 0x0590}, 	// P_GB_P0Q0     
-	{2, 0x3620, 0xAE2B}, 	// P_GB_P0Q1     
-	{2, 0x3622, 0x7690}, 	// P_GB_P0Q2     
-	{2, 0x3624, 0x764D}, 	// P_GB_P0Q3     
-	{2, 0x3626, 0xF3AE}, 	// P_GB_P0Q4     
-	{2, 0x3640, 0xBFAC}, 	// P_GR_P1Q0     
-	{2, 0x3642, 0x992F}, 	// P_GR_P1Q1     
-	{2, 0x3644, 0x336F}, 	// P_GR_P1Q2     
-	{2, 0x3646, 0x272F}, 	// P_GR_P1Q3     
-	{2, 0x3648, 0xC350}, 	// P_GR_P1Q4     
-	{2, 0x364A, 0x9B6C}, 	// P_RD_P1Q0     
-	{2, 0x364C, 0xB66D}, 	// P_RD_P1Q1     
-	{2, 0x364E, 0x1030}, 	// P_RD_P1Q2     
-	{2, 0x3650, 0x622F}, 	// P_RD_P1Q3     
-	{2, 0x3652, 0xB0D1}, 	// P_RD_P1Q4     
-	{2, 0x3654, 0xE527}, 	// P_BL_P1Q0     
-	{2, 0x3656, 0xD20D}, 	// P_BL_P1Q1     
-	{2, 0x3658, 0x79AF}, 	// P_BL_P1Q2     
-	{2, 0x365A, 0x600F}, 	// P_BL_P1Q3     
-	{2, 0x365C, 0xA191}, 	// P_BL_P1Q4     
-	{2, 0x365E, 0xE7A8}, 	// P_GB_P1Q0     
-	{2, 0x3660, 0xDB0F}, 	// P_GB_P1Q1     
-	{2, 0x3662, 0x0A50}, 	// P_GB_P1Q2     
-	{2, 0x3664, 0x5FF0}, 	// P_GB_P1Q3     
-	{2, 0x3666, 0xBBF1}, 	// P_GB_P1Q4     
-	{2, 0x3680, 0x39D1}, 	// P_GR_P2Q0     
-	{2, 0x3682, 0x44AD}, 	// P_GR_P2Q1     
-	{2, 0x3684, 0xF5D1}, 	// P_GR_P2Q2     
-	{2, 0x3686, 0x8F52}, 	// P_GR_P2Q3     
-	{2, 0x3688, 0x36B3}, 	// P_GR_P2Q4     
-	{2, 0x368A, 0x4E71}, 	// P_RD_P2Q0     
-	{2, 0x368C, 0xC30C}, 	// P_RD_P2Q1     
-	{2, 0x368E, 0xC451}, 	// P_RD_P2Q2     
-	{2, 0x3690, 0xA352}, 	// P_RD_P2Q3     
-	{2, 0x3692, 0x1BB3}, 	// P_RD_P2Q4     
-	{2, 0x3694, 0x0431}, 	// P_BL_P2Q0     
-	{2, 0x3696, 0x5AED}, 	// P_BL_P2Q1     
-	{2, 0x3698, 0xC351}, 	// P_BL_P2Q2     
-	{2, 0x369A, 0xB011}, 	// P_BL_P2Q3     
-	{2, 0x369C, 0x2D93}, 	// P_BL_P2Q4     
-	{2, 0x369E, 0x3AD1}, 	// P_GB_P2Q0     
-	{2, 0x36A0, 0x76EC}, 	// P_GB_P2Q1     
-	{2, 0x36A2, 0x86F2}, 	// P_GB_P2Q2     
-	{2, 0x36A4, 0xC7F2}, 	// P_GB_P2Q3     
-	{2, 0x36A6, 0x5633}, 	// P_GB_P2Q4     
-	{2, 0x36C0, 0x494E}, 	// P_GR_P3Q0     
-	{2, 0x36C2, 0x7210}, 	// P_GR_P3Q1     
-	{2, 0x36C4, 0xB932}, 	// P_GR_P3Q2     
-	{2, 0x36C6, 0x8572}, 	// P_GR_P3Q3     
-	{2, 0x36C8, 0x3813}, 	// P_GR_P3Q4     
-	{2, 0x36CA, 0x442F}, 	// P_RD_P3Q0     
-	{2, 0x36CC, 0x3211}, 	// P_RD_P3Q1     
-	{2, 0x36CE, 0x8333}, 	// P_RD_P3Q2     
-	{2, 0x36D0, 0xEED2}, 	// P_RD_P3Q3     
-	{2, 0x36D2, 0x0DB4}, 	// P_RD_P3Q4     
-	{2, 0x36D4, 0xECC8}, 	// P_BL_P3Q0     
-	{2, 0x36D6, 0x04D1}, 	// P_BL_P3Q1     
-	{2, 0x36D8, 0xBBD2}, 	// P_BL_P3Q2     
-	{2, 0x36DA, 0xF8F2}, 	// P_BL_P3Q3     
-	{2, 0x36DC, 0x12F4}, 	// P_BL_P3Q4     
-	{2, 0x36DE, 0x3B0D}, 	// P_GB_P3Q0     
-	{2, 0x36E0, 0x3391}, 	// P_GB_P3Q1     
-	{2, 0x36E2, 0xD2F2}, 	// P_GB_P3Q2     
-	{2, 0x36E4, 0x94D3}, 	// P_GB_P3Q3     
-	{2, 0x36E6, 0x23F4}, 	// P_GB_P3Q4     
-	{2, 0x3700, 0xF011}, 	// P_GR_P4Q0     
-	{2, 0x3702, 0xD271}, 	// P_GR_P4Q1     
-	{2, 0x3704, 0x1154}, 	// P_GR_P4Q2     
-	{2, 0x3706, 0x0D13}, 	// P_GR_P4Q3     
-	{2, 0x3708, 0xDDB3}, 	// P_GR_P4Q4     
-	{2, 0x370A, 0x81D2}, 	// P_RD_P4Q0     
-	{2, 0x370C, 0xCA91}, 	// P_RD_P4Q1     
-	{2, 0x370E, 0x1C34}, 	// P_RD_P4Q2     
-	{2, 0x3710, 0x4991}, 	// P_RD_P4Q3     
-	{2, 0x3712, 0xDFB3}, 	// P_RD_P4Q4     
-	{2, 0x3714, 0xD271}, 	// P_BL_P4Q0     
-	{2, 0x3716, 0x9B12}, 	// P_BL_P4Q1     
-	{2, 0x3718, 0x3094}, 	// P_BL_P4Q2     
-	{2, 0x371A, 0x41D3}, 	// P_BL_P4Q3     
-	{2, 0x371C, 0x8335}, 	// P_BL_P4Q4     
-	{2, 0x371E, 0xF5B1}, 	// P_GB_P4Q0     
-	{2, 0x3720, 0xBC51}, 	// P_GB_P4Q1     
-	{2, 0x3722, 0x2574}, 	// P_GB_P4Q2     
-	{2, 0x3724, 0x39F2}, 	// P_GB_P4Q3     
-	{2, 0x3726, 0x9674}, 	// P_GB_P4Q4     
-	{2, 0x3782, 0x0468}, 	// POLY_ORIGIN_C 
-	{2, 0x3784, 0x0378}, 	// POLY_ORIGIN_R 
-	{2, 0x37C0, 0xE86A}, 	// P_GR_Q5       
-	{2, 0x37C2, 0xBBEB}, 	// P_RD_Q5       
-	{2, 0x37C4, 0xF82A}, 	// P_BL_Q5       
-	{2, 0x37C6, 0x840B}, 	// P_GB_Q5       
-	{2, 0x3780, 0x8000}, 	// POLY_SC_ENABLE
+// This file was generated by: AR0542 (A-5141) Register Wizard
+//   Version: 4.5.13.36518    Build Date: 07/08/2013
+// 
+// [PLL PARAMETERS]
+// 
+// Bypass PLL: Unchecked
+// Input Frequency: 24.000
+// Use Min Freq.: Unchecked
+// Target VT Frequency: 96.000
+// Target op_sys_clk Frequency: Unspecified
+// 
+// Target PLL VT Frequency: 96 MHz
+// Target PLL OP Frequency: 96 MHz
+// MT9P017 Input Clock Frequency: 24 MHz
+// MT9P017 VT (Internal) Pixel Clock Frequency: 96 MHz
+// MT9P017 OP (Output) Pixel Clock Frequency: 48 MHz
+// pre_pll_clk_div = 2
+// pll_multiplier = 40
+// vt_sys_clk_div = 1
+// vt_pix_clk_div = 5
+// op_sys_clk_div = 1
+// op_pix_clk_div = 10
+// ip_clk = 12 MHz
+// op_clk = 480 MHz
+// op_sys_clk = 480 MHz
+// 
+// [SENSOR PARAMETERS]
+// 
+// Requested Frames Per Second: 30.000
+// Output Columns: 1280
+// Output Rows: 720
+// Use Binning: Checked
+// Allow Skipping: Unchecked
+// Blanking Computation: HB Max then VB
+// 
+// Max Frame Time: 33.3333 msec
+// Max Frame Clocks: 3200000.0 clocks (96 MHz)
+// Maximun Frame Rate: 70.788 fps
+// Pixel Clock: divided by 1
+// Skip Mode: 2x cols, 2x rows, Bin Mode: Yes
+// Horiz clks:  1280 active + 2755 blank = 4035 total
+// Vert  rows:  720 active + 73 blank = 793 total
+// 
+// Actual Frame Clocks: 3200000 clocks
+// Row Time: 42.031 usec / 4035 clocks
+// Frame time: 33.333333 msec
+// Frames per Sec: 30 fps
+// 
+// 
+// 
+
+
+
+	{2,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)                               
+	{TIME_DELAY, 0, 5},      //Initialization Time                                      
+	                                                                                    
+	//stop_streaming                                                                    
+	{2,0x0100, 0x00},    // MODE_SELECT                                                 
+	{2,0x301A, 0x0218},    //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane                                                  
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	  //stop_streaming                                                                  
+	{1,0x0100, 0x0 },    // MODE_SELECT                                                 
+	{1,0x0104, 0x01},    // GROUPED_PARAMETER_HOLD = 0x1                                
+	                                                                                    
+	//1296 x 972  Timing settings 30fps                                                 
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane 201 tow 202                                      
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ                                        
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	{2,0x0344, 0x0018},    // X_ADDR_START   =  8                                       
+	{2,0x0346, 0x0104},    // Y_ADDR_START   =  8                                       
+	{2,0x0348, 0x0A15},    // X_ADDR_END      = 2597                                    
+	{2,0x034A, 0x06A1},    // Y_ADDR_END       =  1949                                  
+	{2,0x3040, 0x84C3},    // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3 
+	{2,0x034C, 0x0500},    // X_OUTPUT_SIZE    = 1296                                   
+	{2,0x034E, 0x02D0},    // Y_OUTPUT_SIZE    =  972                                   
+	{2,0x300C, 0x0FC3},    // LINE_LENGTH  3151                                         
+	{2,0x300A, 0x0319},    // FRAME_LINEs  1100                                         
+	                                                                                    
+	{2,0x3014, 0x0C7F},    // fine_integration_time                                     
+	{2,0x3010, 0x0319},    // fine_correction                                           
+	{1,0x0104, 0x00},    // GROUPED_PARAMETER_HOLD                                      
+	                                                                                    
+	    //start_streaming                                                               
+	{1,0x0100, 0x01},    // MODE_SELECT   
 	{END_OF_SCRIPT, 0, 0},
 };
 
@@ -1018,62 +892,120 @@ static cam_i2c_msg_t AR0543_preview_960P_script[] = {
 };
 
 static cam_i2c_msg_t AR0543_960P_script_mipi[] = {
-	{2,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)
-	{TIME_DELAY, 0, 5},      //Initialization Time
-	    
-	//stop_streaming
-	{2,0x0100, 0x00},    // MODE_SELECT
+	// This file was generated by: AR0542 (A-5141) Register Wizard
+	//   Version: 4.5.13.36518    Build Date: 07/08/2013
+	// 
+	// [PLL PARAMETERS]
+	// 
+	// Bypass PLL: Unchecked
+	// Input Frequency: 24.000
+	// Use Min Freq.: Unchecked
+	// Target VT Frequency: 96.000
+	// Target op_sys_clk Frequency: Unspecified
+	// 
+	// Target PLL VT Frequency: 96 MHz
+	// Target PLL OP Frequency: 96 MHz
+	// MT9P017 Input Clock Frequency: 24 MHz
+	// MT9P017 VT (Internal) Pixel Clock Frequency: 96 MHz
+	// MT9P017 OP (Output) Pixel Clock Frequency: 48 MHz
+	// pre_pll_clk_div = 2
+	// pll_multiplier = 40
+	// vt_sys_clk_div = 1
+	// vt_pix_clk_div = 5
+	// op_sys_clk_div = 1
+	// op_pix_clk_div = 10
+	// ip_clk = 12 MHz
+	// op_clk = 480 MHz
+	// op_sys_clk = 480 MHz
+	// 
+	// [SENSOR PARAMETERS]
+	// 
+	// Requested Frames Per Second: 29.000
+	// Output Columns: 1296
+	// Output Rows: 972
+	// Use Binning: Checked
+	// Allow Skipping: Unchecked
+	// Blanking Computation: HB Max then VB
+	// 
+	// Max Frame Time: 34.4828 msec
+	// Max Frame Clocks: 3310344.8 clocks (96 MHz)
+	// Maximun Frame Rate: 54.554 fps
+	// Pixel Clock: divided by 1
+	// Skip Mode: 2x cols, 2x rows, Bin Mode: Yes
+	// Horiz clks:  1296 active + 1871 blank = 3167 total
+	// Vert  rows:  972 active + 73 blank = 1045 total
+	// 
+	// Actual Frame Clocks: 3310344 clocks
+	// Row Time: 32.990 usec / 3167 clocks
+	// Frame time: 34.482750 msec
+	// Frames per Sec: 29 fps
+	// 
+	// 
+	// 
 	
+	
+	//[AR0542 (A-5141) Register Wizard Defaults]
+#if 1
+	{2,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)                               
+	{TIME_DELAY, 0, 5},      //Initialization Time                                      
+	                                                                                    
+	//stop_streaming                
+	                                                    
+	{1,0x0100, 0x00},    // MODE_SELECT                                                 
 	{2,0x301A, 0x0218},    //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
-	{2,0x3064, 0xB800},    // SMIA_TEST
-	{2,0x31AE, 0x0202},    // two lane
-	{2,0x0112, 0x0A0A},    // 10bit raw output
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane                                                  
+	{2,0x0112, 0x0A0A},    // 10bit raw output 
 	
-	{1,0x0300, 0x05},    //vt_pix_clk_div = 5
-	{1,0x0302, 0x01},    //vt_sys_clk_div = 1
-	{1,0x0304, 0x02},    //pre_pll_clk_div = 2
-	{1,0x0306, 0x28},    //pll_multiplier    =  40
-	{1,0x0308, 0x0A},    //op_pix_clk_div =  10
-	{1,0x030A, 0x01},    //op_sys_clk_div = 1
-	        
-	  //stop_streaming
-	{1,0x0100, 0x0 },    // MODE_SELECT 
-	{1,0x0104, 0x01},    // GROUPED_PARAMETER_HOLD = 0x1
-	    
-	//1296 x 972  Timing settings 30fps
+	                                         
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	  //stop_streaming                                                                  
+	{1,0x0100, 0x0 },    // MODE_SELECT                                                 
+	{1,0x0104, 0x01},    // GROUPED_PARAMETER_HOLD = 0x1                                
+	                                                                                    
+	//1296 x 972  Timing settings 30fps                                                 
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane 201 tow 202                                      
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	//PLL MCLK=24MHZ, PCLK = 96MHZ, VT = 96MHZ                                        
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1      
 	
-	{2,0x3064, 0xB800},    // SMIA_TEST
-	{2,0x31AE, 0x0202},    // two lane 201 tow 202
-	{2,0x0112, 0x0A0A},    // 10bit raw output
 	
-	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ
 	
-	{1,0x0300, 0x05},    //vt_pix_clk_div = 5
-	{1,0x0302, 0x01},    //vt_sys_clk_div = 1
-	{1,0x0304, 0x02},    //pre_pll_clk_div = 2
-	{1,0x0306, 0x28},    //pll_multiplier    =  40
-	{1,0x0308, 0x0A},    //op_pix_clk_div =  10
-	{1,0x030A, 0x01},    //op_sys_clk_div = 1
-	 
-	{2,0x0344, 0x0008},    // X_ADDR_START   =  8
-	{2,0x0346, 0x0008},    // Y_ADDR_START   =  8
-	{2,0x0348, 0x0A25},    // X_ADDR_END      = 2597
-	{2,0x034A, 0x079D},    // Y_ADDR_END       =  1949
-	
-	{2,0x3040, 0x84C3},    // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3
-	{2,0x034C, 0x0510},    // X_OUTPUT_SIZE    = 1296
-	{2,0x034E, 0x03CC},    // Y_OUTPUT_SIZE    =  972
-	
-	{2,0x300C, 0x0C4C},    // LINE_LENGTH  3151
-	{2,0x300A, 0x0415},    // FRAME_LINEs  1100
-	    
-	{2,0x3014, 0x0908},    // fine_integration_time
-	{2,0x3010, 0x0184},    // fine_correction
-	{1,0x0104, 0x00},    // GROUPED_PARAMETER_HOLD
-	    
-	    //start_streaming
-	{1,0x0100, 0x01},    // MODE_SELECT
+	// Timing Settings
+	                                 
+	                                                                                    
+	{2,0x0344, 0x0008},    // X_ADDR_START   =  8                                       
+	{2,0x0346, 0x0008},    // Y_ADDR_START   =  8                                       
+	{2,0x0348, 0x0A25},    // X_ADDR_END      = 2597                                    
+	{2,0x034A, 0x079D},    // Y_ADDR_END       =  1949                                  
+	{2,0x3040, 0x84C3},    // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3 
+	{2,0x034C, 0x0510},    // X_OUTPUT_SIZE    = 1296                                   
+	{2,0x034E, 0x03CC},    // Y_OUTPUT_SIZE    =  972    
+	                               
+	{2,0x300C, 0x0C5F},    // LINE_LENGTH  3151                                         
+	{2,0x300A, 0x0415},    // FRAME_LINEs  1100                                         
+	                                                                                    
+	{2,0x3014, 0x091B},    // fine_integration_time                                     
+	{2,0x3010, 0x0184},    // fine_correction                                           
+	{1,0x0104, 0x00},    // GROUPED_PARAMETER_HOLD                                      
+	                                                                                    
+	    //start_streaming                                                               
+	{1,0x0100, 0x01},    // MODE_SELECT    
+#endif
 	{END_OF_SCRIPT, 0, 0},
+
 };
 
 static cam_i2c_msg_t AR0543_preview_1080P_script[] = {
@@ -1081,191 +1013,111 @@ static cam_i2c_msg_t AR0543_preview_1080P_script[] = {
 };
 
 static cam_i2c_msg_t AR0543_1080P_script_mipi[] = {
-	{1,0x0100, 0x00},    //Mode Select = 0x0
-	//{2,0x301A, 0x0018};    //Reset Register = 0x18  enable parallel bit[9] mask bad frame(0x12C8)
-	{2,0x0112, 0x0A0A},    //CCP Data Format = 0xA0A
-	{2,0x3064, 0x7800},    //SMIA_Test = 0x7800
-	{2,0x31AE, 0x0202},    //Serial Format = 0x202
-	
-	//Silicon Recommendation
-	//{1,0x301C, 0x00 };    //Turn-off streamming
-	{2,0x316A, 0x8400},    //RESERVED
-	{2,0x316C, 0x8400},    //RESERVED
-	{2,0x316E, 0x8400},    //RESERVED
-	{2,0x3EFA, 0x171F},    //RESERVED
-	{2,0x3ED2, 0xD965},    //Manufacturer-Specific
-	{2,0x3ED8, 0x7F1B},    //Manufacturer-Specific
-	{2,0x3EDA, 0x2F11},    //Manufacturer-Specific
-	{2,0x3EDE, 0xB000},    //Manufacturer-Specific
-	{2,0x3EE2, 0x0060},    //Manufacturer-Specific
-	{2,0x3EF2, 0xD965},    //Manufacturer-Specific
-	{2,0x3EF8, 0x797F},    //Manufacturer-Specific
-	{2,0x3EFC, 0x246F},    //Manufacturer-Specific
-	{2,0x3EFE, 0x6F01},    //Manufacturer-Specific
-	
-	//[A-5141_pixel_timing]
-	{2,0x3E00, 0x0428},
-	{2,0x3E02, 0xFFFF},
-	{2,0x3E04, 0xFFFF},
-	{2,0x3E06, 0xFFFF},
-	{2,0x3E08, 0x8071},
-	{2,0x3E0A, 0x7281},
-	{2,0x3E0C, 0x0041},
-	{2,0x3E0E, 0x5355},
-	{2,0x3E10, 0x8710},
-	{2,0x3E12, 0x6085},
-	{2,0x3E14, 0x4080},
-	{2,0x3E16, 0x41A0},
-	{2,0x3E18, 0x0018},
-	{2,0x3E1A, 0x9057},
-	{2,0x3E1C, 0xA049},
-	{2,0x3E1E, 0xA649},
-	{2,0x3E20, 0x8846},
-	{2,0x3E22, 0x8142},
-	{2,0x3E24, 0x0082},
-	{2,0x3E26, 0x8B49},
-	{2,0x3E28, 0x9C49},
-	{2,0x3E2A, 0x8A10},
-	{2,0x3E2C, 0x0C82},
-	{2,0x3E2E, 0x4784},
-	{2,0x3E30, 0x4D85},
-	{2,0x3E32, 0x0406},
-	{2,0x3E34, 0x9510},
-	{2,0x3E36, 0x0EC3},
-	{2,0x3E38, 0x4A42},
-	{2,0x3E3A, 0x8341},
-	{2,0x3E3C, 0x8B4B},
-	{2,0x3E3E, 0xA84B},
-	{2,0x3E40, 0x8056},
-	{2,0x3E42, 0x8000},
-	{2,0x3E44, 0x1C81},
-	{2,0x3E46, 0x10E0},
-	{2,0x3E48, 0x8055},
-	{2,0x3E4A, 0x1C00},
-	{2,0x3E4C, 0x827C},
-	{2,0x3E4E, 0x0970},
-	{2,0x3E50, 0x8082},
-	{2,0x3E52, 0x7281},
-	{2,0x3E54, 0x4C40},
-	{2,0x3E56, 0x9110},
-	{2,0x3E58, 0x0C85},
-	{2,0x3E5A, 0x4D9E},
-	{2,0x3E5C, 0x4D80},
-	{2,0x3E5E, 0x100C},
-	{2,0x3E60, 0x8E40},
-	{2,0x3E62, 0x4C81},
-	{2,0x3E64, 0x7C51},
-	{2,0x3E66, 0x7000},
-	{2,0x3E68, 0x0000},
-	{2,0x3E6A, 0x0000},
-	{2,0x3E6C, 0x0000},
-	{2,0x3E6E, 0x0000},
-	{2,0x3E70, 0x0000},
-	{2,0x3E72, 0x0000},
-	{2,0x3E74, 0x0000},
-	{2,0x3E76, 0x0000},
-	{2,0x3E78, 0x0000},
-	{2,0x3E7A, 0x0000},
-	{2,0x3E7C, 0x0000},
-	{2,0x3E7E, 0x0000},
-	{2,0x3E80, 0x0000},
-	{2,0x3E82, 0x0000},
-	{2,0x3E84, 0x0000},
-	{2,0x3E86, 0x0000},
-	{2,0x3E88, 0x0000},
-	{2,0x3E8A, 0x0000},
-	{2,0x3E8C, 0x0000},
-	{2,0x3E8E, 0x0000},
-	{2,0x3E90, 0x0000},
-	{2,0x3E92, 0x0000},
-	{2,0x3E94, 0x0000},
-	{2,0x3E96, 0x0000},
-	{2,0x3E98, 0x0000},
-	{2,0x3E9A, 0x0000},
-	{2,0x3E9C, 0x0000},
-	{2,0x3E9E, 0x0000},
-	{2,0x3EA0, 0x0000},
-	{2,0x3EA2, 0x0000},
-	{2,0x3EA4, 0x0000},
-	{2,0x3EA6, 0x0000},
-	{2,0x3EA8, 0x0000},
-	{2,0x3EAA, 0x0000},
-	{2,0x3EAC, 0x0000},
-	{2,0x3EAE, 0x0000},
-	{2,0x3EB0, 0x0000},
-	{2,0x3EB2, 0x0000},
-	{2,0x3EB4, 0x0000},
-	{2,0x3EB6, 0x0000},
-	{2,0x3EB8, 0x0000},
-	{2,0x3EBA, 0x0000},
-	{2,0x3EBC, 0x0000},
-	{2,0x3EBE, 0x0000},
-	{2,0x3EC0, 0x0000},
-	{2,0x3EC2, 0x0000},
-	{2,0x3EC4, 0x0000},
-	{2,0x3EC6, 0x0000},
-	{2,0x3EC8, 0x0000},
-	{2,0x3ECA, 0x0000},
-	{2,0x3170, 0x2150},    //Manufacturer-Specific
-	{2,0x317A, 0x0150},    //Manufacturer-Specific
-	{2,0x3ECC, 0x2200},    //Manufacturer-Specific
-	{2,0x3174, 0x0000},    //Manufacturer-Specific
-	{2,0x3176, 0X0000},    //Manufacturer-Specific
-	{2,0x30BC, 0x0384},    //CALIB_GLOBAL
-	{2,0x30C0, 0x1220},    //CALIB_CONTROL
-	
-	//{2,0x301C, 0x01 };    //Turn-on streamming
-	
-	// PLL Settings
-	{2,0x0300, 0x07},    //vt_pix_clk_div = 0x7
-	{2,0x0302, 0x01},    //vt_sys_clk_div = 0x1
-	{2,0x0304, 0x03},    //pre_pll_clk_div = 0x3
-	{2,0x0306, 0x62},    //pll_multiplier = 0x62
-	{2,0x0308, 0x0A},    //op_pix_clk_div = 0xA
-	{2,0x030A, 0x01},    //op_sys_clk_div = 0x1
-	{TIME_DELAY, 0, 1},               // Allow PLL to lock
-	
-	// Timing Settings
-	{2,0x0104, 0x1},    //Grouped Parameter Hold = 0x1
-	{2,0x034C, 0x0780},    //Output Width = 0x780
-	{2,0x034E, 0x0438},    //Output Height = 0x438
-	{2,0x0344, 0x0158},    //Column Start = 0x158
-	{2,0x0346, 0x01B8},    //Row Start = 0x1B8
-	{2,0x0348, 0x08D7},    //Column End = 0x8D7
-	{2,0x034A, 0x05EF},    //Row End = 0x5EF
-	{2,0x3040, 0x8041},    //Read Mode = 0x41
-	{2,0x3010, 0x00A0},    //Fine Correction = 0xA0
-	{2,0x3012, 0x04D2},    //Coarse Integration Time = 0x4D2
-	{2,0x3014, 0x09EC},    //Fine Integration Time = 0x9EC
-	{2,0x0340, 0x04D3},    //Frame Lines = 0x4D3
-	{2,0x0342, 0x0BCE},    //Line Length = 0xBCE
-	{1,0x0104, 0x00},    //Grouped Parameter Hold = 0x0
-	{1,0x0100, 0x01},    //Mode Select = 0x1
-	
-	//1080P
-	{2,0x0400, 0x0000}, // SCALING_MODE----disabled the scaling
-	{2,0x0404, 0x0010}, // SCALE_M
-	{2,0x0300, 0x0007}, // VT_PIX_CLK_DIV (N/A)
-	{2,0x0302, 0x0001}, // VT_SYS_CLK_DIV  (1/1)
-	{2,0x0304, 0x0003}, // PRE_PLL_CLK_DIV  (1/2)
-	{2,0x0306, 0x0062}, // PLL_MULTIPLIER  (1/49 dec)
-	{2,0x0308, 0x000A}, // OP_PIX_CLK_DIV
-	{2,0x030A, 0x0001}, // OP_SYS_CLK_DIV     1/10
-	
-	//{0x0104, 0x01},  // GROUPED_PARAMETER_HOLD     
-	{2,0x3004, 0x0008},  // X_ADDR_START_            
-	{2,0x3008, 0x0787},  // X_ADDR_END_              
-	{2,0x3002, 0x0008},  // Y_ADDR_START_            
-	{2,0x3006, 0x043F},  // Y_ADDR_END_              
-	{2,0x3040, 0x8041},  // READ_MODE                
-	{2,0x0382, 0x0001},  //X_ODD_INC
-	{2,0x0386, 0x0001},  //Y_ODD_INC  
-	{2,0x034C, 0x0780},  // X_OUTPUT_SIZE            
-	{2,0x034E, 0x0438},  // Y_OUTPUT_SIZE            
-	{2,0x300C, 0x0BCE},  // LINE_LENGTH_PCK_ ///HTS
-	{2,0x300A, 0x04D3},  // FRAME_LENGTH_LINES_ //VTS
-	{2,0x3012, 0x04D2},  // COARSE_INTEGRATION_TIME_ 
-	{2,0x3014, 0x09EC},  // FINE_INTEGRATION_TIME_ 
+// This file was generated by: AR0542 (A-5141) Register Wizard
+//   Version: 4.5.13.36518    Build Date: 07/08/2013
+// 
+// [PLL PARAMETERS]
+// 
+// Bypass PLL: Unchecked
+// Input Frequency: 24.000
+// Use Min Freq.: Unchecked
+// Target VT Frequency: 96.000
+// Target op_sys_clk Frequency: Unspecified
+// 
+// Target PLL VT Frequency: 96 MHz
+// Target PLL OP Frequency: 96 MHz
+// MT9P017 Input Clock Frequency: 24 MHz
+// MT9P017 VT (Internal) Pixel Clock Frequency: 96 MHz
+// MT9P017 OP (Output) Pixel Clock Frequency: 48 MHz
+// pre_pll_clk_div = 2
+// pll_multiplier = 40
+// vt_sys_clk_div = 1
+// vt_pix_clk_div = 5
+// op_sys_clk_div = 1
+// op_pix_clk_div = 10
+// ip_clk = 12 MHz
+// op_clk = 480 MHz
+// op_sys_clk = 480 MHz
+// 
+// [SENSOR PARAMETERS]
+// 
+// Requested Frames Per Second: 27.000
+// Output Columns: 1920
+// Output Rows: 1080
+// Use Binning: Unchecked
+// Allow Skipping: Unchecked
+// Blanking Computation: HB Max then VB
+// 
+// Max Frame Time: 37.037 msec
+// Max Frame Clocks: 3555555.5 clocks (96 MHz)
+// Maximun Frame Rate: 27.456 fps
+// Pixel Clock: divided by 1
+// Skip Mode: 1x cols, 1x rows, Bin Mode: No
+// Horiz clks:  1920 active + 1153 blank = 3073 total
+// Vert  rows:  1080 active + 77 blank = 1157 total
+// 
+// Actual Frame Clocks: 3555555 clocks
+// Row Time: 32.010 usec / 3073 clocks
+// Frame time: 37.037031 msec
+// Frames per Sec: 27 fps
+// 
+// 
+// 
+
+
+
+//[AR0542 (A-5141) Register Wizard Defaults]
+
+
+
+	{2,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)                               
+	{TIME_DELAY, 0, 5},      //Initialization Time                                      
+	                                                                                    
+	//stop_streaming                                                                    
+	{2,0x0100, 0x00},    // MODE_SELECT                                                 
+	{2,0x301A, 0x0218},    //RESET_REGISTER enable mipi interface  bit[9] mask bad frame
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane                                                  
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	  //stop_streaming                                                                  
+	{1,0x0100, 0x0 },    // MODE_SELECT                                                 
+	{1,0x0104, 0x01},    // GROUPED_PARAMETER_HOLD = 0x1                                
+	                                                                                    
+	//1296 x 972  Timing settings 30fps                                                 
+	{2,0x3064, 0xB800},    // SMIA_TEST                                                 
+	{2,0x31AE, 0x0202},    // two lane 201 tow 202                                      
+	{2,0x0112, 0x0A0A},    // 10bit raw output                                          
+	//PLL MCLK=26MHZ, PCLK = 104MHZ, VT = 104MHZ                                        
+	{1,0x0300, 0x05},    //vt_pix_clk_div = 5                                           
+	{1,0x0302, 0x01},    //vt_sys_clk_div = 1                                           
+	{1,0x0304, 0x02},    //pre_pll_clk_div = 2                                          
+	{1,0x0306, 0x28},    //pll_multiplier    =  40                                      
+	{1,0x0308, 0x0A},    //op_pix_clk_div =  10                                         
+	{1,0x030A, 0x01},    //op_sys_clk_div = 1                                           
+	                                                                                    
+	{2,0x0344, 0x0158},    // X_ADDR_START   =  8                                       
+	{2,0x0346, 0x01B8},    // Y_ADDR_START   =  8                                       
+	{2,0x0348, 0x08D7},    // X_ADDR_END      = 2597                                    
+	{2,0x034A, 0x05EF},    // Y_ADDR_END       =  1949                                  
+	{2,0x3040, 0x8041},    // READ_MODE  10 011 000011 xy binning enable xodd=3, yodd=3 
+	{2,0x034C, 0x0780},    // X_OUTPUT_SIZE    = 1296                                   
+	{2,0x034E, 0x0438},    // Y_OUTPUT_SIZE    =  972                                   
+	{2,0x300C, 0x0C01},    // LINE_LENGTH  3151                                         
+	{2,0x300A, 0x0485},    // FRAME_LINEs  1100                                         
+	                                                                                    
+	{2,0x3014, 0x0A1F},    // fine_integration_time                                     
+	{2,0x3010, 0x00A0},    // fine_correction                                           
+	{1,0x0104, 0x00},    // GROUPED_PARAMETER_HOLD                                      
+	                                                                                    
+	    //start_streaming                                                               
+	{1,0x0100, 0x01},    // MODE_SELECT    
 	{END_OF_SCRIPT, 0, 0},
 };
 
@@ -1274,6 +1126,57 @@ static cam_i2c_msg_t AR0543_capture_5M_script[] = {
 };
 
 static cam_i2c_msg_t AR0543_5M_script_mipi[] = {
+// This file was generated by: AR0542 (A-5141) Register Wizard
+//   Version: 4.5.13.36518    Build Date: 07/08/2013
+// 
+// [PLL PARAMETERS]
+// 
+// Bypass PLL: Unchecked
+// Input Frequency: 24.000
+// Use Min Freq.: Unchecked
+// Target VT Frequency: 96.000
+// Target op_sys_clk Frequency: Unspecified
+// 
+// Target PLL VT Frequency: 96 MHz
+// Target PLL OP Frequency: 76.800 MHz
+// MT9P017 Input Clock Frequency: 24 MHz
+// MT9P017 VT (Internal) Pixel Clock Frequency: 96 MHz
+// MT9P017 OP (Output) Pixel Clock Frequency: 76.800 MHz
+// pre_pll_clk_div = 2
+// pll_multiplier = 64
+// vt_sys_clk_div = 1
+// vt_pix_clk_div = 8
+// op_sys_clk_div = 1
+// op_pix_clk_div = 10
+// ip_clk = 12 MHz
+// op_clk = 768 MHz
+// op_sys_clk = 768 MHz
+// 
+// [SENSOR PARAMETERS]
+// 
+// Requested Frames Per Second: 12.250
+// Output Columns: 2592
+// Output Rows: 1944
+// Use Binning: Unchecked
+// Allow Skipping: Unchecked
+// Blanking Computation: HB Max then VB
+// 
+// Max Frame Time: 81.6327 msec
+// Max Frame Clocks: 7836734.6 clocks (96 MHz)
+// Maximun Frame Rate: 12.859 fps
+// Pixel Clock: divided by 1
+// Skip Mode: 1x cols, 1x rows, Bin Mode: No
+// Horiz clks:  2592 active + 1285 blank = 3877 total
+// Vert  rows:  1944 active + 77 blank = 2021 total
+// 
+// Actual Frame Clocks: 7836734 clocks
+// Row Time: 40.385 usec / 3877 clocks
+// Frame time: 81.632646 msec
+// Frames per Sec: 12.250 fps
+ 
+	{1,0x0103, 0x01},    //SOFTWARE_RESET (clears itself)
+	{TIME_DELAY, 0, 5},      //Initialization Time
+#if 1
 	//[AR0542 (A-5141) Register Wizard Defaults]
 	{1, 0x0100, 0x0},	//Mode Select = 0x0
 	//REG = 0x301A, 0x0018	//Reset Register = 0x18
@@ -1427,7 +1330,7 @@ static cam_i2c_msg_t AR0543_5M_script_mipi[] = {
 	{2, 0x0346, 0x008 },      //Row Start = 0x8
 	{2, 0x0348, 0xA27 },      //Column End = 0xA27
 	{2, 0x034A, 0x79F },      //Row End = 0x79F
-	{2, 0x3040, 0x0041},	//Read Mode = 0x41
+	{2, 0x3040, 0x8041},	//Read Mode = 0x41
 	{2, 0x3010, 0x00A0},	//Fine Correction = 0xA0
 	{2, 0x3012, 0x07E4},	//Coarse Integration Time = 0x7E4
 	{2, 0x3014, 0x0D43},	//Fine Integration Time = 0xD43
@@ -1435,6 +1338,8 @@ static cam_i2c_msg_t AR0543_5M_script_mipi[] = {
 	{2, 0x0342, 0x0F25},	//Line Length = 0xF25
 	{1, 0x0104, 0x0},	//Grouped Parameter Hold = 0x0
 	{1, 0x0100, 0x1},	//Mode Select = 0x1
+#endif
+
 	{END_OF_SCRIPT, 0, 0},
 };
 
