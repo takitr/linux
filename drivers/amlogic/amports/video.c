@@ -137,10 +137,39 @@ static u32 next_peek_underflow;
 #define RESERVE_CLR_FRAME
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-#define VD1_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_ON)
-#define VD2_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_ON)
-#define VD1_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN)
-#define VD2_MEM_POWER_OFF() switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN)
+#define VD1_MEM_POWER_ON() \
+    do { \
+        unsigned long flags; \
+        spin_lock_irqsave(&delay_work_lock, flags); \
+        vpu_delay_work_flag &= ~VPU_DELAYWORK_MEM_POWER_OFF_VD1; \
+        spin_unlock_irqrestore(&delay_work_lock, flags); \
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_ON); \
+        switch_vpu_mem_pd_vmod(VPU_DI_POST, VPU_MEM_POWER_ON); \
+    } while (0)
+#define VD2_MEM_POWER_ON() \
+    do { \
+        unsigned long flags; \
+        spin_lock_irqsave(&delay_work_lock, flags); \
+        vpu_delay_work_flag &= ~VPU_DELAYWORK_MEM_POWER_OFF_VD2; \
+        spin_unlock_irqrestore(&delay_work_lock, flags); \
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_ON); \
+    } while (0)
+#define VD1_MEM_POWER_OFF() \
+    do { \
+        unsigned long flags; \
+        spin_lock_irqsave(&delay_work_lock, flags); \
+        vpu_delay_work_flag |= VPU_DELAYWORK_MEM_POWER_OFF_VD1; \
+        vpu_mem_power_off_count = VPU_MEM_POWEROFF_DELAY; \
+        spin_unlock_irqrestore(&delay_work_lock, flags); \
+    } while (0)
+#define VD2_MEM_POWER_OFF() \
+    do { \
+        unsigned long flags; \
+        spin_lock_irqsave(&delay_work_lock, flags); \
+        vpu_delay_work_flag |= VPU_DELAYWORK_MEM_POWER_OFF_VD2; \
+        vpu_mem_power_off_count = VPU_MEM_POWEROFF_DELAY; \
+        spin_unlock_irqrestore(&delay_work_lock, flags); \
+    } while (0)
 #define USE_PROT
 #define PROT2_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_PIC_ROT2, VPU_MEM_POWER_ON)
 #define PROT3_MEM_POWER_ON() switch_vpu_mem_pd_vmod(VPU_PIC_ROT3, VPU_MEM_POWER_ON)
@@ -191,8 +220,8 @@ static u32 next_peek_underflow;
 
 #define DisableVideoLayer() \
     do { \
-         CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-           VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+         VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, \
+           VSYNC_RD_MPEG_REG(VPP_MISC + cur_dev->vpp_off) & ~(VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND)); \
          VD1_MEM_POWER_OFF(); \
          video_angle = 0; \
          video_prot.angle_changed |= 0x1; \
@@ -204,9 +233,9 @@ static u32 next_peek_underflow;
 
 #define DisableVideoLayer2() \
     do { \
-        CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
-          VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
-        VD2_MEM_POWER_OFF(); \
+         VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, \
+           VSYNC_RD_MPEG_REG(VPP_MISC + cur_dev->vpp_off) & ~(VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT))); \
+         VD2_MEM_POWER_OFF(); \
     } while (0)
 
 #define DisableVideoLayer_PREBELEND() \
@@ -519,10 +548,19 @@ static const f2v_vphase_type_t vpp_phase_table[4][3] = {
 static const u8 skip_tab[6] = { 0x24, 0x04, 0x68, 0x48, 0x28, 0x08 };
 /* wait queue for poll */
 static wait_queue_head_t amvideo_trick_wait;
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-static struct work_struct vpu_clk_work;
+#define VPU_DELAYWORK_VPU_CLK           1
+#define VPU_DELAYWORK_MEM_POWER_OFF_VD1 2
+#define VPU_DELAYWORK_MEM_POWER_OFF_VD2 4
+#define VPU_MEM_POWEROFF_DELAY          100
+static struct work_struct vpu_delay_work;
 static int vpu_clk_level = 0;
+static DEFINE_SPINLOCK(delay_work_lock);
+static int vpu_delay_work_flag = 0;
+static int vpu_mem_power_off_count; 
 #endif
+
 static u32 vpts_ref = 0;
 static u32 video_frame_repeat_count = 0;
 static u32 smooth_sync_enable = 0;
@@ -771,6 +809,7 @@ u32 property_changed_true=0;
 static void vsync_toggle_frame(vframe_t *vf)
 {
     u32 first_picture = 0;
+    unsigned long flags;
 
 #ifdef USE_PROT
     if (video_prot.angle_changed & 0x2) {
@@ -985,16 +1024,21 @@ static void vsync_toggle_frame(vframe_t *vf)
         if ((vf->width > 1920) && (vf->height > 1088)) {
             if (vpu_clk_level == 0) {
                 vpu_clk_level = 1;
-                schedule_work(&vpu_clk_work);
+
+                spin_lock_irqsave(&lock, flags);
+                vpu_delay_work_flag |= VPU_DELAYWORK_VPU_CLK;
+                spin_unlock_irqrestore(&lock, flags); 
             }
         } else {
             if (vpu_clk_level == 1) {
                 vpu_clk_level = 0;
-                schedule_work(&vpu_clk_work);
+
+                spin_lock_irqsave(&lock, flags);
+                vpu_delay_work_flag |= VPU_DELAYWORK_VPU_CLK;
+                spin_unlock_irqrestore(&lock, flags);
             }
         }
 #endif
-    } else {
     }
 
     cur_dispbuf = vf;
@@ -2149,6 +2193,12 @@ exit:
     if (video_notify_flag)
         vsync_notify();
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if (vpu_delay_work_flag) {
+        schedule_work(&vpu_delay_work);
+    }
+#endif
+
     return IRQ_HANDLED;
 #endif
 
@@ -2522,7 +2572,7 @@ unsigned int vf_keep_current(void)
     v_index = (cur_index >> 16) & 0xff;
 
     if(debug_flag& DEBUG_FLAG_BLACKOUT){
-    	printk("%s %lx %lx\n", __func__, keep_y_addr, canvas_get_addr(y_index));
+    	printk("%s %lx %x\n", __func__, keep_y_addr, canvas_get_addr(y_index));
     }
 
     if ((cur_dispbuf->type & VIDTYPE_VIU_422) == VIDTYPE_VIU_422) {
@@ -4137,13 +4187,51 @@ static void vout_hook(void)
 }
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-static void vpu_clk_switch(struct work_struct *work)
+extern void enable_rdma(int enable_flag);
+static void do_vpu_delay_work(struct work_struct *work)
 {
-    if (vpu_clk_level > 0) {
-        request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
-    } else {
-        release_vpu_clk_vmod(VPU_VIU_VD1);
+    unsigned long flags;
+
+    spin_lock_irqsave(&delay_work_lock, flags);
+
+    if (vpu_delay_work_flag & VPU_DELAYWORK_VPU_CLK) {
+        vpu_delay_work_flag &= ~VPU_DELAYWORK_VPU_CLK;
+
+        if (vpu_clk_level > 0) {
+            request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
+        } else {
+            release_vpu_clk_vmod(VPU_VIU_VD1);
+        }
     }
+
+    if (vpu_mem_power_off_count > 0) {
+        vpu_mem_power_off_count--;
+
+        if (vpu_mem_power_off_count == 0) {
+            if (vpu_delay_work_flag & VPU_DELAYWORK_MEM_POWER_OFF_VD1) {
+                vpu_delay_work_flag &= ~VPU_DELAYWORK_MEM_POWER_OFF_VD1;
+
+                switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN);
+                switch_vpu_mem_pd_vmod(VPU_DI_POST, VPU_MEM_POWER_DOWN);
+                
+#if 0
+if (READ_VCBUS_REG(VPP_MISC) & 0x4000) {
+	enable_rdma(0);
+	WRITE_VCBUS_REG(RDMA_ACCESS_AUTO, 0);
+}
+#endif
+printk("mem power down, 0x%x\n", READ_VCBUS_REG(VPP_MISC));
+            }
+
+            if (vpu_delay_work_flag & VPU_DELAYWORK_MEM_POWER_OFF_VD2) {
+                vpu_delay_work_flag &= ~VPU_DELAYWORK_MEM_POWER_OFF_VD2;
+
+                switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN);
+            }
+        }
+    } 
+
+    spin_unlock_irqrestore(&delay_work_lock, flags);
 }
 #endif
 
@@ -4291,7 +4379,7 @@ static int __init video_init(void)
     init_waitqueue_head(&amvideo_trick_wait);
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    INIT_WORK(&vpu_clk_work, vpu_clk_switch);
+    INIT_WORK(&vpu_delay_work, do_vpu_delay_work);
 #endif
 
     vout_hook();

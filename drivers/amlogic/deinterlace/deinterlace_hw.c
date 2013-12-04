@@ -2128,8 +2128,12 @@ void di_set_power_control(unsigned char type, unsigned char enable)
     }
     else{
         //WRITE_MPEG_REG_BITS(HHI_VPU_MEM_PD_REG0, enable?0:3, 28, 2); //di post
+#if 0
         switch_vpu_mem_pd_vmod(VPU_DI_POST, enable?VPU_MEM_POWER_ON:VPU_MEM_POWER_DOWN);
         post_power_on = enable;
+#else
+//let video.c handle it
+#endif            
     }
 #endif    
 }
@@ -2140,7 +2144,12 @@ unsigned char di_get_power_control(unsigned char type)
         return pre_power_on;
     }
     else{
+#if 1
+//let video.c handle it
+        return 1;
+#else        
         return post_power_on;
+#endif        
     }
     
 }    
