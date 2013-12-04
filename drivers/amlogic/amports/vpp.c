@@ -272,14 +272,18 @@ calculate_non_linear_ratio(unsigned middle_ratio,
 }
 
 static int
-vpp_process_speed_check(u32 width_in,
-                        u32 height_in,
-                        u32 height_out,
-                        u32 height_screen,
+vpp_process_speed_check(s32 width_in,
+                        s32 height_in,
+                        s32 height_out,
+                        s32 height_screen,
                         vpp_frame_par_t *next_frame_par,
                         const vinfo_t *vinfo)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    if ((width_in <= 0) || (height_in <= 0) || (height_out <= 0) || (height_screen <= 0)) {
+        return SPEED_CHECK_DONE;
+    }
+
     if (height_in > height_out) {
         if (div_u64(VPP_SPEED_FACTOR * width_in * height_in * vinfo->sync_duration_num * height_screen,
                     height_out * vinfo->sync_duration_den * 256) > get_vpu_clk()) {
