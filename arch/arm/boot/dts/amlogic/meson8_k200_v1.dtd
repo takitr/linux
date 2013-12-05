@@ -77,8 +77,8 @@ void root_func(){
 	memory{
 		device_type = "memory";
 		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x23bfffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x23c00000 0x5c400000>;
+		aml_reserved_end = <0x1e3fffff>;/**reserved memory end */
+		linux,usable-memory = <0x00000000 0x04000000 0x1e400000 0x61c00000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -210,14 +210,14 @@ void root_func(){
 //$$ L2 PROP_U32 2 = "reg"
 //$$ L2 PROP_U32 = "irq"
 //$$ L2 PROP_U32 = "vdin_id"
-    vdin1{
-        compatible = "amlogic,vdin";
-        dev_name = "vdin1";
-        status = "ok";
-        reg = <0x1e400000 0x04000000>;
-        irq = <117>;
-        vdin_id = <1>;
-	};
+//    vdin1{
+//        compatible = "amlogic,vdin";
+//        dev_name = "vdin1";
+//        status = "ok";
+//        reg = <0x1e400000 0x04000000>;
+//        irq = <117>;
+//        vdin_id = <1>;
+//	};
 
 /// ***************************************************************************************
 ///	-	DISP&MM-AMLVIDEO2
@@ -225,12 +225,12 @@ void root_func(){
 //$$ DEVICE="amlvideo2"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2 ="reg"
-    amlvideo2{
-		compatible = "amlogic,amlvideo2";
-		dev_name = "amlvideo2.0";
-		status = "okay";
-		reg = <0x22400000 0x01800000>;
-	};
+//    amlvideo2{
+//		compatible = "amlogic,amlvideo2";
+//		dev_name = "amlvideo2.0";
+//		status = "okay";
+//		reg = <0x22400000 0x01800000>;
+//	};
 
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
