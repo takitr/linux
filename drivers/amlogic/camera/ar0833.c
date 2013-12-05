@@ -5417,6 +5417,7 @@ static int ar0833_open(struct file *file)
                 printk("parse successfully");
             }else{
                 printk("parse failed");
+                return -EINVAL;
             }
         }else{
             printk("malloc failed");

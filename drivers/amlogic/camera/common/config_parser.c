@@ -367,9 +367,9 @@ int parse_body_head(char *buffer,int *no,int check,char *name){
 int parse_aet_element_info(char **iter,sensor_aet_info_t *info){
     *iter = strstr(*iter,"export");
     *iter += 7;
-		sscanf(*iter,"%x",&(info->fmt_main_fr));
-		*iter = strstr(*iter,",");
-		*iter += 1;
+    sscanf(*iter,"%x",&(info->fmt_main_fr));
+    *iter = strstr(*iter,",");
+    *iter += 1;
     sscanf(*iter,"%x",&(info->fmt_capture)),
     *iter = strstr(*iter,",");
     *iter += 1;
@@ -503,8 +503,8 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
         if((cf->aet.aet[i].info = (sensor_aet_info_t *)kmalloc(sizeof(sensor_aet_info_t),0)) == NULL){
             while(i-- > 0){
                 kfree(cf->aet.aet[i].info);
-                return -NO_MEM;
             }
+            return -NO_MEM;
         }
     } //alloc head
     check = 0;
@@ -531,39 +531,40 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
             goto clean;
         }
         if((cf->aet.aet[check].aet_table = (sensor_aet_t *)kmalloc(sizeof(sensor_aet_t) * (cf->aet.aet[check].info->tbl_max_step + 1),0)) == NULL){
-        		for(i = 0; i < check; i++){
-        			kfree(cf->aet.aet[i].aet_table);	
-        		}
-        		ret = -NO_MEM;
+            for(i = 0; i < check; i++){
+                kfree(cf->aet.aet[i].aet_table);	
+            }
+            ret = -NO_MEM;
             goto clean;
         } 
         for(i = 0; i <= cf->aet.aet[check].info->tbl_max_step;i++){
-        		if(i == cf->aet.aet[check].info->tbl_max_step){
-        			ret = parse_last_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
-        		}else
-            	ret = parse_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
+            if(i == cf->aet.aet[check].info->tbl_max_step){
+                ret = parse_last_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
+            }else
+                ret = parse_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
             if(ret != 0){          	
-            	ret = -BODY_ELEMENT_FAILED;
-              goto clean_table;
-              }
+                ret = -BODY_ELEMENT_FAILED;
+                goto clean_table;
+            }
         }
         iter = strstr(iter,"manual");
         iter += 7;
         sscanf(iter,"%x",&manual);
+ 
         if(manual < 0){
-      		printk("wrong manual num\n");
-          ret = -BODY_ELEMENT_FAILED;
-          goto clean_table;
+            printk("wrong manual num\n");
+            ret = -BODY_ELEMENT_FAILED;
+            goto clean_table;
       	}else if(manual == 0){
       		cf->aet.aet[check].manual = NULL;
       		check++;
       		continue;	
       	}
-      	if((cf->aet.aet[check].manual = (int *)kmalloc(sizeof(int)*(manual + 1),0)) == NULL){
-      			ret = -NO_MEM;
-						goto clean_all;
-      	}
-      	i = 0;
+        if((cf->aet.aet[check].manual = (int *)kmalloc(sizeof(int)*(manual + 1),0)) == NULL){
+            ret = -NO_MEM;
+            goto clean_all;
+        }
+        i = 0;
       	eter = strstr(iter,";");
         while(iter < eter){
             sscanf(iter,"%x",&(cf->aet.aet[check].manual[i]));
@@ -580,13 +581,13 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
     return 0;
 
 clean_all:
-		for(i = 0; i < check; i++){
-			if(cf->aet.aet[i].manual != NULL)
-				kfree(cf->aet.aet[i].manual);	
-		}
+    for(i = 0; i < check; i++){
+        if(cf->aet.aet[i].manual != NULL)
+            kfree(cf->aet.aet[i].manual);	
+    }
 clean_table:
-		for(i = 0; i <= check; i++){
-       kfree(cf->aet.aet[i].aet_table);	
+    for(i = 0; i <= check; i++){
+        kfree(cf->aet.aet[i].aet_table);	
     }
 clean:
     for(i = 0;i < sum; i++){
@@ -1250,7 +1251,7 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
 
     }
 
-    /** init lenc **/
+    /** init gamma **/
     if(cf->gamma_valid == 1){
         if(para->xml_regs_map == NULL){
             if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
