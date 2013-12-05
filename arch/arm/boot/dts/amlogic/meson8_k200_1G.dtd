@@ -394,6 +394,7 @@ sdio{
 //$$ L2 PROP_STR = "gpio_dat3"
 //$$ L2 PROP_STR = "jtag_pin"
 //$$ L2 PROP_STR = "gpio_cd"
+//$$ L2 PROP_STR = "gpio_ro"
 //$$ L2 PROP_U32 = "irq_in"
 //$$ L2 PROP_U32 = "irq_out"
 //$$ L2 PROP_U32 = "card_type"
@@ -409,6 +410,7 @@ sdio{
             gpio_dat3 = "CARD_4";
             jtag_pin = "CARD_0";
             gpio_cd = "CARD_6";
+            gpio_ro = "GPIOZ_0";
             irq_in = <3>;
             irq_out = <5>;
             card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
@@ -424,7 +426,7 @@ sdio{
 //$$ L3 PROP_U32 = "f_max"
 //$$ L3 PROP_U32 = "f_max_w"
 //$$ L3 PROP_U32 = "max_req_size"
-//$$ L2 PROP_STR = "gpio_dat3"       	
+//$$ L2 PROP_STR = "gpio_dat3"
 //$$ L2 PROP_U32 = "card_type"
         emmc{
             status = "ok";
@@ -437,7 +439,7 @@ sdio{
             f_max_w = <50000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "BOOT_3";
-            card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
+            card_type = <1>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
     };
 
@@ -537,17 +539,16 @@ sdio{
         #address-cells = <1>;
         #size-cells = <0>;
         status = "ok";
-//$$ DEVICE="vcck_dvfs"
+
 //$$ L2 PROP_U32 = "dvfs_id"
 //$$ L2 PROP_U32 = "table_count"
 //$$ L2 PROP_U32 16*3 = "dvfs_table"
         vcck_dvfs {
             dvfs_id     = <1>;                                  /** must be value of (1 << n)            */
-            table_count = <17>;                                 /** must be correct count for dvfs_table */
+            table_count = <14>;                                 /** must be correct count for dvfs_table */
             dvfs_table  = <
             /* NOTE: frequent in this table must be ascending order */
             /* frequent(Khz)    min_uV      max_uV                  */
-                  24000         825000      825000
                   96000         825000      825000
                  192000         825000      825000
                  312000         825000      825000
@@ -556,24 +557,27 @@ sdio{
                  600000         850000      850000
                  720000         850000      850000
                  816000         875000      875000
-                 912000         900000      900000
                 1008000         925000      925000
-                1104000         950000      950000
                 1200000         975000      975000
-                1320000        1000000     1000000
                 1416000        1025000     1025000
-                1512000        1050000     1050000
                 1608000        1100000     1100000
+                1800000        1125000     1125000
+                1992000        1150000     1150000
             >;
         };
     };
-arm_pmu {
-compatible = "arm,cortex-a9-pmu";
-interrupts = <0     137     0x04
-0     138     0x04
-0     153     0x04
-0     154     0x04>;
-};
+
+//$$ DEVICE="arm_pmu"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 4*3 = "interrupts"
+    arm_pmu {
+        compatible = "arm,cortex-a9-pmu";
+        status = "ok";
+        interrupts = <0     137     0x04
+                      0     138     0x04
+                      0     153     0x04
+                      0     154     0x04>;
+    };
 
     pmu {
         compatible = "amlogic, aml_pmu_prober";                 /* fixed for pmu driver, don't change   */
@@ -613,7 +617,7 @@ interrupts = <0     137     0x04
             soft_limit_to99 = <0>;                              /** optional                             */
             ddr_voltage   = <1500000>;                          /** default voltage for DDR, optional    */
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
-            status = "disable";                                 /* status of pmu, only one should be OK */
+            status = "disable";                                 /** status of pmu, only one should be OK */
         };
 //$$ DEVICE = "Pmu_rn5t618"
 //$$ L2 PROP_STR = "sub_type"
@@ -631,7 +635,7 @@ interrupts = <0     137     0x04
             soft_limit_to99 = <0>;                              /** optional                             */
             ddr_voltage   = <1500000>;                          /** default voltage for DDR, optional    */
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
-            status = "okay";                                 /* status of pmu, only one should be OK */
+            status = "okay";                                    /** status of pmu, only one should be OK */
         };
     };
 
@@ -917,7 +921,7 @@ interrupts = <0     137     0x04
 //$$ L2 PROP_U32 = "ao_baseaddr"
 //$$ L2 PROP_STR = "pinctrl-names"
 //$$ L2 PROP_CHOICE "remote_pin_0_match" = "pinctrl-0"
-    	meson-remote{
+    meson-remote{
 		compatible = "amlogic,aml_remote";
 		dev_name = "meson-remote";
 		status = "ok";
@@ -1055,6 +1059,11 @@ interrupts = <0     137     0x04
     cpufreq-meson{
         compatible = "amlogic,cpufreq-meson";
         status = "okay";
+    };
+
+    crypto_device{
+       compatible = "amlogic,crypto-device";
+       dev_name = "crypto_device";
     };
 
 /// **************************************************************************************
@@ -1316,13 +1325,12 @@ interrupts = <0     137     0x04
 		
 //$$ MATCH "I2C_B_pin_match" = "&b_i2c_master"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 2 = "amlogic,pins"
 		b_i2c_master:b_i2c{
 			amlogic,setmask=<5 0xc000000>;
 			amlogic,pins="GPIOZ_2","GPIOZ_3";
 		};
-		
+
 // MATCH "I2C_C_pin_match" = "&c_i2c_master"
 // L2 PROP_U32 2 = "amlogic,setmask"
 // L2 PROP_U32 2 = "amlogic,clrmask"
@@ -1339,7 +1347,6 @@ interrupts = <0     137     0x04
 
 //$$ MATCH "I2C_D_pin_match" = "&d_i2c_master"
 //$$ L2 PROP_U32 2 = "amlogic,setmask"
-//$$ L2 PROP_U32 2 = "amlogic,clrmask"
 //$$ L2 PROP_STR 2 = "amlogic,pins"
 		d_i2c_master:d_i2c{
 			amlogic,setmask=<4 0xc>;
@@ -1379,6 +1386,18 @@ interrupts = <0     137     0x04
 			amlogic,pins = "BOOT_11","BOOT_12","BOOT_13","BOOT_18";
 		};
 
+	};
+/// ***************************************************************************************
+///	-	Ethernet
+//$$ MODULE="Ethernet"
+//$$ DEVICE="meson-eth"
+//$$ L2 PROP_STR = "status"
+    meson-eth{
+		compatible = "amlogic,meson-eth";
+		dev_name = "meson-eth";
+		status = "okay";
+		ethbaseaddr = <0xfe0c0000>;
+		interruptnum = <40>;
 	};
 
 }; /* end of / */
