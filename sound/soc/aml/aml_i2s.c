@@ -438,7 +438,7 @@ static void aml_i2s_timer_callback(unsigned long data)
 	}
 }
 
-
+static int num_clk_gate = 0;
 static int aml_i2s_open(struct snd_pcm_substream *substream)
 {
 	ALSA_TRACE();
@@ -496,11 +496,14 @@ static int aml_i2s_open(struct snd_pcm_substream *substream)
 	s= &prtd->s;
 	WRITE_MPEG_REG_BITS( HHI_MPLL_CNTL9, 1,14, 1);
 	mutex_lock(&gate_mutex);
-	if(audio_gate_status == 0){
-		audio_aiu_pg_enable(1);
-		ALSA_DEBUG("aml_pcm_open  device type %x \n", s->device_type);
-		
-	}
+	if(!num_clk_gate){
+        num_clk_gate = 1;
+    	if(audio_gate_status == 0){
+    		audio_aiu_pg_enable(1);
+    		ALSA_DEBUG("aml_pcm_open  device type %x \n", s->device_type);
+    		
+    	}
+    }
 	audio_gate_status  |= s->device_type;
 	mutex_unlock(&gate_mutex);		
  out:
@@ -516,7 +519,7 @@ static int aml_i2s_close(struct snd_pcm_substream *substream)
 	audio_gate_status  &= ~s->device_type;	
 	if(audio_gate_status == 0){
 		ALSA_DEBUG("aml_pcm_close  device type %x \n", s->device_type);		
-		audio_aiu_pg_enable(0);
+		//audio_aiu_pg_enable(0);
 	}
 	mutex_unlock(&gate_mutex);		
 //	if(s->device_type == AML_AUDIO_SPDIFOUT)

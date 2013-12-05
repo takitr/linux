@@ -256,9 +256,12 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
 /*
 i2s mode 0: master 1: slave
 */
-static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
+static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode,u32 i2s_sync)
 {
 	unsigned char  mode = 0;
+    unsigned int sync_mode = 0;
+    if(i2s_sync)
+        sync_mode = i2s_sync;
 	if(i2s_mode &I2SIN_SLAVE_MODE)
 		mode = 1;
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
@@ -289,7 +292,7 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
 									 (3<<I2SIN_SIZE)
 									|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TV
-									|(0<<I2SIN_POS_SYNC)
+									|(sync_mode<<I2SIN_POS_SYNC)
 #else
 									|(1<<I2SIN_POS_SYNC)
 #endif
@@ -323,10 +326,10 @@ static void spdifin_fifo1_set_buf(u32 addr, u32 size)
 				  );
 	WRITE_MPEG_REG(AUDIN_FIFO1_CTRL1,0xc);
 }
-void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode)
+void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode, u32 i2s_sync)
 {
 	printk("i2sin_fifo0_set_buf \n");		
-	i2sin_fifo0_set_buf(addr,size,i2s_mode);
+	i2sin_fifo0_set_buf(addr,size,i2s_mode,i2s_sync);
 	audio_in_buf_ready = 1;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)

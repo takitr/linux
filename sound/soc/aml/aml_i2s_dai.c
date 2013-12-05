@@ -27,6 +27,7 @@
 #include <linux/of.h>
 
 static aml_dai_info_t dai_info[3] = {{0}};
+static int i2s_pos_sync = 0;
 #define AML_DAI_DEBUG
 //#define AML_DAI_PCM_SUPPORT 
 
@@ -163,7 +164,7 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 	{
 		s->i2s_mode = dai_info[dai->id].i2s_mode;
-		audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2,0);
+		audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2,0,i2s_pos_sync);
 		memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
 		{
 			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
@@ -243,6 +244,17 @@ static int aml_dai_set_i2s_fmt(struct snd_soc_dai *dai,
 #endif
 	if(fmt&SND_SOC_DAIFMT_CBS_CFS)//slave mode 
 		dai_info[dai->id].i2s_mode = I2S_SLAVE_MODE;
+    
+    switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+    case SND_SOC_DAIFMT_NB_NF:
+         i2s_pos_sync = 0;
+        break;
+    case SND_SOC_DAIFMT_IB_NF:
+         i2s_pos_sync = 1;
+        break;
+    default:
+        return -EINVAL;
+    }
 	return 0;
 }
 

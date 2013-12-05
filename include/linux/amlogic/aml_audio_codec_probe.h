@@ -6,6 +6,9 @@
 #define AML_I2C_BUS_AO 0
 #define AML_I2C_BUS_A 1
 #define AML_I2C_BUS_B 2
+#define AML_I2C_BUS_C 3
+#define AML_I2C_BUS_D 4
+
 
 typedef int(*aml_audio_codec_probe_fun_t)(struct i2c_adapter *);
 

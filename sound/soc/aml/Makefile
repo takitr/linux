@@ -91,3 +91,6 @@ obj-$(CONFIG_SND_AML_SOC) += snd-soc-aml-spdif-codec.o
 snd-soc-aml-m8-objs := aml_m8.o
 obj-$(CONFIG_SND_AML_M8) += snd-soc-aml-m8.o
 
+#AML M8 Machine support
+snd-soc-aml-m8-rt5616-objs := aml_m8_rt5616.o
+obj-$(CONFIG_SND_AML_M8_RT5616) += snd-soc-aml-m8-rt5616.o
