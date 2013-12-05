@@ -32,13 +32,13 @@ static __u32 var_screeninfo[5];
 
 static struct fb_var_screeninfo mydef_var[] = {
 	{
-		.xres            = 1200,
-		.yres            = 690,
-		.xres_virtual    = 1200,
-		.yres_virtual    = 1380,
+		.xres            = 768,
+		.yres            = 1024,
+		.xres_virtual    = 768,
+		.yres_virtual    = 2048,
 		.xoffset         = 0,
 		.yoffset         = 0,
-		.bits_per_pixel = 16,
+		.bits_per_pixel = 32,
 		.grayscale       = 0,
 		.red             = {0, 0, 0},
 		.green           = {0, 0, 0},
