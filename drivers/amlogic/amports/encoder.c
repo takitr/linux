@@ -347,7 +347,7 @@ static void avc_canvas_init(void)
     u32 canvas_width, canvas_height;
     int start_addr = gAmvencbuff.buf_start;
 
-    canvas_width = ((encoder_width+15)>>4)<<4;
+    canvas_width = ((encoder_width+31)>>5)<<5;
     canvas_height = ((encoder_height+15)>>4)<<4;
 
 	/*input dct buffer config */
@@ -492,6 +492,7 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
     int ret = 0;
     unsigned char iformat = MAX_FRAME_FMT, oformat = MAX_FRAME_FMT, r2y_en = 0;
     unsigned picsize_x, picsize_y;
+    unsigned canvas_w = 0;
 
     if((fmt == FMT_RGB565)||(fmt>=MAX_FRAME_FMT))
         return -1;
@@ -514,50 +515,55 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
             iformat = 10;
         }else if(fmt == FMT_YUV444_SINGLE){
             iformat = 1;
+            canvas_w =  picsize_x*3;
+            canvas_w =  ((canvas_w+31)>>5)<<5;
             canvas_config(ENC_CANVAS_OFFSET+6,
                 input,
-                picsize_x*3, picsize_y,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
            input = ENC_CANVAS_OFFSET+6;
         }else if((fmt == FMT_NV21)||(fmt == FMT_NV12)){
+            canvas_w =  ((encoder_width+31)>>5)<<5;
             iformat = (fmt == FMT_NV21)?2:3;
             canvas_config(ENC_CANVAS_OFFSET+6,
                 input,
-                picsize_x, picsize_y,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(ENC_CANVAS_OFFSET+7,
-                input + picsize_x*picsize_y,
-                picsize_x , picsize_y/2,
+                input + canvas_w*picsize_y,
+                canvas_w , picsize_y/2,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             input = ((ENC_CANVAS_OFFSET+7)<<8)|(ENC_CANVAS_OFFSET+6);
         }else if(fmt == FMT_YUV420){
             iformat = 4;
+            canvas_w =  ((encoder_width+63)>>6)<<6;
             canvas_config(ENC_CANVAS_OFFSET+6,
                 input,
-                picsize_x, picsize_y,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(ENC_CANVAS_OFFSET+7,
-                input + picsize_x*picsize_y,
-                picsize_x/2, picsize_y/2,
+                input + canvas_w*picsize_y,
+                canvas_w/2, picsize_y/2,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(ENC_CANVAS_OFFSET+8,
-                input + picsize_x*picsize_y*5/4,
-                picsize_x/2 , picsize_y/2,
+                input + canvas_w*picsize_y*5/4,
+                canvas_w/2 , picsize_y/2,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             input = ((ENC_CANVAS_OFFSET+8)<<16)|((ENC_CANVAS_OFFSET+7)<<8)|(ENC_CANVAS_OFFSET+6);
         }else if(fmt == FMT_YUV444_PLANE){
             iformat = 5;
+            canvas_w =  ((encoder_width+31)>>5)<<5;
             canvas_config(ENC_CANVAS_OFFSET+6,
                 input,
-                picsize_x, picsize_y,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(ENC_CANVAS_OFFSET+7,
-                input + picsize_x*picsize_y,
-                picsize_x, picsize_y,
+                input + canvas_w*picsize_y,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             canvas_config(ENC_CANVAS_OFFSET+8,
-                input + picsize_x*picsize_y*2,
-                picsize_x, picsize_y,
+                input + canvas_w*picsize_y*2,
+                canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             input = ((ENC_CANVAS_OFFSET+8)<<16)|((ENC_CANVAS_OFFSET+7)<<8)|(ENC_CANVAS_OFFSET+6);
         }else if(fmt == FMT_RGB888){
