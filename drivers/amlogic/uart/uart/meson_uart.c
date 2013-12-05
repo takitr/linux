@@ -694,6 +694,7 @@ static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart
 	mup->pdev = pdev;
 	mup->aup = aup;
 	mup->uart = aup->regaddr[port_index];
+	spin_lock_init(&mup->wr_lock);
 	up = &mup->port;
 	up->dev = &pdev->dev;
 	up->iotype	= UPIO_PORT;
@@ -704,6 +705,7 @@ static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart
 	up->irq	= aup->irq_no[port_index];
 	up->type =1;
 	up->x_char = 0;
+	spin_lock_init(&up->lock);
 
 	if(meson_uart_console_index == port_index){
 		up->cons = meson_register_uart_console;
