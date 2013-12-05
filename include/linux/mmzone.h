@@ -786,7 +786,7 @@ extern int init_currently_empty_zone(struct zone *zone, unsigned long start_pfn,
 				     enum memmap_context context);
 
 extern void lruvec_init(struct lruvec *lruvec);
-
+#define START_KSWAPD_FREE_PAGE_THRESH 32768
 static inline struct zone *lruvec_zone(struct lruvec *lruvec)
 {
 #ifdef CONFIG_MEMCG
@@ -849,7 +849,7 @@ static inline int is_normal_idx(enum zone_type idx)
 }
 
 /**
- * is_highmem - helper function to quickly check if a struct zone is a 
+ * is_highmem - helper function to quickly check if a struct zone is a
  *              highmem zone or not.  This is an attempt to keep references
  *              to ZONE_{DMA/NORMAL/HIGHMEM/etc} in general code to a minimum.
  * @zone - pointer to struct zone variable
