@@ -52,7 +52,6 @@
 #include <asm/uaccess.h>
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
 #include <mach/mod_gate.h>
-#include <mach/clkgate.h>
 #endif
 #include "streambuf.h"
 #include "streambuf_reg.h"
@@ -1045,10 +1044,7 @@ static int amstream_open(struct inode *inode, struct file *file)
     }
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-    clkgate_get(GCLK_MPEG1, CLKGATE_BIT_U_PARSER_TOP);
-
     if (this->type & PORT_TYPE_VIDEO) {
-        clkgate_get(GCLK_MPEG0, CLKGATE_BIT_U_DOS_TOP);
         vdec_poweron(VDEC_1);
         memset(&amstream_dec_info, 0, sizeof(amstream_dec_info));
     }
@@ -1104,11 +1100,7 @@ static int amstream_release(struct inode *inode, struct file *file)
 
     if (this->type & PORT_TYPE_VIDEO) {
         vdec_poweroff(VDEC_1);
-        clkgate_put(GCLK_MPEG0, CLKGATE_BIT_U_DOS_TOP);
     }
-
-    clkgate_put(GCLK_MPEG1, CLKGATE_BIT_U_PARSER_TOP);
-
 #elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
     switch_mod_gate_by_name("audio", 0);
     switch_mod_gate_by_name("vdec", 0);

@@ -17,7 +17,6 @@
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
-#include <mach/clkgate.h>
 #include <plat/io.h>
 #include <linux/ctype.h>
 #include <linux/amlogic/amports/ptsserv.h>
@@ -1047,8 +1046,6 @@ static s32 avc_poweron(void)
 	data32 = 0;
 	enable_hcoder_ddr_access();
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	clkgate_get(GCLK_MPEG0, CLKGATE_BIT_U_DOS_TOP);
-
 	data32 = READ_AOREG(AO_RTI_PWR_CNTL_REG0);
 	data32 = data32 & (~(0x18));
 	WRITE_AOREG(AO_RTI_PWR_CNTL_REG0, data32);
@@ -1098,8 +1095,6 @@ static s32 avc_poweroff(void)
 	hvdec_clock_disable();
 	// HCODEC power off
 	WRITE_AOREG(AO_RTI_GEN_PWR_SLEEP0, READ_AOREG(AO_RTI_GEN_PWR_SLEEP0) | 0x3);
-	// put dos top clock
-	clkgate_put(GCLK_MPEG0, CLKGATE_BIT_U_DOS_TOP);
 #else
 	hvdec_clock_disable();
 #endif

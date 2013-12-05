@@ -5,7 +5,7 @@
 # Common support
 
 
-obj-y := cpu.o clock.o time.o iomapping.o vpu.o clkgate.o
+obj-y := cpu.o clock.o time.o iomapping.o vpu.o
 obj-y += power_gate.o
 obj-m :=
 obj-n :=
