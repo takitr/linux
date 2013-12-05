@@ -169,4 +169,5 @@ extern void vdin_wr_reverse(unsigned int offset, bool hreverse, bool vreverse);
 extern void vdin_set_hvscale(struct vdin_dev_s *devp);
 extern void set_chroma_regs(unsigned int offset, unsigned int h_active,unsigned int v_active);
 extern void vdin_set_cm2(unsigned int offset,unsigned int index);
+extern void vdin_bypass_isp(unsigned int offset);
 #endif

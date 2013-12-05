@@ -81,6 +81,16 @@ static unsigned int ae_ratio4 = 40;   //high
 module_param(ae_ratio4,uint,0664);
 MODULE_PARM_DESC(ae_ratio4,"\n debug flag for ae.\n");
 
+static unsigned int ae_min_diff = 50;   //high
+
+module_param(ae_min_diff,uint,0664);
+MODULE_PARM_DESC(ae_min_diff,"\n debug flag for ae.\n");
+
+static unsigned int ae_max_diff = 15;   //high
+
+module_param(ae_max_diff,uint,0664);
+MODULE_PARM_DESC(ae_max_diff,"\n debug flag for ae.\n");
+
 static unsigned int awb_debug = 0;
 
 module_param(awb_debug,uint,0664);
@@ -538,15 +548,15 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							{
 								temp = 2;
 								aepa->targ--;
-								if(aepa->targ<(aep->targetmid-50))
-									aepa->targ = aep->targetmid-50;
+								if(aepa->targ<(aep->targetmid-ae_min_diff))
+									aepa->targ = aep->targetmid-ae_min_diff;
 							}
 							else if((sum < aepa->max_lumasum1)||((sum < aepa->max_lumasum2)&&(temp==0)))
 							{
 								temp = 0;
 								aepa->targ++;
-								if(aepa->targ>(aep->targetmid+15))
-									aepa->targ = aep->targetmid+15;
+								if(aepa->targ>(aep->targetmid+ae_max_diff))
+									aepa->targ = aep->targetmid+ae_max_diff;
 							}
 							else 
 							{

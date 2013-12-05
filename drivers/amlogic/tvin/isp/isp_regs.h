@@ -457,7 +457,7 @@
 #define ISP_CLAMP_GRBG23                    0x2d23  
 //Bit 31:26, reserved
 #define CLAMP_GRBG2_BIT			    16
-#define CLAMP_GRBGd_WID			    10
+#define CLAMP_GRBG2_WID			    10
 //Bit 25:16, reg_isp_clamp_grbg2         clamping offset to raw data blue (phase2) channel, -512~511.   default= 0
 //Bit 15:10, reserved
 #define CLAMP_GRBG3_BIT			    0

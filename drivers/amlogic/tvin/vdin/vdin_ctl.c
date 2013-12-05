@@ -1955,6 +1955,12 @@ inline void vdin_wr_reverse(unsigned int offset, bool hreverse, bool vreverse)
 #endif
 }
 
+void vdin_bypass_isp(unsigned int offset)
+{
+	WR_BITS(VDIN_CM_BRI_CON_CTRL, 0,CM_TOP_EN_BIT, CM_TOP_EN_WID);
+	WR_BITS(VDIN_MATRIX_CTRL, 0, VDIN_MATRIX_EN_BIT, VDIN_MATRIX_EN_WID);
+	WR_BITS(VDIN_MATRIX_CTRL, 0, VDIN_MATRIX1_EN_BIT, VDIN_MATRIX1_EN_WID);
+}
 void set_chroma_regs(unsigned int offset, unsigned int h_active,unsigned int v_active)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8

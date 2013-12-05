@@ -1990,6 +1990,9 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
 		if(devp->cycle)
 			fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
                 pr_info("%u f/s\n",fps);
+        }else if(!strcmp(parm[0], "bypass_isp")){
+        vdin_bypass_isp(devp->addr_offset);
+        pr_info("vdin bypass isp.\n");
         }
         else if(!strcmp(parm[0],"capture")){
 		if(parm[3] != NULL){

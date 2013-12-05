@@ -302,12 +302,13 @@ void isp_set_demosaicing(xml_dm_t *dms)
 */
 void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 {
-	unsigned int isp_matrix_lup[2][9]=
+	unsigned int isp_matrix_lup[3][9]=
 	{
 		{0x0,0x10000,0x840102,0x3203b4,0x36b00e1,0xe10344,0x3dc,0x400200,0x200},
 		//rgb->601
 		{0x0,0x10000,0x5e013a,0x2003cc,0x35300e1,0xe10334,0x3ec,0x400200,0x200},
 		//rgb->709
+		{0x0,0x00000,0x1000100,0x1000100,0x1000100,0x1000100,0x100,0x0,0x0},
 	};
 	unsigned int i=0, *start;
 	if(csc){
@@ -317,9 +318,23 @@ void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 		for(i=0;i<XML_CSC;i++)
 		        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
 	} else {
+	    if(height==0)
+	    {
+			printk("isp_set_matrix2\n");
+			start = isp_matrix_lup[2];
+			for(i=0;i<XML_CSC;i++)
+			{
+			        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
+					printk("xxx=%x,%x\n",RD(ISP_MATRIX_PRE_OFST0_1+i),*(start+i));
+			}
+			printk("xxx=%x\n",RD(ISP_MATRIX_COEF00_01));
+	    }
+		else
+		{
 		start = (height>720)?isp_matrix_lup[1]:isp_matrix_lup[0];
 		for(i=0;i<XML_CSC;i++)
 		        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
+		}
 	}
 }
 /*
@@ -568,6 +583,25 @@ void disable_gc_lns(bool flag)
 	}
 }
 
+void isp_bypass_all()
+{
+	WR_BITS(ISP_PAT_GEN_CTRL,0,ISP_PAT_ENABLE_BIT,ISP_PAT_ENABLE_WID);
+	WR_BITS(ISP_CLAMP_GRBG01,0,CLAMP_GRBG0_BIT,CLAMP_GRBG0_WID);
+	WR_BITS(ISP_CLAMP_GRBG01,0,CLAMP_GRBG1_BIT,CLAMP_GRBG1_WID);
+	WR_BITS(ISP_CLAMP_GRBG23,0,CLAMP_GRBG2_BIT,CLAMP_GRBG2_WID);
+	WR_BITS(ISP_CLAMP_GRBG23,0,CLAMP_GRBG3_BIT,CLAMP_GRBG3_WID);
+	WR_BITS(ISP_GAIN_GRBG01,0x100,GAIN_GRBG0_BIT,GAIN_GRBG0_WID);
+	WR_BITS(ISP_GAIN_GRBG01,0x100,GAIN_GRBG1_BIT,GAIN_GRBG1_WID);
+	WR_BITS(ISP_GAIN_GRBG23,0x100,GAIN_GRBG2_BIT,GAIN_GRBG2_WID);
+	WR_BITS(ISP_GAIN_GRBG23,0x100,GAIN_GRBG3_BIT,GAIN_GRBG3_WID);	
+	WR_BITS(ISP_LNS_CTRL,0,LNS_CMOP_ENABLE_BIT,LNS_CMOP_ENABLE_WID);
+	WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+	WR_BITS(ISP_DFT_CTRL,0,ISP_DFT_ENABLE_BIT,ISP_DFT_ENABLE_WID);
+	WR_BITS(ISP_DMS_CTRL0,7,ISP_DMS_BYPASS_BIT,ISP_DMS_BYPASS_WID);
+	isp_set_matrix(NULL,0);
+	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
+	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);	
+}
 /*
 *
 */
