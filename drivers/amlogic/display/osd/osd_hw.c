@@ -1066,11 +1066,15 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 	}
 	else
 	{
+#ifdef CONFIG_ARCH_MESON8
 		VSYNCOSD_SET_MPEG_REG_MASK(VPU_SW_RESET, 1<<8);
 		VSYNCOSD_CLR_MPEG_REG_MASK(VPU_SW_RESET, 1<<8);
+#endif
 		if(index == OSD1){
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
 			VSYNCOSD_CLR_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
+#endif
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_OSD1_FIFO_CTRL_STAT, 1<<0);
 			//memcpy(&osd_hw.dispdata[index],&save_disp_data,sizeof(dispdata_t));
 		}else{
@@ -1482,7 +1486,7 @@ static   void  osd1_update_color_mode(void)
 
 	if (osd_hw.color_info[OSD1] != NULL) {
 		data32= (osd_hw.scan_mode== SCAN_MODE_INTERLACE) ? 2 : 0;
-		data32 |=VSYNCOSD_RD_MPEG_REG(VIU_OSD1_BLK0_CFG_W0)&0x30007040;
+		data32 |= VSYNCOSD_RD_MPEG_REG(VIU_OSD1_BLK0_CFG_W0)&0x30007040;
 		data32 |= osd_hw.fb_gem[OSD1].canvas_idx << 16 ;
 		if(!osd_hw.rotate[OSD1].on_off)
 		data32 |= OSD_DATA_LITTLE_ENDIAN	 <<15 ;
@@ -1674,6 +1678,7 @@ static void osd1_update_disp_osd_rotate(void)
 	y_end = osd_hw.rotation_pandata[OSD1].y_end;
 	y_len_m1 = y_end-y_start;
 
+#ifdef CONFIG_ARCH_MESON8
 	osd_set_prot(
                 x_rev,
                 y_rev,
@@ -1699,6 +1704,7 @@ static void osd1_update_disp_osd_rotate(void)
                 REQ_OFF_MIN,
                 OSD1,
                 osd_hw.rotate[OSD1].on_off);
+#endif
 	remove_from_update_list(OSD1, DISP_OSD_ROTATE);
 }
 static void osd2_update_disp_osd_rotate(void)
@@ -1744,6 +1750,7 @@ static void osd2_update_disp_osd_rotate(void)
 	y_end = osd_hw.rotation_pandata[OSD2].y_end;
 	y_len_m1 = y_end-y_start;
 
+#ifdef CONFIG_ARCH_MESON8
 	osd_set_prot(
                 x_rev,
                 y_rev,
@@ -1769,6 +1776,7 @@ static void osd2_update_disp_osd_rotate(void)
                 REQ_OFF_MIN,
                 OSD2,
                 osd_hw.rotate[OSD2].on_off);
+#endif
     remove_from_update_list(OSD2, DISP_OSD_ROTATE);
 }
 
@@ -2047,7 +2055,9 @@ static void osd1_update_disp_geometry(void)
 			data32 = ((osd_hw.rotation_pandata[OSD1].y_start + osd_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_hw.rotation_pandata[OSD1].y_end  + osd_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,data32);
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END,data32);
+#endif
 		}else {
 			/* norma/l mode */
 			data32 = (osd_hw.pandata[OSD1].x_start & 0x1fff) | (osd_hw.pandata[OSD1].x_end & 0x1fff) << 16;
