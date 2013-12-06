@@ -27,6 +27,9 @@
 #include <mach/clock.h>
 #include <mach/am_regs.h>
 #include <mach/usbclock.h>
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+#include <mach/mod_gate.h>
+#endif
 
 /*
  * M chip USB clock setting
@@ -63,6 +66,10 @@ int clk_enable_usb(struct clk *clk)
 		return -1;
 
 	clk_name = (char*)clk->priv;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+       printk("clk_enable_usb3*********\n");
+	switch_mod_gate_by_name(clk_name, 1);
+#endif
 	peri_a = (usb_peri_reg_t *)P_USB_ADDR0;
 	peri_b = (usb_peri_reg_t *)P_USB_ADDR8;
 
@@ -155,6 +162,9 @@ int clk_disable_usb(struct clk *clk)
 		printk(KERN_ERR "bad usb clk name: %s\n",clk_name);
 		return -1;
 	}
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
+	switch_mod_gate_by_name(clk_name, 0);
+#endif
 
 	if(init_count){
 		init_count--;
