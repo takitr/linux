@@ -108,6 +108,19 @@ int c_dbg_lvl = 0;
 #define RTC_REGMEM_ADDR_2           6
 #define RTC_REGMEM_ADDR_3           7
 
+static int  check_osc_clk(void);
+
+int get_rtc_status(void)
+{
+	static int rtc_fail = -1;
+	if (rtc_fail < 0) {
+		if (check_osc_clk() < 0)
+			rtc_fail = 1;
+		else
+			rtc_fail = 0;
+	}
+	return rtc_fail;
+}
 static DEFINE_SPINLOCK(com_lock);
 
 struct aml_rtc_priv{
@@ -144,7 +157,7 @@ static void rtc_sclk_pulse(void)
 	//local_irq_restore(flags);
 }
 
-#if 0
+#if 1
 static int  check_osc_clk(void)
 {
 	unsigned long   osc_clk_count1; 
@@ -216,6 +229,8 @@ static int rtc_wait_s_ready(void)
 {
 	int i = 40000;
 	int try_cnt = 0;
+	if (get_rtc_status())
+		return i;
 	/*
 	while (i--){
 		if((*(volatile unsigned *)AO_RTC_ADDR1)&s_ready)
@@ -296,6 +311,8 @@ static void static_register_write(unsigned data);
 static int	 _ser_access_write_locked(unsigned long addr, unsigned long data);
 static void aml_rtc_reset(void)
 {
+    if (get_rtc_status())
+        return;
 	printk("error, the rtc serial communication abnormal,"
 		" reset the rtc!\n");
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
@@ -315,10 +332,20 @@ static unsigned int _ser_access_read_locked(unsigned long addr)
 {
 	unsigned val = 0;
 	int s_nrdy_cnt = 0;
+	int rst_times = 0;
+	if (get_rtc_status())
+		return;
 	while(rtc_comm_init()<0){
 		RTC_DBG(RTC_DBG_VAL, "aml_rtc -- rtc_common_init fail\n");
-		if(s_nrdy_cnt>RESET_RETRY_TIMES)
+		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
+			s_nrdy_cnt = 0;
+			rst_times++;
+			if (rst_times > 3) {
+				printk("_ser_access_read_locked error\n");
+				goto out;
+			}
 			aml_rtc_reset();
+		}
 		rtc_reset_s_ready( );
 		s_nrdy_cnt++;
 	}
@@ -327,15 +354,25 @@ static unsigned int _ser_access_read_locked(unsigned long addr)
 	rtc_send_addr_data(1,addr);
 	rtc_set_mode(0); //Read
 	rtc_get_data(&val);
+out:
 	return val;
 }
 
 static int _ser_access_write_locked(unsigned long addr, unsigned long data)
 {
 	int s_nrdy_cnt = 0;
+	int rst_times = 0;
+	if (get_rtc_status())
+		return;
 	while(rtc_comm_init()<0){
 		
 		if(s_nrdy_cnt>RESET_RETRY_TIMES) {
+			s_nrdy_cnt = 0;
+			rst_times++;
+			if (rst_times > 3) {
+				printk("_ser_access_write_locked error\n");
+				goto out;
+			}
 			aml_rtc_reset();
 			printk("error: rtc serial communication abnormal!\n");
 			//return -1;
@@ -346,6 +383,8 @@ static int _ser_access_write_locked(unsigned long addr, unsigned long data)
 	rtc_send_addr_data(0,data);
 	rtc_send_addr_data(1,addr);
 	rtc_set_mode(1); //Write
+out:
+	return 0;
 }
 
 static unsigned int ser_access_read(unsigned long addr)
@@ -754,7 +793,8 @@ static void reset_gpo_work(struct work_struct *work)
 		count--;
 		if(count <= 0) {
 			printk("error: can not reset gpo !\n");
-			count = 5;
+			//count = 5;
+			return;
 			//panic("gpo can not be reset");
 		}
 	}
