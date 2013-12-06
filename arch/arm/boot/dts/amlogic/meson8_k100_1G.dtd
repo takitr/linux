@@ -76,9 +76,9 @@ void root_func(){
 //$$ L2 PROP_U32 6 = "linux,usable-memory"
 	memory{
 		device_type = "memory";
-		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x15efffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x16f00000 0x29100000>;//0x12f00000+0x2d100000=0x40000000 1G ddr
+		aml_reserved_start = <0x06000000>; /**reserved memory start */
+		aml_reserved_end = <0x05000000>;/**reserved memory end */
+		linux,total-memory = <0x40000000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -109,17 +109,6 @@ void root_func(){
 		    	6: 318.75M		7: 364.3M					 */
 	};
 	
-/// ***************************************************************************************
-///	-	ION
-//$$ MODULE="ION"
-//$$ DEVICE="ion_dev"
-//$$ L2 PROP_STR = "status"
-    ion_dev{
-        compatible = "amlogic,ion_dev";
-        dev_name = "ion_dev";
-        status = "ok";
-        reg = <0xb400000 0x01400000>;//same as following ppmgr
-    };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
 //$$ MODULE = "DISP&MM-FB"	
@@ -132,9 +121,7 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reg = <0x05100000 0x01800000
-	   	 		0x06900000 0x00100000>;
-		rotation = <0>;
+	   	reserve-memory = <0x01800000  0x00100000>;
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
  		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
 	};
@@ -149,8 +136,7 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reg = <0x06a00000 0x04000000
-			0xaa00000 0x00a00000>;
+		reserve-memory = <0x04000000 0x00a00000>;
 	};
 
 
@@ -164,7 +150,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reg = <	0xb400000 0x01400000>;
+		reserve-memory = <0x01400000>;
 	};
 
 /// ***************************************************************************************
@@ -177,7 +163,7 @@ void root_func(){
 		compatible = "amlogic,amvenc_avc";
 		dev_name = "amvenc_avc.0";
 		status = "okay";
-		reg = <0xc800000 0x00f00000>;
+		reserve-memory = <0x00f00000>;
 	};
 
 /// ***************************************************************************************
@@ -192,7 +178,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin0";
         status = "ok";
-	        reg = <	0xd700000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <115>;
         vdin_id = <0>;
 	};
@@ -206,7 +192,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin1";
         status = "ok";
-		reg = <0x11700000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <117>;
         vdin_id = <1>;
 	};
@@ -221,9 +207,20 @@ void root_func(){
 		compatible = "amlogic,amlvideo2";
 		dev_name = "amlvideo2.0";
 		status = "okay";
-		reg = <0x15700000 0x01800000>;
+		reserve-memory = <0x01800000>;
 	};
 
+/// ***************************************************************************************
+///	-	ION
+//$$ MODULE="ION"
+//$$ DEVICE="ion_dev"
+//$$ L2 PROP_STR = "status"
+    ion_dev{
+        compatible = "amlogic,ion_dev";
+        dev_name = "ion_dev";
+        status = "ok";
+        reserve-memory = <0x01400000>;
+    };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
 //$$ MODULE = "DISP&MM-Vout"
@@ -1433,6 +1430,48 @@ sdio{
 			mirror_flip = <0>;
 			vertical_flip = <0>;	
 			config_path = "/system/etc/camera_isp_cfg/ov5647_k100";
+			bt_path = "gpio";
+			status = "okay";
+		};
+ ///	-	hm2057
+//$$ DEVICE="hm2057"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"    
+            	 cam_7{
+			cam_name = "hm2057";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_5";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
+			bt_path = "gpio";
+			status = "okay";
+		};
+
+//$$ DEVICE="sp0a19"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"
+        cam_8{
+			cam_name = "sp0a19";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_6";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
 			bt_path = "gpio";
 			status = "okay";
 		};

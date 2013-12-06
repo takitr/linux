@@ -46,6 +46,7 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 #include "osd_log.h"
 #include <linux/amlogic/amlog.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
@@ -1478,6 +1479,7 @@ void osd_resume_early(void)
 EXPORT_SYMBOL(osd_resume_early);
 #endif
 
+static struct resource memobj;
 static int 
 osd_probe(struct platform_device *pdev)
 {
@@ -1533,6 +1535,7 @@ osd_probe(struct platform_device *pdev)
 	vinfo = get_current_vinfo();
     	for (index=0;index<OSD_COUNT;index++)
     	{
+#if 0
     		//platform resource 
 		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index)))
 		{
@@ -1547,6 +1550,17 @@ osd_probe(struct platform_device *pdev)
 		{
 			continue ;
 		}
+#else
+		mem = &memobj;
+		ret = find_reserve_block(pdev->dev.of_node->name,index);
+		if(ret < 0){
+			amlog_level(LOG_LEVEL_HIGH,"can not find %s%d reserve block\n",pdev->dev.of_node->name,index);
+			r = -EFAULT;
+			goto failed2;
+		}
+		mem->start = (phys_addr_t)get_reserve_block_addr(ret);
+		mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
+#endif
 		fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
     		if(!fbi)
     		{

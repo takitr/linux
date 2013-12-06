@@ -19,6 +19,8 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <ion_priv.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
 
 MODULE_DESCRIPTION("AMLOGIC ION driver");
 MODULE_LICENSE("GPL");
@@ -40,6 +42,7 @@ static int num_heaps;
 static struct ion_heap **heaps;
 static struct ion_platform_heap my_ion_heap[MAX_HEAP];
 
+static struct resource memobj;
 int dev_ion_probe(struct platform_device *pdev) {
     int err;
     int i;
@@ -50,7 +53,18 @@ int dev_ion_probe(struct platform_device *pdev) {
     my_ion_heap[0].type = ION_HEAP_TYPE_SYSTEM;
     my_ion_heap[0].id = ION_HEAP_TYPE_SYSTEM;
     my_ion_heap[0].name = "vmalloc_ion";
+#if 0
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+#else
+    res = &memobj;
+    i = find_reserve_block(pdev->dev.of_node->name,0);
+    if(i < 0){
+        printk("\ndev_ion memory resource undefined.\n");
+        return -EFAULT;
+    }
+    res->start = (phys_addr_t)get_reserve_block_addr(i);
+    res->end = res->start+ (phys_addr_t)get_reserve_block_size(i)-1;
+#endif
     if (res) {
         num_heaps = 2;
         my_ion_heap[1].type = ION_HEAP_TYPE_CARVEOUT;//ION_HEAP_TYPE_CHUNK;//ION_HEAP_TYPE_CARVEOUT;

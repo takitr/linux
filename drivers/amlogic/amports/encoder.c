@@ -28,6 +28,8 @@
 #include <linux/amlogic/amports/vframe_receiver.h>
 #include "vdec_reg.h"
 #include <linux/delay.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
 
 #define ENC_CANVAS_OFFSET  AMVENC_CANVAS_INDEX
 
@@ -1459,17 +1461,29 @@ int uninit_avc_device(void)
     return 0;
 }
 
+static struct resource memobj;
 static int amvenc_avc_probe(struct platform_device *pdev)
 {
     struct resource *mem;
+    int idx;
 
     amlog_level(LOG_LEVEL_INFO, "amvenc_avc probe start.\n");
 
+#if 0
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
         amlog_level(LOG_LEVEL_ERROR, "amvenc_avc memory resource undefined.\n");
         return -EFAULT;
     }
-
+#else
+    mem = &memobj;
+    idx = find_reserve_block(pdev->dev.of_node->name,0);
+    if(idx < 0){
+	 amlog_level(LOG_LEVEL_ERROR, "amvenc_avc memory resource undefined.\n");
+        return -EFAULT;
+    }
+    mem->start = (phys_addr_t)get_reserve_block_addr(idx);
+    mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(idx)-1;
+#endif
     gAmvencbuff.buf_start = mem->start;
     gAmvencbuff.buf_size = mem->end - mem->start + 1;
 

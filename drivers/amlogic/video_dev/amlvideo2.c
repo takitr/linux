@@ -48,6 +48,7 @@
 #endif
 #ifdef CONFIG_USE_OF
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 #endif
 
 #define AVMLVIDEO2_MODULE_NAME "amlvideo2"
@@ -1924,6 +1925,7 @@ static int amlvideo2_release_node(struct amlvideo2_device *vid_dev)
 	return 0;
 }
 
+static struct resource memobj;
 static int amlvideo2_create_node(struct platform_device *pdev)
 {
 	int ret = 0, i = 0, j = 0;
@@ -1940,8 +1942,19 @@ static int amlvideo2_create_node(struct platform_device *pdev)
 
 	for(i = 0; i<vid_dev->node_num;i++){
 		vid_dev->node[i] = NULL;
-		ret = -ENOMEM;		
+		ret = -ENOMEM;	
+#if 0		
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+#else
+		res = &memobj;
+    		ret = find_reserve_block(pdev->dev.of_node->name,i);
+    		if(ret < 0){
+        		printk("\namlvideo2 memory resource undefined.\n");
+        		return -EFAULT;
+    		}
+    		res->start = (phys_addr_t)get_reserve_block_addr(ret);
+    		res->end = res->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
+#endif
 		if(!res)
 			break;
 

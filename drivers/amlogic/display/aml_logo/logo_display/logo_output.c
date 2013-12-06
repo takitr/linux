@@ -12,6 +12,8 @@
 #include  "logo.h"
 #include	"amlogo_log.h"
 #include <linux/amlogic/amlog.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
 static  LIST_HEAD(output_dev_line);
 static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 
@@ -23,7 +25,8 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 	if (strncmp(name, dev_name(dev),DEVICE_NAME_LEN) == 0)
 		return 1;
 	return 0;
-} 
+}
+ static struct resource memobj;
  int   setup_logo_platform_resource(logo_object_t *logo)
 {
 	int  i;
@@ -31,6 +34,7 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 	struct  device  *dev=NULL;
 	struct platform_device  * platform_dev;
 	struct resource * res; 
+	int idx;
 
 	for(i=0;i<LOGO_DEV_MEM;i++)
 	{
@@ -44,7 +48,18 @@ static  output_dev_list_t aml_output_dev[LOGO_DEV_MAX];
 			
 			platform_dev =dev_to_platformdev(dev) ;
 			amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"got platform resource\n");
+#if 0			
 			res=platform_get_resource(platform_dev,IORESOURCE_MEM,num);//something special.
+#else
+			res = &memobj;
+			idx = find_reserve_block(platform_dev->dev.of_node->name,num);
+			if(idx < 0){
+				amlog_mask_level(LOG_LEVEL_HIGH,"can not find %s%d reserve block\n",platform_dev->dev.of_node->name,num);
+				continue;
+			}
+			res->start = (phys_addr_t)get_reserve_block_addr(idx);
+			res->end = res->start+ (phys_addr_t)get_reserve_block_size(idx)-1;
+#endif
 			if(res)
 			{
 				amlog_mask_level(LOG_MASK_DEVICE,LOG_LEVEL_LOW,"resource: start=0x%x,end=0x%x\r\n",res->start,res->end);

@@ -34,6 +34,7 @@
 #include <asm/fiq.h>
 #include <asm/div64.h>
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 /* Amlogic Headers */
 #include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
@@ -2634,6 +2635,7 @@ static void vdin_delete_device(int minor)
 	device_destroy(vdin_clsp, devno);
 }
 
+static struct resource memobj;
 static int vdin_drv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2689,7 +2691,18 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		goto fail_create_dev_file;
 	}
 	/* get memory address from resource */
+#if 0	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+#else
+    res = &memobj;
+    ret = find_reserve_block(pdev->dev.of_node->name,0);
+    if(ret < 0){
+        pr_err("\nvdin memory resource undefined.\n");
+        return -EFAULT;
+    }
+    res->start = (phys_addr_t)get_reserve_block_addr(ret);
+    res->end = res->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
+#endif
 	if (!res) {
 		pr_err("%s: can't get mem resource\n", __func__);
 		ret = -ENXIO;

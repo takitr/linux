@@ -76,9 +76,9 @@ void root_func(){
 //$$ L2 PROP_U32 6 = "linux,usable-memory"
 	memory{
 		device_type = "memory";
-		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x173fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x17400000 0x28c00000>;//0x17400000+0x28c00000=0x40000000 1GB DDR
+		aml_reserved_start = <0x06000000>; /**reserved memory start */
+		aml_reserved_end = <0x05000000>;/**reserved memory end */
+		linux,total-memory = <0x40000000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -109,17 +109,6 @@ void root_func(){
 		    	6: 318.75M		7: 364.3M					 */
 	};
 	
-/// ***************************************************************************************
-///	-	ION
-//$$ MODULE="ION"
-//$$ DEVICE="ion_dev"
-//$$ L2 PROP_STR = "status"
-    ion_dev{
-        compatible = "amlogic,ion_dev";
-        dev_name = "ion_dev";
-        status = "ok";
-        reg = <0x0bd00000 0x01000000>;//same as following ppmgr
-    };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
 //$$ MODULE = "DISP&MM-FB"	
@@ -133,9 +122,7 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reg = <0x05100000 0x01000000
-			0x06100000 0x00100000>;
-		rotation = <0>;
+	   	reserve-memory = <0x01000000  0x00100000>;
 		vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
 		display_size_default = <768 1024 768 2048 32>;//1024x768x8=0x600000<0x01000000
 	};
@@ -147,9 +134,8 @@ void root_func(){
 		compatible = "amlogic,mesonfb-ext";
 		dev_name = "mesonfb-ext";
 		status = "ok";
-		reg = <0x06200000 0x01000000
-	       	 0x07200000 0x00100000>;
-		display_size_default = <768 1024 768 2048 32>;//1024x768x8=0x600000<0x01000000
+	   	reserve-memory = <0x01000000  0x00100000>;
+		display_size_default = <768 1024 768 2048 32>;////1024x768x8=0x600000<0x01000000
 	 
 	};
 
@@ -163,8 +149,7 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reg = <0x07300000 0x04000000
-			   0x0b300000 0x00a00000>;
+		reserve-memory = <0x04000000 0x00a00000>;
 	};
 
 
@@ -178,7 +163,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reg = <0x0bd00000 0x01000000>;		
+		reserve-memory = <0x01000000>;
 	};
 
 /// ***************************************************************************************
@@ -191,7 +176,7 @@ void root_func(){
 		compatible = "amlogic,amvenc_avc";
 		dev_name = "amvenc_avc.0";
 		status = "okay";
-		reg = <0x0cd00000 0x00f00000>;
+		reserve-memory = <0x00f00000>;
 	};
 
 /// ***************************************************************************************
@@ -206,7 +191,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin0";
         status = "ok";
-        reg = <0x0dc00000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <115>;
         vdin_id = <0>;
 	};
@@ -220,7 +205,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin1";
         status = "ok";
-        reg = <0x11c00000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <117>;
         vdin_id = <1>;
 	};
@@ -235,10 +220,20 @@ void root_func(){
 		compatible = "amlogic,amlvideo2";
 		dev_name = "amlvideo2.0";
 		status = "okay";
-		reg = <0x15c00000 0x01800000>;
+		reserve-memory = <0x01800000>;
 	};
 
-
+/// ***************************************************************************************
+///	-	ION
+//$$ MODULE="ION"
+//$$ DEVICE="ion_dev"
+//$$ L2 PROP_STR = "status"
+    ion_dev{
+        compatible = "amlogic,ion_dev";
+        dev_name = "ion_dev";
+        status = "ok";
+        reserve-memory = <0x01000000>;
+    };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
 //$$ MODULE = "DISP&MM-Vout"

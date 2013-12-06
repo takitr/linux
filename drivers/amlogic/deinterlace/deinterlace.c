@@ -37,7 +37,7 @@
 #include <linux/cdev.h>
 #include <linux/proc_fs.h>
 #include <linux/list.h>
-
+#include <linux/of_fdt.h>
 //#include <linux/aml_common.h>
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
@@ -6301,6 +6301,7 @@ const static struct file_operations di_fops = {
 #endif
 };
 
+static struct resource memobj;
 static int di_probe(struct platform_device *pdev)
 {
     int r, i;
@@ -6372,11 +6373,22 @@ static int di_probe(struct platform_device *pdev)
     device_create_file(di_device.dev, &dev_attr_status);
     device_create_file(di_device.dev, &dev_attr_provider_vframe_status);
 
+#if 0
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
     {
     	  pr_error("\ndeinterlace memory resource undefined.\n");
         return -EFAULT;
     }
+#else
+    mem = &memobj;
+    r = find_reserve_block(pdev->dev.of_node->name,0);
+    if(r < 0){
+        pr_error("\ndeinterlace memory resource undefined.\n");
+        return -EFAULT;
+    }
+    mem->start = (phys_addr_t)get_reserve_block_addr(r);
+    mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(r)-1;
+#endif
 		for(i=0; i<USED_LOCAL_BUF_MAX; i++){
     	used_local_buf_index[i] = -1;
  		}
