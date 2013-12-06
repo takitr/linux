@@ -203,9 +203,6 @@
 	/* clk max error */
 	#define MAX_ERROR				(2 * 1000)
 
-#define EDP_TX_LINK_CAPACITY_162	1296	//Mbps
-#define EDP_TX_LINK_CAPACITY_270	2160	//Mbps
-
 #define CRT_VID_DIV_MAX				15
 #define OD_SEL_MAX				4
 #define DIV_PRE_SEL_MAX				6
@@ -450,6 +447,7 @@ typedef struct {
 	unsigned char link_adaptive;
 	unsigned char vswing;
 	unsigned char preemphasis;
+	unsigned int bit_rate;
 } EDP_Config_t;
 
 typedef struct {
