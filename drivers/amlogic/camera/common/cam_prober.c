@@ -235,6 +235,19 @@ int gc2015_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM2057
+int hm2057_v4l2_probe(struct i2c_adapter *adapter)
+{
+	int ret = 0;
+	unsigned char reg[2];  
+	reg[0] = aml_i2c_get_byte(adapter, 0x24, 0x0001);
+	reg[1] = aml_i2c_get_byte(adapter, 0x24, 0x0002);
+	if (reg[0] == 0x20 && reg[1] == 0x56)
+		ret = 1;
+	return ret;
+}
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC2035
 int gc2035_v4l2_probe(struct i2c_adapter *adapter)
 {
@@ -484,6 +497,17 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = gc2015_v4l2_probe,
 	},
 #endif
+
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM2057
+	{
+		.addr = 0x24,
+		.name = "hm2057",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1600X1200,
+		.probe_func = hm2057_v4l2_probe,
+	},
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_GC2035
 	{
 		.addr = 0x3c,
