@@ -18,6 +18,7 @@
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
 #include <mach/mod_gate.h>
+#include <mach/power_gate.h>
 #endif
 
 //#include <asm/dsp/audiodsp_control.h>
@@ -193,6 +194,11 @@ int audiodsp_start(void)
 static int audiodsp_open(struct inode *node, struct file *file)
 {
 	DSP_PRNT("dsp_open\n");
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	CLK_GATE_ON(AHB_BRIDGE);
+#endif
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6	
 	switch_mod_gate_by_type(MOD_MEDIA_CPU, 1);
         /* Audio DSP firmware uses mailbox registers for communications 
@@ -515,6 +521,10 @@ static int audiodsp_release(struct inode *node, struct file *file)
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6	
 	switch_mod_gate_by_type(MOD_VDEC, 0);
 	switch_mod_gate_by_type(MOD_MEDIA_CPU, 0);
+#endif
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        CLK_GATE_OFF(AHB_BRIDGE);
 #endif
 
 	audiodsp_allow_sleep();
