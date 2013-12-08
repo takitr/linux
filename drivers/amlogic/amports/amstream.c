@@ -1046,6 +1046,7 @@ static int amstream_open(struct inode *inode, struct file *file)
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     CLK_GATE_ON(HIU_PARSER_TOP);
+    CLK_GATE_ON(VPU_INTR);
 
     if (this->type & PORT_TYPE_VIDEO) {
         CLK_GATE_ON(DOS);
@@ -1108,6 +1109,8 @@ static int amstream_release(struct inode *inode, struct file *file)
     }
 
     CLK_GATE_OFF(HIU_PARSER_TOP);
+    CLK_GATE_OFF(VPU_INTR);
+
 #elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
     switch_mod_gate_by_name("audio", 0);
     switch_mod_gate_by_name("vdec", 0);
