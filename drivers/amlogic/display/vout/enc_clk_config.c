@@ -23,6 +23,11 @@
             break;\
     }
 
+#define h_delay()       \
+    do {                \
+        int i = 1000;   \
+        while(i--);     \
+    }while(0)
 
 static void set_hpll_clk_out(unsigned clk)
 {
@@ -47,7 +52,6 @@ static void set_hpll_clk_out(unsigned clk)
             while(!(aml_read_reg32(P_HHI_VID_PLL_CNTL) & (1 << 31))) {
                 ;
             }
-            aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);
             aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08c34d0b);
             break;
 #endif
@@ -60,7 +64,6 @@ static void set_hpll_clk_out(unsigned clk)
         ;
     }
     aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69c8ce00);
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);
     aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08c38d0b);
 #endif
 #ifdef CONFIG_ARCH_MESON6
@@ -88,6 +91,14 @@ static void set_hpll_clk_out(unsigned clk)
         default:
             break;
     }
+#ifdef CONFIG_ARCH_MESON8
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 1);       // Soft Reset HDMI PHY
+    h_delay();
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
+    h_delay();
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);       // Enable HDMI PHY
+#endif
 }
 
 static void set_hpll_hdmi_od(unsigned div)
