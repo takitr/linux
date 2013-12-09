@@ -32,6 +32,8 @@
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
+#define USE_WORK_QUEUE
+
 #define ISP_FLAG_START				0x00000001
 #define ISP_FLAG_AE				0x00000002
 #define ISP_FLAG_AWB				0x00000004
@@ -161,9 +163,12 @@ typedef struct isp_dev_s{
 	tvin_frontend_t *isp_fe;
 
 	struct isp_info_s info;
-	struct tasklet_struct isp_task;
-	struct task_struct     *kthread;
-
+#ifndef USE_WORK_QUEUE
+    struct tasklet_struct isp_task;
+    struct task_struct     *kthread;
+#else
+    struct work_struct isp_wq;
+#endif
 	struct isp_ae_stat_s isp_ae;
 	struct isp_ae_info_s ae_info;
 	struct isp_awb_stat_s isp_awb;

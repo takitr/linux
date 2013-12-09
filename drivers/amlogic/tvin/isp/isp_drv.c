@@ -738,7 +738,7 @@ static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const c
 
 static DEVICE_ATTR(lens, 0664, ls_show, ls_store);
 
-
+#ifndef USE_WORK_QUEUE
 static int isp_thread(isp_dev_t *devp) {
 	unsigned newstep = 0;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
@@ -801,6 +801,7 @@ static void stop_isp_thread(isp_dev_t *devp) {
         devp->kthread = NULL;
     }
 }
+#endif
 
 static int isp_support(struct tvin_frontend_s *fe, enum tvin_port_e port)
 {
@@ -941,13 +942,19 @@ static void isp_fe_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 			capture_sm_init(devp);
 	        }else if(devp->cam_param->cam_mode == CAMERA_RECORD){
 		        devp->flag = ISP_FLAG_RECORD;
+#ifndef USE_WORK_QUEUE
 			start_isp_thread(devp);
+#endif
 	        }else{
 		        devp->flag &= (~ISP_WORK_MODE_MASK);
+#ifndef USE_WORK_QUEUE
 			start_isp_thread(devp);
+#endif
 	        }
         }
-	tasklet_enable(&devp->isp_task);
+#ifndef USE_WORK_QUEUE
+    tasklet_enable(&devp->isp_task);
+#endif
         devp->flag |= ISP_FLAG_START;
 	return;
 }
@@ -957,9 +964,13 @@ static void isp_fe_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 	if(devp->isp_fe)
 	        devp->isp_fe->dec_ops->stop(devp->isp_fe,devp->info.fe_port);
+#ifndef USE_WORK_QUEUE
 	tasklet_disable_nosync(&devp->isp_task);
+#endif
 	if(devp->cam_param->cam_mode != CAMERA_CAPTURE)
+#ifndef USE_WORK_QUEUE
 		stop_isp_thread(devp);
+#endif
 	devp->flag &= (~ISP_FLAG_AF);
 	devp->flag &= (~ISP_FLAG_TOUCH_AF);
 	isp_sm_uninit(devp);
@@ -1163,10 +1174,15 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	if(isr_debug&&ret)
 		pr_info("%s isp %d buf.\n",__func__,ret);
 	if(!(devp->flag & ISP_FLAG_TEST_WB))
-		tasklet_schedule(&devp->isp_task);
+#ifndef USE_WORK_QUEUE
+	    tasklet_schedule(&devp->isp_task);
+#else
+        schedule_work(&devp->isp_wq);
+#endif
         return ret;
 }
 
+#ifndef USE_WORK_QUEUE
 static void isp_tasklet(unsigned long arg)
 {
 	isp_dev_t *devp = (isp_dev_t *)arg;
@@ -1182,6 +1198,63 @@ static void isp_tasklet(unsigned long arg)
 		isp_af_detect(devp);
 	}
 }
+
+#else
+
+static void  isp_do_work(struct work_struct *work)
+{
+    isp_dev_t *devp = container_of(work, isp_dev_t, isp_wq);
+
+    unsigned newstep = 0;
+    struct cam_function_s *func = &devp->cam_param->cam_function;
+
+        if(ae_enable){
+                if(devp->flag & ISP_FLAG_AE)
+                    isp_ae_sm(devp);
+        }
+    if(awb_enable){
+        if(devp->flag & ISP_FLAG_AWB)
+                        isp_awb_sm(devp);
+    }
+    if(devp->flag & ISP_AF_SM_MASK){
+        isp_af_detect(devp);
+    }
+
+    if(ae_flag&0x1)
+    {
+        ae_flag &= (~0x1);
+        printk("set new step %d \n",ae_new_step);
+        if(func&&func->set_aet_new_step)
+        func->set_aet_new_step(ae_new_step,true,true);
+    }
+    if(ae_flag&0x2)
+    {
+        ae_flag &= (~0x2);
+        newstep = isp_tune_exposure(devp);
+        printk("wq:set new step2 %d \n",newstep);
+        if(func&&func->set_aet_new_step)
+        func->set_aet_new_step(newstep,true,true);
+    }
+	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
+	{
+		if(isp_debug)
+			printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
+		if(ae_adjust_enable)
+			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+		atomic_set(&devp->ae_info.writeable,0);
+	}
+    if(devp->flag&ISP_FLAG_AF_DBG){
+        af_stat(devp->af_dbg,func);
+    }
+    if(devp->flag & ISP_AF_SM_MASK) {
+        if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
+            func->set_af_new_step(devp->af_info.cur_step);
+			atomic_set(&devp->af_info.writeable,0);
+        }
+    }
+}
+#endif
+
 static struct tvin_decoder_ops_s isp_dec_ops ={
         .support            = isp_support,
 	.open               = isp_fe_open,
@@ -1293,9 +1366,12 @@ static int isp_probe(struct platform_device *pdev)
 		if(tvin_reg_frontend(&devp->frontend))
 			pr_err("[%s..]%s register isp frontend error.\n",DEVICE_NAME,__func__);
 	}
-
-	tasklet_init(&devp->isp_task,isp_tasklet,(unsigned long)devp);
-	tasklet_disable(&devp->isp_task);
+#ifdef USE_WORK_QUEUE
+    INIT_WORK(&devp->isp_wq,(void (*)(void *))isp_do_work);
+#else
+    tasklet_init(&devp->isp_task,isp_tasklet,(unsigned long)devp);
+    tasklet_disable(&devp->isp_task);
+#endif
 	platform_set_drvdata(pdev,(void *)devp);
 	dev_set_drvdata(devp->dev,(void *)devp);
 	pr_info("[%s..]%s isp probe ok.\n",DEVICE_NAME,__func__);
@@ -1319,7 +1395,9 @@ static int isp_remove(struct platform_device *pdev)
 
 	isp_delete_device(devp->index);
         tvin_unreg_frontend(&devp->frontend);
+#ifndef USE_WORK_QUEUE
 	tasklet_kill(&devp->isp_task);
+#endif
 	kfree(devp);
 	return 0;
 }
