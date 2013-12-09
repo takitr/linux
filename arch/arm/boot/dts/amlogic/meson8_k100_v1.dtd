@@ -134,6 +134,7 @@ void root_func(){
 		status = "okay";
 		reg = <0x05100000 0x01800000
 	   	 		0x06900000 0x00100000>;
+		rotation = <0>;
         vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
  		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
 	};
