@@ -88,7 +88,7 @@ static struct vdin_v4l2_ops_s *vops;
 static struct v4l2_queryctrl gc2035_qctrl[] = {
 	{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.type          = V4L2_CTRL_TYPE_MENU,
 		.name          = "white balance",
 		.minimum       = 0,
 		.maximum       = 6,
@@ -176,6 +176,89 @@ static struct v4l2_queryctrl gc2035_qctrl[] = {
 /* ------------------------------------------------------------------
 	Basic structures
    ------------------------------------------------------------------*/
+struct v4l2_querymenu gc2035_qmenu_wbmode[] = {
+			{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_AUTO,
+				.name		= "auto",
+				.reserved	= 0,
+			},{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_CLOUD,
+				.name		= "cloudy-daylight",
+				.reserved	= 0,
+			},{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_INCANDESCENCE,
+				.name		= "incandescent",
+				.reserved	= 0,
+			},{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_DAYLIGHT,
+				.name		= "daylight",
+				.reserved	= 0,
+			},{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_FLUORESCENT,
+				.name		= "fluorescent", 
+				.reserved	= 0,
+			},{
+				.id 		= V4L2_CID_DO_WHITE_BALANCE,
+				.index		= CAM_WB_FLUORESCENT,
+				.name		= "warm-fluorescent", 
+				.reserved	= 0,
+			},
+		};
+	
+struct v4l2_querymenu gc2035_qmenu_anti_banding_mode[] = {
+		{
+			.id 		= V4L2_CID_POWER_LINE_FREQUENCY,
+			.index		= CAM_BANDING_50HZ, 
+			.name		= "50hz",
+			.reserved	= 0,
+		},{
+			.id 		= V4L2_CID_POWER_LINE_FREQUENCY,
+			.index		= CAM_BANDING_60HZ, 
+			.name		= "60hz",
+			.reserved	= 0,
+		},
+	};
+	
+	typedef struct {
+		__u32	id;
+		int 	num;
+		struct v4l2_querymenu* gc2035_qmenu;
+	}gc2035_qmenu_set_t;
+	
+	gc2035_qmenu_set_t gc2035_qmenu_set[] = {
+		{
+			.id 			= V4L2_CID_DO_WHITE_BALANCE,
+			.num			= ARRAY_SIZE(gc2035_qmenu_wbmode),
+			.gc2035_qmenu	= gc2035_qmenu_wbmode,
+		},{
+			.id 			= V4L2_CID_POWER_LINE_FREQUENCY,
+			.num			= ARRAY_SIZE(gc2035_qmenu_anti_banding_mode),
+			.gc2035_qmenu	= gc2035_qmenu_anti_banding_mode,
+		},
+	};
+	
+	static int vidioc_querymenu(struct file *file, void *priv,
+					struct v4l2_querymenu *a)
+	{
+		int i, j;
+	
+		for (i = 0; i < ARRAY_SIZE(gc2035_qmenu_set); i++)
+		if (a->id && a->id == gc2035_qmenu_set[i].id) {
+			for(j = 0; j < gc2035_qmenu_set[i].num; j++)
+			if (a->index == gc2035_qmenu_set[i].gc2035_qmenu[j].index) {
+				memcpy(a, &( gc2035_qmenu_set[i].gc2035_qmenu[j]),
+					sizeof(*a));
+				return (0);
+			}
+		}
+	
+		return -EINVAL;
+	}
 
 struct gc2035_fmt {
 	char  *name;
@@ -1166,7 +1249,7 @@ void gc2035_set_param_wb(struct gc2035_device *dev,enum  camera_wb_flip_e para)/
 			buf[1]=0x61;
 			i2c_put_byte_add8(client,buf,2);	
 
-		       buf[0]=0x82;
+		    buf[0]=0x82;
 			buf[1]=temp | 0x02;
 			i2c_put_byte_add8(client,buf,2);	
 			break;
@@ -1314,6 +1397,10 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0xc0;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
 			break;
 
 
@@ -1334,6 +1421,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0xd0;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 
@@ -1353,6 +1445,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0xe0;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 
@@ -1373,6 +1470,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0xf0;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 		case EXPOSURE_0_STEP:
@@ -1391,7 +1493,12 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 
 			buf[0]=0xd5;
 			buf[1]=0x00; //luma_offset
-			i2c_put_byte_add8(client,buf,2);			
+			i2c_put_byte_add8(client,buf,2);	
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 		case EXPOSURE_P1_STEP:
@@ -1411,6 +1518,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0x10;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 		case EXPOSURE_P2_STEP:			
@@ -1447,6 +1559,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0x30;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 
 		case EXPOSURE_P4_STEP:			
@@ -1464,6 +1581,10 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 
 			buf[0]=0xd5;
 			buf[1]=0x40;
+			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
 			i2c_put_byte_add8(client,buf,2);
 			break;
 
@@ -1483,6 +1604,11 @@ void gc2035_set_param_exposure(struct gc2035_device *dev,enum camera_exposure_e 
 			buf[0]=0xd5;
 			buf[1]=0x00;
 			i2c_put_byte_add8(client,buf,2);
+
+			buf[0]=0xfe;
+			buf[1]=0x00;
+			i2c_put_byte_add8(client,buf,2);
+
 			break;
 			break;
 
@@ -3219,6 +3345,7 @@ static const struct v4l2_ioctl_ops gc2035_ioctl_ops = {
 	.vidioc_enum_input    = vidioc_enum_input,
 	.vidioc_g_input       = vidioc_g_input,
 	.vidioc_s_input       = vidioc_s_input,
+	.vidioc_querymenu     = vidioc_querymenu,
 	.vidioc_queryctrl     = vidioc_queryctrl,
 	.vidioc_g_ctrl        = vidioc_g_ctrl,
 	.vidioc_s_ctrl        = vidioc_s_ctrl,
