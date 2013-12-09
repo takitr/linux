@@ -159,7 +159,7 @@ static int meson_cpufreq_target_locked(struct cpufreq_policy *policy,
     }
 	
 
-    cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+    cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
 #ifndef CONFIG_CPU_FREQ_DEBUG
     pr_debug("cpufreq-meson: CPU%d transition: %u --> %u\n",
@@ -220,7 +220,7 @@ out:
     if (ret) {
         adjust_jiffies(freqInt != 0 ? freqInt : freqs.old, freqs.new);
     }
-    cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
+    cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 
     return ret;
 }
@@ -409,7 +409,7 @@ static int __init meson_cpufreq_probe(struct platform_device *pdev)
 				ret = of_property_read_u32(pdev->dev.of_node,"cpufreq_info",&val);
 				if(ret){
 					printk("don't find	match init-data\n");
-					goto err;
+					goto reg_driver__;
 				}
 				if(ret==0){
 					phandle=val;
@@ -484,6 +484,7 @@ static int __init meson_cpufreq_probe(struct platform_device *pdev)
 			}
 	#endif
 
+reg_driver__:
     cpufreq.dev = &pdev->dev;
     cpufreq.armclk = clk_get_sys("a9_clk", NULL);
     if (IS_ERR(cpufreq.armclk)) {

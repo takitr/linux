@@ -190,6 +190,10 @@
 	};
 
 
+         cpufreq-meson{
+                compatible = "amlogic,cpufreq-meson";
+        };
+
     battery_parameter:battery_parameter{
         pmu_twi_id = <2>;                   /* AXP20_I2CBUS                         */
         pmu_irq_id = <0>;                   /* INT_WATCHDOG                         */
