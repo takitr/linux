@@ -1240,9 +1240,36 @@ sdio{
     audio_m8_audio{
         compatible = "amlogic,m8_audio_codec";
         dev_name = "aml_m8_codec.0";
-        status = "okay";
+        status = "disabled";
     };
 
+		aml_audio_codc{
+        compatible = "amlogic,audio_codec";
+         codec_rt5616:rt5616{
+            codec_name = "rt5616";
+            i2c_addr = <0x1B>;
+            i2c_bus = "i2c_bus_d";
+            capless = <0>;
+            status = "okay";
+                
+        };
+        codec_rt5631:rt5631{
+            codec_name = "rt5631";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            capless = <0>;
+            status = "disabled";
+                
+        };  
+        codec_wm8960:wm8960{
+            codec_name = "wm8960";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            capless = <1>;
+			status = "disabled";
+        };
+		};
+ 
 //$$ DEVICE="aml_m8_sound_card"
 //$$ L2 PROP_STR = "aml,sound_card"
 //$$ L2 PROP_STR = "aml,codec_dai"
@@ -1261,13 +1288,39 @@ sdio{
             "HP","HP_R",
             "MICBIAS","MAIN MIC",
             "LINPUT1","MICBIAS";
+            mute_gpio = "GPIOY_15";
+			pinctrl-names = "aml_snd_m8";
+			pinctrl-0 = <&audio_pins>;
+			status = "disabled"; 
+		};
+
+//$$ DEVICE="aml_m8_sound_card"
+//$$ L2 PROP_STR = "aml,sound_card"
+//$$ L2 PROP_STR = "aml,codec_dai"
+//$$ L2 PROP_STR 6*2 = "aml,audio-routing"
+//$$ L2 PROP_STR = "mute_gpio"
+//$$ L2 PROP_U32 5 = "hp_paraments"
+//$$ L2 PROP_STR = "status"
+    aml_m8_rt5616{
+        compatible = "sound_card, aml_m8_rt5616";
+        aml,sound_card = "AML-M8AUDIO-RT5616";
+        aml,codec_dai = "rt5616-aif1";
+        aml,audio-routing =
+            "Ext Spk","LOUTL",
+            "Ext Spk","LOUTR",
+            "HP","HPOL",
+            "HP","HPOR",
+            "micbias1","MAIN MIC",
+            "IN2P","micbias1";
         mute_gpio = "GPIOY_15";
         //mute_inv;
         hp_paraments = <800 300 0 5 1>;
-        status = "okay";
-        
-    };
+        pinctrl-names = "aml_snd_m8";
+        pinctrl-0 = <&audio_pins>;
+		status = "okay";
 
+		};
+ 
 /// ***************************************************************************************
 ///	-	Camera
 //$$ MODULE="Camera"
@@ -2018,6 +2071,16 @@ sdio{
 						"GPIODV_18","GPIODV_19","GPIODV_20","GPIODV_21","GPIODV_22","GPIODV_23";	//B2~B7
 			amlogic,enable-output=<1>;
         };
+        
+//$$ MATCH "Audio_pin_0_match" = "&audio_pins"
+//$$ L2 PROP_U32 4 = "amlogic,setmask"
+//$$ L2 PROP_U32 10 = "amlogic,clrmask"
+//$$ L2 PROP_STR 6 = "amlogic,pins"
+		audio_pins:audio_pin{
+				amlogic,setmask=<10 0x78000000 1 0x20>;
+				amlogic,clrmask=<4 0x1000000 3 0x8000 9 0x80>;
+				amlogic,pins = "GPIOAO_8","GPIOAO_9","GPIOAO_10","GPIOAO_11","GPIOY_5";
+		};
 	};
 
 }; /* end of / */
