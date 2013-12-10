@@ -153,24 +153,25 @@ static struct snd_soc_dai_link dummy_codec_dai_link[] = {
     {
         .name = "DUMMY_CODEC",
         .stream_name = "DUMMY_CODEC PCM",
-        .cpu_dai_name = "aml-dai0",
+        .cpu_dai_name = "aml-i2s-dai.0",
         .codec_dai_name = "dummy_codec",
         .init = dummy_codec_codec_init,
-        .platform_name = "aml-audio.0",
+        .platform_name = "aml-i2s.0",
         .codec_name = "dummy_codec.0",
         .ops = &dummy_codec_soc_ops,
     },
-#ifdef CONFIG_SND_SOC_PCM2BT
-    {
-        .name = "BT Voice",
-        .stream_name = "Voice PCM",
-        .cpu_dai_name = "aml-dai1",
-        .codec_dai_name = "pcm2bt-pcm",
-        .platform_name = "aml-audio.0",
-        .codec_name = "pcm2bt.0",
-        //.ops = &voice_soc_ops,
+
+	{
+        .name = "AML-SPDIF",
+        .stream_name = "SPDIF PCM",
+        .cpu_dai_name = "aml-spdif-dai.0",
+        .codec_dai_name = "dit-hifi",
+        .init = NULL,
+        .platform_name = "aml-i2s.0",
+        .codec_name = "spdif-dit.0",
+        .ops = NULL,      
     },
-#endif
+
 };
 
 static struct snd_soc_card snd_soc_dummy_codec = {
@@ -191,13 +192,13 @@ static void dummy_codec_device_init(void)
 
 	if (IS_ERR(p))
 		return p;
-			
+
 	s = pinctrl_lookup_state(p, "dummy_codec_audio");
 	if (IS_ERR(s)) {
 		pinctrl_put(p);
 		return ERR_PTR(PTR_ERR(s));
 	}
-		
+
 	ret = pinctrl_select_state(p, s);
 	if (ret < 0) {
 		pinctrl_put(p);
@@ -227,10 +228,11 @@ static struct platform_device *dummy_codec_snd_device = NULL;
 static int dummy_codec_audio_probe(struct platform_device *pdev)
 {
     int ret = 0;
+		struct snd_soc_card *card = &snd_soc_dummy_codec;
 
     //printk(KERN_DEBUG "enter %s\n", __func__);
     printk("enter %s\n", __func__);
-#ifdef CONFIG_USE_OF		
+#ifdef CONFIG_USE_OF
 		dummy_codec_pdata = kzalloc(sizeof(struct dummy_codec_platform_data), GFP_KERNEL);
 		if(!dummy_codec_pdata){
            // kfree(dummy_codec_pdata);
@@ -245,13 +247,33 @@ static int dummy_codec_audio_probe(struct platform_device *pdev)
 				goto err1;
             }
 		}
-		dummy_codec_dev=&pdev->dev;		
+		dummy_codec_dev=&pdev->dev;
     dummy_codec_pdata->device_init = &dummy_codec_device_init;
     dummy_codec_pdata->device_uninit = &dummy_codec_device_deinit;
-         
+
 		pdev->dev.platform_data = dummy_codec_pdata;
+		dummy_codec_snd_pdata = pdev->dev.platform_data;
 #endif
 
+#if 1
+    card->dev = &pdev->dev;
+		platform_set_drvdata(pdev, card);
+		snd_soc_card_set_drvdata(card, dummy_codec_pdata);
+		if (!(pdev->dev.of_node)) {
+			dev_err(&pdev->dev, "Must be instantiated using device tree\n");
+			ret = -EINVAL;
+			goto err;
+		}
+
+    ret = snd_soc_register_card(card);
+		if (ret) {
+			dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
+			ret);
+		goto err;
+	}
+
+#endif
+#if 0
     dummy_codec_snd_pdata = pdev->dev.platform_data;
     snd_BUG_ON(!dummy_codec_snd_pdata);
     dummy_codec_snd_device = platform_device_alloc("soc-audio", -1);
@@ -268,7 +290,7 @@ static int dummy_codec_audio_probe(struct platform_device *pdev)
         printk(KERN_ERR "ASoC: Platform device allocation failed\n");
         goto err_device_add;
     }
-
+#endif
 
     dummy_codec_dev_init();
 

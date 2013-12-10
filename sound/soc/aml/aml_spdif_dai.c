@@ -276,7 +276,9 @@ static int aml_dai_spdif_startup(struct snd_pcm_substream *substream,
 	s = &prtd->s; 
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		s->device_type = AML_AUDIO_SPDIFOUT;
+#ifdef CONFIG_ARCH_MESON8
 		audio_spdifout_pg_enable(1);
+#endif
 	}	
 	else{
 		s->device_type = AML_AUDIO_SPDIFIN;
@@ -296,7 +298,9 @@ static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
 		
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK){
 		memset((void*)runtime->dma_area,0,snd_pcm_lib_buffer_bytes(substream));
+#ifdef CONFIG_ARCH_MESON8
 		audio_spdifout_pg_enable(0);	
+#endif
 	}
 	
 }

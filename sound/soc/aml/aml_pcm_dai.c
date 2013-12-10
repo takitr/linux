@@ -62,7 +62,7 @@ static int aml_dai_pcm_prepare(struct snd_pcm_substream *substream,
 #ifdef AML_DAI_DEBUG
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 #endif
-#if 1
+//#if 1
     struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_pcm_runtime_data *prtd = runtime->private_data;
 
@@ -78,7 +78,7 @@ static int aml_dai_pcm_prepare(struct snd_pcm_substream *substream,
     prtd->buffer_offset = 0;
     prtd->data_size = 0;
     prtd->peroid_elapsed = 0;
-#endif
+//#endif
 	return 0;
 }
 

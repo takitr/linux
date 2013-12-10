@@ -437,17 +437,115 @@
 		pinctrl-0=<&remote_pins>;
 	};
 	
-	audio{
-		compatible = "amlogic,aml-audio";
-		dev_name = "aml-audio.0";
-	};
+	/// ***************************************************************************************
+/// -   Audio
+//$$ MODULE="Audio"
+//$$ DEVICE="audio_i2s"
+//$$ L2 PROP_STR = "status"
+    audio_platform{
+        compatible = "amlogic,aml-i2s";
+        dev_name = "aml-i2s.0";
+        status = "okay";
+    };
 
-	audio_dai{
-		compatible = "amlogic,aml-dai";
-		dev_name = "aml-dai.0";
-	};
+//$$ DEVICE="audio_i2s_dai"
+//$$ L2 PROP_STR = "status"
+    audio_dai{
+        compatible = "amlogic,aml-i2s-dai";
+        dev_name = "aml-i2s-dai.0";
+        status = "okay";
+    };
+    audio_spdif_dai{
+        compatible = "amlogic,aml-spdif-dai";
+        dev_name = "aml-spdif-dai.0";
+        status = "okay";
+    };
 
-	
+audio_spdif_codec{
+        compatible = "amlogic,aml-spdif-codec";
+        dev_name = "spdif-dit.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm2BT_codec"
+//$$ L2 PROP_STR = "status"
+    audio_pcm2BT_codec{
+        compatible = "amlogic,pcm2BT-codec";
+        dev_name = "pcm2bt.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm_dai"
+//$$ L2 PROP_STR = "status"
+    audio_pcm_dai{
+        compatible = "amlogic,aml-pcm-dai";
+        dev_name = "aml-pcm-dai.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm"
+//$$ L2 PROP_STR = "status"
+    audio_pcm{
+        compatible = "amlogic,aml-pcm";
+        dev_name = "aml-pcm.0";
+        status = "okay";
+    };
+    
+    wm8960_sound_card{
+        compatible = "sound_card,wm8960";
+        aml,sound_card = "AML-WM8960";
+        //aml,audio-codec = <&wm8960>;
+        aml,codec_dai = "wm8960-hifi";
+        aml,audio-routing =
+            "Ext Spk","SPK_LP",
+            "Ext Spk","SPK_LN",
+            "Ext Spk","SPK_RP",
+            "Ext Spk","SPK_RN",
+            "HP","HP_L",
+            "HP","HP_R",
+            "MICB","Mic",
+            "LINPUT1","MICB",
+            "LINPUT2","MICB",
+            "RINPUT1","MICB",
+            "RINPUT2","MICB";
+            
+        capless = <1>; 
+        dres = <2>; /*WM8960_DRES_600R*/
+        dis_hp_det = <0>;
+        pinctrl-names = "wm8960_audio";
+        pinctrl-0 = <&aml_i2s_pins &config_aml_hp_det_pins>;
+        wm8960_gpio = "GPIOA_19";
+        hp_det_inv;
+        status = "disabled";
+        
+    };
+
+    rt5631_sound_card{
+        compatible = "sound_card,rt5631";
+        aml,sound_card = "AML-RT5631";
+        //aml,audio-codec = <&rt5631>;
+        aml,codec_dai = "rt5631-hifi";
+        aml,audio-routing =
+            "Ext Spk", "SPOL",
+            "Ext Spk","SPOR",
+            "HP","HPOL",
+            "HP","HPOR",
+            "MIC1","MIC Bias1",
+            "MIC Bias1","MAIN MIC";
+        
+        /*dev_name = "aml_sound_card";*/
+        /*reg = <0 0>;*/
+        capless = <0>;
+        spk_watt = <0>;     /*RT5631_SPK_1_0W*/
+        spk_output = <2>;   /*RT5631_SPK_RIGHT*/
+        mic_input = <0>;    /*RT5631_MIC_DIFFERENTIAL*/
+        pinctrl-names = "rt5631_audio";
+        pinctrl-0 = <&aml_i2s_pins &config_aml_hp_det_pins>;
+        rt5631_gpio = "GPIOA_19";
+        hp_det_inv;
+        status = "disabled";
+    };
+
 	dummy_codec_audio{
         status = "okay";
         compatible = "amlogic,aml_dummy_codec_audio";

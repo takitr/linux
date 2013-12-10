@@ -506,7 +506,7 @@ void audio_util_set_dac_958_format(unsigned format)
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,3,4,2);// 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
 #else
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,1,4,2);// 958 divisor: 0=no div; 1=div by 2; 2=div by 3; 3=div by 4.
-#endif.
+#endif
 	WRITE_MPEG_REG_BITS(AIU_CLK_CTRL,1,1,1);// enable 958 clock
 }
 
@@ -1229,6 +1229,9 @@ unsigned int audio_hdmi_init_ready()
 {
 	return 	READ_MPEG_REG_BITS(AIU_HDMI_CLK_DATA_CTRL, 0, 2);
 }
+
+#ifdef CONFIG_ARCH_MESON8
+
 /* power gate control for iec958 audio out */
 unsigned audio_spdifout_pg_enable(unsigned char enable)
 {
@@ -1281,3 +1284,4 @@ unsigned audio_aiu_pg_enable(unsigned char enable)
         AUDIO_CLK_GATE_OFF(AIU_TOP_LEVEL);
 	}
 }
+#endif
