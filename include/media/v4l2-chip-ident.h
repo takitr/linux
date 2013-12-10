@@ -36,6 +36,11 @@ enum {
 	V4L2_IDENT_UNKNOWN   = 2,       /* Chip found, but cannot identify */
 
 
+
+    
+	/* SP0A19*/
+	V4L2_IDENT_SP0A19 =  19,
+
 	/* GT2005, 0x5138= 20792  */
 	V4L2_IDENT_GT2005 =  20,
 
