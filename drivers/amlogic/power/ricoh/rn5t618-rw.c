@@ -166,7 +166,7 @@ int rn5t618_set_bits(int addr, uint8_t bits, uint8_t mask)
 } 
 EXPORT_SYMBOL_GPL(rn5t618_set_bits); 
 
-int find_idx(uint32_t start, uint32_t target, uint32_t step, int size)
+static int find_idx(uint32_t start, uint32_t target, uint32_t step, int size)
 {
     int i = 0; 
 

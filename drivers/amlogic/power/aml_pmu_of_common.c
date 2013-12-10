@@ -44,8 +44,8 @@
             prop_name, value, value);                                   \
     }
 
-#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)        \
-    if (of_property_read_string(node, prop_name, &value)) {             \
+#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)                \
+    if (of_property_read_string(node, prop_name, (const char **)&value)) {      \
         DBG("failed to get property: %s\n", prop_name);                 \
         goto exception;                                                 \
     }                                                                   \

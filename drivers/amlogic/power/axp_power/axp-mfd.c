@@ -345,7 +345,7 @@ static void axp_mfd_irq_work(struct work_struct *work)
 	enable_irq(chip->client->irq);
 }
 
-#if 1
+#if 0
 static irqreturn_t axp_mfd_irq_handler(int irq, void *data)
 {
 	struct axp_mfd_chip *chip = data;
@@ -517,14 +517,14 @@ EXPORT_SYMBOL_GPL(axp_power_off);
             prop_name, value, value);                                   \
     }
 
-#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)        \
-    if (of_property_read_string(node, prop_name, &value)) {             \
-        DBG("failed to get property: %s\n", prop_name);                 \
-        goto exception;                                                 \
-    }                                                                   \
-    if (DEBUG_PARSE) {                                                  \
-        DBG("get property:%25s, value:%s\n",                            \
-            prop_name, value);                                          \
+#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)                \
+    if (of_property_read_string(node, prop_name, (const char **)&value)) {      \
+        DBG("failed to get property: %s\n", prop_name);                         \
+        goto exception;                                                         \
+    }                                                                           \
+    if (DEBUG_PARSE) {                                                          \
+        DBG("get property:%25s, value:%s\n",                                    \
+            prop_name, value);                                                  \
     }
 
 #define ALLOC_DEVICES(return_pointer, size, flag)                       \
@@ -616,11 +616,11 @@ setup2:
     return 0;
 }
 
-struct i2c_device_id* find_id_table_by_name(struct i2c_device_id *look_table, char *name)
+struct i2c_device_id *find_id_table_by_name(const struct i2c_device_id *look_table, char *name)
 {
     while (look_table->name && look_table->name[0]) {
         if (!strcmp(look_table->name, name)) {
-            return look_table;    
+            return (struct i2c_device_id *)look_table;    
         }
         look_table++;
     }
@@ -634,12 +634,11 @@ static int  axp_mfd_probe(struct i2c_client *client,
 #ifdef CONFIG_OF
     struct i2c_device_id *type;
     char   *sub_type = NULL;
-    int    idx; 
 #else
 	struct axp_platform_data *pdata = client->dev.platform_data;
 #endif
 	struct axp_mfd_chip *chip;
-	int ret;
+    int ret = 0;
 
 	chip = kzalloc(sizeof(struct axp_mfd_chip), GFP_KERNEL);
 	if (chip == NULL)

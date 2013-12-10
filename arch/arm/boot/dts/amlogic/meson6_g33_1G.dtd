@@ -312,13 +312,14 @@
             status = "okay";                                    /* status of pmu, only one should be OK */
         };
         aml1212{                                                /* PMU for AML1212, see comment above   */
-            compatible = "aml_pmu";
-            sub_type = "aml1212";
+            compatible = "amlogic_pmu";
+            sub_type = "aml1212-supplyer";
             i2c_bus = "i2c_bus_ao";
             reg = <0x35>;
             soft_limit_to99 = <0>;
             ddr_voltage   = <1500000>;
             vddao_voltage = <1200000>;
+            vbus_dcin_short_connect = <0>;
             board_battery = <&battery_parameter>;
             status = "disable";
         };
@@ -331,6 +332,7 @@
             ddr_voltage   = <1500000>;
             vddao_voltage = <1200000>;
             board_battery = <&battery_parameter>;
+            vbus_dcin_short_connect = <0>;
             status = "disable";
         };
     };

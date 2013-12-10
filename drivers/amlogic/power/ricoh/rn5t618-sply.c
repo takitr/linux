@@ -812,8 +812,6 @@ static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, vo
 
 static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
 {
-    int current_limit;
-
     switch (value) {
     case USB_BC_MODE_DISCONNECT:                                        // disconnect
     case USB_BC_MODE_SDP:                                               // pc
@@ -832,6 +830,7 @@ static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, v
     default:
         break;
     }
+    return 0;
 }
 
 /*
@@ -852,7 +851,6 @@ int printf_usage(void)
 
 static ssize_t pmu_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    uint8_t data;
     return printf_usage(); 
 }
 
@@ -1199,7 +1197,6 @@ static void check_chip_temperature(void)
         rn5t618_power_off();    
     }
 }
-#endif
 
 static void check_extern_power_voltage(struct aml_charger *charger)
 {
@@ -1250,6 +1247,7 @@ static void check_extern_power_voltage(struct aml_charger *charger)
         }
     }
 }
+#endif
 
 static void rn5t618_charging_monitor(struct work_struct *work)
 {
