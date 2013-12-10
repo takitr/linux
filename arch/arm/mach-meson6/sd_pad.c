@@ -1,6 +1,6 @@
 #include <mach/card_io.h>
-#include <linux/cardreader/card_block.h>
-#include <linux/cardreader/cardreader.h>
+#include <linux/amlogic/cardreader/card_block.h>
+#include <linux/amlogic/cardreader/cardreader.h>
 #include <plat/regops.h>
 #include <mach/pinmux.h>
 #include <linux/pinctrl/consumer.h>

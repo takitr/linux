@@ -135,8 +135,8 @@ void aml_sdio_prepare_dma(struct amlsd_host *host, struct mmc_request *mrq)
             mrq->cmd->opcode,
             host->bn_buf[0], host->bn_buf[1],
             host->bn_buf[2], host->bn_buf[3]);
-	}
-	host->dma_addr = host->bn_dma_buf;
+    }
+    // host->dma_addr = host->bn_dma_buf;
 }
 
 void aml_sdio_set_port_ios(struct mmc_host* mmc)
