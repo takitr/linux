@@ -316,18 +316,22 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
     u32 virqs = readl(host->base + SDIO_IRQS);
     u32 virqc = readl(host->base + SDIO_IRQC);
     u32 vconf = readl(host->base + SDIO_CONF);
+    u32 sdio_send = readl(host->base + SDIO_SEND);
+    u32 sdio_argu = readl(host->base + SDIO_ARGU);
     struct sdio_config* conf = (void*)&vconf;
     struct clk* clk_src = clk_get_sys("clk81", NULL);
     u32 clk_rate = clk_get_rate(clk_src)/2;
 
-    sdio_err("%s: %s, Cmd%d arg %08x Xfer %d Bytes, "
+    sdio_err("%s: %s, Cmd%d sdio_send=%#x, arg %#x, sdio_argu=%#x, Xfer %d Bytes, "
             "host->xfer_step=%d, host->cmd_is_stop=%d, pdata->port=%d, "
             "virqs=%#0x, virqc=%#0x, conf->cmd_clk_divide=%d, pdata->clkc=%d, "
             "conf->bus_width=%d, pdata->width=%d, conf=%#x, clock=%d\n",
             mmc_hostname(host->mmc),
             msg,
             host->mrq->cmd->opcode,
+            sdio_send,
             host->mrq->cmd->arg,
+            sdio_argu,
             host->mrq->data?host->mrq->data->blksz*host->mrq->data->blocks:0,
             host->xfer_step,
             host->cmd_is_stop,
@@ -338,7 +342,7 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
             conf->bus_width,
             pdata->width,
             vconf,
-            clk_rate / (pdata->clkc + 1));    
+            clk_rate / (conf->cmd_clk_divide + 1));    
 }
 
 /*setup delayed workstruct in aml_sdio_request*/
@@ -542,6 +546,7 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	if(mrq->data) {
         /*Copy data to dma buffer for write request*/
 		aml_sdio_prepare_dma(host, mrq);
+        writel(host->bn_dma_buf, host->base + SDIO_ADDR);
 
 		sdio_dbg(AMLSD_DBG_REQ ,"%s: blksz %d blocks %d flags %08x "
 			"tsac %d ms nsac %d\n",
@@ -569,23 +574,24 @@ void aml_sdio_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	schedule_delayed_work(&host->timeout, timeout);
 
     spin_lock_irqsave(&host->mrq_lock, flags);
+    if(host->xfer_step != XFER_FINISHED && host->xfer_step != XFER_INIT)
+        sdio_err("host->xfer_step %d\n", host->xfer_step);
 
     host->mrq = mrq;
 	host->mmc = mmc;
-	host->pdata = pdata;
     host->xfer_step = XFER_START;
     host->opcode = mrq->cmd->opcode;
     host->arg = mrq->cmd->arg;
 
-    if(mrq->data){
-		// sdio_dbg(AMLSD_DBG_REQ ,"%s: blksz %d blocks %d flags %08x "
-			// "tsac %d ms nsac %d\n",
-			// mmc_hostname(mmc), mrq->data->blksz,
-			// mrq->data->blocks, mrq->data->flags,
-			// mrq->data->timeout_ns / 1000000,
-			// mrq->data->timeout_clks);
-	    writel(host->bn_dma_buf, host->base + SDIO_ADDR);
-    }
+    // if(mrq->data){
+        // sdio_dbg(AMLSD_DBG_REQ ,"%s: blksz %d blocks %d flags %08x "
+            // "tsac %d ms nsac %d\n",
+            // mmc_hostname(mmc), mrq->data->blksz,
+            // mrq->data->blocks, mrq->data->flags,
+            // mrq->data->timeout_ns / 1000000,
+            // mrq->data->timeout_clks);
+        // writel(host->bn_dma_buf, host->base + SDIO_ADDR);
+    // }
 
     aml_sdio_start_cmd(mmc, mrq);
     host->xfer_step = XFER_AFTER_START;
@@ -888,6 +894,11 @@ static int aml_sdio_suspend(struct platform_device *pdev, pm_message_t state)
         if (ret)
             break;
 
+        // clear detect information when suspend
+        if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
+            aml_sd_uart_detect_clr(pdata);
+        }
+
         i++;
 	}
 
@@ -897,9 +908,12 @@ static int aml_sdio_suspend(struct platform_device *pdev, pm_message_t state)
             if (i < 0) {
                 break;
             }
-            // if(aml_card_type_sdio(pdata)) { // sdio_wifi
-                // wifi_setup_dt();
-            // }
+            if(aml_card_type_sdio(pdata)) { // sdio_wifi
+                wifi_setup_dt();
+            }
+            if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
+                aml_sd_uart_detect(pdata);
+            }
             mmc = pdata->mmc;
             mmc_resume_host(mmc);
         }
@@ -998,7 +1012,7 @@ static int aml_sdio_probe(struct platform_device *pdev)
 	struct amlsd_platform* pdata;
 	int ret = 0, i;
 
-    print_tmp("%s() begin!\n", __FUNCTION__);
+    // print_tmp("%s() begin!\n", __FUNCTION__);
 
     aml_mmc_ver_msg_show();
 
@@ -1097,19 +1111,23 @@ static int aml_sdio_probe(struct platform_device *pdev)
 		if(pdata->irq_in && pdata->irq_out){
 			pdata->irq_init(pdata);
 			ret = request_threaded_irq(pdata->irq_in+INT_GPIO_0,
-                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cd_thread,
+                    (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "mmc_in", (void*)pdata);
+            if (ret) {
+                sdio_err("Failed to request mmc IN detect\n");
+                goto probe_free_host;
+            }
             ret |= request_threaded_irq(pdata->irq_out+INT_GPIO_0,
-                    (irq_handler_t)aml_sdio_irq_cd, aml_irq_cd_thread,
+                    (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "mmc_out", (void*)pdata);
-			//ret = request_irq(pdata->irq_in+INT_GPIO_0, aml_sdio_irq_cd, IRQF_DISABLED, "mmc_in", pdata);
-			//ret |= request_irq(pdata->irq_out+INT_GPIO_0, aml_sdio_irq_cd, IRQF_DISABLED, "mmc_out", pdata);
-			if (ret) {
-				sdio_err("Failed to request mmc detect\n");
-				goto fail_cd_irq_in;
-			}
-		}
-	}
+            //ret = request_irq(pdata->irq_in+INT_GPIO_0, aml_sd_irq_cd, IRQF_DISABLED, "mmc_in", pdata);
+            //ret |= request_irq(pdata->irq_out+INT_GPIO_0, aml_sd_irq_cd, IRQF_DISABLED, "mmc_out", pdata);
+            if (ret) {
+                sdio_err("Failed to request mmc OUT detect\n");
+                goto fail_cd_irq_in;
+            }
+        }
+    }
 
     print_tmp("%s() success!\n", __FUNCTION__);
     platform_set_drvdata(pdev, host);

@@ -28,6 +28,13 @@ extern unsigned sdio_debug;
 #define AMLSD_DBG_IRQ		(1<<9)
 #define AMLSD_DBG_CLKC		(1<<10)
 
+#define     DETECT_CARD_IN          1
+#define     DETECT_CARD_OUT         2
+#define     DETECT_CARD_JTAG_IN     3
+#define     DETECT_CARD_JTAG_OUT    4
+void aml_sd_uart_detect (struct amlsd_platform* pdata);
+void aml_sd_uart_detect_clr (struct amlsd_platform* pdata);
+
 #define EMMC_DAT3_PINMUX_CLR    0
 #define EMMC_DAT3_PINMUX_SET    1
 
@@ -120,9 +127,10 @@ void of_amlsd_xfer_post(struct amlsd_platform* pdata);
 int of_amlsd_ro (struct amlsd_platform* pdata);
 
 void aml_sd_uart_detect (struct amlsd_platform* pdata);
-irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id);
+irqreturn_t aml_sd_irq_cd(int irq, void *dev_id);
 irqreturn_t aml_irq_cd_thread(int irq, void *data);
 void aml_sduart_pre (struct amlsd_platform* pdata);
+int aml_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq);
 
 void aml_cs_high (struct amlsd_platform * pdata); // chip select high
 void aml_cs_dont_care (struct amlsd_platform * pdata); // chip select don't care
