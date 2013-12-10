@@ -18,6 +18,7 @@
 #include <linux/syscalls.h>
 #include "aml_keys.h"
 #include <linux/amlogic/securitykey.h>
+#include <mach/cpu.h>
 #define key_schem_print(a...) printk(a)
 
 static char secure_device[PATH_MAX];
@@ -71,7 +72,16 @@ struct v3_key_storage_head{
 #define KEY_HEAD_MARK	"keyexist"
 struct v3_key_storage_head storage_head={
 	.mark=KEY_HEAD_MARK,
-	.version = 1,
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	.version = 2,	/* 	m8 version is 2,m8 version is 1
+					 *  version 2: key is encrypted with aml_keysafety_encrypt(aes)
+					 */
+#else
+	.version = 1,   /* version 1: key was encrypted with aml_key_encrypt(aes),
+					 * version 2: key is encrypted with aml_keysafety_encrypt(aes)
+					 * above two aes way is different, 
+					 */
+#endif
 };
 
 #pragma pack()
@@ -371,24 +381,9 @@ static int32_t hash_write(aml_key_t * key,uint32_t id, char * buf)
 		}
 	}
 	if(key_storage == NULL){
-		for(i=0;i<Keys_V4_MAX_COUNT;i++){
-			if(storage_v4[i].name[0] == 0){
-				key_storage = &storage_v4[i];
-				break;
-			}
-		}
-		if(key_storage == NULL){
-			printk("key count too much,%s:%d\n",__func__,__LINE__);
-			return -EINVAL;
-		}
-
-		printk("hash write ok,%s:%d\n",__func__,__LINE__);
-		strcpy(key_storage->name,key->name);
-		memcpy(key_storage->hash, buf, 34);
-		return 0;
+		printk("don't have valid key name,%s:%d\n",__func__,__LINE__);
+		return -EINVAL;
 	}
-	printk("hash write ok,%s:%d\n",__func__,__LINE__);
-	strcpy(key_storage->name,key->name);
 	memcpy(key_storage->hash, buf, 34);
 	return 0;
 }
@@ -666,6 +661,10 @@ static int32_t version3_init(aml_keys_schematic_t * schematic, char * secure_dev
         }
     }
 #endif
+	if(register_aes_algorithm(storage_head.version)<0){
+		printk("%s:%d, storage_head.version:%d register key encrypt algorithm fail\n",__func__,__LINE__,storage_head.version);
+		return -EINVAL;
+	}
     return 0;
 }
 static int32_t version3_inst(aml_keys_schematic_t * schematic, aml_install_key_t * key)

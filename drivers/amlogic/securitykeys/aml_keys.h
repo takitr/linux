@@ -61,7 +61,7 @@ struct aml_keys_schematic_s{
 #define  KEYDATATRUE 2
 
 int32_t aml_keys_register(int32_t version,aml_keys_schematic_t * schematic);
-
+int register_aes_algorithm(int storage_version);
 
 
 #define AML_KEY_READ        (1<<0)
