@@ -418,11 +418,11 @@
      // };
 	
 	meson-eth{
-		compatible = "amlogic,meson-eth";
-		dev_name = "meson-eth";
+                compatible = "amlogic,meson-eth";
+                dev_name = "meson-eth";
+                status = "okay";
 		ethbaseaddr = <0xf3610000>;
-		interruptsnum = <8>;
-		pinctrl-names="default";
+                interruptnum = <40>;
 	};
 
 	meson-remote{
