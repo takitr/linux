@@ -13,7 +13,7 @@ ifneq ($(KBUILD_SRC),)
 TOP_KBUILD_SRC := $(KBUILD_SRC)/
 endif
 
-MAKE_FOR_LIB := y
+MAKE_FOR_LIB := n
 ifeq ($(MAKE_FOR_LIB), n)
 $(obj)/aml_pmu_algorithm_lib:
 	@cp $(TOP_KBUILD_SRC)drivers/amlogic/power/aml_pmu_algorithm_lib.z \
