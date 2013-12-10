@@ -53,7 +53,7 @@
 #define HDMI_TX_COUNT 32
 #define HDMI_TX_POOL_NUM  6
 #define HDMI_TX_RESOURCE_NUM 4
-
+#define HDMI_TX_PWR_CTRL_NUM    6
 
 #ifdef DEBUG
 #define pr_dbg(fmt, args...) printk(KERN_DEBUG "amhdmitx: " fmt, ## args)
@@ -1481,7 +1481,7 @@ static int pwr_type_match(struct device_node *np, const char *str, int idx, stru
     int i = 0;
     int ret = 0;
     int gpio_val;
-    struct pwr_ctl_var (*var)[6] = (struct pwr_ctl_var (*)[6])pwr;
+    struct pwr_ctl_var (*var)[HDMI_TX_PWR_CTRL_NUM] = (struct pwr_ctl_var (*)[HDMI_TX_PWR_CTRL_NUM])pwr;
 
     const static char *pwr_types_id[] = {"none", "cpu", "axp202", NULL};     //match with dts file
     while(pwr_types_id[i]) {
@@ -1532,8 +1532,8 @@ static int get_dt_pwr_init_data(struct device_node *np, struct hdmi_pwr_ctl *pwr
         idx++;
     }
 #if 0
-    struct pwr_ctl_var (*var)[6] = (struct pwr_ctl_var (*)[6])pwr;
-    for(idx = 0; idx < 6; idx++) {
+    struct pwr_ctl_var (*var)[HDMI_TX_PWR_CTRL_NUM] = (struct pwr_ctl_var (*)[HDMI_TX_PWR_CTRL_NUM])pwr;
+    for(idx = 0; idx < HDMI_TX_PWR_CTRL_NUM; idx++) {
         printk("%d %d %d\n", var[idx]->type, var[idx]->var.gpo.pin, var[idx]->var.gpo.val);
         return 1;
     }
@@ -1687,7 +1687,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
             if(!init_data) {
                 printk("hdmitx: not find device node\n");
             }
-            hdmitx_device.config_data.pwr_ctl = kzalloc(sizeof(struct hdmi_pwr_ctl), GFP_KERNEL);
+            hdmitx_device.config_data.pwr_ctl = kzalloc((sizeof(struct hdmi_pwr_ctl)) * HDMI_TX_PWR_CTRL_NUM, GFP_KERNEL);
             if(!hdmitx_device.config_data.pwr_ctl) {
                 printk("hdmitx: can not get pwr_ctl mem\n");
             }
