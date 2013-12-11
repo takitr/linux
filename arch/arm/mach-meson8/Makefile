@@ -38,3 +38,10 @@ obj-$(CONFIG_MESON_SUSPEND) += power_suspend.o
 #ifneq ($(CONFIG_MESON_SUSPEND),y)
 #obj-$(CONFIG_SUSPEND) += sleep.o
 #endif
+
+# ARM Trustzone
+obj-$(CONFIG_MESON_TRUSTZONE) += meson-smc.o meson-secure.o
+ifeq ($(CONFIG_MESON_TRUSTZONE),y)
+plus_sec                      := $(call as-instr,.arch_extension sec,+sec)
+AFLAGS_meson-smc.o            := -Wa,-march=armv7-a$(plus_sec)
+endif

@@ -98,13 +98,18 @@ comment "GPU (ARM Mali)"
 #isource "drivers/amlogic/ump/Kconfig"
 #isource "drivers/amlogic/mali/Kconfig"
 #comment "GPU (ARM Mali (external))"
-source "../hardware/arm/gpu/ump/Kconfig"
-source "../hardware/arm/gpu/mali/Kconfig"
+isource "../hardware/arm/gpu/ump/Kconfig"
+isource "../hardware/arm/gpu/mali/Kconfig"
 source "drivers/amlogic/ion_dev/Kconfig"
 
 #
 # crypto
 #
 source "drivers/amlogic/crypto/Kconfig"
+
+#
+# TrustZone
+#
+source "drivers/amlogic/trustzone/Kconfig"
 
 endmenu

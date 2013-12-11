@@ -130,3 +130,5 @@ obj-$(CONFIG_MALI400) += ../../../hardware/arm/gpu/mali/
 obj-$(CONFIG_AMLOGIC_ION) += ion_dev/
 
 obj-y += crypto/
+
+obj-$(CONFIG_MESON_TRUSTZONE) += trustzone/
