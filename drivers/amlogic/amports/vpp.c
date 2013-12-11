@@ -736,6 +736,75 @@ vpp_set_filters(u32 wide_mode,
     vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
 }
 
+void 
+prot_get_parameter(u32 wide_mode,
+                vframe_t *vf,
+                vpp_frame_par_t *next_frame_par,
+                const vinfo_t *vinfo)
+{
+    u32 src_width = 0;
+    u32 src_height = 0;
+    u32 vpp_flags = 0;
+    u32 aspect_ratio = 0;
+
+    BUG_ON(vinfo == NULL);
+
+    next_frame_par->VPP_post_blend_vd_v_start_ = 0;
+    next_frame_par->VPP_post_blend_vd_h_start_ = 0;
+
+    next_frame_par->VPP_postproc_misc_ = 0x200;
+
+    /* check force ratio change flag in display buffer also
+     * if it exist then it will override the settings in display side
+     */
+    if (vf->ratio_control & DISP_RATIO_FORCECONFIG) {
+        if ((vf->ratio_control & DISP_RATIO_CTRL_MASK) == DISP_RATIO_KEEPRATIO) {
+            if (wide_mode == VIDEO_WIDEOPTION_FULL_STRETCH) {
+                wide_mode = VIDEO_WIDEOPTION_NORMAL;
+            }
+        }else {
+            if (wide_mode == VIDEO_WIDEOPTION_NORMAL) {
+                wide_mode = VIDEO_WIDEOPTION_FULL_STRETCH;
+            }
+        }
+        if (vf->ratio_control & DISP_RATIO_FORCE_NORMALWIDE)
+            wide_mode = VIDEO_WIDEOPTION_NORMAL;
+        else if (vf->ratio_control & DISP_RATIO_FORCE_FULL_STRETCH)
+            wide_mode = VIDEO_WIDEOPTION_FULL_STRETCH;
+    }
+
+    aspect_ratio = (vf->ratio_control & DISP_RATIO_ASPECT_RATIO_MASK)
+                   >> DISP_RATIO_ASPECT_RATIO_BIT;
+
+    if (vf->type & VIDTYPE_INTERLACE) {
+        vpp_flags = VPP_FLAG_INTERLACE_IN;
+    }
+
+    if(vf->ratio_control & DISP_RATIO_PORTRAIT_MODE){
+        vpp_flags |= VPP_FLAG_PORTRAIT_MODE;
+    }
+
+    if(vf->type & VIDTYPE_VSCALE_DISABLE){
+        vpp_flags |= VPP_FLAG_VSCALE_DISABLE;
+    }
+
+    src_width = vf->width;
+    src_height = vf->height;
+
+    vpp_wide_mode = wide_mode;
+    vpp_flags |= wide_mode | (aspect_ratio << VPP_FLAG_AR_BITS);
+
+    if (vinfo->field_height != vinfo->height) {
+        vpp_flags |= VPP_FLAG_INTERLACE_OUT;
+    }
+
+    next_frame_par->VPP_post_blend_vd_v_end_ = vinfo->field_height - 1;
+    next_frame_par->VPP_post_blend_vd_h_end_ = vinfo->width - 1;
+    next_frame_par->VPP_post_blend_h_size_ = vinfo->width;
+
+    vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
+}
+
 void vpp_set_osd_layer_preblend(u32 *enable)
 {
 	osd_layer_preblend=*enable;

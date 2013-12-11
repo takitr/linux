@@ -25,6 +25,10 @@ typedef struct {
     u32 video_started;
     u32 viu_type;
     u32 power_down;
+    u32 power_on;
+    u32 use_prot;
+    u32 x_start;
+    u32 y_start;
     u32 x_end;
     u32 y_end;
     u32 y_step;
@@ -44,7 +48,7 @@ void video_prot_set_angle(video_prot_t* video_prot, u32 angle);
 void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf);
 void video_prot_set_canvas(vframe_t *vf);
 void video_prot_reset(video_prot_t* video_prot);
-int get_prot_on(void);
 u32 get_video_angle(void);
 void set_video_angle(u32 s_value);
+void video_prot_axis (video_prot_t* video_prot, u32 video_angle, u32 hd_start, u32 hd_end, u32 vd_start, u32 vd_end);
 #endif
