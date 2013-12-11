@@ -67,7 +67,6 @@ int clk_enable_usb(struct clk *clk)
 
 	clk_name = (char*)clk->priv;
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6
-       printk("clk_enable_usb3*********\n");
 	switch_mod_gate_by_name(clk_name, 1);
 #endif
 	peri_a = (usb_peri_reg_t *)P_USB_ADDR0;

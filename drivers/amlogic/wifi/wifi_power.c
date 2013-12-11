@@ -308,6 +308,7 @@ static int wifi_power_probe(struct platform_device *pdev)
 	        printk("wifi_power power_gpio is %d\n",pdata->power_gpio);
 	        //ret = amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
 	        //mcli pdata->usb_set_power(0);    //power on   
+	        pdata->usb_set_power(1);    //power on   
 	     }
 	}
     pdev->dev.platform_data = pdata;
