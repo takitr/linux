@@ -389,8 +389,13 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	if (tr->part_bits)
 		if (new->devnum < 26)
+	#if 1
 			snprintf(gd->disk_name, sizeof(gd->disk_name),
+			 "%s", tr->name);
+#else
+		snprintf(gd->disk_name, sizeof(gd->disk_name),
 				 "%s%c", tr->name, 'a' + new->devnum);
+#endif
 		else
 			snprintf(gd->disk_name, sizeof(gd->disk_name),
 				 "%s%c%c", tr->name,

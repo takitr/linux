@@ -44,8 +44,8 @@ extern  void m3_nand_boot_erase_cmd(struct mtd_info *mtd, int page);
 
 #define NAND_MFR_INTEL		0x89
 #define NAND_MFR_SANDISK		0x45 
-static DEFINE_SPINLOCK(pinmux_set_lock);
-
+//static DEFINE_SPINLOCK(pinmux_set_lock);
+/*
 static char *aml_nand_bch_string[]={
 	"NAND_SOFT_MODE",
 	"NAND_BCH9_MODE",
@@ -63,7 +63,7 @@ static char *aml_nand_internal_string[]={
 	"NAND_NONE_INTERLEAVING_MODE",
 	"NAND_INTERLEAVING_MODE",
 };
-
+*/
 static struct nand_ecclayout aml_nand_oob_64 = {
 	.eccbytes = 60,
 	.eccpos = {
@@ -494,7 +494,7 @@ void aml_nand_set_readretry_default_value_hynix(struct mtd_info *mtd)
 {
 	unsigned char hynix_reg_read_value_tmp[READ_RETRY_REG_NUM];	
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	struct nand_chip *chip = mtd->priv;
+	//struct nand_chip *chip = mtd->priv;
 	int i;
 
 	if((aml_chip->new_nand_info.type == 0) ||(aml_chip->new_nand_info.type > 10))
@@ -516,7 +516,7 @@ void aml_nand_enter_enslc_mode_hynix(struct mtd_info *mtd)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	unsigned char hynix_reg_program_value_tmp[ENHANCE_SLC_REG_NUM];	
-	struct nand_chip *chip = mtd->priv;
+//	struct nand_chip *chip = mtd->priv;
 	int i, j;
 
 	if((aml_chip->new_nand_info.type == 0) ||(aml_chip->new_nand_info.type > 10))
@@ -543,7 +543,7 @@ void aml_nand_enter_enslc_mode_hynix(struct mtd_info *mtd)
 void aml_nand_exit_enslc_mode_hynix(struct mtd_info *mtd)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	struct nand_chip *chip = mtd->priv;
+	//struct nand_chip *chip = mtd->priv;
 	int i;
 
 	if((aml_chip->new_nand_info.type == 0) ||(aml_chip->new_nand_info.type > 10))
@@ -602,7 +602,7 @@ void aml_nand_read_retry_handle_hynix(struct mtd_info *mtd, int chipnr)
 void aml_nand_read_retry_exit_hynix(struct mtd_info *mtd, int chipnr)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	struct nand_chip *chip = mtd->priv;
+//	struct nand_chip *chip = mtd->priv;
 	int i;
 
 	if((aml_chip->new_nand_info.type == 0) ||(aml_chip->new_nand_info.type > 10))
@@ -624,7 +624,7 @@ void aml_nand_read_retry_exit_hynix(struct mtd_info *mtd, int chipnr)
 
 void aml_nand_get_slc_default_value_hynix(struct mtd_info *mtd)
 {
-	struct nand_chip *chip = mtd->priv;
+	//struct nand_chip *chip = mtd->priv;
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int i;
 	
@@ -961,11 +961,10 @@ void aml_nand_read_retry_exit_micron(struct mtd_info *mtd, int chipnr)
 {
 	
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-
+	int default_val = 0;
 	if(aml_chip->new_nand_info.type != MICRON_20NM)
 		return;
 
-	int default_val = 0;
 	
 	aml_nand_debug("micron retry cnt :%d\n",aml_chip->new_nand_info.read_rety_info.cur_cnt[chipnr]);
 	aml_nand_set_reg_value_micron(aml_chip, &default_val,
@@ -1233,7 +1232,7 @@ void aml_nand_set_toggle_mode_toshiba(struct mtd_info *mtd, int chipnr)
 void aml_nand_debug_toggle_flash(struct mtd_info *mtd, int chipnr)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	struct aml_nand_platform *plat = aml_chip->platform;
+//	struct aml_nand_platform *plat = aml_chip->platform;
 	
      if(aml_chip->mfr_type == NAND_MFR_TOSHIBA){
 
@@ -1412,7 +1411,7 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 
 	int nr, i, error = 0, part_save_in_env = 1, file_system_part = 0, phys_erase_shift;
 	u8 part_num = 0;
-	uint64_t erase_length;
+	uint64_t erase_length =0;
 	size_t offset;
 	uint64_t mini_part_size = ((mtd->erasesize > NAND_MINI_PART_SIZE) ? mtd->erasesize : NAND_MINI_PART_SIZE);
 
@@ -1559,7 +1558,7 @@ static int aml_nand_add_partition(struct aml_nand_chip *aml_chip)
 
 static void aml_nand_select_chip(struct mtd_info *mtd, int chipnr)
 {
-	int i;
+	//int i;
 	int retry;
 	DECLARE_WAITQUEUE(nand_wait, current);
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
@@ -1756,7 +1755,7 @@ static int aml_nand_dev_ready(struct mtd_info *mtd)
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	return NFC_GET_RB_STATUS(aml_chip->rb_received);
 		}
-
+#if 0
 static int aml_nand_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
@@ -1768,7 +1767,7 @@ static int aml_nand_verify_buf(struct mtd_info *mtd, const uint8_t *buf, int len
 
 	return 0;
 	}
-
+#endif
 static void aml_nand_cmd_ctrl(struct mtd_info *mtd, int cmd,  unsigned int ctrl)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
@@ -2884,7 +2883,7 @@ exit:
 	return 0;
 }
 
-static int aml_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t *buf, int oob_required,int page, int cached, int raw)
+static int aml_nand_write_page(struct mtd_info *mtd, struct nand_chip *chip,uint32_t offset, int data_len,const uint8_t *buf, int oob_required,int page, int cached, int raw)
 {
 	int status;
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
@@ -4821,7 +4820,7 @@ exit:
 static int aml_nand_save_env(struct mtd_info *mtd, u_char *buf)
 {
 	struct aml_nand_bbt_info *nand_bbt_info;
-	struct env_free_node_t *env_free_node, *env_tmp_node;
+	struct env_free_node_t *env_free_node =NULL, *env_tmp_node=NULL;
 	int error = 0, pages_per_blk, i = 1;
 	loff_t addr = 0;
 	//struct erase_info aml_env_erase_info;
@@ -4937,7 +4936,7 @@ static int aml_nand_env_init(struct mtd_info *mtd)
 	struct env_free_node_t *env_free_node, *env_tmp_node, *env_prev_node;
 	int error = 0, err, start_blk, total_blk, env_blk, i, j, pages_per_blk, bad_blk_cnt = 0, max_env_blk, phys_erase_shift;
 	loff_t offset;
-	unsigned char *data_buf;
+	unsigned char *data_buf =NULL;
 	//struct mtd_oob_ops aml_oob_ops;
 	
 	struct mtd_oob_ops  *aml_oob_ops; 
@@ -5212,7 +5211,7 @@ static int aml_nand_env_check(struct mtd_info *mtd)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	struct aml_nand_platform *plat = aml_chip->platform;
-	struct platform_nand_chip *chip = &plat->platform_nand_data.chip;
+	//struct platform_nand_chip *chip = &plat->platform_nand_data.chip;
 	struct aml_nand_bbt_info *nand_bbt_info;
 	struct aml_nand_part_info *aml_nand_part;
 	struct mtd_partition *parts;

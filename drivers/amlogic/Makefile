@@ -33,7 +33,8 @@ obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
-ifeq ($(CONFIG_AML_NEXT_GEN_NAND),y)
+#ifeq ($(CONFIG_AML_NEXT_GEN_NAND),y)
+ifeq  ($(CONFIG_ARCH_MESON8),y)
 obj-$(CONFIG_AML_NEXT_GEN_NAND) += amlnf/
 else
 obj-$(CONFIG_AM_NAND) += nand/

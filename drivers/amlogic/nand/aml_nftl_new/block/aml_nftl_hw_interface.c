@@ -65,6 +65,9 @@ int nand_read_page(struct aml_nftl_part_t *part,_physic_op_par *p)
 	len = mtd->writesize;
 	aml_oob_ops.mode = MTD_OPS_AUTO_OOB;
 	aml_oob_ops.len = mtd->writesize;
+	if(mtd->writesize <4096)
+	aml_oob_ops.ooblen = 8;	
+	else	
 	aml_oob_ops.ooblen = BYTES_OF_USER_PER_PAGE;
 	aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
 	aml_oob_ops.datbuf = p->main_data_addr;
@@ -114,6 +117,9 @@ int nand_write_page(struct aml_nftl_part_t *part,_physic_op_par *p)
 	len = mtd->writesize;
 	aml_oob_ops.mode = MTD_OPS_AUTO_OOB;
 	aml_oob_ops.len = mtd->writesize;
+	if(mtd->writesize <4096)
+	aml_oob_ops.ooblen = 8;	
+	else	
 	aml_oob_ops.ooblen = BYTES_OF_USER_PER_PAGE;
 	aml_oob_ops.ooboffs = mtd->ecclayout->oobfree[0].offset;
 	aml_oob_ops.datbuf = p->main_data_addr;

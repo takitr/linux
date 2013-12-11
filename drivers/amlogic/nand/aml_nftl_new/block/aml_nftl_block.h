@@ -30,7 +30,7 @@
 
 #pragma pack(1)
 
-extern struct aml_nftl_part_t;
+
 
 struct aml_nftl_blk_t;
 
@@ -44,10 +44,12 @@ struct aml_nftl_blk_t{
 	struct scatterlist*     bounce_sg;
 	unsigned int		    bounce_sg_len;
 	unsigned long		    time;
+	unsigned long		    time_flush;
 	unsigned int		    reboot_flag;
 	struct task_struct*		nftl_thread;
 	struct aml_nftl_part_t* aml_nftl_part;
 	struct mutex*           aml_nftl_lock;
+	struct aml_nftl_blk_t*  nftl_blk_next;
 
 	struct notifier_block   nb;
 //	struct timespec      	ts_write_start;
