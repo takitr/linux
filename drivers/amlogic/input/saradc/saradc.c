@@ -45,7 +45,9 @@ static void saradc_reset(void)
 	set_clock_divider(20);
 	enable_clock();
 	enable_adc();
+#ifdef CONFIG_ARCH_MESON8
 	enable_bandgap();
+#endif	
 	set_sample_mode(DIFF_MODE);
 	set_tempsen(0);
 	disable_fifo_irq();
@@ -146,7 +148,7 @@ int get_adc_sample(int chan)
 	int value=-1;
 	int sum;
 	int changed;
-	unsigned int flags;
+	unsigned long flags;
 	if (!gp_saradc)
 		return -1;
 	
@@ -302,7 +304,7 @@ static ssize_t saradc_print_flag_store(struct class *cla, struct class_attribute
 #ifndef CONFIG_MESON_CPU_TEMP_SENSOR
 static ssize_t saradc_temperature_store(struct class *cla, struct class_attribute *attr, const char *buf, size_t count)
 {
-    int ret;
+//    int ret;
 		u8 tempsen;
 		sscanf(buf, "%d", (int*)&tempsen);
 		if (tempsen) {
