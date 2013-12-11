@@ -417,6 +417,7 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
     
     printk(KERN_DEBUG "enter %s \n", __func__);
     p_aml_audio = snd_soc_card_get_drvdata(card);
+    
     ret = snd_soc_add_card_controls(codec->card, aml_m8_controls,
                 ARRAY_SIZE(aml_m8_controls));
     if (ret)
@@ -427,6 +428,23 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
                   ARRAY_SIZE(aml_asoc_dapm_widgets));
     if (ret)
         return ret;
+    
+#if HP_DET
+
+    p_aml_audio->sdev.name = "h2w";//for report headphone to android
+    ret = switch_dev_register(&p_aml_audio->sdev);
+    if (ret < 0){
+        printk(KERN_ERR "ASoC: register hp switch dev failed\n");
+        return ret;
+    }
+
+    p_aml_audio->mic_sdev.name = "mic_dev";//for micphone detect
+    ret = switch_dev_register(&p_aml_audio->mic_sdev);
+    if (ret < 0){
+        printk(KERN_ERR "ASoC: register mic switch dev failed\n");
+        return ret;
+    }
+
     ret = snd_soc_jack_new(codec, "hp switch", SND_JACK_HEADPHONE, &p_aml_audio->jack);
     if (ret < 0) {
         printk(KERN_WARNING "Failed to alloc resource for hp switch\n");
@@ -437,7 +455,6 @@ static int aml_asoc_init(struct snd_soc_pcm_runtime *rtd)
         }
     }
 
-#if HP_DET
     p_aml_audio->mic_det = of_property_read_bool(card->dev->of_node,"mic_det");
 
     printk("entern %s : mic_det=%d \n",__func__,p_aml_audio->mic_det);
@@ -614,19 +631,6 @@ static int aml_m8_audio_probe(struct platform_device *pdev)
 
     aml_m8_pinmux_init(card);
 
-    p_aml_audio->sdev.name = "h2w";//for report headphone to android
-    ret = switch_dev_register(&p_aml_audio->sdev);
-    if (ret < 0){
-        printk(KERN_ERR "ASoC: register hp switch dev failed\n");
-        goto err;
-    }
-
-    p_aml_audio->mic_sdev.name = "mic_dev";//for micphone detect
-    ret = switch_dev_register(&p_aml_audio->mic_sdev);
-    if (ret < 0){
-        printk(KERN_ERR "ASoC: register mic switch dev failed\n");
-        goto err;
-    }
 
     return 0;
 #endif
