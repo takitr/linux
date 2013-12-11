@@ -65,13 +65,25 @@
         #address-cells = <0>;
     };
 
+/// ***************************************************************************************
+///	-	ION
+//$$ MODULE="ION"
+//$$ DEVICE="ion_dev"
+//$$ L2 PROP_STR = "status"
+    ion_dev{
+        compatible = "amlogic,ion_dev";
+        dev_name = "ion_dev";
+        status = "ok";
+//        reg = <0x18200000 0x03000000>;
+    };
+    
 	mesonfb{
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		reg = <0x84100000 0x01000000
 	   	 		0x85100000 0x00100000>;
-	  vmode = <0>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
-	  display_size_default = <1280 1080 1280 2160 32>;
+	  vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
+	  display_size_default = <1920 1080 1920 2160 32>;
 	};
 				
 	mesonstream{
