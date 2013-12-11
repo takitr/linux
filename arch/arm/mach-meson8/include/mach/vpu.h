@@ -44,4 +44,5 @@ extern int request_vpu_clk_vmod(unsigned int vclk, unsigned int vmod);
 extern int release_vpu_clk_vmod(unsigned int vmod);
 
 extern void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag);
+extern int get_vpu_mem_pd_vmod(unsigned int vmod);
 #endif

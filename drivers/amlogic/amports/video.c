@@ -231,6 +231,19 @@ static u32 next_peek_underflow;
          } \
     } while (0)
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+#define DisableVideoLayer_NoDelay() \
+    do { \
+         VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, \
+           VSYNC_RD_MPEG_REG(VPP_MISC + cur_dev->vpp_off) & ~(VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND)); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("DisableVideoLayer_NoDelay()\n"); \
+         } \
+    } while (0)
+#else
+#define DisableVideoLayer_NoDelay() DisableVideoLayer()
+#endif
+
 #define DisableVideoLayer2() \
     do { \
          VSYNC_WR_MPEG_REG(VPP_MISC + cur_dev->vpp_off, \
@@ -308,6 +321,15 @@ static int cur_dev_idx = 0;
 typedef struct {
     int event;
     u32 vpp_misc;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    int mem_pd_vd1;
+    int mem_pd_vd2;
+    int mem_pd_di_post;
+#ifdef USE_PROT
+    int mem_pd_prot2;
+    int mem_pd_prot3;
+#endif
+#endif
 } video_pm_state_t;
 
 static video_pm_state_t pm_state;
@@ -4030,8 +4052,30 @@ static int amvideo_class_suspend(struct device *dev, pm_message_t state)
 
     if (state.event == PM_EVENT_SUSPEND) {
         pm_state.vpp_misc = READ_VCBUS_REG(VPP_MISC + cur_dev->vpp_off);
-        DisableVideoLayer();
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        pm_state.mem_pd_vd1 = get_vpu_mem_pd_vmod(VPU_VIU_VD1);
+        pm_state.mem_pd_vd2 = get_vpu_mem_pd_vmod(VPU_VIU_VD2);
+        pm_state.mem_pd_di_post = get_vpu_mem_pd_vmod(VPU_DI_POST);
+#ifdef USE_PROT
+        pm_state.mem_pd_prot2 = get_vpu_mem_pd_vmod(VPU_PIC_ROT2);
+        pm_state.mem_pd_prot3 = get_vpu_mem_pd_vmod(VPU_PIC_ROT3);
+#endif
+#endif
+
+        DisableVideoLayer_NoDelay();
         msleep(50);
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN);
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN);
+        switch_vpu_mem_pd_vmod(VPU_DI_POST, VPU_MEM_POWER_DOWN);
+#ifdef USE_PROT
+        switch_vpu_mem_pd_vmod(VPU_PIC_ROT2, VPU_MEM_POWER_DOWN);
+        switch_vpu_mem_pd_vmod(VPU_PIC_ROT3, VPU_MEM_POWER_DOWN);
+#endif
+
+        vpu_delay_work_flag = 0;
+#endif
     }
 
     return 0;
@@ -4047,11 +4091,20 @@ extern int power_key_pressed;
 static int amvideo_class_resume(struct device *dev)
 {
     if (pm_state.event == PM_EVENT_SUSPEND) {
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD1, pm_state.mem_pd_vd1);
+        switch_vpu_mem_pd_vmod(VPU_VIU_VD2, pm_state.mem_pd_vd2);
+        switch_vpu_mem_pd_vmod(VPU_DI_POST, pm_state.mem_pd_di_post);
+#ifdef USE_PROT
+        switch_vpu_mem_pd_vmod(VPU_PIC_ROT2, pm_state.mem_pd_prot2);
+        switch_vpu_mem_pd_vmod(VPU_PIC_ROT3, pm_state.mem_pd_prot3);
+#endif
+#endif
         WRITE_VCBUS_REG(VPP_MISC + cur_dev->vpp_off, pm_state.vpp_misc);
         pm_state.event = -1;
-         if(debug_flag& DEBUG_FLAG_BLACKOUT){  
-            printk("%s write(VPP_MISC,%x)\n",__func__, pm_state.vpp_misc); 
-         } 
+        if(debug_flag& DEBUG_FLAG_BLACKOUT){
+            printk("%s write(VPP_MISC,%x)\n",__func__, pm_state.vpp_misc);
+        }
     }
 
 #ifdef CONFIG_SCREEN_ON_EARLY

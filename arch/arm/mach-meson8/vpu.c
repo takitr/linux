@@ -508,6 +508,30 @@ void switch_vpu_mem_pd_vmod(unsigned int vmod, int flag)
 }
 //***********************************************//
 
+int get_vpu_mem_pd_vmod(unsigned int vmod)
+{
+	unsigned vpu_mod;
+	unsigned vpu_mem_bit = 0;
+
+	vpu_mod = get_vpu_mod(vmod);
+
+	if ((vpu_mod >= VPU_MOD_START) && (vpu_mod <= VPU_DI_POST)) {
+		vpu_mem_bit = (vpu_mod - VPU_MOD_START) * 2;
+		return (aml_get_reg32_bits(P_HHI_VPU_MEM_PD_REG0, vpu_mem_bit, 2) == 0) ? VPU_MEM_POWER_ON : VPU_MEM_POWER_DOWN;
+	}
+	else if ((vpu_mod >= VPU_VIU2_OSD1) && (vpu_mod <= VPU_VIU2_OSD_SCALE)) {
+		vpu_mem_bit = (vpu_mod - VPU_VIU2_OSD1) * 2;
+		return (aml_get_reg32_bits(P_HHI_VPU_MEM_PD_REG1, vpu_mem_bit, 2) == 0) ? VPU_MEM_POWER_ON : VPU_MEM_POWER_DOWN;
+	}
+	else if ((vpu_mod >= VPU_VENCP) && (vpu_mod < VPU_MAX)) {
+		vpu_mem_bit = (vpu_mod - VPU_VENCP + 10) * 2;
+		return (aml_get_reg32_bits(P_HHI_VPU_MEM_PD_REG1, vpu_mem_bit, 2) == 0) ? VPU_MEM_POWER_ON : VPU_MEM_POWER_DOWN;
+	}
+	else {
+		return -1;
+	}
+}
+
 //***********************************************//
 //VPU sysfs function
 //***********************************************//
