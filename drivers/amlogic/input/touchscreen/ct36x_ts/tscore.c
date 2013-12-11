@@ -161,7 +161,7 @@ static ssize_t ct36x_ts_write(struct file *file, const char __user *buffer, size
 
 static ssize_t ct36x_ts_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
-	int err = -1;
+//	int err = -1;
 	
 	if ( CT36X_TS_CORE_DEBUG ) {
 	printk(">>>>> %s() called <<<<< \n", __FUNCTION__);
@@ -307,18 +307,18 @@ static void ct36x_ts_workfunc(struct work_struct *work)
 
 }
 
-static void ct36x_ts_adapter(int state)
-{
-	if ( CT36X_TS_CORE_DEBUG )
-	printk(">>>>> %s() called <<<<< \n", __FUNCTION__);
-
-	if ( ct36x_ts.state == CT36X_STATE_NORMAL ) {
-		if ( state )
-		ct36x_chip_set_adapter_on(ct36x_ts.client, ct36x_ts.data.buf);
-		else
-		ct36x_chip_set_adapter_off(ct36x_ts.client, ct36x_ts.data.buf);
-	}
-}
+//static void ct36x_ts_adapter(int state)
+//{
+//	if ( CT36X_TS_CORE_DEBUG )
+//	printk(">>>>> %s() called <<<<< \n", __FUNCTION__);
+//
+//	if ( ct36x_ts.state == CT36X_STATE_NORMAL ) {
+//		if ( state )
+//		ct36x_chip_set_adapter_on(ct36x_ts.client, ct36x_ts.data.buf);
+//		else
+//		ct36x_chip_set_adapter_off(ct36x_ts.client, ct36x_ts.data.buf);
+//	}
+//}
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void ct36x_early_suspend(struct early_suspend *handler)
@@ -349,7 +349,7 @@ static void ct36x_early_resume(struct early_suspend *handler)
 int ct36x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int err = -1;
-	int binchksum, fwchksum;
+	int binchksum;
 	int updcnt;
 	struct ct36x_ts_info *ts;
 	struct device *dev;
@@ -431,7 +431,7 @@ int ct36x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	updcnt = 5;
 	while (updcnt--) {
-		if (ct36x_test_read(client, client->addr, &binchksum, 1) == 1) 
+		if (ct36x_test_read(client, client->addr, (char *)&binchksum, 1) == 1) 
 			break;
 	}
 	if (updcnt <= 0) {

@@ -179,7 +179,7 @@ static int ct36x_chip_write_firmware(struct i2c_client *client, unsigned char *b
 static int ct36x_chip_read_infoblk(struct i2c_client *client)
 {
 	unsigned char buf[20] = {0};
-	unsigned char i;
+//	unsigned char i;
 	if ( CT36X_TS_CHIP_DEBUG )
 	printk(">>>>> %s() called <<<<< \n", __FUNCTION__);
 
@@ -233,7 +233,7 @@ static int ct36x_chip_write_infoblk(struct i2c_client *client)
 {
 	//int ret = -1;
 	unsigned char buf[20]={0};
-	int sec, cod;
+	int cod;
 	unsigned int flash_addr;
 
 	if ( CT36X_TS_CHIP_DEBUG )
@@ -480,7 +480,7 @@ void ct36x_upgrade_touch(void)
 
 	while (offset < file_size) {
     touch_read_fw(offset, READ_COUNT, &tmp[0]);
-    i_ret = sscanf(&tmp[0],"0x%x,",binary_data + count);
+    i_ret = sscanf(&tmp[0],"0x%x,",(int *)(binary_data + count));
     if (i_ret == 1) {
 			count++;
 		}
@@ -536,7 +536,7 @@ void ct36x_upgrade_touch(void)
 	}
 }
 #ifdef LATE_UPGRADE
-void ct36x_late_upgrade(void)
+int ct36x_late_upgrade(void *p)
 {
 	int file_size;
 //	static int count;
@@ -555,7 +555,8 @@ void ct36x_late_upgrade(void)
 	ct36x_check_trim(ct36x_ts.client);
 #endif
 	enable_irq(ct36x_ts.irq);
-	do_exit(0);
+	//do_exit(0);
+	return 0;
 }
 #endif
 void ct36x_read_version(char* ver)

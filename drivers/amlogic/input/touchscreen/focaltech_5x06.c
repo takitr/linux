@@ -230,7 +230,7 @@ static int ft5x0x_read_reg(u8 addr, u8 *pdata)
 	int ret;
 	u8 buf[2] = {0};
 
-	buf[0] = addr;
+
 	struct i2c_msg msgs[] = {
 		{
 			.addr	= this_client->addr,
@@ -245,7 +245,7 @@ static int ft5x0x_read_reg(u8 addr, u8 *pdata)
 			.buf	= buf,
 		},
 	};
-
+	buf[0] = addr;
     //msleep(1);
 	ret = i2c_transfer(this_client->adapter, msgs, 2);
 	if (ret < 0)
@@ -317,42 +317,42 @@ Input	:	fw
 Output	:
 function	:	read fw size
 ***********************************************************************************************/
-static int touch_read_fw_Size(char *fw)
-{
-	char tmp[5];
-	int file_size, i, count=0;
-	u8 size[4];
-
-	file_size = touch_open_fw(fw);
-	if(file_size < 0)
-	{
-		printk("%s: no fw file\n", ts_com->owner);
-		return -1;
-	}
-
-	for (i=0; i<50; i++) {
-		touch_read_fw(file_size-5-i, 5, &tmp[0]);
-		if(sscanf(&tmp[0],"0x%c%c,",&size[0],&size[1]) == 2) {
-			count++;
-		}
-		if (count == 7) {
-			if (size[1] == ',')
-				sscanf(&tmp[0],"0x%x, ", (uint *)&size[3]);
-		   else
-				sscanf(&tmp[0],"0x%x,", (uint *)&size[3]);
-		}
-		if (count == 8) {
-			if (size[1] == ',')
-				sscanf(&tmp[0],"0x%x, ", (uint *)&size[4]);
-		   else
-				sscanf(&tmp[0],"0x%x,", (uint *)&size[4]);
-		}
-
-	}
-	touch_close_fw();
-	//printk("FWSize: 0x%x\n", size[4]<<8 | size[3]);
-	return size[4]<<8 | size[3];
-}
+//static int touch_read_fw_Size(char *fw)
+//{
+//	char tmp[5];
+//	int file_size, i, count=0;
+//	u8 size[4];
+//
+//	file_size = touch_open_fw(fw);
+//	if(file_size < 0)
+//	{
+//		printk("%s: no fw file\n", ts_com->owner);
+//		return -1;
+//	}
+//
+//	for (i=0; i<50; i++) {
+//		touch_read_fw(file_size-5-i, 5, &tmp[0]);
+//		if(sscanf(&tmp[0],"0x%c%c,",&size[0],&size[1]) == 2) {
+//			count++;
+//		}
+//		if (count == 7) {
+//			if (size[1] == ',')
+//				sscanf(&tmp[0],"0x%x, ", (uint *)&size[3]);
+//		   else
+//				sscanf(&tmp[0],"0x%x,", (uint *)&size[3]);
+//		}
+//		if (count == 8) {
+//			if (size[1] == ',')
+//				sscanf(&tmp[0],"0x%x, ", (uint *)&size[4]);
+//		   else
+//				sscanf(&tmp[0],"0x%x,", (uint *)&size[4]);
+//		}
+//
+//	}
+//	touch_close_fw();
+//	//printk("FWSize: 0x%x\n", size[4]<<8 | size[3]);
+//	return size[4]<<8 | size[3];
+//}
 
 #define CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
 
@@ -788,21 +788,21 @@ E_UPGRADE_ERR_TYPE fts_ctpm_fw_upgrade(void)
 
 
 
-static int is_tp_key(struct tp_key *tp_key, int key_num, int x, int y)
-{
-	int i;
-	
-	if (tp_key && key_num) {
-		for (i=0; i<key_num; i++) {
-			if ((x > tp_key->x1) && (x < tp_key->x2)
-			&& (y > tp_key->y1) && (y < tp_key->y2)) {
-				return tp_key->key;
-			}
-			tp_key++;
-		}
-	}
-	return 0;
-}
+//static int is_tp_key(struct tp_key *tp_key, int key_num, int x, int y)
+//{
+//	int i;
+//
+//	if (tp_key && key_num) {
+//		for (i=0; i<key_num; i++) {
+//			if ((x > tp_key->x1) && (x < tp_key->x2)
+//			&& (y > tp_key->y1) && (y < tp_key->y2)) {
+//				return tp_key->key;
+//			}
+//			tp_key++;
+//		}
+//	}
+//	return 0;
+//}
 
 #ifdef CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
 void fts_ctpm_fw_upgrade_with_i_file(void)
