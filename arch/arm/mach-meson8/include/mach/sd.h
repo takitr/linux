@@ -623,10 +623,10 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 /* Secure REG can only be accessed in Secure World if TrustZone enabled.*/
 #include <mach/meson-secure.h>
 #define aml_jtag_gpioao() do {\
-	meson_secure_reg_write(P_AO_SECURE_REG1, 0x102); \
+	meson_secure_reg_write((P_AO_SECURE_REG1-IO_SECBUS_BASE+IO_SECBUS_PHY_BASE), 0x102); \
 } while(0)
 #define aml_jtag_sd() do {\
-	meson_secure_reg_write(P_AO_SECURE_REG1, 0x220); \
+	meson_secure_reg_write((P_AO_SECURE_REG1-IO_SECBUS_BASE+IO_SECBUS_PHY_BASE), 0x220); \
 } while(0)
 #endif /* CONFIG_MESON_TRUSTZONE */
 
