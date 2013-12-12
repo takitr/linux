@@ -11,7 +11,7 @@
 /*
  * Secure Definition
  *
- * Copyright (C) 2012 Amlogic, Inc.
+ * Copyright (C) 2013 Amlogic, Inc.
  *
  * Author: Platform-SH@amlogic.com
  *
@@ -72,6 +72,8 @@ extern u32 meson_read_corestatus(u32 cpu);
 extern u32 meson_modify_corestatus(u32 cpu, u32 arg);
 extern void meson_auxcoreboot_addr(u32 arg1, u32 arg2);
 extern void meson_suspend_firmware(void);
+extern uint32_t meson_secure_reg_read(uint32_t addr);
+extern uint32_t meson_secure_reg_write(uint32_t addr, uint32_t val);
 
 // efuse HAL_API arg
 struct efuse_hal_api_arg{

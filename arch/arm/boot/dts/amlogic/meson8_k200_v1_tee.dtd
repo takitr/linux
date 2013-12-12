@@ -368,7 +368,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "sdio_pin_5_match" = "pinctrl-5"
 //$$ L2 PROP_CHOICE "sdio_pin_6_match" = "pinctrl-6"
 sdio{
-        compatible = "amlogic,aml_sdio-disable";
+        compatible = "amlogic,aml_sdio";
         dev_name = "aml_sdio.0";
         status = "okay";
         reg = <0xc1108c20 0x20>;

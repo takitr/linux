@@ -610,6 +610,7 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 		printk("[%s] " fmt, __FUNCTION__, ##args);	\
 }while(0)
 
+#ifndef CONFIG_MESON_TRUSTZONE
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #define aml_jtag_gpioao() do{\
     writel(0x102, (u32 *)P_AO_SECURE_REG1); \
@@ -618,6 +619,16 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 #define aml_jtag_sd() do{\
     writel(0x220, (u32 *)P_AO_SECURE_REG1); \
 }while(0)
+#else
+/* Secure REG can only be accessed in Secure World if TrustZone enabled.*/
+#include <mach/meson-secure.h>
+#define aml_jtag_gpioao() do {\
+	meson_secure_reg_write(P_AO_SECURE_REG1, 0x102); \
+} while(0)
+#define aml_jtag_sd() do {\
+	meson_secure_reg_write(P_AO_SECURE_REG1, 0x220); \
+} while(0)
+#endif /* CONFIG_MESON_TRUSTZONE */
 
 #define aml_uart_pinctrl() do {\
     \
