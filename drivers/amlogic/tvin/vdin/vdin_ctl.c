@@ -1606,6 +1606,8 @@ inline void vdin_hw_enable(unsigned int offset)
 
 inline void vdin_hw_disable(unsigned int offset)
 {
+	/* disable cm2 */
+	WR_BITS(VDIN_CM_BRI_CON_CTRL,0,CM_TOP_EN_BIT,CM_TOP_EN_WID);
 	/* disable video data input */
 	// [    4]  top.datapath_en  = 0
 	WR_BITS(VDIN_COM_CTRL0, 0, 4, 1);
