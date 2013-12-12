@@ -273,6 +273,9 @@ static int min_extfrag_threshold;
 static int max_extfrag_threshold = 1000;
 #endif
 
+#ifdef CONFIG_MESON_SUSPEND
+extern unsigned int arc_serial_disable;
+#endif
 static struct ctl_table kern_table[] = {
 	{
 		.procname	= "sched_child_runs_first",
@@ -1060,6 +1063,15 @@ static struct ctl_table kern_table[] = {
 		.procname	= "blk_iopoll",
 		.data		= &blk_iopoll_enabled,
 		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+#endif
+#ifdef CONFIG_MESON_SUSPEND
+	{
+		.procname	= "arc_firm_log",
+		.data		= &arc_serial_disable,
+		.maxlen		= sizeof(unsigned int),
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
