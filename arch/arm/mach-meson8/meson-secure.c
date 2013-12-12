@@ -28,6 +28,7 @@
 #include <asm/cacheflush.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <linux/dma-mapping.h>
+#include <mach/io.h>
 
 #ifdef CONFIG_MESON_TRUSTZONE
 #include <mach/meson-secure.h>
@@ -149,20 +150,28 @@ int meson_trustzone_efuse(struct efuse_hal_api_arg* arg)
 
 uint32_t meson_secure_reg_read(uint32_t addr)
 {
-	int ret;
+	uint32_t ret;
+	uint32_t paddr;
+	int offset;
 
-	ret = meson_smc2(addr);
-	TZDBG("read [0x%x]=%x\n");
+	offset = IO_SECBUS_PHY_BASE - IO_SECBUS_BASE;
+	paddr = addr + offset;
+	ret = meson_smc2(paddr);
+	TZDBG("read [0x%x]=%x\n", paddr, ret);
 
 	return ret;
 }
 
 uint32_t meson_secure_reg_write(uint32_t addr, uint32_t val)
 {
-	int ret;
+	uint32_t ret;
+	uint32_t paddr;
+	int offset;
 
-	ret = meson_smc3(addr, val);
-	TZDBG("write [0x%x 0x%x]=%x\n", addr, val, ret);
+	offset = IO_SECBUS_PHY_BASE - IO_SECBUS_BASE;
+	paddr = addr + offset;
+	ret = meson_smc3(paddr, val);
+	TZDBG("write [0x%x 0x%x]=%x\n", paddr, val, ret);
 
 	return ret;
 }

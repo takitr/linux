@@ -866,7 +866,7 @@ sdio{
 //$$ L2 PROP_CHOICE "Audio_pin_0_match" = "pinctrl-0"
 //$$ L2 PROP_STR = "status"
     aml_m8_sound_card{
-        compatible = "sound_card, aml_snd_m8-disable";
+        compatible = "sound_card, aml_snd_m8";
         aml,sound_card = "AML-M8AUDIO";
         aml,codec_dai = "AML-M8","dit-hifi";
         aml,audio-routing =
