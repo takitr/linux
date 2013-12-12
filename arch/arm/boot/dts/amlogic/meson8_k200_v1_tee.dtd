@@ -368,7 +368,7 @@ void root_func(){
 //$$ L2 PROP_CHOICE "sdio_pin_5_match" = "pinctrl-5"
 //$$ L2 PROP_CHOICE "sdio_pin_6_match" = "pinctrl-6"
 sdio{
-        compatible = "amlogic,aml_sdio";
+        compatible = "amlogic,aml_sdio-disable";
         dev_name = "aml_sdio.0";
         status = "okay";
         reg = <0xc1108c20 0x20>;
@@ -785,7 +785,7 @@ sdio{
 //$$ L2 PROP_U32 = "usid-min"
 //$$ L2 PROP_U32 = "usid-max"
     efuse{
-		compatible = "amlogic,efuse";
+		compatible = "amlogic,efuse-disable";
 		dev_name = "efuse";
 		status = "okay";
 		plat-pos = <0 454>;
@@ -866,7 +866,7 @@ sdio{
 //$$ L2 PROP_CHOICE "Audio_pin_0_match" = "pinctrl-0"
 //$$ L2 PROP_STR = "status"
     aml_m8_sound_card{
-        compatible = "sound_card, aml_snd_m8";
+        compatible = "sound_card, aml_snd_m8-disable";
         aml,sound_card = "AML-M8AUDIO";
         aml,codec_dai = "AML-M8","dit-hifi";
         aml,audio-routing =
