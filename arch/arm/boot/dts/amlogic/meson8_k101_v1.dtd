@@ -911,9 +911,9 @@ sdio{
 		power_on_uboot="n","n","n";	/** only for uboot, ahead of lcd_power_on, no need config delay */
 		power_on_step_1="pmu","GPIO0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_on_step_2="cpu","GPIODV_29","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_on_step_3="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_on_step_4="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
-		power_on_step_5="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
+		power_on_step_3="cpu","GPIODV_0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_4="cpu","GPIODV_0","1";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_5="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_on_step_6="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_7="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_8="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
@@ -924,11 +924,11 @@ sdio{
 		power_on_step_13="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_14="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_15="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
- 		power_on_delay=<20 14 5 0 0 0 0 0 0 0 0 0 0 0 0>;	/** power on delay after each step */
+ 		power_on_delay=<20 14 5 70 5 0 0 0 0 0 0 0 0 0 0>;	/** power on delay after each step */
 		power_off_step_1="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
  		power_off_step_2="cpu","GPIODV_29","1";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
- 		power_off_step_3="pmu","GPIO0","2";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_off_step_4="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
+ 		power_off_step_3="cpu","GPIODV_0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_4="pmu","GPIO0","2";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_off_step_5="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_6="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_7="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
@@ -940,7 +940,7 @@ sdio{
 		power_off_step_13="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_14="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_15="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
-		power_off_delay=<5 14 20 0 0 0 0 0 0 0 0 0 0 0 0>;	/** power off delay after each step */
+		power_off_delay=<5 14 0 100 0 0 0 0 0 0 0 0 0 0 0>;	/** power off delay after each step */
 		power_off_uboot="n","n","n";	/** only for uboot, at the end of lcd_power_off, no need config delay */
 	};
 
