@@ -50,6 +50,7 @@
 #define MOD_NAME  "amvdec_csi"
 
 #define CSI_MAX_DEVS             1
+#define WDG_STEP_JIFFIES        10
 
 /* Per-device (per-bank) structure */
 static dev_t amcsi_devno;
@@ -336,6 +337,12 @@ static ssize_t csi_attr_store(struct device *dev,struct device_attribute *attr,c
         } else if ( 0 == strcmp(parm[0],"init")){
                 printk("init mipi measure clock\n");
                 init_am_mipi_csi2_clock();// init mipi csi measure clock
+        } else if ( 0 == strcmp(parm[0],"min")){
+                csi_devp->min_frmrate =  simple_strtol(parm[1], NULL, 16);
+                if (HZ < csi_devp->min_frmrate * WDG_STEP_JIFFIES){
+                        csi_devp->min_frmrate = HZ/WDG_STEP_JIFFIES;
+                }
+                printk("min_frmrate=%d\n", csi_devp->min_frmrate);
         }
 
         kfree(buf_orig);
@@ -394,14 +401,27 @@ static irqreturn_t csi_hst_isr(int irq, void *arg)
 static void csi2_timer_func(unsigned long arg)
 {
         struct amcsi_dev_s *csi_devp = (struct amcsi_dev_s *) arg;
-        if(1 == csi_devp->reset){ //= 0;
-                printk("reset csi\n");
-                am_mipi_csi2_init(&csi_devp->csi_parm);
-                csi_devp->reset_count ++;
+        if( csi_devp->period >= jiffies_to_msecs(WDG_STEP_JIFFIES) ){
+                csi_devp->t.expires = jiffies + WDG_STEP_JIFFIES;//msecs_to_jiffies(csi_devp->period);
+                csi_devp->period -= jiffies_to_msecs(WDG_STEP_JIFFIES);
+        }else if(0 == csi_devp->period){
+                if(1 == csi_devp->reset){
+                        printk("reset csi\n");
+                        am_mipi_csi2_init(&csi_devp->csi_parm);
+                        csi_devp->reset_count ++;
+                        printk("period=%d, jiffies=%d\n", csi_devp->period, msecs_to_jiffies(csi_devp->period));
+                }
+                //printk("min_frmrate=%d\n", csi_devp->min_frmrate);
+                csi_devp->period = 1000 / csi_devp->min_frmrate;
+                csi_devp->t.expires = jiffies + WDG_STEP_JIFFIES;
+                csi_devp->period -= jiffies_to_msecs(WDG_STEP_JIFFIES);
+                csi_devp->reset = 1;
+        }else if( csi_devp->period < jiffies_to_msecs(WDG_STEP_JIFFIES) ){
+                csi_devp->t.expires = jiffies + msecs_to_jiffies(csi_devp->period);
+                csi_devp->period = 0;
         }
-        csi_devp->t.expires = jiffies + 10; //reset after 50ms=5jiffies
+        //printk("left period=%d\n", csi_devp->period);
         add_timer(&csi_devp->t);
-        csi_devp->reset = 1;
 }
 /*
  *power on mipi module&init the parameters,such as color fmt...,will be used by vdin
@@ -453,7 +473,19 @@ static int amcsi_feopen(struct tvin_frontend_s *fe, enum tvin_port_e port)
         init_timer (&csi_devp->t);
         csi_devp->t.data = csi_devp;
         csi_devp->t.function = csi2_timer_func;
-        csi_devp->t.expires = jiffies + 10; //reset after 50ms=5jiffies
+        csi_devp->t.expires = jiffies + WDG_STEP_JIFFIES; //reset after 50ms=5jiffies
+        if(0 == csi_devp->min_frmrate){
+                csi_devp->min_frmrate = 1;
+        }
+        csi_devp->period = 1000 / parm->frame_rate;
+        //printk("period=%d, jiffies=%d\n", csi_devp->period, msecs_to_jiffies(csi_devp->period));
+        if(csi_devp->period <= jiffies_to_msecs(WDG_STEP_JIFFIES))
+        {
+                csi_devp->period = 0;
+        }else{
+                csi_devp->period -= jiffies_to_msecs(WDG_STEP_JIFFIES);
+        }
+
         add_timer(&csi_devp->t);
         am_mipi_csi2_init(&csi_devp->csi_parm);
         return 0;
