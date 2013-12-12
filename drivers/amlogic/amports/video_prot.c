@@ -177,7 +177,6 @@ static int set_prot_444(u32 x_start, u32 x_end, u32 y_start, u32 y_end, u32 y_st
 }
 
 void video_prot_reset(video_prot_t* video_prot) {
-    u32 data32;
 
     VSYNC_WR_MPEG_REG(VPU_PROT2_CLK_GATE, video_prot->status);
     VSYNC_WR_MPEG_REG(VPU_PROT3_CLK_GATE, video_prot->status);
@@ -188,7 +187,6 @@ void video_prot_reset(video_prot_t* video_prot) {
 }
 
 void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
-    u32 tmp;
 
     if (vf->width > 1920 || vf->height > 1088) {
         video_prot->is_4k2k = 1;
@@ -214,7 +212,6 @@ void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
 
 void video_prot_set_angle(video_prot_t* video_prot, u32 angle) {
 
-    u32 data32;
     u32 angle_orientation = (angle + video_prot->src_vframe_orientation) % 4;
 
     video_prot->angle = angle;
@@ -268,7 +265,7 @@ void video_prot_set_canvas(vframe_t *vf) {
 void video_prot_axis (video_prot_t* video_prot, u32 video_angle, u32 hd_start, u32 hd_end, u32 vd_start, u32 vd_end) {
     u32 reset_axis = 0;
     u32 angle_orientation = (video_angle + video_prot->src_vframe_orientation) % 4;
-    
+
     if (vd_start > 0 || hd_start > 0) {
         if (angle_orientation == 1) {
             video_prot->x_start = vd_start;
@@ -304,7 +301,7 @@ void video_prot_axis (video_prot_t* video_prot, u32 video_angle, u32 hd_start, u
         u32 y_start_uv = 0;
         u32 y_end_uv = 0;
         u32 y_len_uv = 0;
-        
+
         reset_axis = 0;
         y_end = y_start + (y_step + 1) * y_len;
         if (video_prot->viu_type & VIDTYPE_VIU_NV21) {

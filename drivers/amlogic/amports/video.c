@@ -353,8 +353,8 @@ static u32 use_prot = 0;
 static u32 prot_axis_changed = 0;
 static video_prot_t video_prot;
 static u32 video_angle = 0;
-int get_prot_on(void) { return video_prot.status; }
-EXPORT_SYMBOL(get_prot_on);
+int get_prot_status(void) { return video_prot.status; }
+EXPORT_SYMBOL(get_prot_status);
 u32 get_video_angle(void) { return video_prot.angle; }
 EXPORT_SYMBOL(get_video_angle);
 extern void prot_get_parameter(u32 wide_mode, vframe_t * vf, vpp_frame_par_t * next_frame_par, const vinfo_t *vinfo);
@@ -576,7 +576,7 @@ static struct work_struct vpu_delay_work;
 static int vpu_clk_level = 0;
 static DEFINE_SPINLOCK(delay_work_lock);
 static int vpu_delay_work_flag = 0;
-static int vpu_mem_power_off_count; 
+static int vpu_mem_power_off_count;
 #endif
 
 static u32 vpts_ref = 0;
@@ -1021,7 +1021,7 @@ static void vsync_toggle_frame(vframe_t *vf)
         (cur_dispbuf->height != vf->height) ||
         (cur_dispbuf->ratio_control != vf->ratio_control) ||
         ((cur_dispbuf->type_backup & VIDTYPE_INTERLACE) !=
-         (vf->type_backup & VIDTYPE_INTERLACE)) || 
+         (vf->type_backup & VIDTYPE_INTERLACE)) ||
          prot_axis_changed & 0x2) {
         amlog_mask(LOG_MASK_FRAMEINFO,
                    "%s %dx%d ar=0x%x\n",
@@ -1065,7 +1065,7 @@ static void vsync_toggle_frame(vframe_t *vf)
 
                 spin_lock_irqsave(&lock, flags);
                 vpu_delay_work_flag |= VPU_DELAYWORK_VPU_CLK;
-                spin_unlock_irqrestore(&lock, flags); 
+                spin_unlock_irqrestore(&lock, flags);
             }
         } else {
             if (vpu_clk_level == 1) {
@@ -2768,7 +2768,7 @@ static void _set_video_window(int *p)
 {
     int w, h;
     int *parsed = p;
-    
+
     prot_axis_changed |= 0x1;
     if (parsed[0] < 0 && parsed[2] < 2) {
         parsed[2] = 2;
@@ -3577,9 +3577,9 @@ static ssize_t video_test_screen_store(struct class *cla, struct class_attribute
 
     WRITE_VCBUS_REG(VPP_MISC, data);
 
-     if(debug_flag& DEBUG_FLAG_BLACKOUT){  
-        printk("%s write(VPP_MISC,%x) write(VPP_DUMMY_DATA1, %x)\n",__func__, data, test_screen&0x00ffffff); 
-     } 
+     if(debug_flag& DEBUG_FLAG_BLACKOUT){
+        printk("%s write(VPP_MISC,%x) write(VPP_DUMMY_DATA1, %x)\n",__func__, data, test_screen&0x00ffffff);
+     }
     return count;
 }
 
@@ -4295,7 +4295,7 @@ static void do_vpu_delay_work(struct work_struct *work)
 
                 switch_vpu_mem_pd_vmod(VPU_VIU_VD1, VPU_MEM_POWER_DOWN);
                 switch_vpu_mem_pd_vmod(VPU_DI_POST, VPU_MEM_POWER_DOWN);
-                
+
 #if 0
 if (READ_VCBUS_REG(VPP_MISC) & 0x4000) {
 	enable_rdma(0);
@@ -4311,7 +4311,7 @@ printk("mem power down, 0x%x\n", READ_VCBUS_REG(VPP_MISC));
                 switch_vpu_mem_pd_vmod(VPU_VIU_VD2, VPU_MEM_POWER_DOWN);
             }
         }
-    } 
+    }
 
     spin_unlock_irqrestore(&delay_work_lock, flags);
 }

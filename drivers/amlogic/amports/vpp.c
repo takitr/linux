@@ -370,17 +370,31 @@ RESTART:
 
     /* keep 8 bits resolution for aspect conversion */
     if (wide_mode == VIDEO_WIDEOPTION_4_3) {
-        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-            aspect_factor = 0x155;
-        else
-            aspect_factor = 0xc0;
+        if (get_prot_status()) {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0xc0;
+            else
+                aspect_factor = 0x155;
+        } else {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x155;
+            else
+                aspect_factor = 0xc0;
+        }
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
     else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
-        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-            aspect_factor = 0x1c7;
-        else
-            aspect_factor = 0x90;
+        if (get_prot_status()) {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x90;
+            else
+                aspect_factor = 0x1c7;
+        } else {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x1c7;
+            else
+                aspect_factor = 0x90;
+        }
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
 
@@ -736,7 +750,7 @@ vpp_set_filters(u32 wide_mode,
     vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
 }
 
-void 
+void
 prot_get_parameter(u32 wide_mode,
                 vframe_t *vf,
                 vpp_frame_par_t *next_frame_par,
