@@ -244,6 +244,7 @@ static int video_onoff_state = VIDEO_ENABLE_STATE_IDLE;
            VPP_VD2_PREBLEND | (0x1ff << VPP_VD2_ALPHA_BIT)); \
     } while (0)
 
+#ifdef USE_PROT
 #define DisableVideoLayer() \
     do { \
          VIDEO_LAYER_OFF(); \
@@ -253,6 +254,18 @@ static int video_onoff_state = VIDEO_ENABLE_STATE_IDLE;
             printk("DisableVideoLayer()\n"); \
          } \
     } while (0)
+#else
+#define DisableVideoLayer() \
+    do { \
+         CLEAR_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, \
+           VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+         VD1_MEM_POWER_OFF(); \
+         if(debug_flag& DEBUG_FLAG_BLACKOUT){  \
+            printk("DisableVideoLayer()\n"); \
+         } \
+    } while (0)
+
+#endif
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #define DisableVideoLayer_NoDelay() \
