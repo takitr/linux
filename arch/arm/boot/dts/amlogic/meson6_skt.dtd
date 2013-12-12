@@ -53,10 +53,10 @@
 	memory{
 		device_type = "memory";
 		aml_reserved_start = <0x84000000>;
-		aml_reserved_end = <0x90cfffff>;
-		linux,usable-memory = <0x80000000 0x04000000 0x90d00000 0x0f200000 0xa0000000 0x20000000>; 
+		aml_reserved_end = <0x92afffff>;
+		linux,usable-memory = <0x80000000 0x04000000 0x92b00000 0x0d400000 0xa0000000 0x20000000>; 
 	};
-	gic:interrupt-controller{
+    gic:interrupt-controller{
         compatible = "arm,cortex-a9-gic";
         reg = <0xc4301000 0x1000
                0xc4300100 0x0100>;
@@ -80,49 +80,48 @@
 	mesonfb{
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
-		reg = <0x84100000 0x00600000
-	   	 		0x84700000 0x00100000>;
- 		vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
- 		display_size_default = <1920 1080 1920 2160 32>;
+		reg = <0x84100000 0x01000000
+	   	 		0x85100000 0x00100000>;
+	  vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
+	  display_size_default = <1920 1080 1920 2160 32>;
 	};
-
-	mesonfb-ext{
-		compatible = "amlogic,mesonfb-ext";
-		dev_name = "mesonfb-ext";
-		reg = <0x84800000 0x00600000
-	       	 0x84e00000 0x00100000>;
-	       display_size_default = <1024 768 1024 1536 32>;
-	};
-
+				
 	mesonstream{
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
-		reg = <0x84f00000 0x04000000
-						0x8fe00000 0x00f00000>;
+		reg = <0x85200000 0x04000000
+						0x92100000 0x00a00000>;
 	};
 	
 	vdin0{
 		compatible = "amlogic,vdin";
 		dev_name = "vdin";
-		reg = <0x88f00000 0x04000000
-					0x88f00000 0x04000000>;
+		reg = <0x89200000 0x04000000
+					0x89200000 0x04000000>;
 		irq = <115>;
-                vdin_id = <0>;
+		vdin_id = <0>;
 	};
 
-	vm{
-		compatible = "amlogic,vm";
-		dev_name = "vm.0";
-		reg = <0x8cf00000 0x01000000>;
+	deinterlace{
+		compatible = "amlogic,deinterlace";
+		dev_name = "deinterlace";
+		reg = <0x8d200000 0x02300000>;
 	};
-
+	
 	ppmgr{
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
-		reg = <0x8ee00000 0x00fc0000>;		
+		reg = <0x8f500000 0x02c00000>;		
 	};
-
 	/*end*/
+	
+	early_init{
+		compatible = "amlogic,early_init";
+		dev_name = "early_init";
+		status = "ok";
+		gpio-1 = "GPIOAO_3";
+		gpio-2 = "GPIOAO_2";
+	};
 	
 	usb_con {
 		lm-compatible = "logicmodule-bus";
@@ -137,6 +136,7 @@
 			port-config = <0>; /* 0: default */
 			port-dma = <0>; /* 0: default, 1: single, 2: incr, 3: incr4, 4: incr8, 5: incr16, 6: disable*/
 			port-id-mode = <1>; /* 0: hardware, 1: sw_host, 2: sw_slave*/
+			status = "okay";
 		};
 
 		usb_a{
@@ -151,6 +151,7 @@
 			port-id-mode = <0>; /* 0: hardware, 1: sw_host, 2: sw_slave*/
 			gpio-vbus-power = "GPIOD_9";
 			gpio-work-mask	= <1>; /*0: work on pulldown,1:work on pullup*/
+			status = "okay";
 		};
 	};
 
@@ -172,8 +173,6 @@
 		port_name = "uart_a";
 		status = "okay";
 		dev_name = "uart_0";
-        pinctrl-names = "default";
-        pinctrl-0 = <&a_uart_pins>;
 	};
 	
 	uart_1{
@@ -196,148 +195,72 @@
 		status = "ok";
 		dev_name = "uart_3";
 	};
+
 	aml_pm{
 		compatible = "amlogic,pm";
 		dev_name = "aml_pm";
 	};
-
-
-         cpufreq-meson{
-                compatible = "amlogic,cpufreq-meson";
-        };
-
-    battery_parameter:battery_parameter{
-        pmu_twi_id = <2>;                   /* AXP20_I2CBUS                         */
-        pmu_irq_id = <0>;                   /* INT_WATCHDOG                         */
-        pmu_twi_addr = <0x34>;              /* AXP20_ADDR                           */
-        pmu_battery_rdc = <87>;             /* battery internal resistor            */
-        pmu_battery_cap = <7200>;           /* battery capacity                     */
-        pmu_battery_technology = <4>;       /* POWER_SUPPLY_TECHNOLOGY_LiFe         */
-        pmu_battery_name = "PTI PL336078";  /* battery name                         */
-        pmu_init_chgvol = <4200000>;        /* target charge voltage                */
-        pmu_init_chgend_rate = <10>;        /* set initial charing end current rate */
-        pmu_init_chg_enabled = <1>;         /* set initial charing enabled          */
-        pmu_init_adc_freq = <25>;           /* set initial adc frequency            */
-        pmu_init_adc_freqc = <100>;         /* set initial coulomb adc coufrequency */
-        pmu_init_chg_pretime = <50>;        /* set initial pre-charging time        */
-        pmu_init_chg_csttime = <720>;       /* set initial pre-charging time        */
-        pmu_init_chgcur = <600000>;         /* set initial charging current limite  */
-        pmu_suspend_chgcur = <1000000>;     /* set suspend charging current limite  */
-        pmu_resume_chgcur = <600000>;       /* set resume charging current limite   */
-        pmu_shutdown_chgcur = <1000000>;    /* set shutdown charging current limite */
-        pmu_usbcur_limit = <1>;             /* enable usb current limit?            */
-        pmu_usbcur = <500>;                 /* usb limit current value if enabled   */
-        pmu_usbvol_limit = <1>;             /* enable usb vbus voltage limit        */
-        pmu_usbvol = <4400>;                /* voltage limit value if enabled       */
-        pmu_pwroff_vol = <3200>;            /* hardware force power off voltage     */
-        pmu_pwron_vol = <2900>;             /* power on when battery voltage above  */
-        pmu_pekoff_time = <6000>;           /* long press to power off system       */
-        pmu_pekoff_en  = <1>;               /* enable long press to PWR OFF system  */
-        pmu_peklong_time = <1500>;          /* threshold to detect long press       */
-        pmu_pwrok_time   = <64>;            /* delay to detect pwr ok signal        */
-        pmu_pwrnoe_time = <2000>;           /*                                      */
-        pmu_intotp_en = <1>;                /* over temperature protection enable   */
-        pmu_pekon_time = <128>;             /* powerkey hold time for power on      */
-        pmu_charge_efficiency = <84>;       /* efficient of charging                */
-        pmu_bat_curve = <
-         /* ocv, charge, discharge */
-            3132      0       0
-            3273      0       0
-            3414      0       0
-            3555      0       0
-            3625      1       3
-            3660      2       8
-            3696      3      16
-            3731     10      24
-            3766     15      38
-            3801     26      48
-            3836     42      56
-            3872     52      63
-            3942     66      74
-            4012     79      85
-            4083     90      95
-            4153    100     100>;
-    };
-    pmu {
-        #address-cells = <1>;
-        #size-cells = <0>;
-        compatible = "amlogic, aml_pmu_prober";                 /* fixed for pmu driver, don't change   */
-        axp202 { /* PMU for AXP */
-            compatible = "axp_mfd";                             /* for driver probe, must have          */
-            sub_type = "axp20_mfd";                             /* sub type of pmu family, must have    */
-            i2c_bus = "i2c_bus_ao";                             /* attached i2c bus, must have          */
-            reg = <0x34>;                                       /* device i2c address, must have        */
-            soft_limit_to99 = <0>;                              /* optional                             */
-            ddr_voltage   = <1500000>;                          /* default voltage for DDR, optional    */
-            vddao_voltage = <1200000>;                          /* default voltage for AO, optional     */
-            board_battery = <&battery_parameter>;               /* battery parameter used, must have    */
-            status = "disable";                                    /* status of pmu, only one should be OK */
-        };
-        aml1212{                                                /* PMU for AML1212, see comment above   */
-            compatible = "aml_pmu";
-            sub_type = "aml1212";
-            i2c_bus = "i2c_bus_ao";
-            reg = <0x35>;
-            soft_limit_to99 = <0>;
-            ddr_voltage   = <1500000>;
-            vddao_voltage = <1200000>;
-            board_battery = <&battery_parameter>;
-            status = "disable";
-        };
-        rn5t618{                                                /* PMU for RN5T618, see comment above   */
-            compatible = "ricoh_pmu";
-            sub_type = "rn5t618";
-            i2c_bus = "i2c_bus_ao";
-            reg = <0x32>;
-            soft_limit_to99 = <0>;
-            ddr_voltage   = <1500000>;
-            vddao_voltage = <1200000>;
-            board_battery = <&battery_parameter>;
-            status = "disable";
-        };
-    };
-		
-		
-	aml_cams{
-		compatible = "amlogic,cams_prober";
-		pinctrl-names = "default";
-		pinctrl-0 = <&aml_cam_pins> ;
-		cam_0{
-			cam_name = "gc0308";
-			front_back = <0>;
-			i2c_bus = "i2c_bus_a";
-			gpio_pwdn = "GPIOE_11";
-			gpio_rst = "GPIOZ_0";
-			mirror_flip = <1>;
-			vertical_flip = <0>;
-		};
-		cam_1{
-			cam_name = "gt2005";
-			front_back = <1>;
-			i2c_bus = "i2c_bus_a";
-			gpio_pwdn = "GPIOE_10";
-			gpio_rst = "GPIOZ_0";
-			mirror_flip = <0>;
-			vertical_flip = <0>;
-		};
-		cam_2{
-			cam_name = "gc0328";
-			front_back = <0>;
-			i2c_bus = "i2c_bus_a";
-			gpio_pwdn = "GPIOE_11";
-			gpio_rst = "GPIOZ_0";
-			mirror_flip = <0>;
-			vertical_flip = <0>;	
-		};
 	
+	meson-cs-regulator{
+		compatible = "amlogic,meson-cs-regulator";
+		dev_name = "meson-cs-regulator";
+		default_uV = <1110000>;
+		consumer_supplies-supply = "vcck-armcore";
+		init-data = <&vcck_init_data>;
+		vcck-table = <&vcck_opp_table>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&aml_pwm_pins>;
+			
+		voltage_step_table = <
+			1400000 1380000 1350000 1330000
+			1300000 1280000 1260000 1240000
+			1210000 1180000 1140000 1110000
+			1070000 1040000 1010000   970000
+		>;
+
+		vcck_pwm_table = <
+		    0x00001c 0x01001b 0x030019 0x040018
+	        0x060016 0x070015 0x080014 0x090013
+	        0x0b0011 0x0d000f 0x0f000d 0x11000b 
+	        0x130009 0x150007 0x170005 0x190003
+		>;
+			
+		vcck_init_data: vcck_init_data{
+			cons_name = "vcck";
+			min_uV = <1010000>;
+			max_uV = <1380000>;
+			valid_ops_mask = <0x9>; /*REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS */
+			num = <1>;	/*the number of vcck_data-supply*/
+			vcck_data-supply = "vcck-armcore";	
+		};
+			
+		vcck_opp_table: vcck_opp_table{
+			num = <11>;
+			table = <
+			1500000 1330000 1330000
+			1320000 1330000 1330000
+			1200000 1260000 1260000
+			1080000 1240000 1240000
+			1000000 1140000 1140000
+			  984000 1140000 1140000
+			  840000 1110000 1110000
+			  816000 1110000 1110000
+			  792000 1040000 1040000
+			  600000 1040000 1040000
+			  200000 1040000 1040000
+			>;
+		};
+	};
+
+    cpufreq-meson{
+		compatible = "amlogic,cpufreq-meson";
+		cpufreq_info = <&vcck_opp_table>;
 	};
 	
 	i2c@c8100500{ /*I2C-AO*/
 		compatible = "amlogic,aml_i2c";
 		dev_name = "i2c-AO";
 		reg = <0xc8100500 0x1d>;
-		#address-cells = <1>;
-		#size-cells = <0>;
 		device_id = <0>;
 		pinctrl-names="default";
 		pinctrl-0=<&ao_i2c_master>;
@@ -351,7 +274,7 @@
 		pinctrl-names="default";
 		pinctrl-0=<&a_i2c_master>;
 		#address-cells = <1>;
-		#size-cells = <0>;
+		#size-cells = <0>;	
 	};
 	
 	i2c@c11087c0{ /*I2C-B*/
@@ -363,35 +286,37 @@
 		pinctrl-0=<&b_i2c_master>;
 		#address-cells = <1>;
 		#size-cells = <0>;
-
+		
+		i2c@1A{
+			compatible = "asoc,rt5631";
+			reg = <0x1A>;
+		};
 	};
 	
 	amhdmitx{
 		compatible = "amlogic,amhdmitx";
 		dev_name = "amhdmitx";
-		vend-data = <&vend_data>;
-		pwr-ctrl = <&pwr_ctrl>;
-		
+        vend-data = <&vend_data>;
+        pwr-ctrl = <&pwr_ctrl>;
 		phy-size = <3>;
 		phy-data = <27  0x16  0x30    /* 480i/p 576i/p */
 				 74  0x16  0x40    /* 720p 1080i */
 				 148  0x16  0x40   /* 1080p */
 				>;
-		
-    vend_data: vend_data{
+        vend_data: vend_data{
             vendor_name = "Amlogic";           /* Max Chars: 8     */
             vendor_id = <0x000000>;                 /* Refer to http://standards.ieee.org/develop/regauth/oui/oui.txt   */
             product_desc = "MX MBox G18Ref";        /* Max Chars: 16    */
             cec_osd_string = "Amlogic MBox";        /* Max Chars: 14    */
-    };
-    pwr_ctrl: pwr_ctrl{
+        };
+        pwr_ctrl: pwr_ctrl{
             pwr_5v_on = "cpu","GPIOD_5","H";
             pwr_5v_off = "cpu","GPIOD_5","L";
             pwr_3v3_on = "";
             pwr_3v3_off = "";
             pwr_hpll_vdd_on = "";
             pwr_hpll_vdd_off = "";
-    };
+        };
 	};
 	
 	mesonvout{
@@ -400,21 +325,18 @@
 		/*reg = <0 0>;*/
 	};
 	
-	mesonvout2{
-		compatible = "amlogic,mesonvout2";
-		dev_name = "mesonvout2";
-		/*reg = <0 0>;*/
-	};
-				
-	efuse{
-		compatible = "amlogic,efuse";
-		dev_name = "efuse";
-		plat-pos = <0 454>;
-		plat-count = <58>;
-		usid-min = <8>; /*reserved*/
-		usid-max = <31>; /*reserved*/
-	};
-	
+
+    vdacswitch{
+        compatible = "amlogic,vdacswitch";
+        dev_name = "vdacswitch";
+        hw-switch = <&hw_switch>;
+        hw_switch: hw_switch{
+            vout_cvbs = "GPIOC_2", "H", "GPIOC_3", "H";
+            vout_ypbr = "GPIOC_2", "L", "GPIOC_3", "L";
+            vout_vga  = "GPIOC_2", "H", "GPIOC_3", "L";
+        };
+    };
+		
 	card{
 		compatible = "amlogic,aml_card";
 		dev_name = "aml_sd_mmc.0";
@@ -511,16 +433,14 @@
         // };
      // };
 	
-	wifi{
-		compatible = "amlogic,aml_broadcm_wifi";
-		dev_name = "aml_broadcm_wifi";
-		interrupt_pin = "GPIOX_11";
-		irq_num = <4>;
-		irq_trigger_type = "GPIO_IRQ_HIGH";
-		power_on_pin = "GPIOC_8";
-		clock_32k_pin = "GPIOX_12";
+	meson-eth{
+                compatible = "amlogic,meson-eth";
+                dev_name = "meson-eth";
+                status = "okay";
+		ethbaseaddr = <0xf3610000>;
+                interruptnum = <40>;
 	};
-		
+
 	meson-remote{
 		compatible = "amlogic,aml_remote";
 		dev_name = "meson-remote";
@@ -528,36 +448,61 @@
 		pinctrl-names="default";
 		pinctrl-0=<&remote_pins>;
 	};
-    
-    aml_audio_codc{
-        compatible = "amlogic,audio_codec";
-        codec_rt5631:rt5631{
-            codec_name = "rt5631";
-            i2c_addr = <0x1A>;
-            i2c_bus = "i2c_bus_b";
-            capless = <0>;
-            status = "okay";
-                
-        };  
-        codec_wm8960:wm8960{
-            codec_name = "wm8960";
-            i2c_addr = <0x1A>;
-            i2c_bus = "i2c_bus_b";
-            capless = <1>;
-            status = "disabled";
-        };
-    };
-    
+	
+	/// ***************************************************************************************
+/// -   Audio
+//$$ MODULE="Audio"
+//$$ DEVICE="audio_i2s"
+//$$ L2 PROP_STR = "status"
     audio_platform{
-        compatible = "amlogic,aml-audio";
-        dev_name = "aml-audio.0";
+        compatible = "amlogic,aml-i2s";
+        dev_name = "aml-i2s.0";
+        status = "okay";
     };
 
+//$$ DEVICE="audio_i2s_dai"
+//$$ L2 PROP_STR = "status"
     audio_dai{
-        compatible = "amlogic,aml-dai";
-        dev_name = "aml-dai.0";
+        compatible = "amlogic,aml-i2s-dai";
+        dev_name = "aml-i2s-dai.0";
+        status = "okay";
+    };
+    audio_spdif_dai{
+        compatible = "amlogic,aml-spdif-dai";
+        dev_name = "aml-spdif-dai.0";
+        status = "okay";
     };
 
+audio_spdif_codec{
+        compatible = "amlogic,aml-spdif-codec";
+        dev_name = "spdif-dit.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm2BT_codec"
+//$$ L2 PROP_STR = "status"
+    audio_pcm2BT_codec{
+        compatible = "amlogic,pcm2BT-codec";
+        dev_name = "pcm2bt.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm_dai"
+//$$ L2 PROP_STR = "status"
+    audio_pcm_dai{
+        compatible = "amlogic,aml-pcm-dai";
+        dev_name = "aml-pcm-dai.0";
+        status = "okay";
+    };
+
+//$$ DEVICE="audio_pcm"
+//$$ L2 PROP_STR = "status"
+    audio_pcm{
+        compatible = "amlogic,aml-pcm";
+        dev_name = "aml-pcm.0";
+        status = "okay";
+    };
+    
     wm8960_sound_card{
         compatible = "sound_card,wm8960";
         aml,sound_card = "AML-WM8960";
@@ -610,41 +555,29 @@
         pinctrl-0 = <&aml_i2s_pins &config_aml_hp_det_pins>;
         rt5631_gpio = "GPIOA_19";
         hp_det_inv;
-        status = "okay";
+        status = "disabled";
     };
-    touch{
-        compatible = "amlogic,aml_touch";
-        #address-cells = <1>;
-        #size-cells = <0>;
-				touch_ft5x06:ft5x06{
-					touch_name = "ft5x06";
-					i2c_bus = "i2c_bus_a";
-					reg = <0x38>;
-					ic_type = <0>;
-					irq = <0>;
-					gpio_interrupt = "GPIOA_16";
-					gpio_reset = "GPIOC_3";
-					xres = <1024>;
-					yres = <768>;
-					pol = <0x4>;
-					fw_file = "/etc/touch/ft5x06.fw";
-				};
-				touch_gt81xx:gt81xx{
-					touch_name = "gt81xx";
-					i2c_bus = "i2c_bus_a";
-					reg = <0x55>;
-					irq = <0>;
-					irq_edge = "GPIO_IRQ_FALLING";
-					gpio_interrupt = "GPIOA_16";
-					gpio_reset = "GPIOC_3";
-					xres = <1024>;
-					yres = <768>;
-					pol = <0>;
-					max_num = <10>;
-					config_file = "/etc/touch/goodix.con";
-				};
-   };
+
+	dummy_codec_audio{
+        status = "okay";
+        compatible = "amlogic,aml_dummy_codec_audio";
+        dev_name = "aml_dummy_codec_audio.0";
+        pinctrl-names = "dummy_codec_audio";
+        pinctrl-0 = <&aml_dummy_codec_pins>;
+    };
+    
+    dummy_codec{
+        status = "okay";
+        compatible = "amlogic,aml_dummy_codec";
+        dev_name = "dummy_codec.0";
+    };
  
+    wifi_power{
+        compatible = "amlogic,wifi_power";
+        dev_name = "wifi_power";
+        power_gpio = "GPIOE_11";
+    };
+    
 	saradc{
 		compatible = "amlogic,saradc";
 	};
@@ -668,27 +601,101 @@
 		key_num = <1>;
 		config = <0>;
 	};
-    bt-dev{
-        compatible = "amlogic,bt-dev";
-        dev_name = "bt-dev";
-        gpio_reset = "GPIOC_9";
-        gpio_en = "GPIOC_7";
-        gpio_wake = "GPIOX_10";
-    };
-	sensor{
-		compatible = "amlogic,aml_sensor";
-        sensor_bma250:bma250{
-            dev_name = "bma250";
-            status = "okay";
-            address = <0x18>;
-            i2c_bus = "i2c_bus_b";
-        };
-	};	
+	
+    securitykey{ 
+        compatible = "amlogic,aml_keys"; 
+    }; 
+	
+	spi@cc000000{
+		compatible = "amlogic,apollo_spi_nor";
+		status = "ok";
+		reg = <0xcc000000 0x04000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&aml_spi_nor_pins>;
 
-	securitykey{
-		compatible = "amlogic,aml_keys";
+		nr-parts = <2>;
+		nr-part-0 = <&bootloader>;
+		nr-part-1 = <&ubootenv>;
+
+		bootloader:bootloader{
+			name = "bootloader";
+			offset = <0>;
+			size = <0x60000>;
+		};
+
+		ubootenv:ubootenv{
+			name = "ubootenv";
+      offset = <0x80000>;
+      size = <0x8000>;
+    };
 	};
 
+	nand{
+		compatible = "amlogic,aml_nand";
+		dev_name = "nand";
+		reg = <0xc1108600 0x24>;
+		pinctrl-names = "nand_rb_mod","nand_norb_mod";
+		pinctrl-0 = <&nand_input_state &conf_nand_state &nand_base 
+									&nand_ce0 &nand_rb0 
+									&nand_rb1 &nand_ce1>;
+		pinctrl-1 = <&nand_input_state &conf_nand_state &nand_base 
+									&nand_ce0 &nand_ce1 
+									&nand_ce2 &nand_ce3>;							
+		device_id = <0>;			
+		plat-names = "nandnormal";
+		plat-num = <1>;
+		plat-part-0 = <&normal>;
+
+		normal: normal{
+			enable_pad ="ce0","ce1";
+			busy_pad = "rb0","rb1";
+			timming_mode = "mode5";
+			bch_mode = "bch60_1k";
+			plane_mode = "twoplane";
+			t_rea = <20>;
+			t_rhoh = <15>;
+			chip_num = <2>;
+			part_num = <8>;
+			partition = <&nand_partitions>;
+			rb_detect = <1>;
+		};
+				
+		nand_partitions:nand_partition{
+			logo{
+				offset=<0x0 0x4800000>;
+				size=<0x0 0x800000>;
+			};
+			aml_logo{
+				offset=<0x0 0x5800000>;
+				size=<0x0 0x800000>;
+			};
+			recovery{
+				offset=<0x0 0x6800000>;
+				size=<0x0 0x800000>;
+			};
+			boot{
+				offset=<0x0 0x8800000>;
+				size=<0x0 0x800000>;
+			};
+			system{
+				offset=<0x0 0xa800000>;
+				size=<0x0 0x40000000>;
+			};
+			cache{
+				offset=<0x0 0x4a800000>;
+				size=<0x0 0x20000000>;
+			};
+			backup{
+				offset=<0x0 0x6a800000>;
+				size=<0x0 0x10000000>;
+			};
+			userdata{
+				offset=<0xffffffff 0xffffffff>;
+				size=<0x0 0x0>;
+			};
+		};
+	};	
+	
 	gpio:gpio{
 		compatible = "amlogic,m6-gpio";
 		dev_name = "gpio";
@@ -706,6 +713,11 @@
 		a_uart_pins:a_uart{
 			amlogic,setmask=<4 0x3c00>;
 			amlogic,pins="GPIOX_13", "GPIOX_14", "GPIOX_15", "GPIOX_16";
+		};
+		aml_pwm_pins:aml_pwm{
+		    amlogic,setmask=<2 0x4>;
+			amlogic,clrmask=<1 0x20000000>;
+			amlogic,pins="GPIOD_0";
 		};
 		ao_i2c_master:ao_i2c{
 			amlogic,setmask=<10 0x60>;
@@ -958,34 +970,5 @@
 			amlogic,pins = "BOOT_12","BOOT_13","BOOT_14","BOOT_17";
 		};
 	};
-	unifykey{
-		compatible = "amlogic,unifykey";
-		
-		/*efuse-version = <2>;*/ /*m6 efuse version 2,m3 efuse version 1, not config efuse version in default*/
-		unifykey-num = <3>;
-		unifykey-index-0 = <&keysn_0>;
-		unifykey-index-1 = <&keysn_1>;
-		unifykey-index-2 = <&keysn_2>;
-
-		keysn_0: key_0{
-			key-name = "key0";
-			key-device = "nandkey";
-			key-dataformat = "hexdata";
-			key-permit = "read","write","del";
-		};
-		keysn_1:key_1{
-			key-name = "key1";
-			key-device = "nandkey";
-			key-dataformat = "hexdata";
-			key-permit = "read","write","del";
-		};
-		keysn_2:key_2{
-			key-name = "key2";
-			key-device = "nandkey";
-			key-dataformat = "hexdata";
-			key-permit = "read","write","del";
-		};
-	};
-
 }; /* end of / */
 
