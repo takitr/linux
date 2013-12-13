@@ -386,7 +386,6 @@ static void backlight_power_ctrl(Bool_t status)
 		bl_power_off(LCD_BL_FLAG);
 	}
 	bl_status = status;
-	printk("%s(): %s\n", __FUNCTION__, (status ? "ON" : "OFF"));
 }
 
 static void lcd_power_ctrl(Bool_t status)

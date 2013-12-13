@@ -16,7 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:  Wang Han <han.wang@amlogic.com>
- *
+ *  
+ * Modify:  Evoke Zhang <evoke.zhang@amlogic.com>
+ * compatible dts
  */
 
 #include <linux/init.h>
@@ -58,6 +60,10 @@
 #ifdef LCD_BACKLIGHT_SUPPORT
 typedef struct {
 	unsigned level_default;
+	unsigned level_mid;
+	unsigned level_mid_mapping;
+	unsigned level_min;
+	unsigned level_max;
     unsigned char method;
 	int gpio;
 	unsigned dim_max;
@@ -147,7 +153,8 @@ void bl_power_on(int bl_flag)
 		}
 	}
 	bl_real_status = 1;
-
+	printk("backlight power on\n");
+	
 exit_bl_power_on:
 	mutex_unlock(&bl_power_mutex);
 }
@@ -187,6 +194,7 @@ void bl_power_off(int bl_flag)
 		}
 	}
 	bl_real_status = 0;
+	printk("backlight power off\n");
 	mutex_unlock(&bl_power_mutex);
 }
 
@@ -194,28 +202,29 @@ static DEFINE_MUTEX(bl_level_mutex);
 static void set_backlight_level(unsigned level)
 {
 	unsigned pwm_hi = 0, pwm_lo = 0;
-	
+
 	mutex_lock(&bl_level_mutex);
 	
 	DPRINT("set_backlight_level: %u, last level: %u\n", level, bl_level);
-	level = (level > BL_LEVEL_MAX ? BL_LEVEL_MAX : (level < BL_LEVEL_MIN ? (level < BL_LEVEL_OFF ? 0 : BL_LEVEL_MIN) : level));
+	level = (level > bl_config.level_max ? bl_config.level_max : (level < bl_config.level_min ? (level < BL_LEVEL_OFF ? 0 : bl_config.level_min) : level));
 	bl_level = level;
 
 	if ((level == 0) && (bl_status == 1)) {
 		bl_power_off(DRV_BL_FLAG);
 	}
-	else {		
-		if (level > BL_LEVEL_MID)
-			level = ((level - BL_LEVEL_MID) * (BL_LEVEL_MAX - BL_LEVEL_MAPPED_MID)) / (BL_LEVEL_MAX - BL_LEVEL_MID) + BL_LEVEL_MAPPED_MID;
+	else {
+		//mapping
+		if (level > bl_config.level_mid)
+			level = ((level - bl_config.level_mid) * (bl_config.level_max - bl_config.level_mid_mapping)) / (bl_config.level_max - bl_config.level_mid) + bl_config.level_mid_mapping;
 		else
-			level = ((level - BL_LEVEL_MIN) * (BL_LEVEL_MAPPED_MID - BL_LEVEL_MIN)) / (BL_LEVEL_MID - BL_LEVEL_MIN) + BL_LEVEL_MIN;
-		
+			level = ((level - bl_config.level_min) * (bl_config.level_mid_mapping - bl_config.level_min)) / (bl_config.level_mid - bl_config.level_min) + bl_config.level_min;
+		DPRINT("level mapping=%u\n", level);
 		if (bl_config.method == BL_CTL_GPIO) {
-			level = bl_config.dim_min - ((level - BL_LEVEL_MIN) * (bl_config.dim_min - bl_config.dim_max)) / (BL_LEVEL_MAX - BL_LEVEL_MIN);
+			level = bl_config.dim_min - ((level - bl_config.level_min) * (bl_config.dim_min - bl_config.dim_max)) / (bl_config.level_max - bl_config.level_min);
 			aml_set_reg32_bits(P_LED_PWM_REG0, level, 0, 4);
 		}
 		else {
-			level = (bl_config.pwm_max - bl_config.pwm_min) * (level - BL_LEVEL_MIN) / (BL_LEVEL_MAX - BL_LEVEL_MIN) + bl_config.pwm_min;
+			level = (bl_config.pwm_max - bl_config.pwm_min) * (level - bl_config.level_min) / (bl_config.level_max - bl_config.level_min) + bl_config.pwm_min;
 			if (bl_config.method == BL_CTL_PWM_NEGATIVE) {
 				pwm_hi = bl_config.pwm_cnt - level;
 				pwm_lo = level;
@@ -237,7 +246,7 @@ static void set_backlight_level(unsigned level)
 				aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
 			}
 		}
-		if (bl_status == 1)
+		if ((bl_status == 1) && (bl_real_status == 0))
 			bl_power_on(DRV_BL_FLAG);	
 	}
 	mutex_unlock(&bl_level_mutex);
@@ -358,14 +367,38 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 	int i;
 	
 	if (pdev->dev.of_node) {
-		ret = of_property_read_u32(pdev->dev.of_node,"bl_level_default", &val);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_level_default_uboot_kernel", &bl_para[0], 2);
 		if(ret){
-			printk("faild to get bl_level_default\n");
+			printk("faild to get bl_level_default_uboot_kernel\n");
 			bl_config.level_default = BL_LEVEL_DEFAULT;
 		}
 		else {
-			bl_config.level_default = val;
+			bl_config.level_default = bl_para[1];
 		}
+		DPRINT("bl level default kernel=%u\n", bl_config.level_default);
+		ret = of_property_read_u32_array(pdev->dev.of_node, "bl_level_middle_mapping", &bl_para[0], 2);
+		if (ret) {
+			printk("faild to get bl_level_middle_mapping!\n");
+			bl_config.level_mid = BL_LEVEL_MID;
+			bl_config.level_mid_mapping = BL_LEVEL_MID_MAPPED;
+		}
+		else {
+			bl_config.level_mid = bl_para[0];
+			bl_config.level_mid_mapping = bl_para[1];
+		}
+		DPRINT("bl level mid=%u, mid_mapping=%u\n", bl_config.level_mid, bl_config.level_mid_mapping);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_level_max_min", &bl_para[0],2);
+		if(ret){
+			printk("faild to get bl_level_max_min\n");
+			bl_config.level_min = BL_LEVEL_MIN;
+			bl_config.level_max = BL_LEVEL_MAX;
+		}
+		else {
+			bl_config.level_max = bl_para[0];
+			bl_config.level_min = bl_para[1];
+		}
+		DPRINT("bl level max=%u, min=%u\n", bl_config.level_max, bl_config.level_min);
+		
 		ret = of_property_read_u32(pdev->dev.of_node, "bl_ctrl_method", &val);
 		if (ret) {
 			printk("faild to get bl_ctrl_method!\n");
@@ -505,7 +538,7 @@ static int aml_bl_probe(struct platform_device *pdev)
     }
 
 #ifdef CONFIG_USE_OF
-	_get_backlight_config(pdev);	
+	_get_backlight_config(pdev);
 #endif
 	
     amlbl->pdata = pdata;
@@ -519,7 +552,11 @@ static int aml_bl_probe(struct platform_device *pdev)
     DPRINT("%s() pdata->dft_brightness=%d\n", __FUNCTION__, pdata->dft_brightness);
 
     memset(&props, 0, sizeof(struct backlight_properties));
-    props.max_brightness = (pdata->max_brightness > 0 ? pdata->max_brightness : 255);
+#ifdef CONFIG_USE_OF
+	props.max_brightness = (bl_config.level_max > 0 ? bl_config.level_max : BL_LEVEL_MAX);
+#else
+    props.max_brightness = (pdata->max_brightness > 0 ? pdata->max_brightness : BL_LEVEL_MAX);
+#endif
     props.type = BACKLIGHT_RAW;
     bldev = backlight_device_register("aml-bl", &pdev->dev, amlbl, &aml_bl_ops, &props);
     if (IS_ERR(bldev)) {
@@ -535,7 +572,7 @@ static int aml_bl_probe(struct platform_device *pdev)
     bldev->props.power = FB_BLANK_UNBLANK;
 #ifdef CONFIG_USE_OF
 	bldev->props.brightness = (bl_config.level_default > 0 ? bl_config.level_default : BL_LEVEL_DEFAULT);
-#else	
+#else
     bldev->props.brightness = (pdata->dft_brightness > 0 ? pdata->dft_brightness : BL_LEVEL_DEFAULT);
 #endif
 

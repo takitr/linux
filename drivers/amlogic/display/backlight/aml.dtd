@@ -2,7 +2,9 @@
 //$$ DEVICE="backlight"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_CHOICE "Bl_pin_0_match" = "pinctrl-0"
-//$$ L2 PROP_U32 = "bl_level_default"
+//$$ L2 PROP_U32 2= "bl_level_default_uboot_kernel"
+//$$ L2 PROP_U32 2= "bl_level_middle_mapping"
+//$$ L2 PROP_U32 2= "bl_level_max_min"
 //$$ L2 PROP_U32 = "bl_ctrl_method"
 //$$ L2 PROP_STR = "bl_gpio_port"
 //$$ L2 PROP_U32 2 = "bl_gpio_dim_max_min"
@@ -16,7 +18,9 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&lcd_backlight_pins>;	/** pwm pinmux */
 		
-		bl_level_default=<102>;	/** default brightness level */
+		bl_level_default_uboot_kernel=<20 128>;	/** default brightness level for uboot & kernel */
+		bl_level_middle_mapping=<102 76>;	/** brightness middle level mapping to a new level*/
+		bl_level_max_min=<255 10>;	/** brightness level max & min, must match the rootfs setting*/
 		
 		/* backlight power ctrl */
 		bl_ctrl_method=<1>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive. decided by hardware design) */
@@ -24,6 +28,6 @@
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
 		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
 		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
-		bl_pwm_duty_max_min=<100 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
+		bl_pwm_duty_max_min=<100 25>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
 	};
 #endif
