@@ -42,10 +42,45 @@
 #endif
 #include <linux/syscore_ops.h>
 #include <mach/am_regs.h>
+
+#include <linux/of_fdt.h>
+#include <linux/amlogic/vmapi.h>
 static void meson_map_board_io(void);
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 extern void __init meson_timer_init(void);
+
+//#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER && CONFIG_CMA
+#ifdef CONFIG_CMA
+static int __init early_dt_scan_vm(unsigned long node, const char *uname,
+				   int depth, void *data)
+{
+    char *p;
+    unsigned long l;
+    if(strcmp("vm", uname))
+        return 0;
+
+    p = of_get_flat_dt_prop(node, "status", &l);
+
+    if(p != 0 && l > 0)
+    {
+        if(strncmp("ok", p, 2) == 0)
+        {
+            vm_reserve_cma();
+        }
+    }
+    /* break */
+    return 1;
+}
+#endif
+
+static __init void meson6_reserve(void)
+{
+
+#ifdef CONFIG_CMA
+    of_scan_flat_dt(early_dt_scan_vm, NULL);
+#endif
+}
 
 __initdata struct map_desc meson_board_io_desc[1];
 
@@ -140,7 +175,7 @@ static const char *m6_common_board_compat[] __initdata = {
 };
 
 DT_MACHINE_START(AML8726_MX, "Amlogic Meson6 platform")
-//.reserve	= 
+	.reserve	= meson6_reserve,
 //.nr_irqs	= 
 	.smp		= smp_ops(meson_smp_ops),
 	.map_io		= meson_map_io,/// dt - 1

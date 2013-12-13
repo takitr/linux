@@ -115,7 +115,6 @@
 		compatible = "amlogic,vm";
 		dev_name = "vm.0";
 		status = "okay";
-		reserve-memory = <0x01000000>;
 	};
 
 	ppmgr{

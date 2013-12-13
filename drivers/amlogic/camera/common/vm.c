@@ -1833,6 +1833,74 @@ int uninit_vm_device(void)
 }
 
 
+#ifdef CONFIG_CMA
+
+void set_vm_buf_info(resource_size_t start,unsigned int size);
+void unset_vm_buf_info();
+
+static dma_addr_t vm_buf_phys = ~0;
+static void *vm_buf_virt;
+static size_t vm_buf_size;
+
+int vm_init_buf(size_t size)
+{
+
+    if(size ==0)
+        return;
+
+    if(vm_buf_phys != ~0)
+    {
+        pr_info("phys already in use phys %p, virt %p, size %d\n", vm_buf_phys, vm_buf_virt, size/1024);
+        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+    }
+
+    vm_buf_virt = dma_alloc_coherent(&vm_plat_dev.dev, size, &vm_buf_phys, GFP_KERNEL);
+
+    pr_info("%s: allocating virt %p, phys %p, size %dk\n", __func__, vm_buf_virt, vm_buf_phys, size/1024);
+    if(vm_buf_virt == 0)
+    {
+        pr_err("CMA failed to allocate dma buffer\n");
+        return -1;
+    }
+    else
+        set_vm_buf_info(vm_buf_phys, size);
+
+    vm_buf_size = size;
+    return 0;
+}
+
+EXPORT_SYMBOL(vm_init_buf);
+
+void vm_deinit_buf()
+{
+    if(0 == vm_buf_size)
+    {
+        pr_warn("vm buf size equals 0\n");
+        return;
+    }
+    unset_vm_buf_info();
+    if(vm_buf_phys != ~0)
+    {
+        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
+        vm_buf_phys = ~0;
+        vm_buf_virt = 0;
+        vm_buf_size = 0;
+    }
+    pr_info("%s\n", __func__);
+}
+
+EXPORT_SYMBOL(vm_deinit_buf);
+
+void __init vm_reserve_cma()
+{
+    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 36 * SZ_1M, 0, 0);
+    if(ret)
+        pr_err("%s : dma_declare_contiguous failed\n", __func__);
+}
+#endif
+
+
+
 /*******************************************************************
  *
  * interface for Linux driver
@@ -1912,13 +1980,29 @@ static struct platform_driver vm_drv = {
 static int __init
 vm_init_module(void)
 {
-	int err;
+	int err = 0;
+    struct device_node *n;
 
 	amlog_level(LOG_LEVEL_HIGH,"vm_init\n");
+
+    /* See if we can find the camera node in device tree*/
+    if(of_find_compatible_node(NULL, NULL, "amlogic,cams_prober") == 0)
+        goto out;
+
+    /* Check vm's state in device tree */ 
+    n = of_find_compatible_node(NULL, NULL, "amlogic,vm");
+    if(!n || !of_device_is_available(n))
+        goto out;
+
+
 	if ((err = platform_driver_register(&vm_drv))) {
 		printk(KERN_ERR "Failed to register vm driver (error=%d\n", err);
 	}
 
+    err = platform_device_register(&vm_plat_dev);
+    if(err)
+        platform_driver_unregister(&vm_drv);
+out:
 	return err;
 }
 
