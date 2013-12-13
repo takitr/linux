@@ -74,6 +74,7 @@
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
+        reserve-memory = <0x01200000>;
     };
     
 	mesonfb{
