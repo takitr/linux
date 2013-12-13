@@ -365,7 +365,7 @@ static void kionix_accel_grp1_report_accel_data(struct kionix_accel_driver *acce
 	u8 accel_data[3];
 	s16 x, y, z;
 	int err;
-	struct input_dev *input_dev = acceld->input_dev;
+	//struct input_dev *input_dev = acceld->input_dev;
 	int loop = KIONIX_I2C_RETRY_COUNT;
 
 	if(atomic_read(&acceld->accel_enabled) > 0) {
@@ -529,7 +529,7 @@ static void kionix_accel_grp2_report_accel_data(struct kionix_accel_driver *acce
 	}; } accel_data;
 	s16 x, y, z;
 	int err;
-	struct input_dev *input_dev = acceld->input_dev;
+	//struct input_dev *input_dev = acceld->input_dev;
 	int loop;
 
 	/* Only read the output registers if enabled */
@@ -978,6 +978,7 @@ exit:
 	return (err < 0) ? err : count;
 }
 
+#if 0
 /* Returns the direction of device */
 static ssize_t kionix_accel_get_direct(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -987,7 +988,6 @@ static ssize_t kionix_accel_get_direct(struct device *dev,
 
 	return sprintf(buf, "%d\n", acceld->accel_pdata.accel_direction);
 }
-
 /* Allow users to change the direction the device */
 static ssize_t kionix_accel_set_direct(struct device *dev, struct device_attribute *attr,
 						const char *buf, size_t count)
@@ -1043,6 +1043,7 @@ exit:
 
 	return (err < 0) ? err : count;
 }
+#endif
 
 /* Returns the data output of device */
 static ssize_t kionix_accel_get_data(struct device *dev,
@@ -1148,7 +1149,7 @@ exit:
 
 static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP, kionix_accel_get_enable, kionix_accel_set_enable);
 static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP, kionix_accel_get_delay, kionix_accel_set_delay);
-static DEVICE_ATTR(direct, S_IRUGO|S_IWUSR|S_IWGRP, kionix_accel_get_direct, kionix_accel_set_direct);
+//static DEVICE_ATTR(direct, S_IRUGO|S_IWUSR|S_IWGRP, kionix_accel_get_direct, kionix_accel_set_direct);
 static DEVICE_ATTR(data, S_IRUGO, kionix_accel_get_data, NULL);
 static DEVICE_ATTR(cali, S_IRUGO|S_IWUSR|S_IWGRP, kionix_accel_get_cali, kionix_accel_set_cali);
 

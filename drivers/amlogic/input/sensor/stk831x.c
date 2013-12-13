@@ -3063,7 +3063,6 @@ static ssize_t stk831x_firlen_store(struct device *dev,
 static ssize_t stk831x_range_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct stk831x_data *stk = i2c_get_clientdata(this_client);
 	char grange = 0;
        int range = 0;
 
@@ -3071,14 +3070,14 @@ static ssize_t stk831x_range_show(struct device *dev,
        range = stk8313_range[2].range;
        if(!STK831x_GetRange(&grange)) {
             if(grange <= 0x3)
-                range = stk8313_range[grange].range;
+                range = stk8313_range[(int)grange].range;
        }
 	return sprintf(buf, "%d\n", range);
 #elif defined(CONFIG_GRAVITY_STK8312)
        range = stk8312_range[1].range;
        if(!STK831x_GetRange(&grange)) {
             if(grange <= 0x2)
-                range= stk8312_range[grange].range;
+                range= stk8312_range[(int)grange].range;
        }
        return sprintf(buf, "%d\n", range);
 #endif
@@ -3087,7 +3086,6 @@ static ssize_t stk831x_range_show(struct device *dev,
 static ssize_t stk831x_resolution_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct stk831x_data *stk = i2c_get_clientdata(this_client);
 	char grange = 0;
        int resolution = 0;
 	
@@ -3095,13 +3093,13 @@ static ssize_t stk831x_resolution_show(struct device *dev,
        resolution = stk8313_range[2].resolution;
        if(!STK831x_GetRange(&grange)) {
             if(grange <= 0x3)
-                resolution = stk8313_range[grange].resolution;
+                resolution = stk8313_range[(int)grange].resolution;
        }
 #elif defined(CONFIG_GRAVITY_STK8312)
        resolution = stk8312_range[1].resolution;
        if(!STK831x_GetRange(&grange)) {
             if(grange <= 0x2)
-                resolution = stk8312_range[grange].resolution;
+                resolution = stk8312_range[(int)grange].resolution;
        }
 #endif
 

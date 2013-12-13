@@ -168,7 +168,7 @@ static bool isl29023_read_lux(struct i2c_client *client, int *lux);
 
 static int polling_function(void* arg)
 {
-	uint32_t lux;
+	uint32_t lux = 0;
 	uint32_t delay;
 	init_completion(&thread_completion);
 
@@ -211,13 +211,11 @@ static bool isl29023_write_data(struct i2c_client *client, u8 reg,
 	return true;
 }
 
-static bool isl29023_disable()
+static void isl29023_disable(void)
 {
 	printk("isl29023_disable\n");
 	isl29023_write_data(the_data_isl29023->client, ISL29023_REG_ADD_COMMAND1,
 			0, 0xff, 0);
-
-
 }
 
 static bool isl29023_set_range(struct i2c_client *client, unsigned long range,

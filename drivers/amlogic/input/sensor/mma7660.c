@@ -172,7 +172,6 @@ static int mma7660_load_cablic(const char *addr)
 
 static void mma7660_put_cablic(const char *addr)
 {
-	char value[128];
 	long fd = sys_open(addr,O_CREAT | O_RDWR | O_TRUNC,0);
 
 	if(fd<0){
@@ -458,13 +457,14 @@ static void mma7660_worker(struct work_struct *work)
 
 DECLARE_WORK(mma7660_work, mma7660_worker);
 
+#if 0
 // interrupt handler
 static irqreturn_t mmx7660_irq_handler(int irq, void *dev_id)
 {
 	schedule_work(&mma7660_work);
 	return IRQ_RETVAL(1);
 }
-
+#endif
 
 /*
  * Initialization function

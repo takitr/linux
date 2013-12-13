@@ -203,7 +203,6 @@ static int aml_sensor_probe(struct platform_device *pdev)
 	struct device_node* child;
 	struct i2c_board_info i2c_info;
 	struct i2c_adapter *adapter;
-	struct i2c_client *client;
     int i2c_bus_nr; 
     int gpio;
 

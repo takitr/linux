@@ -86,7 +86,6 @@ static int I2C_RxData(uint16_t slaveAddr, uint8_t *rxData, int length)
 	uint8_t loop_i;
   uint8_t subaddr[1];
   
-  subaddr[0] = CM3232_ALS_READ_COMMAND_CODE;
   
 	struct i2c_msg msg[] = {
 		{
@@ -102,6 +101,8 @@ static int I2C_RxData(uint16_t slaveAddr, uint8_t *rxData, int length)
 		 .buf = rxData,
 		 },
 	};
+
+    subaddr[0] = CM3232_ALS_READ_COMMAND_CODE;
 
 	for (loop_i = 0; loop_i < I2C_RETRY_COUNT; loop_i++) {
 

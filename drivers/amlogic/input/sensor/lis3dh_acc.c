@@ -1092,8 +1092,6 @@ static ssize_t attr_get_debug(struct device *dev,
 static ssize_t attr_set_debug(struct device *dev,
 		struct device_attribute *attr,	const char *buf, size_t size)
 {
-     int err, xyz[3]={0};
-     
      struct i2c_client *client = to_i2c_client(dev);
      struct lis3dh_acc_status *stat = i2c_get_clientdata(client);
      

@@ -603,9 +603,10 @@ static int mxc622x_acc_probe(struct i2c_client *client,
 	int result = -1;
 	int tempvalue;
 
+	struct i2c_adapter *adapter;
+
 	pr_info("%s: probe start.\n", MXC622X_ACC_DEV_NAME);
 
-	struct i2c_adapter *adapter;
 	adapter = to_i2c_adapter(client->dev.parent);
 	result = i2c_check_functionality(adapter,
 					 I2C_FUNC_SMBUS_BYTE |

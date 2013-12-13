@@ -659,8 +659,7 @@ void device_i2c_merge_register_values(struct i2c_client *client, s16 *val, u8 ms
 void device_i2c_read_xyz(struct i2c_client *client, s16 *xyz_p)
 {	
 	u8 buffer[11];
-	s16 xyzTmp[SENSOR_DATA_SIZE];
-	int i, j;
+	int i;
 	/* get xyz high/low bytes, 0x12 */
 	buffer[0] = REG_STADR;
 	device_i2c_rxdata(client, buffer, 10);

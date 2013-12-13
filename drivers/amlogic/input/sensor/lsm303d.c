@@ -290,8 +290,7 @@ static int lsm303d_i2c_read(struct lsm303d_status *stat, u8 *buf, int len)
 			ret = -1;
 
 		if (ret < 0) {
-			printk(&stat->client->dev,
-				"read transfer error: len:%d, command=0x%02x\n",
+			printk("read transfer error: len:%d, command=0x%02x\n",
 				len, cmd);
 			return 0;
 		}
@@ -697,7 +696,6 @@ static int lsm303d_acc_update_odr(struct lsm303d_status *stat,
 {
 	int err = -1;
 	u8 config[2];
-	int i;
 
 #if 0
 	for (i = ARRAY_SIZE(lsm303d_acc_odr_table) - 1; i >= 0; i--) {
@@ -1018,7 +1016,7 @@ static ssize_t attr_get_enable_acc(struct kobject *kobj,
 		err = lsm303d_i2c_read(stat, buff, 1);
 		if (err < 0)
 		{
-			printk(KERN_ERR"read 0x0f failed\n", 0x0f);	
+			printk(KERN_ERR"read 0x0f failed\n");	
 		}
 		else
 		{
@@ -1061,9 +1059,9 @@ static ssize_t attr_set_enable_acc(struct kobject *kobj,
 	else if(val == 6)
 	{
 		int err; u8 buff[2];
+		u8 val = 0;
 		aml_dbg = 1;
 		buff[0] = 0x21;
-		u8 val = 0;
 		err = lsm303d_i2c_read(stat, buff, 1);
 		if (err < 0)
 		{
