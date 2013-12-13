@@ -52,9 +52,9 @@
 	/*start  memory config*/
 	memory{
 		device_type = "memory";
-		aml_reserved_start = <0x84000000>;
-		aml_reserved_end = <0x92afffff>;
-		linux,usable-memory = <0x80000000 0x04000000 0x92b00000 0x0d400000 0xa0000000 0x20000000>; 
+		aml_reserved_start = <0x85000000>;
+		aml_reserved_end = <0x84000000>;
+		linux,total-memory = <0x40000000>;
 	};
     gic:interrupt-controller{
         compatible = "arm,cortex-a9-gic";
@@ -74,14 +74,13 @@
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
-//        reg = <0x18200000 0x03000000>;
     };
     
 	mesonfb{
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
-		reg = <0x84100000 0x01000000
-	   	 		0x85100000 0x00100000>;
+		status = "okay";
+		reserve-memory = <0x01000000 0x00100000>;
 	  vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
 	  scale_mode = <0>; /*0:default 1:new*/
 	  display_size_default = <1920 1080 1920 2160 32>;
@@ -90,15 +89,15 @@
 	mesonstream{
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
-		reg = <0x85200000 0x04000000
-						0x92100000 0x00a00000>;
+		status = "okay";
+		reserve-memory = <0x04000000 0x00a00000>;
 	};
 	
 	vdin0{
 		compatible = "amlogic,vdin";
 		dev_name = "vdin";
-		reg = <0x89200000 0x04000000
-					0x89200000 0x04000000>;
+		status = "okay";
+		reserve-memory = <0x04000000 0x04000000>;
 		irq = <115>;
 		vdin_id = <0>;
 	};
@@ -106,13 +105,15 @@
 	deinterlace{
 		compatible = "amlogic,deinterlace";
 		dev_name = "deinterlace";
-		reg = <0x8d200000 0x02300000>;
+		status = "okay";
+		reserve-memory = <0x02300000>;
 	};
 	
 	ppmgr{
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
-		reg = <0x8f500000 0x02c00000>;		
+		status = "okay";
+		reserve-memory = <0x02c00000>;		
 	};
 	/*end*/
 	
@@ -381,21 +382,21 @@
             card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
         	
-        emmc{
-            port = <2>;          /*0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
-            pinname = "emmc";
-            ocr_avail = <0x200000>;          /*VDD voltage 3.3 ~ 3.4 */
-            caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE"; // MMC_CAP_NEEDS_POLL -- for detect, MMC_CAP_NONREMOVABLE -- for eMMC/TSD
-            f_min = <300000>;
-            f_max = <50000000>;
-            f_max_w = <50000000>;
-            max_req_size = <0x20000>;          /*128KB*/
-            gpio_dat3 = "BOOT_3";
-            #gpio_cd = "CARD_6";
-            #gpio_power = "CARD_8";
-            #power_level = <0>;
-            card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
-        };
+//        emmc{
+//            port = <2>;          /*0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
+//            pinname = "emmc";
+//            ocr_avail = <0x200000>;          /*VDD voltage 3.3 ~ 3.4 */
+//            caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE"; // MMC_CAP_NEEDS_POLL -- for detect, MMC_CAP_NONREMOVABLE -- for eMMC/TSD
+//            f_min = <300000>;
+//            f_max = <50000000>;
+//            f_max_w = <50000000>;
+//            max_req_size = <0x20000>;          /*128KB*/
+//            gpio_dat3 = "BOOT_3";
+//            #gpio_cd = "CARD_6";
+//            #gpio_power = "CARD_8";
+//            #power_level = <0>;
+//            card_type = <5>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
+//        };
         
         // sdio{
             // port = <0>;          /*0:sdio_a, 1:sdio_b, 2:sdio_c, 3:sdhc_a, 4:sdhc_b, 5:sdhc_c */
