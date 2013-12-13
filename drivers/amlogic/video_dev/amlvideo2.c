@@ -2030,6 +2030,9 @@ static int amlvideo2_driver_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct amlvideo2_device *dev = NULL;
+	
+	if(of_get_property(pdev->dev.of_node, "reserve-memory", NULL))
+		pdev->num_resources = MAX_SUB_DEV_NODE;
 	if (pdev->num_resources == 0) {
 		dev_err(&pdev->dev, "probed for an unknown device\n");
 		return -ENODEV;
