@@ -50,13 +50,13 @@ static unsigned int isp_debug = 0;
 static unsigned int ae_enable = 1;
 static unsigned int ae_adjust_enable = 1;
 static unsigned int awb_enable = 1;
+static unsigned int af_enable = 1;
 static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
 static unsigned int isr_debug = 0;
 static volatile unsigned int ae_flag = 0;
 static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
-static unsigned int af_ave_step_en = 1;
 static unsigned int def_config = 0;
 static void parse_param(char *buf_orig,char **parm)
 {
@@ -123,15 +123,15 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		for(i=0;i<16;i++)
 		pr_info("ae->luma_win[%d]=%d.\n",i,ae->luma_win[i]);
 		for(i=0;i<3;i++)
-		pr_info("ae->bayer_over_info[%d]=%d.\n",i,ae->bayer_over_info[i]);		
+		pr_info("ae->bayer_over_info[%d]=%d.\n",i,ae->bayer_over_info[i]);
 	}else if(!strcmp(parm[0],"read_awb")){
 	    int i;
 		struct isp_awb_stat_s *awb = &devp->isp_awb;
 		for(i=0;i<3;i++)
 		pr_info("awb->rgb.rgb_sum[%d]=%d.\n",i,awb->rgb.rgb_sum[i]);
-		pr_info("awb->rgb.rgb_count=%d.\n",awb->rgb.rgb_count);	
+		pr_info("awb->rgb.rgb_count=%d.\n",awb->rgb.rgb_count);
 		for(i=0;i<4;i++)
-		pr_info("awb->yuv_low[%d].sum=%d,count=%d\n",i,awb->yuv_low[i].sum,awb->yuv_low[i].count);	
+		pr_info("awb->yuv_low[%d].sum=%d,count=%d\n",i,awb->yuv_low[i].sum,awb->yuv_low[i].count);
 		for(i=0;i<4;i++)
 		pr_info("awb->yuv_mid[%d].sum=%d,count=%d\n",i,awb->yuv_mid[i].sum,awb->yuv_mid[i].count);
 		for(i=0;i<4;i++)
@@ -236,18 +236,19 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 		if(IS_ERR_OR_NULL(af))
 			return len;
 		devp->flag &=(~ISP_FLAG_AF_DBG);
-		pr_info("ac[0]   ac[1]    ac[2]   ac[3]   dc[0]   dc[1]   dc[2]   dc[3]\n");
+		pr_info("ac[0]   ac[1]    ac[2]   ac[3]   dc[0]   dc[1]   dc[2]   dc[3]   af0_ac   af1_ac\n");
 		if(af->dir){
 			for (i=af->min_step; i <= af->max_step;i+=af->mid_step){
 				cursor = i;
 				while((af->data[cursor].ac[0]==0)&&(cursor!=0)){
 					cursor--;
 				}
-				pr_info("step[%4u]:%u %u %u %u %u %u %u %u\n",
+				pr_info("step[%4u]:%u %u %u %u %u %u %u %u %u %u\n",
 					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
 					af->data[cursor].ac[2],af->data[cursor].ac[3],
 					af->data[cursor].dc[0],af->data[cursor].dc[1],
-					af->data[cursor].dc[2],af->data[cursor].dc[3]);
+					af->data[cursor].dc[2],af->data[cursor].dc[3],
+					af->data[cursor].af_ac[0],af->data[cursor].af_ac[1]);
 				msleep(10);
 			}
 		}else{
@@ -256,11 +257,12 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 				while((af->data[cursor].ac[0]==0)&&(cursor!=0)){
 					cursor--;
 				}
-				pr_info("step[%4u]:%u %u %u %u %u %u %u %u\n",
+				pr_info("step[%4u]:%u %u %u %u %u %u %u %u %u %u\n",
 					i,af->data[cursor].ac[0],af->data[cursor].ac[1],
 					af->data[cursor].ac[2],af->data[cursor].ac[3],
 					af->data[cursor].dc[0],af->data[cursor].dc[1],
-					af->data[cursor].dc[2],af->data[cursor].dc[3]);
+					af->data[cursor].dc[2],af->data[cursor].dc[3],
+					af->data[cursor].af_ac[0],af->data[cursor].af_ac[1]);
 				msleep(10);
 			}
 		}
@@ -279,17 +281,27 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 			kfree(devp->af_test.af_win);
 		if(devp->af_test.af_bl)
 			kfree(devp->af_test.af_bl);
-		if(devp->af_test.ae_win)
-			kfree(devp->af_test.ae_win);
 		devp->af_test.af_win = kmalloc(sizeof(isp_af_stat_t)*devp->af_test.max,GFP_KERNEL);
 		devp->af_test.af_bl = kmalloc(sizeof(isp_blnr_stat_t)*devp->af_test.max,GFP_KERNEL);
-		devp->af_test.ae_win = kmalloc(sizeof(isp_ae_stat_t)*devp->af_test.max,GFP_KERNEL);
 		devp->af_test.cnt = 0;
 		devp->flag |= ISP_TEST_FOR_AF_WIN;
 	}else if(!strcmp(parm[0],"af_print")){
 		int i = 0;
 		unsigned long long sum_ac,sum_dc;
-		pr_info("ac0 ac1 ac2 ac3 dc0 dc1 dc2 dc3\n");
+		pr_info("af:f0_win0 f1_win0 f0_win1 f1_win1 f0_win2 f1_win2 f0_win3 f1_win3 f0_win4 f1_win4 f0_win5 f1_win5 f0_win6 f1_win6 f0_win7 f1_win7\n");
+		for(i=0;i<devp->af_test.cnt;i++){
+			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
+				devp->af_test.af_win[i].luma_win[0],devp->af_test.af_win[i].luma_win[1],
+				devp->af_test.af_win[i].luma_win[2],devp->af_test.af_win[i].luma_win[3],
+				devp->af_test.af_win[i].luma_win[4],devp->af_test.af_win[i].luma_win[5],
+				devp->af_test.af_win[i].luma_win[6],devp->af_test.af_win[i].luma_win[7],
+				devp->af_test.af_win[i].luma_win[8],devp->af_test.af_win[i].luma_win[9],
+				devp->af_test.af_win[i].luma_win[10],devp->af_test.af_win[i].luma_win[11],
+				devp->af_test.af_win[i].luma_win[12],devp->af_test.af_win[i].luma_win[13],
+				devp->af_test.af_win[i].luma_win[14],devp->af_test.af_win[i].luma_win[15]);
+			msleep(1);
+		}
+		pr_info("blnr:ac0 ac1 ac2 ac3 dc0 dc1 dc2 dc3\n");
 		for(i=0;i<devp->af_test.cnt;i++){
 			pr_info("%u %u %u %u %u %u %u %u\n", devp->af_test.af_bl[i].ac[0],
 				devp->af_test.af_bl[i].ac[1],devp->af_test.af_bl[i].ac[2],
@@ -297,25 +309,10 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 				devp->af_test.af_bl[i].dc[1],devp->af_test.af_bl[i].dc[2],
 				devp->af_test.af_bl[i].dc[3]);
 		}
-		pr_info("win0 win1 win2 win3 win4 win5 win6 win7 win8 win9 win10 win11 win12 win13 win14 win15\n");
-		for(i=0;i<devp->af_test.cnt;i++){
-			pr_info("%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
-				devp->af_test.ae_win[i].luma_win[0],devp->af_test.ae_win[i].luma_win[1],
-				devp->af_test.ae_win[i].luma_win[2],devp->af_test.ae_win[i].luma_win[3],
-				devp->af_test.ae_win[i].luma_win[4],devp->af_test.ae_win[i].luma_win[5],
-				devp->af_test.ae_win[i].luma_win[6],devp->af_test.ae_win[i].luma_win[7],
-				devp->af_test.ae_win[i].luma_win[8],devp->af_test.ae_win[i].luma_win[9],
-				devp->af_test.ae_win[i].luma_win[10],devp->af_test.ae_win[i].luma_win[11],
-				devp->af_test.ae_win[i].luma_win[12],devp->af_test.ae_win[i].luma_win[13],
-				devp->af_test.ae_win[i].luma_win[14],devp->af_test.ae_win[i].luma_win[15]);
-			msleep(1);
-		}
 		kfree(devp->af_test.af_bl);
 		kfree(devp->af_test.af_win);
-		kfree(devp->af_test.ae_win);
 		devp->af_test.af_bl = NULL;
 		devp->af_test.af_win = NULL;
-		devp->af_test.ae_win = NULL;
 	}
 
 	kfree(buf_orig);
@@ -758,14 +755,14 @@ static int isp_thread(isp_dev_t *devp) {
 		newstep = isp_tune_exposure(devp);
 		printk("set new step2 %d \n",newstep);
 		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(newstep,true,true);		
+		func->set_aet_new_step(newstep,true,true);
 	}
 	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
 	{
 		if(isp_debug)
 			printk("[isp] set new step:%d \n",ae_sens.new_step);
 		if(ae_adjust_enable)
-			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
 		atomic_set(&devp->ae_info.writeable,0);
 	}
 	if(devp->flag&ISP_FLAG_AF_DBG){
@@ -840,7 +837,12 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	} else {
 		devp->isp_ae_parm = &devp->cam_param->xml_scenes->ae;
 		devp->isp_awb_parm = &devp->cam_param->xml_scenes->awb;
-		//devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
+		unsigned int i;
+		devp->isp_af_parm = &devp->cam_param->xml_scenes->af;
+		devp->isp_af_parm->valid_step_cnt = 0;
+		for(i = 0;devp->isp_af_parm->step[i] != 0;i++){
+			devp->isp_af_parm->valid_step_cnt++;
+		}
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
 		isp_hw_enable(false);
@@ -851,55 +853,12 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 			disable_gc_lns(false);
 		/*enable isp hw*/
 		isp_hw_enable(true);
-		
-		devp->isp_af_parm = kmalloc(sizeof(xml_algorithm_af_t),GFP_KERNEL);
-		memset(devp->isp_af_parm,0,sizeof(xml_algorithm_af_t));
-		devp->isp_af_parm->valid_step_cnt = 8;
-		devp->isp_af_parm->af_fail_ratio = 120;
-		devp->isp_af_parm->af_step_mid_thre= 250;
-		devp->isp_af_parm->af_step_max_thre = 550;
-		devp->isp_af_parm->af_retry_max = 3;
-		devp->isp_af_parm->step[0] = 100;
-		devp->isp_af_parm->step[1] = 150;
-		devp->isp_af_parm->step[2] = 200;
-		devp->isp_af_parm->step[3] = 250;
-		devp->isp_af_parm->step[4] = 290;
-		devp->isp_af_parm->step[5] = 330;
-		devp->isp_af_parm->step[6] = 370;
-		devp->isp_af_parm->step[7] = 400;
-		devp->isp_af_parm->step[8] = 430;
-		devp->isp_af_parm->step[9] = 460;
-		devp->isp_af_parm->step[10] = 480;
-		devp->isp_af_parm->step[11] = 500;
-                devp->isp_af_parm->step[12] = 520;
-                devp->isp_af_parm->step[13] = 530;
-                devp->isp_af_parm->step[14] = 540;
-		devp->isp_af_parm->step[15] = 550;
-		if(af_ave_step_en){
-			int temp;
-			for(temp=0;temp<8;temp++)
-				devp->isp_af_parm->step[temp] = 100+60*temp;
-		}
-		devp->isp_af_parm->jump_offset = 100;
-		devp->isp_af_parm->field_delay = 2;
-
-		/*init for auto lose focus tell*/
-		devp->isp_af_parm->detect_step_cnt = 16;
-		devp->isp_af_parm->enter_move_ratio = 55;
-		devp->isp_af_parm->enter_static_ratio = 35;
-		devp->isp_af_parm->ave_vdc_thr = 200;
-		devp->isp_af_parm->delta_fv_ratio = 0;
-		devp->isp_af_parm->af_duration_time = 1;//0.5s
-		/*window for full scan & detect*/
-		devp->isp_af_parm->radius_ratio = 8;
-		devp->isp_af_parm->win_ratio = 4;
 		devp->af_info.x0 = info->h_active/devp->isp_af_parm->win_ratio;
 		devp->af_info.y0 = info->v_active/devp->isp_af_parm->win_ratio;
 		devp->af_info.x1 = info->h_active - devp->af_info.x0;
 		devp->af_info.y1 = info->v_active - devp->af_info.y0;
 		devp->af_info.radius = info->h_active/devp->isp_af_parm->radius_ratio;
 		devp->af_info.af_detect = kmalloc(sizeof(isp_blnr_stat_t)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
-		devp->af_info.fv = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 		devp->af_info.v_dc = kmalloc(sizeof(unsigned long long)*devp->isp_af_parm->detect_step_cnt,GFP_KERNEL);
 	}
         return 0;
@@ -910,8 +869,6 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
         isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
 		if(devp->af_info.af_detect)
 			kfree(devp->af_info.af_detect);
-		if(devp->af_info.fv)
-			kfree(devp->af_info.fv);
 		if(devp->af_info.v_dc)
 			kfree(devp->af_info.v_dc);
 		if(devp->isp_af_parm)
@@ -1001,7 +958,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_SCENES:
 		        devp->isp_ae_parm = &param->xml_scenes->ae;
 		        devp->isp_awb_parm = &param->xml_scenes->awb;
-		        //devp->isp_af_parm = &param->xml_scenes->af;
+		        devp->isp_af_parm = &param->xml_scenes->af;
 		        devp->capture_parm = param->xml_capture;
 		        devp->flag |= ISP_FLAG_SET_SCENES;
 		        break;
@@ -1014,7 +971,6 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			}
 		        break;
 		case CAM_COMMAND_MWB:
-			devp->af_info.flag_bk &= (~ISP_FLAG_AWB);
 			devp->flag &= (~ISP_FLAG_AWB);
 	                devp->flag |= ISP_FLAG_MWB;
 		        break;
@@ -1034,7 +990,6 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 			}
 		        break;
                 case CAM_COMMAND_AE_OFF:
-			devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 		        devp->flag &= (~ISP_FLAG_AE);
 		        break;
 		case CAM_COMMAND_SET_AE_LEVEL:
@@ -1044,10 +999,10 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 // af related
                 case CAM_COMMAND_AF:
 			devp->flag |= ISP_FLAG_AF;
+			af_sm_init(devp);
 		        break;
                 case CAM_COMMAND_FULLSCAN:
-				//isp_set_af_scan_stat(0,0,devp->info.h_active-1,devp->info.v_active-1);
-				isp_set_af_scan_stat(devp->af_info.x0,devp->af_info.y0,devp->af_info.x1,devp->af_info.y1);
+			isp_set_af_scan_stat(devp->af_info.x0,devp->af_info.y0,devp->af_info.x1,devp->af_info.y1);
 			devp->flag |= ISP_FLAG_TOUCH_AF;
 			devp->cmd_state = CAM_STATE_DOING;
 			af_sm_init(devp);
@@ -1076,6 +1031,7 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
                 case CAM_COMMAND_CONTINUOUS_FOCUS_ON:
 			if(!(devp->flag & ISP_FLAG_CAPTURE)){
 			        devp->flag |= ISP_FLAG_AF;
+				af_sm_init(devp);
 			}
 		        break;
                 case CAM_COMMAND_CONTINUOUS_FOCUS_OFF:
@@ -1112,15 +1068,14 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->flag & ISP_FLAG_RECONFIG)
 		return ret;
-	
+
 	if(awb_enable){
                 isp_get_awb_stat(&devp->isp_awb);
 	}
-	if(ae_enable){
-        if(devp->flag & ISP_FLAG_AE)
+	if((devp->flag&ISP_FLAG_AE)&&(ae_enable)){
 	        isp_get_ae_stat(&devp->isp_ae);
 	}
-	if(devp->flag & ISP_AF_SM_MASK){
+	if((devp->flag&ISP_AF_SM_MASK)&&(af_enable)){
 	        isp_get_blnr_stat(&af_info->isr_af_data);
 		isp_get_af_scan_stat(&af_info->isr_af_data);
 	}
@@ -1149,10 +1104,11 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->flag & ISP_TEST_FOR_AF_WIN){
 		isp_get_blnr_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
-		isp_get_af_scan_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
+		//isp_get_af_scan_stat(&devp->af_test.af_bl[devp->af_test.cnt]);
 		isp_get_af_stat(&devp->af_test.af_win[devp->af_test.cnt]);
-		isp_get_ae_stat(&devp->af_test.ae_win[devp->af_test.cnt]);
-		if(devp->af_test.cnt++ > devp->af_test.max){
+		//isp_get_ae_stat(&devp->af_test.ae_win[devp->af_test.cnt]);
+		devp->af_test.cnt+=1;
+		if(devp->af_test.cnt >= devp->af_test.max){
 			devp->flag &=(~ISP_TEST_FOR_AF_WIN);
 			pr_info("get af win,ae win&blnr info end.\n");
 		}
@@ -1168,7 +1124,7 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 	}
 	if(devp->isp_fe)
 		ret = devp->isp_fe->dec_ops->decode_isr(devp->isp_fe,0);
-	
+
 	if(devp->flag & ISP_FLAG_CAPTURE)
 		ret = max(isp_capture_sm(devp),ret);
 	if(isr_debug&&ret)
@@ -1186,15 +1142,13 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 static void isp_tasklet(unsigned long arg)
 {
 	isp_dev_t *devp = (isp_dev_t *)arg;
-        if(ae_enable){
-                if(devp->flag & ISP_FLAG_AE)
-	                isp_ae_sm(devp);
+        if((devp->flag & ISP_FLAG_AE)&&(ae_enable)){
+	    	isp_ae_sm(devp);
         }
-	if(awb_enable){
-		if(devp->flag & ISP_FLAG_AWB)
-                        isp_awb_sm(devp);
+	if((devp->flag&ISP_FLAG_AWB)&&(awb_enable)){
+    		isp_awb_sm(devp);
 	}
-	if(devp->flag & ISP_AF_SM_MASK){
+	if((devp->flag&ISP_AF_SM_MASK)&&(af_enable)){
 		isp_af_detect(devp);
 	}
 }
@@ -1203,55 +1157,55 @@ static void isp_tasklet(unsigned long arg)
 
 static void  isp_do_work(struct work_struct *work)
 {
-    isp_dev_t *devp = container_of(work, isp_dev_t, isp_wq);
 
-    unsigned newstep = 0;
-    struct cam_function_s *func = &devp->cam_param->cam_function;
+	isp_dev_t *devp = container_of(work, isp_dev_t, isp_wq);
 
-        if(ae_enable){
-                if(devp->flag & ISP_FLAG_AE)
-                    isp_ae_sm(devp);
-        }
-    if(awb_enable){
-        if(devp->flag & ISP_FLAG_AWB)
-                        isp_awb_sm(devp);
-    }
-    if(devp->flag & ISP_AF_SM_MASK){
-        isp_af_detect(devp);
-    }
+	unsigned newstep = 0;
+	struct cam_function_s *func = &devp->cam_param->cam_function;
 
-    if(ae_flag&0x1)
-    {
-        ae_flag &= (~0x1);
-        printk("set new step %d \n",ae_new_step);
-        if(func&&func->set_aet_new_step)
-        func->set_aet_new_step(ae_new_step,true,true);
-    }
-    if(ae_flag&0x2)
-    {
-        ae_flag &= (~0x2);
-        newstep = isp_tune_exposure(devp);
-        printk("wq:set new step2 %d \n",newstep);
-        if(func&&func->set_aet_new_step)
-        func->set_aet_new_step(newstep,true,true);
-    }
+	if((devp->flag & ISP_FLAG_AE)&&(ae_enable)){
+		isp_ae_sm(devp);
+	}
+	if((devp->flag&ISP_FLAG_AWB)&&(awb_enable)){
+		isp_awb_sm(devp);
+	}
+	if((devp->flag&ISP_AF_SM_MASK)&&(af_enable)){
+		isp_af_detect(devp);
+	}
+
+	if(ae_flag&0x1)
+	{
+		ae_flag &= (~0x1);
+		printk("set new step %d \n",ae_new_step);
+		if(func&&func->set_aet_new_step)
+			func->set_aet_new_step(ae_new_step,true,true);
+	}
+	if(ae_flag&0x2)
+	{
+		ae_flag &= (~0x2);
+		newstep = isp_tune_exposure(devp);
+		printk("wq:set new step2 %d \n",newstep);
+		if(func&&func->set_aet_new_step)
+			func->set_aet_new_step(newstep,true,true);
+	}
 	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
 	{
 		if(isp_debug)
-			printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
+		printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
 		if(ae_adjust_enable)
-			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);	
+			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
 		atomic_set(&devp->ae_info.writeable,0);
 	}
-    if(devp->flag&ISP_FLAG_AF_DBG){
-        af_stat(devp->af_dbg,func);
-    }
-    if(devp->flag & ISP_AF_SM_MASK) {
-        if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
-            func->set_af_new_step(devp->af_info.cur_step);
+	if(devp->flag&ISP_FLAG_AF_DBG){
+		af_stat(devp->af_dbg,func);
+	}
+	if(devp->flag & ISP_AF_SM_MASK) {
+		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
+			func->set_af_new_step(devp->af_info.cur_step);
 			atomic_set(&devp->af_info.writeable,0);
-        }
-    }
+		}
+	}
+
 }
 #endif
 
@@ -1463,6 +1417,9 @@ MODULE_PARM_DESC(ae_adjust_enable,"\n ae_adjust_enable.\n");
 module_param(awb_enable,uint,0664);
 MODULE_PARM_DESC(awb_enable,"\n awb_enable.\n");
 
+module_param(af_enable,uint,0664);
+MODULE_PARM_DESC(af_enable,"\n af enable flag.\n");
+
 module_param(ae_flag,uint,0664);
 MODULE_PARM_DESC(ae_flag,"\n debug flag for ae_flag.\n");
 
@@ -1477,9 +1434,6 @@ MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
 
 module_param(isr_debug,uint,0664);
 MODULE_PARM_DESC(isr_debug,"\n debug isr function.\n");
-
-module_param(af_ave_step_en,uint,0664);
-MODULE_PARM_DESC(af_ave_step_en,"\n debug flag for af function.\n");
 
 MODULE_VERSION(ISP_VER);
 module_init(isp_init_module);

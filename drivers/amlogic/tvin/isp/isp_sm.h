@@ -83,9 +83,9 @@ typedef enum af_state_e {
 	AF_DETECT_INIT,
 	AF_GET_STEPS_INFO,
 	AF_GET_STATUS,
-	AF_INIT,
-	AF_GET_OLD_FV,
-	AF_GET_COARSE_INFO,
+	AF_SCAN_INIT,
+	AF_GET_COARSE_INFO_H,
+	AF_GET_COARSE_INFO_L,
 	AF_CALC_GREAT,
 	AF_GET_FINE_INFO,
 	AF_CLIMBING,
@@ -225,7 +225,7 @@ extern void capture_sm_init(isp_dev_t *devp);
 extern void isp_set_flash_mode(isp_dev_t *devp);
 extern void isp_ae_sm(isp_dev_t *devp);
 extern void isp_awb_sm(isp_dev_t *devp);
-extern void isp_af_sm(isp_dev_t *devp);
+extern void isp_af_fine_tune(isp_dev_t *devp);
 extern void isp_af_detect(isp_dev_t *devp);
 extern int isp_capture_sm(isp_dev_t *devp);
 extern unsigned long long div64(unsigned long long n, unsigned long long d);

@@ -71,6 +71,7 @@ typedef struct isp_awb_gain_s {
 typedef struct isp_blnr_stat_s {
 	unsigned int ac[4];//G0 R1 B2 G3
 	unsigned int dc[4];//G0 R1 B2 G3
+	unsigned int af_ac[16];
 } isp_blnr_stat_t;
 
 extern void isp_wr(unsigned int addr,unsigned int value);

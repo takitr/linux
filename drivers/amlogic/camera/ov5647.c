@@ -121,6 +121,7 @@ static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
 static bool bDoingAutoFocusMode = false;
+unsigned char last_exp_h = 0, last_exp_m = 0, last_exp_l = 0, last_ag_h = 0, last_ag_l = 0, last_vts_h = 0, last_vts_l = 0;
 /* supported controls */
 static struct v4l2_queryctrl ov5647_qctrl[] = {
 	{
@@ -632,6 +633,8 @@ struct ov5647_device {
 	struct vdin_v4l2_ops_s *vops;
 	
 	fe_arg_t fe_arg;
+	
+	vdin_arg_t vdin_arg;
 	/* wake lock */
 	struct wake_lock	wake_lock;
 	/* ae status */
@@ -703,6 +706,9 @@ struct aml_camera_i2c_fig_s OV5647_VGA_script_mipi[] = {
           {0x3a19, 0xf8},
           {0x3c01, 0x80},
           {0x3b07, 0x0c},
+          {0x3500, 0x00},
+          {0x3501, 0x1c},
+          {0x3502, 0x60},		  	
           {0x380c, 0x07},
           {0x380d, 0x3c},
           {0x380e, 0x03},
@@ -863,6 +869,9 @@ struct aml_camera_i2c_fig_s OV5647_preview_VGA_script[] = {
 	{0x3a19,0xf8},
 	{0x3c01,0x80},
 	{0x3b07,0x0c},
+	{0x3500, 0x00},
+	{0x3501, 0x1c},
+	{0x3502, 0x60},
 	{0x380c,0x07},
 	{0x380d,0x3c},
 	{0x380e,0x01},
@@ -959,6 +968,9 @@ struct aml_camera_i2c_fig_s OV5647_720P_script_mipi[] = {
           {0x3a19, 0xf8},
           {0x3c01, 0x80},
           {0x3b07, 0x0c},
+		  {0x3500, 0x00},
+		  {0x3501, 0x29},
+		  {0x3502, 0xe0},
           {0x380c, 0x07},
           {0x380d, 0x00},
           {0x380e, 0x05},
@@ -1119,6 +1131,9 @@ struct aml_camera_i2c_fig_s OV5647_preview_720P_script[] = {
 	{0x3a19,0xf8},
 	{0x3c01,0x80},
 	{0x3b07,0x0c},
+	{0x3500, 0x00},
+	{0x3501, 0x29},
+	{0x3502, 0xe0},
 	{0x380c,0x07},
 	{0x380d,0x00},
 	{0x380e,0x02},
@@ -1278,7 +1293,10 @@ struct aml_camera_i2c_fig_s OV5647_preview_960P_script[] = {
 	{0x3a18,0x00},  
 	{0x3a19,0xf8},  
 	{0x3c01,0x80},  
-	{0x3b07,0x0c},  
+	{0x3b07,0x0c}, 
+	{0x3500,0x00},
+	{0x3501,0x37},
+	{0x3502,0x60},
 	{0x380c,0x07},  
 	{0x380d,0x68},  
 	{0x380e,0x03},  
@@ -1527,6 +1545,9 @@ struct aml_camera_i2c_fig_s OV5647_preview_1080P_script[] = {
 	{0x3a19,0xf8},
 	{0x3c01,0x80},
 	{0x3b07,0x0c},
+	{0x3500,0x00},
+	{0x3501,0x3e},
+	{0x3502,0x10},
 	{0x380c,0x09},
 	{0x380d,0x70},
 	{0x380e,0x04},
@@ -1854,9 +1875,9 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 {0x3001, 0xff},
 {0x3002, 0xe4},
 //{0x300a, 0x0,
-              
+
 //{0x300b, 0x0,
-              
+
 {0x0100, 0x00},
 {0x0103, 0x01},
 {0x3013, 0x08},
@@ -1898,7 +1919,7 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 {0x4002, 0xc5},
 {0x4004, 0x06},
 {0x4005, 0x1a},
-{0x3503, 0x03},
+{0x3503, 0x13},
 {0x3501, 0x10},
 {0x3502, 0x80},
 {0x350a, 0x00},
@@ -1906,7 +1927,7 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 {0x350c, 0x00},
 {0x350d, 0x00},
 {0x3011, 0x22},
-              
+
 {0x3000, 0x00},
 {0x3001, 0x00},
 {0x3002, 0x00},
@@ -1920,6 +1941,9 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 {0x3708, 0x24},
 {0x3709, 0x12},
 {0x370c, 0x00},
+{0x3500, 0x00},
+{0x3501, 0x6e},
+{0x3502, 0xb0},
 {0x380c, 0x0a},
 {0x380d, 0x96},
 {0x380e, 0x07},
@@ -2082,27 +2106,59 @@ static void parse_param(const char *buf,char **parm){
 	//kfree(buf_orig);
 }
 
-void OV5647_manual_set_aet(unsigned int exp,unsigned int ag,unsigned int vts){
+void OV5647_manual_set_aet(int exp, int ag, int vts){
 	unsigned char exp_h = 0, exp_m = 0, exp_l = 0, ag_h = 0, ag_l = 0, vts_h = 0, vts_l = 0;
 	struct i2c_adapter *adapter;
-	
-	exp_h = (unsigned char)((exp >> 12) & 0x0000000f);
-	exp_m = (unsigned char)((exp >>  4) & 0x000000ff);
-	exp_l = (unsigned char)((exp <<  4) & 0x000000f0);
-	ag_h = (unsigned char)((ag >> 8) & 0x00000003);
-	ag_l = (unsigned char)(ag & 0x000000ff);
-	vts_h = (unsigned char)((vts >> 8) & 0x000000ff);
-	vts_l = (unsigned char)(vts & 0x000000ff);
+	if(exp != -1){
+		exp_h = (unsigned char)((exp >> 12) & 0x0000000f);
+		exp_m = (unsigned char)((exp >>  4) & 0x000000ff);
+		exp_l = (unsigned char)((exp <<  4) & 0x000000f0);
+	}
+	if(ag != -1){
+		ag_h = (unsigned char)((ag >> 8) & 0x00000003);
+		ag_l = (unsigned char)(ag & 0x000000ff);
+	}
+	if(vts != -1){
+		vts_h = (unsigned char)((vts >> 8) & 0x000000ff);
+		vts_l = (unsigned char)(vts & 0x000000ff);
+	}
 	
 	adapter = i2c_get_adapter(4);
 	my_i2c_put_byte(adapter,0x36,0x3208, 0x00 );
-	my_i2c_put_byte(adapter,0x36,0x3500, exp_h);
-	my_i2c_put_byte(adapter,0x36,0x3501, exp_m);
-	my_i2c_put_byte(adapter,0x36,0x3502, exp_l);
-	my_i2c_put_byte(adapter,0x36,0x350a, ag_h );
-	my_i2c_put_byte(adapter,0x36,0x350b, ag_l );
-	my_i2c_put_byte(adapter,0x36,0x380e, vts_h);
-	my_i2c_put_byte(adapter,0x36,0x380f, vts_l);
+	if(exp != -1)
+	{
+		if(exp_h != last_exp_h){
+			my_i2c_put_byte(adapter,0x36,0x3500, exp_h);
+			last_exp_h = exp_h;
+		}
+		if(exp_m != last_exp_m){
+			my_i2c_put_byte(adapter,0x36,0x3501, exp_m);
+			last_exp_m = exp_m;
+		}
+		if(exp_m != last_exp_m){
+			my_i2c_put_byte(adapter,0x36,0x3502, exp_l);
+			last_exp_l = exp_l;
+		}
+		if(vts_h != last_vts_h){
+			my_i2c_put_byte(adapter,0x36,0x380e, vts_h);
+			last_vts_h = vts_h;
+		}
+		if(vts_l != last_vts_l){
+			my_i2c_put_byte(adapter,0x36,0x380f, vts_l);
+			last_vts_l = vts_l;
+		}
+	}
+	if(ag != -1)
+	{
+		if(ag_h != last_ag_h){
+			my_i2c_put_byte(adapter,0x36,0x350a, ag_h );
+			last_ag_h = ag_h;
+		}
+		if(ag_l != last_ag_l){
+			my_i2c_put_byte(adapter,0x36,0x350b, ag_l );
+			last_ag_l = ag_l;
+		}
+	}
 	my_i2c_put_byte(adapter,0x36,0x3208, 0x10 );
 	my_i2c_put_byte(adapter,0x36,0x3208, 0xa0 );
 }
@@ -2137,7 +2193,7 @@ static CLASS_ATTR(aet_debug, 0664, aet_manual_show, aet_manual_store);
 static bool OV5647_set_aet_new_step(unsigned int new_step, bool exp_mode, bool ag_mode){
   unsigned int exp = 0, ag = 0, vts = 0;
 
-  if (((!exp_mode) && (!ag_mode)) || (new_step > sensor_aet_info[current_fmt].tbl_max_step))
+  if (((!exp_mode) && (!ag_mode)) || (new_step > sensor_aet_info[aet_index].tbl_max_step))
 		return(false);
 	else
 	{
@@ -2145,8 +2201,13 @@ static bool OV5647_set_aet_new_step(unsigned int new_step, bool exp_mode, bool a
 		exp = sensor_aet_table[sensor_aet_step].exp;
 		ag = sensor_aet_table[sensor_aet_step].ag;
 		vts = sensor_aet_table[sensor_aet_step].vts;
-		
-		OV5647_manual_set_aet(exp,ag,vts);
+		if(exp_mode == 1 && ag_mode == 1){
+			OV5647_manual_set_aet(exp,ag,vts);
+		}else if(exp_mode == 1 && ag_mode == 0){
+			OV5647_manual_set_aet(exp,-1,vts);
+		}else if(exp_mode == 0 && ag_mode == 1){
+			OV5647_manual_set_aet(-1,ag,-1);
+		}
 		return true;
 	}
 }
@@ -2228,7 +2289,7 @@ void OV5647_set_new_format(int width,int height,int fr){
     sensor_aet_info = cf->aet.aet[index].info;
     sensor_aet_table = cf->aet.aet[index].aet_table;
     sensor_aet_step = sensor_aet_info->tbl_rated_step;
-    OV5647_set_aet_new_step(sensor_aet_step,1,1);
+    //OV5647_set_aet_new_step(sensor_aet_step,1,1);
 }
 
 
@@ -2634,7 +2695,7 @@ void OV5647_set_param_exposure(struct ov5647_device *dev,enum camera_exposure_e 
     dev->fe_arg.index = 0;
     dev->fe_arg.arg = (void *)(dev->cam_para);
     dev->vops->tvin_fe_func(0,&dev->fe_arg);	
-    OV5647_set_aet_new_step(sensor_aet_step,1,1);//need to change the new exp and ag mode
+    //OV5647_set_aet_new_step(sensor_aet_step,1,1);//need to change the new exp and ag mode
 
 } /* ov5647_set_param_exposure */
 /*************************************************************************
@@ -2910,6 +2971,8 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
             printk("fail in setting resolution param. i=%d\n",i);
             break;
         }
+        if(res_param->reg_script[t][i].addr == 0x0103) //soft reset,need 5ms delay
+        	msleep(5);
         i++;
     }
 
@@ -3728,6 +3791,17 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     current_fmt = 0;
     if(dev->cam_para == NULL)
     	return -EINVAL;
+   	update_index(ov5647_h_active,ov5647_v_active,&dev->pindex);
+   	if(generate_para(dev->cam_para,dev->pindex) != 0){
+        printk("generate para failed\n");
+        free_para(dev->cam_para);
+        kfree(dev->cam_para);
+        return -EINVAL;
+    }
+    dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
+    dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
+    dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;  
+    dev->ae_on = false;
     para.reserved = (int)(dev->cam_para);
     if (CAM_MIPI == dev->cam_info.interface)
     {
@@ -3746,7 +3820,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
         dev->cam_para->xml_scenes->ae.aet_fmt_gain = sensor_aet_info->format_transfer_parameter;        	
     }
     else
-        dev->cam_para->xml_scenes->ae.aet_fmt_gain = 0;
+        dev->cam_para->xml_scenes->ae.aet_fmt_gain = 100;
     printk("aet_fmt_gain:%d\n",dev->cam_para->xml_scenes->ae.aet_fmt_gain);
     printk("ov5647,h=%d, v=%d, dest_h:%d, dest_v:%d,frame_rate=%d,\n", 
             ov5647_h_active, ov5647_v_active, para.dest_hactive,para.dest_vactive,ov5647_frmintervals_active.denominator);
@@ -3755,6 +3829,11 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
         dev->vops->start_tvin_service(0,&para);
         fh->stream_on        = 1;
     }
+    /*** 		set cm2 		***/
+	dev->vdin_arg.cmd = VDIN_CMD_SET_CM2;
+	dev->vdin_arg.cm2 = cf->cm.export;
+	dev->vops->tvin_vdin_func(0,&dev->vdin_arg);
+	printk("call set cm2\n");
     OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
     OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
     OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
@@ -3767,6 +3846,13 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	struct ov5647_device *dev = fh->dev;
 	int ret = 0 ;
 	printk(KERN_INFO " vidioc_streamoff+++ \n ");
+	last_exp_h = 0;
+	last_exp_m = 0;
+	last_exp_l = 0; 
+	last_ag_h = 0; 
+	last_ag_l = 0;
+	last_vts_h = 0; 
+	last_vts_l = 0;
 	if (fh->type != V4L2_BUF_TYPE_VIDEO_CAPTURE)
 		return -EINVAL;
 	if (i != fh->type)
@@ -4074,7 +4160,7 @@ static int ov5647_open(struct file *file)
         }else{
             printk("malloc failed");
             return -ENOMEM;
-        }      
+        }
     }
     if((dev->cam_para = kzalloc(sizeof(cam_parameter_t),0)) == NULL){
         printk("memalloc failed\n");
@@ -4141,16 +4227,9 @@ static int ov5647_open(struct file *file)
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
     dev->pindex.capture_index = 0;
-    if(generate_para(dev->cam_para,dev->pindex) != 0){
-        printk("generate para failed\n");
-        free_para(dev->cam_para);
-        kfree(dev->cam_para);
-        return -EINVAL;
-    }
-    dev->cam_para->cam_function.set_aet_new_step = OV5647_set_aet_new_step;
-    dev->cam_para->cam_function.check_mains_freq = OV5647_check_mains_freq;
-    dev->cam_para->cam_function.set_af_new_step = OV5647_set_af_new_step;  
-    dev->ae_on = false;
+    dev->pindex.nr_index = 0;
+    dev->pindex.peaking_index = 0;
+    dev->pindex.lens_index = 0;
     /**creat class file**/		
     cam_class = class_create(THIS_MODULE,"camera"); 
     if(IS_ERR(cam_class)){
@@ -4166,7 +4245,7 @@ static int ov5647_open(struct file *file)
     retval = class_create_file(cam_class,&class_attr_version_debug);
     printk("open successfully\n");
     dev->vops = get_vdin_v4l2_ops();
-		bDoingAutoFocusMode=false;
+	bDoingAutoFocusMode=false;
     dev->dev = fh;
     return 0;
 }
@@ -4219,20 +4298,18 @@ static int ov5647_close(struct file *file)
         if(cf->aet_valid){
             for(i = 0; i < cf->aet.sum; i++){
                 kfree(cf->aet.aet[i].info);
+                cf->aet.aet[i].info = NULL;
                 kfree(cf->aet.aet[i].aet_table);
-                if(cf->aet.aet[i].manual != NULL)
-                    kfree(cf->aet.aet[i].manual);
+                cf->aet.aet[i].aet_table = NULL;
             }
         }
-        if(cf->scene_valid){
-            kfree(cf->scene.scene);
-        }
-
         kfree(cf);
+        cf = NULL;
     }
     if(dev->cam_para != NULL ){
         free_para(dev->cam_para);
         kfree(dev->cam_para);
+        dev->cam_para = NULL;
     }
 
     mutex_lock(&dev->mutex);

@@ -541,8 +541,6 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
 	vdin_set_hvscale(devp);
-	if(devp->parm.port == TVIN_PORT_ISP)
-	        vdin_set_cm2(devp->addr_offset,0);
         /*reverse / disable reverse write buffer*/
         vdin_wr_reverse(devp->addr_offset,reverse_flag,reverse_flag);
 
@@ -806,6 +804,8 @@ static int vdin_func(int no, vdin_arg_t *arg)
 		case VDIN_CMD_SET_CSC:
 			vdin_set_matrixs(devp,parm->matrix_id,parm->color_convert);
 			break;
+		case VDIN_CMD_SET_CM2:
+			vdin_set_cm2(devp->addr_offset,parm->cm2);
 		default:
 			break;
 	}
@@ -2592,10 +2592,7 @@ static ssize_t vdin_cm2_store(struct device *dev,
 		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
 
 		pr_info("rm:[0x%x]-->[0x%x][0x%x][0x%x][0x%x][0x%x] \n",addr, data[0],data[1],data[2],data[3],data[4]);
-	}else if(!strcmp(parm[0],"config")){
-		val = simple_strtol(parm[1],NULL,10);
-		vdin_set_cm2(devp->addr_offset,val);
-	} else if (!strcmp(parm[0],"enable")){
+	}else if (!strcmp(parm[0],"enable")){
 		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,1,CM_TOP_EN_BIT,CM_TOP_EN_WID);
 	}else if (!strcmp(parm[0],"disable")){
 		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,0,CM_TOP_EN_BIT,CM_TOP_EN_WID);

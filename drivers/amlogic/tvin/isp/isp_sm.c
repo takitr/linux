@@ -129,11 +129,10 @@ MODULE_PARM_DESC(exposure_extra,"\n debug exposure for ae.\n");
 #define P2DB 1289
 #define N2DB  813
 
-
-static unsigned int best_step_debug = 0;
-
+#define AF_DETECT			0x00000001
+#define AF_FINE_TUNE			0x00000002
+#define AF_BEST_STEP			0x00000004
 static unsigned int af_sm_dg = 0;
-
 
 volatile struct isp_ae_to_sensor_s ae_sens;
 
@@ -262,30 +261,21 @@ void isp_set_manual_exposure(isp_dev_t *devp)
     if(aepa->targ > aep->targethigh)
 		aepa->targ = aep->targethigh;
     if(aepa->targ < aep->targetlow)
-		aepa->targ = aep->targetlow;	
+		aepa->targ = aep->targetlow;
 }
 
 void af_sm_init(isp_dev_t *devp)
 {
-	unsigned int tmp = 0 ;
 	struct isp_af_info_s *af_info = &devp->af_info;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	/*init for af*/
-	//if(sm_state.af_state)
-		//devp->flag |= devp->af_info.flag_bk;
 	if(devp->flag & ISP_AF_SM_MASK){
-    	        sm_state.af_state = AF_INIT;
+    	        sm_state.af_state = AF_SCAN_INIT;
 	}
 	if(devp->flag & ISP_FLAG_CAPTURE){
 		af_info->cur_step = af_info->capture_step;
 		func->set_af_new_step(devp->af_info.cur_step);
 	}
-	devp->af_info.fv_aft_af = 0;
-	devp->af_info.fv_bf_af = 0;
-	devp->af_info.adj_duration_cnt = 0;
-	/*calc duration for detect lose focus*/
-	tmp = devp->isp_af_parm->af_duration_time*devp->info.frame_rate;
-	devp->isp_af_parm->af_duration_cnt = tmp/10;
 }
 void isp_ae_low_gain()
 {
@@ -315,12 +305,11 @@ unsigned int isp_tune_exposure(isp_dev_t *devp)
 	unsigned int gain_cur = 0;
 	unsigned int gain_target = 0;
 	if(func&&func->get_aet_current_gain)
-	gain_cur = func->get_aet_current_gain();	
+	gain_cur = func->get_aet_current_gain();
 	gain_target = (gain_cur*exposure_extra + 512) >> 10;
 	new_step = find_step(func, 0, aepa->max_step, gain_target);
 	return new_step;
 }
-
 void isp_ae_base_sm(isp_dev_t *devp)
 {
 	struct isp_ae_stat_s *ae = &devp->isp_ae;
@@ -343,7 +332,7 @@ void isp_ae_base_sm(isp_dev_t *devp)
 	static int sum = 0;
 	int step = 0;
 	unsigned short targrate;
-	unsigned int targstep; 
+	unsigned int targstep;
 	static unsigned int newstep;
 	u8 lpfcoef;
 	u8 radium_outer;
@@ -366,10 +355,10 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
 			aepa->pixel_sum = parm->h_active * parm->v_active;
 			aepa->sub_pixel_sum = aepa->pixel_sum >> 4;
-			aepa->max_lumasum1 = ((aepa->pixel_sum >> 4) * ae_ratio1) >> 10;
-			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * ae_ratio2) >> 10;
-			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * ae_ratio3) >> 10;
-			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * ae_ratio4) >> 10;
+			aepa->max_lumasum1 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low) >> 10;
+			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low2mid) >> 10;
+			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_mid2high) >> 10;
+			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_high) >> 10;
 			aepa->pre_gain = 400;
 			aepa->targ = aep->targetmid;
 			temp = 1;
@@ -397,7 +386,23 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			break;
 		case AE_ORI_SET:
 			newstep = find_step(func,0,aepa->max_step,aepa->pre_gain);
-			if(aep->ae_skip[1] == 0x1)
+			if(aep->ae_skip[0] == 0x1)
+			{
+				if(atomic_read(&ae_info->writeable) <= 0)
+				{
+					ae_sens.new_step = newstep;
+					ae_sens.shutter = 0;
+					ae_sens.gain = 1;
+					atomic_set(&ae_info->writeable,1);
+					//printk("ae_sens.send \n");
+					sm_state.status = ISP_AE_STATUS_UNSTABLE;
+					if(ae_debug&0x10)
+					printk("ISP_AE_STATUS_UNSTABLE1\n");
+					sm_state.ae_down = false;
+				}
+				sm_state.isp_ae_parm.isp_ae_state = AE_SHUTTER_ADJUST;
+			}
+			else if(aep->ae_skip[1] == 0x1)
 			{
 				//ae_sens.send = 1;
 				ae_sens.new_step = newstep;
@@ -449,10 +454,10 @@ void isp_ae_base_sm(isp_dev_t *devp)
 			aepa->pre_gain = aepa->cur_gain;
 			if(func&&func->get_aet_current_gain)
 			aepa->cur_step = func->get_aet_current_step();
-			if(aepa->cur_gain == 0)
-				break;
 			if(ae_debug1)
 			printk("cur_gain = %d,cur_step = %d\n",aepa->cur_gain,aepa->cur_step);
+			if(aepa->cur_gain == 0)
+				break;
 			while(step != AE_SUCCESS)
 			{
 				switch(step){
@@ -548,17 +553,17 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							{
 								temp = 2;
 								aepa->targ--;
-								if(aepa->targ<(aep->targetmid-ae_min_diff))
-									aepa->targ = aep->targetmid-ae_min_diff;
+								if(aepa->targ<(aep->targetmid-aep->ae_min_diff))
+									aepa->targ = aep->targetmid-aep->ae_min_diff;
 							}
 							else if((sum < aepa->max_lumasum1)||((sum < aepa->max_lumasum2)&&(temp==0)))
 							{
 								temp = 0;
 								aepa->targ++;
-								if(aepa->targ>(aep->targetmid+ae_max_diff))
-									aepa->targ = aep->targetmid+ae_max_diff;
+								if(aepa->targ>(aep->targetmid+aep->ae_max_diff))
+									aepa->targ = aep->targetmid+aep->ae_max_diff;
 							}
-							else 
+							else
 							{
 								temp = 1;
 								//targ = 80;
@@ -645,7 +650,27 @@ void isp_ae_base_sm(isp_dev_t *devp)
 							step = AE_SET_NEWSTEP;
 						break;
 					case AE_SET_NEWSTEP:
-						if(aep->ae_skip[1] == 0x1)
+						if(aep->ae_skip[0] == 0x1)
+						{
+							if(atomic_read(&ae_info->writeable) <= 0)
+							{
+								ae_sens.new_step = newstep;
+								ae_sens.shutter = 0;
+								ae_sens.gain = 1;
+								atomic_set(&ae_info->writeable,1);
+								//printk("ae_sens.send \n");
+								sm_state.status = ISP_AE_STATUS_UNSTABLE;
+								if(ae_debug&0x10)
+								printk("ISP_AE_STATUS_UNSTABLE1\n");
+								sm_state.ae_down = false;
+							}
+							if(ae_debug&0x20)
+							sm_state.isp_ae_parm.isp_ae_state = AE_GAIN_ADJUST;
+							else
+							sm_state.isp_ae_parm.isp_ae_state = AE_SHUTTER_ADJUST;
+							step = AE_SUCCESS;
+						}
+						else if(aep->ae_skip[1] == 0x1)
 						{
 							ae_sens.new_step = newstep;
 							ae_sens.shutter = 1;
@@ -1103,87 +1128,10 @@ static unsigned long long get_fv_base_blnr(isp_blnr_stat_t *blnr)
 	sum_dc += (unsigned long long)blnr->dc[3];
 
 	mul_ac = (sum_ac > 0x00000000ffffffff) ? 0xffffffffffffffff : sum_ac*sum_ac;
+	sum_ac = (unsigned long long)blnr->af_ac[0];
 	return sum_ac;
 	//return div64(mul_ac,sum_dc);
 
-}
-static unsigned int max_vibrate = 2000;
-module_param(max_vibrate,uint,0664);
-MODULE_PARM_DESC(max_vibrate,"\n threshold for vibrate sum.\n");
-
-static unsigned int get_best_step(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
-{
-        unsigned int i = 0, j = 0,cur_grid = 0, max_grid = 0, best_step = 0;
-        unsigned long long sum_ac = 0, sum_pixel=0,sum_dc = 0, ave_dc = 0,mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, min_fv = 0xffffffffffffffff, sum_fv = 0,moment = 0;
-		unsigned long long fv_diff_sum=0,fv_ave=0,fv_sum=0,diff_fv_parm;
-		if(best_step_debug&0x2)
-			pr_info("%s ac[0] ac[1] ac[2] ac[3] dc[0] dc[1] dc[2] dc[3]\n", __func__);
-        for (i = 0; i < af_alg->valid_step_cnt; i++){
-                if (i && (af_alg->step[i]==0)){
-                        break;
-                }
-                max_grid = i;
-                fv[i] = get_fv_base_blnr(&af_info->af_data[i]);
-	        if(best_step_debug&0x2)
-                        pr_info("%s %u %u %u %u %u %u %u %u\n", __func__, af_info->af_data[i].ac[0], af_info->af_data[i].ac[1], af_info->af_data[i].ac[2],
-                        af_info->af_data[i].ac[3], af_info->af_data[i].dc[0], af_info->af_data[i].dc[1], af_info->af_data[i].dc[2], af_info->af_data[i].dc[3]);
-                if (max_fv < fv[i]){
-		        max_fv = fv[i];
-		        cur_grid = i;
-	        }
-		if(min_fv > fv[i])
-			min_fv = fv[i];
-		if(i>=1)
-			fv_diff_sum += isp_abs64(fv[i-1],fv[i]);
-		for(j=0;j<4;j++)
-			sum_dc += af_info->af_data[i].dc[j];
-        }
-		sum_pixel = (af_info->radius*af_info->radius)<<2;
-		ave_dc = div64(sum_dc,sum_pixel);
-		diff_fv_parm = div64((fv_diff_sum*1024),(max_fv-min_fv));
-		if(best_step_debug)
-			pr_info("%s ave_dc=%llu,sum_pixel=%u,sum_dc=%llu.\n",__func__,ave_dc,sum_pixel,sum_dc);
-		#if 0
-		if(diff_fv_parm > max_vibrate){
-			pr_info("%s diff_fv_parm %llu>%u, return 0.\n",__func__,diff_fv_parm,max_vibrate);
-			return 0;
-		}
-		#endif
-	// too less stroke, for power saving
-        if (!cur_grid) {
-	        best_step = 0;
-        }
-        // too much stroke
-        else if (cur_grid == max_grid){
-	        best_step = af_alg->step[max_grid];
-	}
-	// work out best step with 3 grids
-	else if ((cur_grid == 1) || (cur_grid == max_grid - 1)){
-                moment += fv[cur_grid - 1]*(unsigned long long)af_alg->step[cur_grid - 1];
-                moment += fv[cur_grid    ]*(unsigned long long)af_alg->step[cur_grid    ];
-                moment += fv[cur_grid + 1]*(unsigned long long)af_alg->step[cur_grid + 1];
-                sum_fv += fv[cur_grid - 1];
-                sum_fv += fv[cur_grid    ];
-                sum_fv += fv[cur_grid + 1];
-                best_step = (unsigned int)div64(moment,sum_fv);
-	}
-	// work out best step with 5 grids
-        else {
-                moment += (unsigned long long)fv[cur_grid - 2]*(unsigned long long)af_alg->step[cur_grid - 2];
-                moment += (unsigned long long)fv[cur_grid - 1]*(unsigned long long)af_alg->step[cur_grid - 1];
-                moment += (unsigned long long)fv[cur_grid    ]*(unsigned long long)af_alg->step[cur_grid    ];
-                moment += (unsigned long long)fv[cur_grid + 1]*(unsigned long long)af_alg->step[cur_grid + 1];
-                moment += (unsigned long long)fv[cur_grid + 2]*(unsigned long long)af_alg->step[cur_grid + 2];
-                sum_fv += fv[cur_grid - 2];
-                sum_fv += fv[cur_grid - 1];
-                sum_fv += fv[cur_grid    ];
-                sum_fv += fv[cur_grid + 1];
-                sum_fv += fv[cur_grid + 2];
-                best_step = (unsigned int)div64(moment,sum_fv);
-	}
-	if(best_step_debug)
-		pr_info("%s:get best step %u.\n",__func__,best_step);
-	return best_step;
 }
 static unsigned int jitter = 5;
 module_param(jitter,uint,0664);
@@ -1195,11 +1143,9 @@ MODULE_PARM_DESC(delta,"\n debug flag for ae.\n");
 
 static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 {
-	unsigned long long *fv,sum_fv=0,ave_fv=0,delta_fv=0;
-	unsigned long long *v_dc,sum_vdc=0,ave_vdc=0,delta_dc=0,tmp_vdc1=0,tmp_vdc2=0;
+	unsigned long long *v_dc,sum_vdc=0,ave_vdc=0,delta_dc=0,tmp_vdc=0;
 	unsigned int i=0,dc0,dc1,dc2,dc3,static_cnt;
 	bool ret=false,is_move=false,is_static=false;
-	fv = af_info->fv;
 	v_dc = af_info->v_dc;
 	/*calc v dc*/
 	dc0 = af_info->last_blnr.dc[0];
@@ -1216,77 +1162,40 @@ static bool is_lost_focus(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 		delta_dc = isp_abs64(dc3,af_info->af_detect[i].dc[3]);
 		v_dc[i] += div64((delta_dc*1024),(unsigned long long)dc3);
 		sum_vdc += v_dc[i];
-		if(af_sm_dg&0x2)
-			pr_info("v_dc[%u]=%llu.\n",i,v_dc[i]);
 	}
 	ave_vdc = div64(sum_vdc,af_alg->detect_step_cnt);
 
 	static_cnt = 0;
 	for(i=0;i<af_alg->detect_step_cnt;i++){
 		delta_dc = isp_abs64(v_dc[i],ave_vdc);
-		tmp_vdc1 = div64(delta_dc*1024,af_alg->enter_move_ratio);
-		tmp_vdc2 = div64(delta_dc*1024,af_alg->enter_static_ratio);
+		tmp_vdc = div64(delta_dc*1024,af_alg->enter_static_ratio);
 		if(!af_info->last_move){
-			if(ave_vdc > af_alg->ave_vdc_thr){
+			if((ave_vdc > af_alg->ave_vdc_thr)||(v_dc[i] > af_alg->ave_vdc_thr)){
 			        is_move = true;
 				break;
-			} else{
-                                if(af_sm_dg&0x1)
-				        pr_info("static ave_vdc=%llu.\n",ave_vdc);
 			}
-		}else if(tmp_vdc2 < ave_vdc){
+		}else if(tmp_vdc < ave_vdc){
 			if(++static_cnt >= af_alg->detect_step_cnt)
 				is_static = true;
 		}
 	}
 	/* enter move from static */
 	if(is_move){
-		if(af_sm_dg&0x1)
+		if(af_sm_dg&AF_DETECT)
 			pr_info("0->1\n");
 		af_info->last_move = true;
 		return false;
 	/* during hysteresis ,still last state*/
 	}else if((!is_static&&!is_move)||!af_info->last_move){
-		if(af_sm_dg&0x1){
-			pr_info("v_dc %llu is between %llu~%llu keep last state.\n",ave_vdc,tmp_vdc2,tmp_vdc1);
+		if(af_sm_dg&AF_DETECT){
+			pr_info("ave_vdc:%llu,af_info->last_move:%d keep last state.\n",ave_vdc,af_info->last_move);
 		}
 		return false;
 	}
-	if(af_sm_dg&0x1)
+	if(af_sm_dg&AF_DETECT)
 		pr_info("1->0\n");
-	/*enter static from move,calc fv to telll if trigger full scan*/
-	if(af_alg->delta_fv_ratio == 0)
-		return true;
-	sum_fv = 0;
-	for(i=0;i<af_alg->detect_step_cnt;i++){
-		fv[i] = get_fv_base_blnr(&af_info->af_detect[i]);
-		sum_fv += fv[i];
-		if(af_sm_dg&0x4){
-			pr_info("step[%u]:ac0=%u ac1=%u ac2=%u ac3=%u ",i,
-					af_info->af_detect[i].ac[0],af_info->af_detect[i].ac[1],af_info->af_detect[i].ac[2],
-					af_info->af_detect[i].ac[3]);
-			pr_info("dc0=%u dc1=%u dc2=%u dc3=%u  ",af_info->af_detect[i].dc[0],af_info->af_detect[i].dc[1],
-					af_info->af_detect[i].dc[2],af_info->af_detect[i].dc[3]);
-			pr_info("fv=%llu.\n",fv[i]);
-		}
-	}
-	ave_fv = div64(sum_fv,af_alg->valid_step_cnt);
-	if(af_sm_dg&0x1)
-		pr_info("ave_fv %llu.\n",ave_fv);
-	delta_fv = af_info->fv_aft_af*af_alg->delta_fv_ratio;
-	delta_fv = div64(delta_fv,100);
-	if(ave_fv < delta_fv){
-		pr_info("true: delta_fv=%llu,last_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
-		ret = true;
-	}else{
-		ret = false;
-		if(af_sm_dg&0x1)
-			pr_info("false: delta_fv=%llu,last_fv=%llu.\n",delta_fv,af_info->fv_aft_af);
-	}
-
-
-	return ret;
-
+	/*enter static from move,trigger full scan*/
+	return true;
 }
 void isp_af_detect(isp_dev_t *devp)
 {
@@ -1296,85 +1205,204 @@ void isp_af_detect(isp_dev_t *devp)
 	switch(sm_state.af_state){
 		case AF_DETECT_INIT:
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-			//af_info->f = af_info->af_detect;
 			af_info->cur_index = 0;
 			sm_state.af_state = AF_GET_STEPS_INFO;
 			break;
 		case AF_GET_STEPS_INFO:
-			if(++af_info->adj_duration_cnt >= af_alg->af_duration_cnt){
-				af_info->adj_duration_cnt = af_alg->af_duration_cnt;
-				memcpy(&af_info->af_detect[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
-				if(++af_info->cur_index >= af_alg->detect_step_cnt){
-					pr_info("%s get info end index=%u duration cnt=%u.\n",__func__,af_info->cur_index,af_info->adj_duration_cnt);
-					af_info->cur_index = 0;
-					sm_state.af_state = AF_GET_STATUS;
-				}
+			memcpy(&af_info->af_detect[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
+			if(++af_info->cur_index >= af_alg->detect_step_cnt){
+				if(af_sm_dg&AF_DETECT)
+					pr_info("%s get info end index=%u .\n",__func__,af_info->cur_index);
+				af_info->cur_index = 0;
+				sm_state.af_state = AF_GET_STATUS;
 			}
 			break;
 		case AF_GET_STATUS:
 			if(is_lost_focus(af_info,af_alg)){
-				sm_state.af_state = AF_INIT;
-				if(af_sm_dg)
+				sm_state.af_state = AF_SCAN_INIT;
+				if(af_sm_dg&AF_DETECT)
 					pr_info("[af_sm]:lost focus.\n");
 			}else if(af_info->cur_index < af_alg->detect_step_cnt){
 				memcpy(&af_info->af_detect[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 				af_info->cur_index++;
-			}else{/*af_info->cur_index >= af_alg->detect_step_cnt*/
+			}else{
 				af_info->cur_index = 0;
 			}
 			break;
 		default:
-			isp_af_sm(devp);
+			isp_af_fine_tune(devp);
 			break;
 	}
 }
-void isp_af_sm(isp_dev_t *devp)
+static unsigned int check_hillside(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
 {
-	static unsigned int start_jf,af_delay=0;
+	unsigned int cur_ac,last_ac,delta_ac,delta_ac_ratio,ret;
+	if(af_info->valid_step_cnt < 2)
+		return 0;//avoid first step
+	cur_ac = af_info->af_fine_data[af_info->valid_step_cnt - 1].af_data.af_ac[0];
+	last_ac = af_info->af_fine_data[af_info->valid_step_cnt - 2].af_data.af_ac[0];
+	delta_ac = isp_abs64(cur_ac,last_ac);
+	delta_ac_ratio = delta_ac*100/((last_ac < cur_ac)?cur_ac:last_ac);
+	if(af_sm_dg&AF_FINE_TUNE)
+		pr_info("[check hillside]delta_ac_ratio:%d,cur_ac:%d,last_ac:%d .\n",delta_ac_ratio,cur_ac,last_ac);
+	if((last_ac > cur_ac)&&(delta_ac_ratio > af_alg->hillside_fall)){
+		ret = 1;//fall fillside
+	}
+	else if((last_ac < cur_ac)&&(delta_ac_ratio > af_alg->hillside_fall)){
+		return 2;//up fillside
+	}
+	else
+		ret = 0;//platform
+	return ret;
+
+}
+static unsigned int get_fine_step(isp_af_info_t *af_info,xml_algorithm_af_t *af_alg)
+{
+        unsigned int i = 0, j = 0,cur_grid = 0, max_grid = 0, best_step = 0;
+        unsigned long long delta_fv,sum_ac = 0, mul_ac = 0, fv[FOCUS_GRIDS], max_fv = 0, min_fv = 0xffffffffffffffff, sum_fv = 0,moment = 0;
+	unsigned long long fv_ave=0,fv_sum=0,diff_fv_parm;
+	isp_af_fine_tune_t af_fine_data_ex;
+	for(i = 0; i < af_info->valid_step_cnt; i++){
+		for(j = i+1; j < af_info->valid_step_cnt; j++ ){
+			if(af_info->af_fine_data[j].cur_step < af_info->af_fine_data[i].cur_step){
+				memcpy(&af_fine_data_ex,&af_info->af_fine_data[i],sizeof(isp_af_fine_tune_t));
+				memcpy(&af_info->af_fine_data[i],&af_info->af_fine_data[j],sizeof(isp_af_fine_tune_t));
+				memcpy(&af_info->af_fine_data[j],&af_fine_data_ex,sizeof(isp_af_fine_tune_t));
+			}
+		}
+	}
+	if(af_sm_dg&AF_BEST_STEP)
+		pr_info("%s ac[0] ac[1] ac[2] ac[3] dc[0] dc[1] dc[2] dc[3] af0_ac af1_ac\n", __func__);
+        for (i = 0; i < af_info->valid_step_cnt; i++){
+                if (i && (af_info->af_fine_data[i].cur_step==0))
+                        break;
+                max_grid = i;
+                fv[i] = get_fv_base_blnr(&af_info->af_fine_data[i].af_data);
+	        if(af_sm_dg&AF_BEST_STEP)
+                        pr_info("%s %u %u %u %u %u %u %u %u %u %u\n", __func__, af_info->af_fine_data[i].af_data.ac[0], af_info->af_fine_data[i].af_data.ac[1], af_info->af_fine_data[i].af_data.ac[2],
+                        af_info->af_fine_data[i].af_data.ac[3], af_info->af_fine_data[i].af_data.dc[0], af_info->af_fine_data[i].af_data.dc[1], af_info->af_fine_data[i].af_data.dc[2], af_info->af_fine_data[i].af_data.dc[3],
+                        af_info->af_fine_data[i].af_data.af_ac[0],af_info->af_fine_data[i].af_data.af_ac[1]);
+                if (max_fv < fv[i]){
+		        max_fv = fv[i];
+		        cur_grid = i;
+	        }
+		if(min_fv > fv[i])
+			min_fv = fv[i];
+        }
+	// too less stroke, for power saving
+        if (!cur_grid) {
+	        best_step = af_info->af_fine_data[0].cur_step;
+        }
+        // too much stroke
+        else if (cur_grid == max_grid){
+	        best_step = af_info->af_fine_data[max_grid].cur_step;
+	}
+	// work out best step with 3 grids
+	else if ((cur_grid == 1) || (cur_grid == max_grid - 1)){
+                moment += fv[cur_grid - 1]*(unsigned long long)af_info->af_fine_data[cur_grid - 1].cur_step;
+                moment += fv[cur_grid    ]*(unsigned long long)af_info->af_fine_data[cur_grid    ].cur_step;
+                moment += fv[cur_grid + 1]*(unsigned long long)af_info->af_fine_data[cur_grid + 1].cur_step;
+                sum_fv += fv[cur_grid - 1];
+                sum_fv += fv[cur_grid    ];
+                sum_fv += fv[cur_grid + 1];
+                best_step = (unsigned int)div64(moment,sum_fv);
+	}
+	// work out best step with 5 grids
+        else {
+                moment += (unsigned long long)fv[cur_grid - 2]*(unsigned long long)af_info->af_fine_data[cur_grid - 2].cur_step;
+                moment += (unsigned long long)fv[cur_grid - 1]*(unsigned long long)af_info->af_fine_data[cur_grid - 1].cur_step;
+                moment += (unsigned long long)fv[cur_grid    ]*(unsigned long long)af_info->af_fine_data[cur_grid    ].cur_step;
+                moment += (unsigned long long)fv[cur_grid + 1]*(unsigned long long)af_info->af_fine_data[cur_grid + 1].cur_step;
+                moment += (unsigned long long)fv[cur_grid + 2]*(unsigned long long)af_info->af_fine_data[cur_grid + 2].cur_step;
+                sum_fv += fv[cur_grid - 2];
+                sum_fv += fv[cur_grid - 1];
+                sum_fv += fv[cur_grid    ];
+                sum_fv += fv[cur_grid + 1];
+                sum_fv += fv[cur_grid + 2];
+                best_step = (unsigned int)div64(moment,sum_fv);
+	}
+	delta_fv = div64(100*(max_fv-min_fv),max_fv);
+	if(af_sm_dg&AF_BEST_STEP)
+		pr_info("%s:get best step %u,delta_fv:%lld.\n",__func__,best_step,delta_fv);
+	return best_step;
+}
+void isp_af_fine_tune(isp_dev_t *devp)
+{
+	static unsigned int af_delay=0;
 	struct xml_algorithm_af_s *af_alg = devp->isp_af_parm;
 	struct isp_af_info_s *af_info = &devp->af_info;
 	struct isp_af_sm_s *sm = &sm_state.af_sm;
-	unsigned long long fv_delta;
 	af_delay++;
 
 	switch(sm_state.af_state){
-		case AF_INIT:
+		case AF_SCAN_INIT:
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-			af_info->last_great_step = af_alg->af_step_max_thre;
-			if(((devp->flag&ISP_FLAG_AE)&&(sm_state.ae_down))||!(devp->flag&ISP_FLAG_AE)){
-			/*awb brake,ae brake*/
-			af_info->flag_bk = (devp->flag&ISP_FLAG_AWB)|(devp->flag&ISP_FLAG_AE);
-			if(af_sm_dg&0x1)
-				pr_info("%s:ae,awb flag status 0x%x.\n",__func__,af_info->flag_bk);
-			devp->flag &=(~ISP_FLAG_AWB);
-			devp->flag &=(~ISP_FLAG_AE);
-			//af_info->f = af_info->af_data;
-			af_info->cur_index = 0;
-			start_jf = jiffies;
-			sm_state.af_state = AF_GET_OLD_FV;
-		}else{
-			if(af_sm_dg&0x1)
-				pr_info("%s:ae isn't down.\n",__func__);
-		}
-			break;
-		case AF_GET_OLD_FV:
-			memcpy(&af_info->af_data[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
-			af_info->fv_bf_af = get_fv_base_blnr(&af_info->af_data[af_info->cur_index]);
-			if(af_sm_dg&0x1){
-				pr_info("[af_sm..]:fv_bf_af %llu.\n",af_info->fv_bf_af);
-			}
-			af_info->cur_index = 0;
-			af_info->cur_step = af_alg->step[af_info->cur_index];
-			atomic_set(&af_info->writeable,1);
 			af_delay = 0;
-			sm_state.af_state = AF_GET_COARSE_INFO;
+			af_info->valid_step_cnt = 0;
+			memset(af_info->af_fine_data,0,FOCUS_GRIDS*sizeof(isp_af_fine_tune_t));
+			if(af_info->cur_step < (af_alg->step[af_alg->valid_step_cnt - 1] + af_alg->step[0])/2){
+				af_info->cur_index = 0;
+				sm_state.af_state = AF_GET_COARSE_INFO_L;
+			}
+			else{
+				af_info->cur_index = af_alg->valid_step_cnt - 1;
+				sm_state.af_state = AF_GET_COARSE_INFO_H;
+			}
 			break;
-		case AF_GET_COARSE_INFO:
+		case AF_GET_COARSE_INFO_H://from H step --> L step
+			/*return to max step*/
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_info->cur_index == (af_alg->valid_step_cnt - 1))&&(af_info->cur_step != af_alg->step[af_alg->valid_step_cnt - 1])){
+				if(af_info->cur_step < af_alg->step[af_alg->valid_step_cnt - 1]){
+					if((af_alg->step[af_alg->valid_step_cnt - 1] - af_info->cur_step) > af_alg->jump_offset)
+						af_info->cur_step = af_info->cur_step + af_alg->jump_offset;
+					else
+						af_info->cur_step = af_alg->step[af_info->cur_index];
+				}
+				else
+					af_info->cur_step = af_alg->step[af_info->cur_index];
+				atomic_set(&af_info->writeable,1);
+				af_delay = 0;
+				break;
+			}
+			/*get isp af info*/
 			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
-				memcpy(&af_info->af_data[af_info->cur_index],&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
-				if(++af_info->cur_index >= af_alg->valid_step_cnt){
-				        sm_state.af_state = AF_CALC_GREAT;
-				        af_info->cur_index = 0;
+				af_info->valid_step_cnt++;
+				af_info->af_fine_data[af_info->valid_step_cnt - 1].cur_step = af_info->cur_step;
+				memcpy(&af_info->af_fine_data[af_info->valid_step_cnt - 1].af_data,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
+				if((af_info->cur_index == 0)||(check_hillside(af_info,af_alg) == 1)){
+				        sm_state.af_state = AF_GET_FINE_INFO;
+					af_info->great_step = get_fine_step(af_info,af_alg);
+				}else{
+					af_info->cur_index--;
+					af_info->cur_step = af_alg->step[af_info->cur_index];
+				        atomic_set(&af_info->writeable,1);
+				        af_delay = 0;
+				}
+			}
+			break;
+		case AF_GET_COARSE_INFO_L://from L step --> H step
+			/*return to min step*/
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_info->cur_index == 0)&&(af_info->cur_step != af_alg->step[0])){
+				if(af_info->cur_step > af_alg->step[0]){
+					if((af_info->cur_step - af_alg->step[0]) > af_alg->jump_offset)
+						af_info->cur_step = af_info->cur_step - af_alg->jump_offset;
+					else
+						af_info->cur_step = af_alg->step[af_info->cur_index];
+				}
+				else
+					af_info->cur_step = af_alg->step[af_info->cur_index];
+				atomic_set(&af_info->writeable,1);
+				af_delay = 0;
+				break;
+			}
+			/*get isp af info*/
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
+				af_info->valid_step_cnt++;
+				af_info->af_fine_data[af_info->valid_step_cnt - 1].cur_step = af_info->cur_step;
+				memcpy(&af_info->af_fine_data[af_info->valid_step_cnt - 1].af_data,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
+				if((++af_info->cur_index >= af_alg->valid_step_cnt)||(check_hillside(af_info,af_alg) == 1)){
+				        sm_state.af_state = AF_GET_FINE_INFO;
+					af_info->great_step = get_fine_step(af_info,af_alg);
 				}else{
 					af_info->cur_step = af_alg->step[af_info->cur_index];
 				        atomic_set(&af_info->writeable,1);
@@ -1383,97 +1411,59 @@ void isp_af_sm(isp_dev_t *devp)
 			}
 			break;
 		case AF_CALC_GREAT:
-			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
-			af_info->great_step = get_best_step(af_info,af_alg);
-			af_info->cur_step = (af_info->great_step > af_alg->jump_offset) ? (af_info->great_step - af_alg->jump_offset) : 0;
-			if(af_sm_dg&1)
-				pr_info("[af_sm..]:af_info->cur_step:%d,af_info->great_step:%d.\n",af_info->cur_step,af_info->great_step);
-			atomic_set(&af_info->writeable,1);
-			af_delay = 0;
-			sm_state.af_state = AF_GET_FINE_INFO;
+			if(atomic_read(&af_info->writeable) <= 0){
+				af_info->great_step = get_fine_step(af_info,af_alg);
+				if((af_info->cur_step - af_alg->jump_offset) > af_info->great_step){
+					af_info->cur_step = af_info->cur_step - af_alg->jump_offset;
+					sm_state.af_state = AF_GET_FINE_INFO;
+				}
+				else{
+					af_info->cur_step = af_info->great_step;
+					sm_state.af_state = AF_SUCCESS;
+				}
+				atomic_set(&af_info->writeable,1);
+				af_delay = 0;
 			}
 			break;
 		case AF_GET_FINE_INFO:
-			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
-				af_info->cur_step = af_info->great_step;
-				if(af_sm_dg&1)
-					pr_info("[af_sm..]:af_info->cur_step:%d.\n",af_info->cur_step);
+			if(atomic_read(&af_info->writeable) <= 0){
+				if(af_sm_dg&AF_FINE_TUNE)
+					pr_info("[af_sm..]:af_info->cur_step:%d,af_alg->jump_offset:%d,af_info->great_step:%d.\n",
+					af_info->cur_step,af_alg->jump_offset,af_info->great_step);
+				if((af_info->cur_step - af_alg->jump_offset) > af_info->great_step){
+					af_info->cur_step = af_info->cur_step - af_alg->jump_offset;
+				}
+				else{
+					af_info->cur_step = af_info->great_step;
+					sm_state.af_state = AF_SUCCESS;
+				}
 				atomic_set(&af_info->writeable,1);
 				af_delay = 0;
-				sm_state.af_state = AF_SUCCESS;
 			}
 			break;
 		case AF_SUCCESS:
-			//if(af_delay >= 2){
-			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= 5)){
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
 				/*get last blnr*/
 				memcpy(&af_info->last_blnr,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
-		                /* get last fv */
-		                af_info->fv_aft_af = get_fv_base_blnr(&af_info->last_blnr);
-			        if(af_sm_dg&0x2){
-				        pr_info("[af] last blnr:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u fv=%llu.\n",
-				                af_info->af_data[af_info->cur_index].ac[0],af_info->af_data[af_info->cur_index].ac[1],
-				                af_info->af_data[af_info->cur_index].ac[2],af_info->af_data[af_info->cur_index].ac[3],
-					        af_info->af_data[af_info->cur_index].dc[0],af_info->af_data[af_info->cur_index].dc[1],
-					        af_info->af_data[af_info->cur_index].dc[2],af_info->af_data[af_info->cur_index].dc[3],af_info->fv_aft_af);
+			        if(af_sm_dg&AF_FINE_TUNE){
+				        pr_info("[af] last blnr:ac0=%u ac1=%u ac2=%u ac3=%u dc0=%u dc1=%u dc2=%u dc3=%u af0_ac=%u af1_ac=%u.\n",
+				                af_info->last_blnr.ac[0],af_info->last_blnr.ac[1],
+				                af_info->last_blnr.ac[2],af_info->last_blnr.ac[3],
+					        af_info->last_blnr.dc[0],af_info->last_blnr.dc[1],
+					        af_info->last_blnr.dc[2],af_info->last_blnr.dc[3],
+					        af_info->last_blnr.af_ac[0],af_info->last_blnr.af_ac[1]);
 				}
-				fv_delta = af_info->fv_aft_af*100;
-				fv_delta = div64(fv_delta,af_alg->af_fail_ratio);
-				/*af failed return to af init,retry*/
-				if(af_sm_dg&0x1){
-					pr_info("[af_sm..]:fv_delta:%llu,af_info->fv_bf_af %llu,fv_aft_af %llu.\n",
-						fv_delta,af_info->fv_bf_af,af_info->fv_aft_af);
-				}
-				if(af_info->great_step < af_info->last_great_step)
-				{
-					af_info->last_great_step = af_info->great_step;
-				}
-				if((fv_delta < af_info->fv_bf_af)&&(++af_info->af_retry_cnt < af_alg->af_retry_max)&&(af_info->cur_step > af_alg->af_step_mid_thre)){
-					sm_state.af_state = AF_GET_OLD_FV;
-					if(af_sm_dg&0x1)
-						pr_info("[af_sm..]:fail ratio %u,%u times,return to af init retry.\n",af_alg->af_fail_ratio,af_info->af_retry_cnt);
-				} else if((fv_delta < af_info->fv_bf_af)&&(af_info->af_retry_cnt > af_alg->af_retry_max)){
-		        	/*af failed over max times,force to step 0*/
-		                        /*enable awb,enable af*/
-				        devp->flag |= af_info->flag_bk;
-					af_info->cur_step = af_info->last_great_step;
-					atomic_set(&af_info->writeable,1);
-					if(af_sm_dg&0x1)
-						pr_info("[af_sm..]:fail ratio %u over,af_info->cur_step:%d.\n",af_alg->af_fail_ratio,af_info->cur_step);
-					af_info->af_retry_cnt = 0;
-					af_info->adj_duration_cnt = 0;
-					af_info->last_move = false;
-					af_delay = 0;
-					if(devp->flag & ISP_FLAG_TOUCH_AF)
-						devp->flag &= (~ISP_FLAG_TOUCH_AF);
-					if(devp->flag & ISP_FLAG_AF)
-						sm_state.af_state = AF_DETECT_INIT;
-					else
-						sm_state.af_state = AF_NULL;
-					devp->cmd_state = CAM_STATE_SUCCESS;
-					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-				} else {/*af success*/
-					/*enable awb,enable af*/
-				        devp->flag |= af_info->flag_bk;
-					af_info->af_retry_cnt = 0;
-					af_info->adj_duration_cnt = 0;
-					af_info->last_move = false;
-					af_delay = 0;
-					af_info->cur_step= af_info->last_great_step;
-					if(af_sm_dg&0x1)
-						pr_info("[af_sm..]:af_info->final_step:%d.\n",af_info->cur_step);
-					atomic_set(&af_info->writeable,1);
-					if(devp->flag & ISP_FLAG_TOUCH_AF)
-						devp->flag &= (~ISP_FLAG_TOUCH_AF);
-					if(devp->flag & ISP_FLAG_AF)
-						sm_state.af_state = AF_DETECT_INIT;
-					else
-						sm_state.af_state = AF_NULL;
-					devp->cmd_state = CAM_STATE_SUCCESS;
-					isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-					isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
-				}
+				af_info->last_move = false;
+				af_delay = 0;
+				if(devp->flag & ISP_FLAG_TOUCH_AF)
+					devp->flag &= (~ISP_FLAG_TOUCH_AF);
+				if(devp->flag & ISP_FLAG_AF)
+					sm_state.af_state = AF_DETECT_INIT;
+				else
+					sm_state.af_state = AF_NULL;
+				devp->cmd_state = CAM_STATE_SUCCESS;
+				isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
+				isp_set_af_scan_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			}
 			break;
 		default:
@@ -1483,14 +1473,13 @@ void isp_af_sm(isp_dev_t *devp)
 void isp_af_save_current_para(isp_dev_t *devp)
 {
 	struct isp_af_info_s *af_info = &devp->af_info;
-	af_info->af_retry_cnt = 0;
-	af_info->adj_duration_cnt = 0;
+	struct xml_algorithm_af_s *af_alg = devp->isp_af_parm;
 	af_info->last_move = false;
 	sm_state.af_state = AF_NULL;
 	if(sm_state.af_state == AF_SUCCESS)
 		af_info->capture_step = af_info->cur_step;
 	else
-		af_info->capture_step = 0;
+		af_info->capture_step = af_alg->step[0];
 	pr_info("[isp]%s:save step:%d\n",__func__,af_info->capture_step);
 }
 #define FLASH_OFF         0
@@ -1518,7 +1507,7 @@ void capture_sm_init(isp_dev_t *devp)
 {
 	struct isp_capture_sm_s *cap_sm = &sm_state.cap_sm;
 	xml_capture_t *parm = devp->capture_parm;
-	
+
 	devp->capture_parm->ae_try_max_cnt = 3;
 	devp->capture_parm->sigle_count = 0;
 	devp->capture_parm->skip_step = 0;
@@ -1526,12 +1515,12 @@ void capture_sm_init(isp_dev_t *devp)
 	devp->capture_parm->af_mode = CAM_SCANMODE_FULL;
 	devp->capture_parm->eyetime = 0;
 	devp->capture_parm->pretime = 0;
-	devp->capture_parm->postime = 0;		
+	devp->capture_parm->postime = 0;
 	cap_sm->adj_cnt = 0;
 	cap_sm->flash_mode = FLASH_MODE_NULL;
 	cap_sm->fr_time = 0;
 	cap_sm->tr_time = 0;
-	
+
 	if(cap_sm->flash_mode) {
 		cap_sm->capture_state = CAPTURE_INIT;
 	} else {
@@ -1541,8 +1530,6 @@ void capture_sm_init(isp_dev_t *devp)
 		}else{
 			devp->flag &= (~ISP_FLAG_AF);
 		}
-		devp->af_info.flag_bk &= (~ISP_FLAG_AWB);
-		devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 		devp->flag &= (~ISP_FLAG_AWB);
 		devp->flag &= (~ISP_FLAG_AE);
 	}
@@ -1628,10 +1615,9 @@ int isp_capture_sm(isp_dev_t *devp)
 							cap_sm->adj_cnt>=parm->ae_try_max_cnt?"timeout":"stable");
 				}
 			}
-			break;			
+			break;
 		case CAPTURE_LOW_GAIN:
 			if(sm_state.ae_down==true){
-				devp->af_info.flag_bk &= (~ISP_FLAG_AE);
 				devp->flag &=(~ISP_FLAG_AE);
 				cap_sm->capture_state = CAPTURE_EYE_WAIT;
 				if(capture_debug)
@@ -1692,7 +1678,7 @@ int isp_capture_sm(isp_dev_t *devp)
 						pr_info("[cap_sm]%u:single->capture end.\n",__LINE__);
 				}
 			}
-			
+
 			break;
 		case CAPTURE_MULTI:
 			if(cap_sm->adj_cnt % parm->skip_step == 0) {
@@ -2014,12 +2000,9 @@ void isp_sm_uninit(isp_dev_t *devp)
     isp_af_save_current_para(devp);
 }
 
-module_param(best_step_debug,uint,0664);
-MODULE_PARM_DESC(best_step_debug,"\n debug flag for calc best focus position.\n");
-
 module_param(af_sm_dg,uint,0664);
 MODULE_PARM_DESC(af_sm_dg,"\n debug flag for auto focus.\n");
 
 module_param(capture_debug,uint,0664);
-MODULE_PARM_DESC(af_sm_dg,"\n debug flag for isp capture function.\n");
+MODULE_PARM_DESC(capture_debug,"\n debug flag for isp capture function.\n");
 

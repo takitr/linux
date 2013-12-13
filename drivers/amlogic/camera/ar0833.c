@@ -5485,6 +5485,9 @@ static int ar0833_open(struct file *file)
     dev->pindex.scenes_index = 0;
     dev->pindex.wb_index = 0;
     dev->pindex.capture_index = 0;
+    dev->pindex.nr_index = 0;
+    dev->pindex.peaking_index = 0;
+    dev->pindex.lens_index = 0;
     if(generate_para(dev->cam_para,dev->pindex) != 0){
         printk("generate para failed\n");
         free_para(dev->cam_para);
@@ -5561,14 +5564,8 @@ static int ar0833_close(struct file *file)
             for(i = 0; i < cf->aet.sum; i++){
                 kfree(cf->aet.aet[i].info);
                 kfree(cf->aet.aet[i].aet_table);
-                if(cf->aet.aet[i].manual != NULL)
-                    kfree(cf->aet.aet[i].manual);
             }
         }
-        if(cf->scene_valid){
-            kfree(cf->scene.scene);
-        }
-
         kfree(cf);
     }
     if(dev->cam_para != NULL ){

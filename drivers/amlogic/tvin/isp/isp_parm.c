@@ -132,8 +132,14 @@ void set_ae_parm(xml_algorithm_ae_t *ae_sw,char **parm)
 		{"slow_lpfcoef_enh",  &ae_sw->slow_lpfcoef_enh,  1,  ISP_U32},
 		{"fast_lpfcoef_enh",  &ae_sw->fast_lpfcoef_enh,  1,  ISP_U32},
 		{"flash_thr_enh",     &ae_sw->flash_thr_enh,     1,  ISP_U32},
-		{"aet_fmt_gain",      &ae_sw->aet_fmt_gain,      1,  ISP_U32},	
-
+		{"ae_ratio_low",	  &ae_sw->ae_ratio_low, 	 1,  ISP_U32},
+		{"ae_ratio_low2mid",  &ae_sw->ae_ratio_low2mid,  1,  ISP_U32},
+		{"ae_ratio_mid2high", &ae_sw->ae_ratio_mid2high, 1,  ISP_U32},
+		{"ae_ratio_high",	  &ae_sw->ae_ratio_high, 	 1,  ISP_U32},
+		{"ae_min_diff",	      &ae_sw->ae_min_diff, 	     1,  ISP_U32},
+		{"ae_max_diff",	      &ae_sw->ae_max_diff, 	     1,  ISP_U32},
+		{"reserve",	          &ae_sw->reserve[0], 	     16, ISP_U32},
+		{"aet_fmt_gain",	  &ae_sw->aet_fmt_gain, 	 1,  ISP_U32},
 	};
 
 	if(!strcmp(parm[0],"show")){
@@ -205,6 +211,7 @@ void set_awb_parm(xml_algorithm_awb_t *awb_sw,char **parm)
 		{"bw_limitl",      &awb_sw->bw_limitl,       1,  ISP_U32},
 		{"thr_u",          &awb_sw->thr_u[0],        20, ISP_U32},
 		{"thr_v",          &awb_sw->thr_v[0],        20, ISP_U32},
+		{"reserve",        &awb_sw->reserve[0],      16, ISP_U32},
 	};
 
 	if(!strcmp(parm[0],"show")){
@@ -218,25 +225,18 @@ void set_af_parm(xml_algorithm_af_t *af_sw,char **parm)
 {
 	int len = AF_PARM_NUM;
 	isp_param_t af[AF_PARM_NUM]={
-		{"enter_move_ratio",      &af_sw->enter_move_ratio,        1, ISP_U32},
 		{"enter_static_ratio",    &af_sw->enter_static_ratio,      1, ISP_U32},
 		{"detect_step_cnt",       &af_sw->detect_step_cnt,         1, ISP_U32},
 		{"ave_vdc_thr",		  &af_sw->ave_vdc_thr,		   		   1, ISP_U32},
-		{"delta_fv_ratio",        &af_sw->delta_fv_ratio,          1, ISP_U32},
-		{"af_duration_time",	  &af_sw->af_duration_time, 	   1, ISP_U32},
-		{"af_duration_cnt",	  &af_sw->af_duration_cnt,	       1, ISP_U32},
 		{"win_ratio", 	  	  &af_sw->win_ratio,		   1, ISP_U32},
 		{"step",      		  &af_sw->step,           FOCUS_GRIDS, ISP_U32},
 		{"valid_step_cnt",        &af_sw->valid_step_cnt,          1, ISP_U32},
-		{"af_retry_max",          &af_sw->af_retry_max,            1, ISP_U32},
 		{"jump_offset",           &af_sw->jump_offset,             1, ISP_U32},
 		{"field_delay",           &af_sw->field_delay,             1, ISP_U32},
-		{"af_fail_ratio",         &af_sw->af_fail_ratio,           1, ISP_U32},
 		{"x",                     &af_sw->x,      			       1, ISP_U32},
 		{"y",                     &af_sw->y,      			       1, ISP_U32},
 		{"radius_ratio",          &af_sw->radius_ratio,     		       1, ISP_U32},
-		{"af_step_mid_thre",          &af_sw->af_step_mid_thre,     	1, ISP_U32},
-		{"af_step_max_thre",          &af_sw->af_step_max_thre,     	1, ISP_U32},
+		{"radius_ratio",          &af_sw->hillside_fall,     		       1, ISP_U32},
 	};
 
 	if(!strcmp(parm[0],"show")){

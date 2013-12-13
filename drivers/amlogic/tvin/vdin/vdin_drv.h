@@ -34,7 +34,7 @@
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 
-#define VDIN_VER "Ref.2013/11/25b"
+#define VDIN_VER "Ref.2013/12/10a"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
