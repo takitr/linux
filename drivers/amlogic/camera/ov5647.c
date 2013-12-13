@@ -577,22 +577,11 @@ struct ov5647_dmaqueue {
 	int                        ini_jiffies;
 };
 
-typedef enum resulution_size_type{
-	SIZE_NULL_TYPE = 0,
-	SIZE_CIF_352X288,
-	SIZE_VGA_640X480,
-	SIZE_720P_1280X720,
-	SIZE_960P_1280X960,
-	SIZE_1080P_1920X1080,
-	SIZE_1080P_2048X1536,
-	SIZE_H1080P_2592X1944
-} resulution_size_type_t;
-
 typedef struct resolution_param {
 	struct v4l2_frmsize_discrete frmsize;
 	struct v4l2_frmsize_discrete active_frmsize;
 	int active_fps;
-	resulution_size_type_t size_type;
+	resulution_size_t size_type;
 	struct aml_camera_i2c_fig_s *reg_script[2]; //0:dvp, 1:mipi
 } resolution_param_t;
 
@@ -1985,44 +1974,44 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 static resolution_param_t  debug_prev_resolution_array[] = {
 	{
 		.frmsize			= {352, 288},
-		.active_frmsize		= {640, 480},
+		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
-		.size_type			= SIZE_CIF_352X288,
-		.reg_script[0]			= OV5647_preview_VGA_script,
+		.size_type			= SIZE_352X288,
+		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {640, 480},
-		.active_frmsize		= {640, 480},
+		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
-		.size_type			= SIZE_VGA_640X480,
-		.reg_script[0]			= OV5647_preview_VGA_script,
+		.size_type			= SIZE_640X480,
+		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
+		.size_type			= SIZE_1280X720,
 		.reg_script[0]			= OV5647_preview_720P_script,
 		.reg_script[1]			= OV5647_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
 		.active_frmsize		= {2592, 1944},
-		.active_fps			= 30,
-		.size_type			= SIZE_960P_1280X960,
+		.active_fps			= 15,
+		.size_type			= SIZE_1280X960,
 		.reg_script[0]			= OV5647_capture_5M_script,//OV5647_preview_960P_script,
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_1080P_1920X1080,
+		.size_type			= SIZE_1920X1080,
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},/*{
 		.frmsize			= {2048, 1536},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
-		.size_type			= SIZE_1080P_2048X1536,
+		.size_type			= SIZE_2048X1536,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
 	}*/
@@ -2034,42 +2023,42 @@ static resolution_param_t  prev_resolution_array[] = {
 		.frmsize			= {352, 288},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
-		.size_type			= SIZE_CIF_352X288,
+		.size_type			= SIZE_352X288,
 		.reg_script[0]			= OV5647_preview_VGA_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {640, 480},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
-		.size_type			= SIZE_VGA_640X480,
+		.size_type			= SIZE_640X480,
 		.reg_script[0]			= OV5647_preview_VGA_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
+		.size_type			= SIZE_1280X720,
 		.reg_script[0]			= OV5647_preview_720P_script,
 		.reg_script[1]			= OV5647_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
 		.active_frmsize		= {2592, 1944},
-		.active_fps			= 30,
-		.size_type			= SIZE_960P_1280X960,
+		.active_fps			= 15,
+		.size_type			= SIZE_1280X960,
 		.reg_script[0]			= OV5647_capture_5M_script,//OV5647_preview_960P_script,
 		.reg_script[1]			=  OV5647_720P_script_mipi,//OV5647_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
-		.size_type			= SIZE_1080P_1920X1080,
+		.size_type			= SIZE_1920X1080,
 		.reg_script[0]			= OV5647_preview_720P_script,//OV5647_preview_1080P_script,
 		.reg_script[1]			= OV5647_1080P_script_mipi,
 	},/*{
 		.frmsize			= {2048, 1536},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
-		.size_type			= SIZE_1080P_2048X1536,
+		.size_type			= SIZE_2048X1536,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
 	}*/
@@ -2080,8 +2069,22 @@ static resolution_param_t  capture_resolution_array[] = {
 	{
 		.frmsize			= {2592, 1944},
 		.active_frmsize		= {2592, 1944},
-		.active_fps			= 7.5,
-		.size_type			= SIZE_H1080P_2592X1944,
+		.active_fps			= 15,
+		.size_type			= SIZE_2592X1944,
+		.reg_script[0]			= OV5647_capture_5M_script,
+		.reg_script[1]			= OV5647_5M_script_mipi,
+	},{
+		.frmsize			= {2048, 1536},
+		.active_frmsize		= {2592, 1944},
+		.active_fps			= 15,
+		.size_type			= SIZE_2048X1536,
+		.reg_script[0]			= OV5647_capture_5M_script,
+		.reg_script[1]			= OV5647_5M_script_mipi,
+	},{
+		.frmsize			= {1600, 1200},
+		.active_frmsize		= {2592, 1944},
+		.active_fps			= 15,
+		.size_type			= SIZE_1600X1200,
 		.reg_script[0]			= OV5647_capture_5M_script,
 		.reg_script[1]			= OV5647_5M_script_mipi,
 	},
@@ -2877,25 +2880,32 @@ static int set_flip(struct ov5647_device *dev)
     }
 }
 
-
-static resulution_size_type_t get_size_type(int width, int height)
+static resulution_size_t get_size_type(int width, int height)
 {
-    resulution_size_type_t rv = SIZE_NULL_TYPE;
-    if (width * height >= 2500 * 1900)
-        rv = SIZE_H1080P_2592X1944;
-    else if (width * height >= 2000 * 1500)
-        rv = SIZE_1080P_2048X1536;
-    else if (width * height >= 1900 * 1000)
-        rv = SIZE_1080P_1920X1080;
-    else if (width * height >= 1200 * 900)
-        rv = SIZE_960P_1280X960;
-    else if (width * height >= 1200 * 700)
-        rv = SIZE_720P_1280X720;
-    else if (width * height >= 600 * 400)
-        rv = SIZE_VGA_640X480;
-    else 
-        rv = SIZE_CIF_352X288;
-    return rv;
+	resulution_size_t rv = SIZE_NULL;
+	if (width * height >= 2500 * 1900)
+		rv = SIZE_2592X1944;
+	else if (width * height >= 2048 * 1536)
+		rv = SIZE_2048X1536;
+	else if (width * height >= 1920 * 1080)
+		rv = SIZE_1920X1080;
+	else if (width * height >= 1600 * 1200)
+		rv = SIZE_1600X1200;
+	else if (width * height >= 1280 * 960)
+		rv = SIZE_1280X960;
+	else if (width * height >= 1280 * 720)
+		rv = SIZE_1280X720;
+	else if (width * height >= 1024 * 768)
+		rv = SIZE_1024X768;
+	else if (width * height >= 800 * 600)
+		rv = SIZE_800X600;
+	else if (width * height >= 640 * 4480)
+		rv = SIZE_640X480;
+	else if (width * height >= 352 * 288)
+		rv = SIZE_352X288;
+	else if (width * height >= 320 * 240)
+		rv = SIZE_320X240;
+	return rv;
 }
 
 static int OV5647_FlashCtrl(struct ov5647_device *dev, int flash_mode)
@@ -2929,10 +2939,10 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int o
     int i = 0;
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
-    resulution_size_type_t res_type = SIZE_NULL_TYPE;
+    resulution_size_t res_type = SIZE_NULL;
     printk("target resolution is %dX%d\n", width, height);
     res_type = get_size_type(width, height);
-    if (res_type == SIZE_NULL_TYPE)
+    if (res_type == SIZE_NULL)
         return NULL;
     if (ov5647_work_mode == CAMERA_CAPTURE) {
         tmp_resolution_param = capture_resolution_array;

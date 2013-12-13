@@ -17,6 +17,7 @@
 typedef enum resulution_size {
 	SIZE_NULL = 0,
 	SIZE_320X240,	//4:3
+	SIZE_352X288,   //4:3
 	SIZE_640X480,	//0.3M	4:3
 	SIZE_720X405,	//0.3M	16:9
 	SIZE_800X600,	//0.5M	4:3
