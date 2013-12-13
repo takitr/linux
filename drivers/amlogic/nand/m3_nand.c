@@ -869,7 +869,7 @@ exit:
 	return;
 }
 
- int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t *buf,int oob_required, int page, int cached, int raw)
+ int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,uint32_t offset, int data_len, const uint8_t *buf,int oob_required, int page, int cached, int raw)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
 	int status, i, write_page, configure_data, pages_per_blk, ran_mode;
