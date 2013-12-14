@@ -132,3 +132,20 @@ ENTRY(meson_suspend_firmware)
     ldmfd sp!, {r2-r12, pc}
 ENDPROC(meson_suspend_firmware)
 
+ENTRY(meson_read_socrev1)
+    stmfd sp!, {r2-r12, lr}    
+    ldr r1, =TRUSTZONE_MON_CORE_RD_SOC_REV1
+    ldr r0, =CALL_TRUSTZONE_MON
+    dsb
+    smc #0
+    ldmfd sp!, {r2-r12, pc}
+ENDPROC(meson_read_socrev1)
+
+ENTRY(meson_read_socrev2)
+    stmfd sp!, {r2-r12, lr}    
+    ldr r1, =TRUSTZONE_MON_CORE_RD_SOC_REV2
+    ldr r0, =CALL_TRUSTZONE_MON
+    dsb
+    smc #0
+    ldmfd sp!, {r2-r12, pc}
+ENDPROC(meson_read_socrev2)

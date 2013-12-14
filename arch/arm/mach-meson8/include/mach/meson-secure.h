@@ -48,6 +48,8 @@
 #define TRUSTZONE_MON_CORE_WR_STATUS1_INDEX     0x206
 #define TRUSTZONE_MON_CORE_BOOTADDR_INDEX       0x207
 #define TRUSTZONE_MON_CORE_DDR_INDEX            0x208
+#define TRUSTZONE_MON_CORE_RD_SOC_REV1				0x209
+#define TRUSTZONE_MON_CORE_RD_SOC_REV2				0x20A
 
 #define TRUSTZONE_MON_SUSPNED_FIRMWARE          0x300
 #define TRUSTZONE_MON_SAVE_CPU_GIC              0x400
@@ -74,6 +76,8 @@ extern void meson_auxcoreboot_addr(u32 arg1, u32 arg2);
 extern void meson_suspend_firmware(void);
 extern uint32_t meson_secure_reg_read(uint32_t addr);
 extern uint32_t meson_secure_reg_write(uint32_t addr, uint32_t val);
+extern u32 meson_read_socrev1(void);
+extern u32 meson_read_socrev2(void);
 
 // efuse HAL_API arg
 struct efuse_hal_api_arg{

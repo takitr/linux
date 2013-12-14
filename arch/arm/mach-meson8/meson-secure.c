@@ -33,6 +33,7 @@
 #ifdef CONFIG_MESON_TRUSTZONE
 #include <mach/meson-secure.h>
 #endif
+#include <linux/sched.h>
 
 #define MESON_SECURE_DEBUG 1
 #ifdef MESON_SECURE_DEBUG
@@ -126,7 +127,7 @@ int meson_trustzone_efuse(struct efuse_hal_api_arg* arg)
 	if (!arg) {
 		return -1;
 	}
-
+	set_cpus_allowed_ptr(current, cpumask_of(0));
 	__cpuc_flush_dcache_area(__va(arg->buffer_phy), arg->size);
 	outer_clean_range((arg->buffer_phy), (arg->buffer_phy + arg->size));
 
