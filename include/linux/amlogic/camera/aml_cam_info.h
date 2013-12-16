@@ -8,10 +8,6 @@
 #include <linux/amlogic/tvin/tvin.h>
 #include <linux/amlogic/camera/flashlight.h>
 
-//#define AML_I2C_BUS_A 0
-//#define AML_I2C_BUS_B 1
-//#define AML_I2C_BUS_AO 2
-
 #define FRONT_CAM	0
 #define BACK_CAM	1
 

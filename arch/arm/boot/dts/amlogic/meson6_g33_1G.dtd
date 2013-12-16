@@ -367,8 +367,8 @@
 		
 	aml_cams{
 		compatible = "amlogic,cams_prober";
-		pinctrl-names = "default";
-		pinctrl-0 = <&aml_cam_pins> ;
+		pinctrl-names = "gpio";
+		pinctrl-0 = <&aml_cam_gpio_pins> ;
 		cam_0{
 			cam_name = "gc0308";
 			front_back = <0>;
@@ -1306,7 +1306,7 @@
 						"GPIOB_18","GPIOB_19","GPIOB_20","GPIOB_21","GPIOB_22","GPIOB_23";	//B2~B7
 			amlogic,enable-output=<1>;
 		};
-		aml_cam_pins: aml_cam_pins{
+		aml_cam_gpio_pins: aml_cam_gpio_pins{
 			amlogic,setmask=<9 0x1000>;
 			amlogic,pins = "GPIOZ_12";
 		};

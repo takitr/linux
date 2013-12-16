@@ -923,9 +923,7 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 		printk("%s: faild to get i2c_bus str!\n", cam_dev->name);
 		cam_dev->i2c_bus_num = AML_I2C_MASTER_A;
 	} else {
-		if (!strncmp(str, "i2c_bus_ao", 9))
-			cam_dev->i2c_bus_num = AML_I2C_MASTER_AO;
-		else if (!strncmp(str, "i2c_bus_a", 9))
+		if (!strncmp(str, "i2c_bus_a", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_A;
 		else if (!strncmp(str, "i2c_bus_b", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_B;
@@ -933,6 +931,8 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_C;
 		else if (!strncmp(str, "i2c_bus_d", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_D;
+		else if (!strncmp(str, "i2c_bus_ao", 9))
+			cam_dev->i2c_bus_num = AML_I2C_MASTER_AO;
 		else
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_A; 
 	}
@@ -1176,9 +1176,7 @@ static int do_write_work(char argn ,char **argv)
 		return -1;
 	}
 	
-	if (!strncmp(argv[1], "i2c_bus_ao", 9))
-		i2c_bus = AML_I2C_MASTER_AO;
-	else if (!strncmp(argv[1], "i2c_bus_a", 9))
+	if (!strncmp(argv[1], "i2c_bus_a", 9))
 		i2c_bus = AML_I2C_MASTER_A;
 	else if (!strncmp(argv[1], "i2c_bus_b", 9))
 		i2c_bus = AML_I2C_MASTER_B;
@@ -1186,6 +1184,8 @@ static int do_write_work(char argn ,char **argv)
 		i2c_bus = AML_I2C_MASTER_C;
 	else if (!strncmp(argv[1], "i2c_bus_d", 9))
 		i2c_bus = AML_I2C_MASTER_D;
+	else if (!strncmp(argv[1], "i2c_bus_ao", 9))
+		i2c_bus = AML_I2C_MASTER_AO;
 	else {
 		printk("bus name error!\n");
 		return -1;
