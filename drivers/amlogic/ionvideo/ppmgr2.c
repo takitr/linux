@@ -232,6 +232,7 @@ static inline void ge2d_angle_config(int dst_angle, config_para_ex_t* ge2d_confi
  * phy_addr, buffer_size, canvas_number.
  */
 int ppmgr2_init(struct ppmgr2_device *ppd) {
+    int i = 0;
     switch_mod_gate_by_name("ge2d", 1);
     ppd->context = create_ge2d_work_queue();
     if (!ppd->context) {
@@ -242,7 +243,13 @@ int ppmgr2_init(struct ppmgr2_device *ppd) {
     ppd->paint_mode = 0;
     ppd->angle = 0;
     ppd->mirror = 0;
-    ppd->inited_canvas = 0;
+    ppd->ge2d_fmt = 0;
+    ppd->dst_width = 0;
+    ppd->dst_height = 0;
+    for (i = 0; i < PPMGR2_MAX_CANVAS; i++) {
+        ppd->phy_addr[i] = NULL;
+        ppd->canvas_id[i] = -1;
+    }
     return 0;
 }
 

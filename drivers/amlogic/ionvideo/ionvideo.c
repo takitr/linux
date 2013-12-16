@@ -30,7 +30,7 @@ static unsigned int vid_limit = 16;
 module_param(vid_limit, uint, 0644);
 MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
-static struct ionvideo_fmt formats[] = {
+static const struct ionvideo_fmt formats[] = {
     {
         .name = "RGB32 (LE)",
         .fourcc = V4L2_PIX_FMT_RGB32, /* argb */
@@ -73,13 +73,14 @@ static struct ionvideo_fmt formats[] = {
     }
 };
 
-static struct ionvideo_fmt *get_format(struct v4l2_format *f) {
-    struct ionvideo_fmt *fmt;
+static const struct ionvideo_fmt *__get_format(u32 pixelformat)
+{
+    const struct ionvideo_fmt *fmt;
     unsigned int k;
 
     for (k = 0; k < ARRAY_SIZE(formats); k++) {
         fmt = &formats[k];
-        if (fmt->fourcc == f->fmt.pix.pixelformat)
+        if (fmt->fourcc == pixelformat)
             break;
     }
 
@@ -87,6 +88,11 @@ static struct ionvideo_fmt *get_format(struct v4l2_format *f) {
         return NULL;
 
     return &formats[k];
+}
+
+static const struct ionvideo_fmt *get_format(struct v4l2_format *f)
+{
+    return __get_format(f->fmt.pix.pixelformat);
 }
 
 static LIST_HEAD (ionvideo_devlist);
@@ -150,14 +156,14 @@ static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
     /* video seekTo clear list */
 
     if (!vf_peek(RECEIVER_NAME)) {
-        msleep(10);
+        msleep(5);
         return;
     }
     spin_lock_irqsave(&dev->slock, flags);
     if (list_empty(&dma_q->active)) {
         dprintk(dev, 3, "No active queue to serve\n");
         spin_unlock_irqrestore(&dev->slock, flags);
-        msleep(10);
+        msleep(5);
         return;
     }
     buf = list_entry(dma_q->active.next, struct ionvideo_buffer, list);
@@ -224,7 +230,6 @@ static int ionvideo_start_generating(struct ionvideo_dev *dev) {
 
     /* Resets frame counters */
     dev->ms = 0;
-    dev->mv_count = 0;
     //dev->jiffies = jiffies;
 
     dma_q->frame = 0;
@@ -285,7 +290,7 @@ static int queue_setup(struct vb2_queue *vq, const struct v4l2_format *fmt, unsi
     if (0 == *nbuffers)
         *nbuffers = 32;
 
-    while (size * *nbuffers > vid_limit * 1024 * 1024)
+    while (size * *nbuffers > vid_limit * MAX_WIDTH * MAX_HEIGHT)
         (*nbuffers)--;
 
     *nplanes = 1;
@@ -304,8 +309,7 @@ static int queue_setup(struct vb2_queue *vq, const struct v4l2_format *fmt, unsi
 
 static int buffer_prepare(struct vb2_buffer *vb) {
     struct ionvideo_dev *dev = vb2_get_drv_priv(vb->vb2_queue);
-    struct ionvideo_buffer
-    *buf = container_of(vb, struct ionvideo_buffer, vb);
+    struct ionvideo_buffer *buf = container_of(vb, struct ionvideo_buffer, vb);
     unsigned long size;
 
     dprintk(dev, 2, "%s, field=%d\n", __func__, vb->v4l2_buf.field);
@@ -331,16 +335,12 @@ static int buffer_prepare(struct vb2_buffer *vb) {
 
     buf->fmt = dev->fmt;
 
-    //precalculate_bars(dev);
-    //precalculate_line(dev);
-
     return 0;
 }
 
 static void buffer_queue(struct vb2_buffer *vb) {
     struct ionvideo_dev *dev = vb2_get_drv_priv(vb->vb2_queue);
-    struct ionvideo_buffer
-    *buf = container_of(vb, struct ionvideo_buffer, vb);
+    struct ionvideo_buffer *buf = container_of(vb, struct ionvideo_buffer, vb);
     struct ionvideo_dmaqueue *vidq = &dev->vidq;
     unsigned long flags = 0;
 
@@ -378,7 +378,7 @@ static void ionvideo_unlock(struct vb2_queue *vq) {
     mutex_unlock(&dev->mutex);
 }
 
-static struct vb2_ops ionvideo_video_qops = {
+static const struct vb2_ops ionvideo_video_qops = {
     .queue_setup = queue_setup,
     .buf_prepare = buffer_prepare,
     .buf_queue = buffer_queue,
@@ -420,7 +420,7 @@ static int vidioc_querycap(struct file *file, void *priv, struct v4l2_capability
 }
 
 static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fmtdesc *f) {
-    struct ionvideo_fmt *fmt;
+    const struct ionvideo_fmt *fmt;
 
     if (f->index >= ARRAY_SIZE(formats))
         return -EINVAL;
@@ -450,7 +450,7 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 
 static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f) {
     struct ionvideo_dev *dev = video_drvdata(file);
-    struct ionvideo_fmt *fmt;
+    const struct ionvideo_fmt *fmt;
 
     fmt = get_format(f);
     if (!fmt) {
@@ -507,29 +507,28 @@ static int vidioc_enum_framesizes(struct file *file, void *fh, struct v4l2_frmsi
 }
 
 static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p) {
-
     struct ionvideo_dev *dev = video_drvdata(file);
-    struct vb2_queue *q;
     struct ppmgr2_device* ppmgr2_dev = &(dev->ppmgr2_dev);
     int ret = 0;
 
     ret = vb2_ioctl_qbuf(file, priv, p);
     if (ret != 0) { return ret; }
 
-    q = dev->vdev.queue;
-    if (ppmgr2_dev->inited_canvas < q->num_buffers){
+    if (!ppmgr2_dev->phy_addr[p->index]){
         struct vb2_buffer *vb;
+        struct vb2_queue *q;
         void* phy_addr = NULL;
+        q = dev->vdev.queue;
         vb = q->bufs[p->index];
         phy_addr = vb2_plane_cookie(vb, 0);
-        if (phy_addr && !ppmgr2_canvas_config(ppmgr2_dev, dev->width, dev->height, dev->fmt->fourcc, phy_addr, p->index)) {
-            ppmgr2_dev->inited_canvas += 1;
+        if (phy_addr) {
+            ret = ppmgr2_canvas_config(ppmgr2_dev, dev->width, dev->height, dev->fmt->fourcc, phy_addr, p->index);
         } else {
             return -ENOMEM;
         }
     }
 
-    return 0;
+    return ret;
 }
 
 #define NUM_INPUTS 10
@@ -560,134 +559,12 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i) {
         return 0;
 
     dev->input = i;
-    //precalculate_bars(dev);
-    //precalculate_line(dev);
-    return 0;
-}
-
-/* --- controls ---------------------------------------------- */
-
-static int ionvideo_g_volatile_ctrl(struct v4l2_ctrl *ctrl) {
-    //struct ionvideo_dev
-    //*dev = container_of(ctrl->handler, struct ionvideo_dev, ctrl_handler);
-
-    //if (ctrl == dev->autogain)
-    //    dev->gain->val = jiffies & 0xff;
-    return 0;
-}
-
-
-#define IONVIDEO_CID_CUSTOM_BASE    (V4L2_CID_USER_BASE | 0xf000)
-
-static int ionvideo_s_ctrl(struct v4l2_ctrl *ctrl) {
-    struct ionvideo_dev
-    *dev = container_of(ctrl->handler, struct ionvideo_dev, ctrl_handler);
-
-    switch (ctrl->id) {
-    case V4L2_CID_ALPHA_COMPONENT:
-        dev->alpha_component = ctrl->val;
-        break;
-    default:
-        if (ctrl == dev->button)
-            dev->button_pressed = 30;
-        break;
-    }
     return 0;
 }
 
 /* ------------------------------------------------------------------
  File operations for the device
  ------------------------------------------------------------------*/
-
-static const struct v4l2_ctrl_ops ionvideo_ctrl_ops = {
-    .g_volatile_ctrl = ionvideo_g_volatile_ctrl,
-    .s_ctrl = ionvideo_s_ctrl,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_button = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 0,
-    .name = "Button",
-    .type = V4L2_CTRL_TYPE_BUTTON,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_boolean = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 1,
-    .name = "Boolean",
-    .type = V4L2_CTRL_TYPE_BOOLEAN,
-    .min = 0,
-    .max = 1,
-    .step = 1,
-    .def = 1,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_int32 = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 2,
-    .name = "Integer 32 Bits",
-    .type = V4L2_CTRL_TYPE_INTEGER,
-    .min = 0x80000000,
-    .max = 0x7fffffff,
-    .step = 1,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_int64 = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 3,
-    .name = "Integer 64 Bits",
-    .type = V4L2_CTRL_TYPE_INTEGER64,
-};
-
-static const char * const ionvideo_ctrl_menu_strings[] = { "Menu Item 0 (Skipped)", "Menu Item 1", "Menu Item 2 (Skipped)", "Menu Item 3", "Menu Item 4", "Menu Item 5 (Skipped)", NULL, };
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_menu = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 4,
-    .name = "Menu",
-    .type = V4L2_CTRL_TYPE_MENU,
-    .min = 1,
-    .max = 4,
-    .def = 3,
-    .menu_skip_mask = 0x04,
-    .qmenu = ionvideo_ctrl_menu_strings,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_string = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 5,
-    .name = "String",
-    .type = V4L2_CTRL_TYPE_STRING,
-    .min = 2,
-    .max = 4,
-    .step = 1,
-};
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_bitmask = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 6,
-    .name = "Bitmask",
-    .type = V4L2_CTRL_TYPE_BITMASK,
-    .def = 0x80002000,
-    .min = 0,
-    .max = 0x80402010,
-    .step = 0,
-};
-
-static const s64 ionvideo_ctrl_int_menu_values[] = { 1, 1, 2, 3, 5, 8, 13, 21, 42, };
-
-static const struct v4l2_ctrl_config ionvideo_ctrl_int_menu = {
-    .ops = &ionvideo_ctrl_ops,
-    .id = IONVIDEO_CID_CUSTOM_BASE + 7,
-    .name = "Integer menu",
-    .type = V4L2_CTRL_TYPE_INTEGER_MENU,
-    .min = 1,
-    .max = 8,
-    .def = 4,
-    .menu_skip_mask = 0x02,
-    .qmenu_int = ionvideo_ctrl_int_menu_values,
-};
-
 static const struct v4l2_file_operations ionvideo_fops = {
     .owner = THIS_MODULE,
     .open = vidioc_open,
@@ -721,7 +598,7 @@ static const struct v4l2_ioctl_ops ionvideo_ioctl_ops = {
     .vidioc_unsubscribe_event = v4l2_event_unsubscribe,
 };
 
-static struct video_device ionvideo_template = {
+static const struct video_device ionvideo_template = {
     .name = "ionvideo",
     .fops = &ionvideo_fops,
     .ioctl_ops = &ionvideo_ioctl_ops,
@@ -744,7 +621,6 @@ static int ionvideo_release(void) {
         v4l2_info(&dev->v4l2_dev, "unregistering %s\n", video_device_node_name(&dev->vdev));
         video_unregister_device(&dev->vdev);
         v4l2_device_unregister(&dev->v4l2_dev);
-        v4l2_ctrl_handler_free(&dev->ctrl_handler);
         kfree(dev);
     }
     //vb2_dma_contig_cleanup_ctx(ionvideo_dma_ctx);
@@ -771,7 +647,6 @@ static int __init ionvideo_create_instance(int inst)
 {
     struct ionvideo_dev *dev;
     struct video_device *vfd;
-    struct v4l2_ctrl_handler *hdl;
     struct vb2_queue *q;
     int ret;
 
@@ -789,38 +664,6 @@ static int __init ionvideo_create_instance(int inst)
     dev->width = 640;
     dev->height = 480;
     dev->pixelsize = dev->fmt->depth;
-    hdl = &dev->ctrl_handler;
-    v4l2_ctrl_handler_init(hdl, 11);
-    dev->volume = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_AUDIO_VOLUME, 0, 255, 1, 200);
-    dev->brightness = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_BRIGHTNESS, 0, 255, 1, 127);
-    dev->contrast = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_CONTRAST, 0, 255, 1, 16);
-    dev->saturation = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_SATURATION, 0, 255, 1, 127);
-    dev->hue = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_HUE, -128, 127, 1, 0);
-    dev->autogain = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_AUTOGAIN, 0, 1, 1, 1);
-    dev->gain = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_GAIN, 0, 255, 1, 100);
-    dev->alpha = v4l2_ctrl_new_std(hdl, &ionvideo_ctrl_ops,
-            V4L2_CID_ALPHA_COMPONENT, 0, 255, 1, 0);
-    dev->button = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_button, NULL);
-    dev->int32 = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_int32, NULL);
-    dev->int64 = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_int64, NULL);
-    dev->boolean = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_boolean, NULL);
-    dev->menu = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_menu, NULL);
-    dev->string = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_string, NULL);
-    dev->bitmask = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_bitmask, NULL);
-    dev->int_menu = v4l2_ctrl_new_custom(hdl, &ionvideo_ctrl_int_menu, NULL);
-    if (hdl->error) {
-        ret = hdl->error;
-        goto unreg_dev;
-    }
-    v4l2_ctrl_auto_cluster(2, &dev->autogain, 0, true);
-    dev->v4l2_dev.ctrl_handler = hdl;
 
     /* initialize locks */
     spin_lock_init(&dev->slock);
@@ -832,9 +675,8 @@ static int __init ionvideo_create_instance(int inst)
     q->drv_priv = dev;
     q->buf_struct_size = sizeof(struct ionvideo_buffer);
     q->ops = &ionvideo_video_qops;
-    q->mem_ops = &vb2_ion_memops; //vb2_dma_contig_memops;//vb2_vmalloc_memops;
-    //ionvideo_dma_ctx = vb2_dma_contig_init_ctx(dev);
-    //q->mem_ops = &vb2_dma_contig_memops;
+    q->mem_ops = &vb2_ion_memops;
+    q->timestamp_type = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
 
     ret = vb2_queue_init(q);
     if (ret)
@@ -873,7 +715,6 @@ static int __init ionvideo_create_instance(int inst)
     return 0;
 
 unreg_dev:
-    v4l2_ctrl_handler_free(hdl);
     v4l2_device_unregister(&dev->v4l2_dev);
 free_dev:
     kfree(dev);
