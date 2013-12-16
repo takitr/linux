@@ -140,17 +140,23 @@ static int hpdmode = 1; /*
                             1, unmux hpd when unplug;
                             2, unmux hpd when unplug  or off;
                         */
+#ifdef CONFIG_AM_TV_OUTPUT2
 static int force_vout_index = 0;                      
+#endif
 static int hdmi_prbs_mode = 0xffff; /* 0xffff=disable; 0=PRBS 11; 1=PRBS 15; 2=PRBS 7; 3=PRBS 31*/
 static int hdmi_480p_force_clk = 0; /* 200, 225, 250, 270 */
 
+#if 0
 // For most cases, we don't use HDCP
 // If using HDCP, need add follow command in boot/init.rc and recovery/boot/init.rc
 // write /sys/module/hdmitx/parameters/hdmi_output_force 0
 static int hdmi_output_force = 1;
+#endif
 
-static int hdmi_authenticated = -1;                     
+static int hdmi_authenticated = -1;
+#if 0
 static int hdmi_hdcp_process = 1;   // default hdcp is on, if aksv is 0, then disable
+#endif
 static int hdmi_hdcp_status = 1;
 static int hdmi_hdcp_reset = 0;
 /*****************************
@@ -2020,6 +2026,8 @@ static  int __init hdmitx_boot_para_setup(char *s)
     return 0;
 }
 
+__setup("hdmitx=",hdmitx_boot_para_setup);
+
 #ifdef CONFIG_AM_HDMI_REPEATER
 #define HDMI_TX_STATE_HPD                       0
 #define HDMI_TX_STATE_HDCP_AUTH                 1
@@ -2061,10 +2069,10 @@ void hdmi_repeater_enable_hdcp(unsigned char enable)
     
 }
 
-__setup("hdmitx=",hdmitx_boot_para_setup);
-
+#ifdef CONFIG_AM_TV_OUTPUT2
 MODULE_PARM_DESC(force_vout_index, "\n force_vout_index\n");
 module_param(force_vout_index, uint, 0664);
+#endif
 
 MODULE_PARM_DESC(hdmi_480p_force_clk, "\n hdmi_480p_force_clk \n");
 module_param(hdmi_480p_force_clk, int, 0664);
@@ -2075,10 +2083,12 @@ module_param(hdmi_prbs_mode, int, 0664);
 MODULE_PARM_DESC(hdmi_authenticated, "\n hdmi_authenticated \n");
 module_param(hdmi_authenticated, int, S_IRUGO);
 
+#if 0
 MODULE_PARM_DESC(hdmi_hdcp_process, "\n hdmi_hdcp_process \n");
 module_param(hdmi_hdcp_process, int, 0664);
 
 MODULE_PARM_DESC(hdmi_output_force, "\n hdmi_output_force \n");
 module_param(hdmi_output_force, int, 0664);
+#endif
 
 #endif

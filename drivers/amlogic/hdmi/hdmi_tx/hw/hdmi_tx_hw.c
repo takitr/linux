@@ -500,6 +500,10 @@ static void hdmi_tvenc4k2k_set(Hdmi_tx_video_para_t* param)
     else {
         // nothing
     }
+
+    TOTAL_PIXELS       = (FRONT_PORCH+HSYNC_PIXELS+BACK_PORCH+ACTIVE_PIXELS); // Number of total pixels per line.
+    TOTAL_LINES        = (LINES_F0+(LINES_F1*INTERLACE_MODE));                // Number of total lines per frame.
+
     total_pixels_venc = (TOTAL_PIXELS  / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
     active_pixels_venc= (ACTIVE_PIXELS / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
     front_porch_venc  = (FRONT_PORCH   / (1+PIXEL_REPEAT_HDMI)) * (1+PIXEL_REPEAT_VENC);
@@ -1536,6 +1540,8 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 //    cec_set_pending(TV_CEC_PENDING_OFF);
 }    
 
+#ifdef CONFIG_ARCH_MESON6
+// TODO, need test in m8
 // When 1080p50hz output, we shall manually configure
 // bolow register to get stable Video Timing.
 static void hdmi_reconfig_packet_setting(void)
@@ -1548,6 +1554,7 @@ static void hdmi_reconfig_packet_setting(void)
     hdmi_wr_reg(TX_PACKET_ALLOC_SOF_2, 0x11);
     hdmi_wr_reg(TX_PACKET_CONTROL_1, (hdmi_rd_reg(TX_PACKET_CONTROL_1)) | (1 << 7));    // bit[7]: forced_packet_timing
 }
+#endif
 
 static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *param)
 {
@@ -1947,7 +1954,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
         }
 #endif        
     }
-#ifdef CONFIG_ARCH_MESON8
+#ifdef CONFIG_ARCH_MESON6
     if(param->VIC == HDMI_1080p50) {
         hdmi_reconfig_packet_setting();  // For 1080p50hz only
     }
