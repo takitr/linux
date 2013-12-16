@@ -254,7 +254,7 @@ static int kp_probe(struct platform_device *pdev)
     struct adc_key *key;
     struct adc_kp_platform_data *pdata = NULL;
     int *key_param = NULL;
-	int state;
+    int state = 0;
 
 		printk("==%s==\n", __func__);
 
