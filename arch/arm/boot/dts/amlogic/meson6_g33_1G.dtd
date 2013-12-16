@@ -1016,6 +1016,7 @@ audio_spdif_codec{
             status = "okay";
             address = <0x3d>;
             i2c_bus = "i2c_bus_b";
+            acc_dir = <0x1111>;
         };
 
         sensor_mma7660:mma7660{
