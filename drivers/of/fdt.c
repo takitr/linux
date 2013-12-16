@@ -619,7 +619,11 @@ extern unsigned long long aml_reserved_end;
 #define MAX_RESERVE_BLOCK  32			
 //limit: reserve block < 32
 #define DSP_MEM_SIZE	0x100000
+#ifdef CONFIG_ARCH_MESON8
 #define MEM_BLOCK1_START	0
+#else
+#define MEM_BLOCK1_START    0x80000000
+#endif
 #define MEM_BLOCK1_SIZE	0x4000000
 
 struct reserve_mem{
@@ -767,7 +771,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	else
 		total =  of_read_number(reg,1);
 
-	early_init_dt_add_memory_arch(aml_reserved_end+1,total-aml_reserved_end-1);
+	early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+total-aml_reserved_end-1);
 	pr_info("total is %llx \n ",total);
 #else
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
