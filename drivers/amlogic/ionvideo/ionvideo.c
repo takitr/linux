@@ -141,8 +141,10 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
     videoc_compute_pts(dev, vf);
     vf_put(vf, RECEIVER_NAME);
 //-------------------------------------------------------
-    buf->vb.v4l2_buf.timestamp.tv_sec = 0;
-    buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts;
+	buf->vb.v4l2_buf.timestamp.tv_sec = dev->pts >> 32;
+	buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts & 0xFFFFFFFF;
+ //   buf->vb.v4l2_buf.timestamp.tv_sec = 0;
+ //   buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts;
 
     return 0;
 }

@@ -1315,10 +1315,12 @@ static long amstream_ioctl(struct file *file,
         	((PORT_TYPE_AUDIO | PORT_TYPE_VIDEO))) {	
         	r = -EINVAL;
         } else{
-            if (this->type & PORT_TYPE_VIDEO) {	
-                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],arg);
+			u64 pts;
+			memcpy(&pts,arg,sizeof(u64));
+            if (this->type & PORT_TYPE_VIDEO) {
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],pts);
             } else if (this->type & PORT_TYPE_AUDIO) {
-                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],arg);
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],pts);
             }	
         }
         break;
