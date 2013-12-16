@@ -619,7 +619,12 @@ extern unsigned long long aml_reserved_end;
 #define MAX_RESERVE_BLOCK  32			
 //limit: reserve block < 32
 #define DSP_MEM_SIZE	0x100000
+#if MESON_CPU_TYPE > MESON_CPU_TYPE_MESON6
+#define MEM_BLOCK1_START	0
+#else
+#define MEM_BLOCK1_START    0x80000000
 #define FIRMWARE_ADDR 0x9ff00000
+#endif
 #define MEM_BLOCK1_SIZE	0x4000000
 
 struct reserve_mem{
