@@ -32,6 +32,8 @@
 #include <linux/gpio.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/amlogic/gpio-amlogic.h>
+static DEFINE_SPINLOCK(gpio_irqlock);
+
 struct amlogic_set_pullup pullup_ops;
 extern struct amlogic_gpio_desc amlogic_pins[];
 extern int gpio_amlogic_name_to_num(const char *name);
@@ -185,13 +187,16 @@ EXPORT_SYMBOL(amlogic_gpio_free);
 int amlogic_request_gpio_to_irq(unsigned int  pin,const char *label,unsigned int flag)
 {
 	int ret=-1;
+	unsigned long flags;
 	if(gpio_range_check(pin))
 		return -1;
 	ret=amlogic_gpio_request(pin, label);
 	if(!ret)
-	{
+	{	
+		spin_lock_irqsave(&gpio_irqlock, flags);
 		gpio_flag=flag;
 		__gpio_to_irq(pin);
+		spin_unlock_irqrestore(&gpio_irqlock, flags);
 	}
 	return ret;
 }
@@ -200,13 +205,16 @@ EXPORT_SYMBOL(amlogic_request_gpio_to_irq);
 int amlogic_gpio_to_irq(unsigned int  pin,const char *owner,unsigned int flag)
 {
 	int ret=-1;
+	unsigned long flags;
 	if(gpio_range_check(pin))
 		return -1;
 	if( amlogic_pins[pin].gpio_owner && owner)
 		if(!strcmp(amlogic_pins[pin].gpio_owner,owner))
 		{
+			spin_lock_irqsave(&gpio_irqlock, flags);
 			gpio_flag=flag;
 			__gpio_to_irq(pin);
+			spin_unlock_irqrestore(&gpio_irqlock, flags);
 			return 0;
 		}
 	return ret;

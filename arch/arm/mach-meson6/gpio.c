@@ -33,6 +33,9 @@
 #include <linux/gpio.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/amlogic/gpio-amlogic.h>
+#include <linux/spinlock.h>
+static DEFINE_SPINLOCK(gpio_lock);
+
 unsigned p_gpio_oen_addr[]={
 	P_PREG_PAD_GPIO0_EN_N,
 	P_PREG_PAD_GPIO1_EN_N,
@@ -500,9 +503,11 @@ int gpio_amlogic_requst(struct gpio_chip *chip,unsigned offset)
 	int ret;
 	unsigned int i,reg,bit;
 	unsigned int *gpio_reg=&gpio_to_pin[offset][0];
+	unsigned long flags;
 	ret=pinctrl_request_gpio(offset);
 	gpio_print("==%s==%d\n",__FUNCTION__,__LINE__);
 	if(!ret){
+		spin_lock_irqsave(&gpio_lock, flags);
 		for(i=0;i<sizeof(gpio_to_pin[offset])/sizeof(gpio_to_pin[offset][0]);i++){
 			if(gpio_reg[i]!=NONE)
 			{
@@ -512,6 +517,7 @@ int gpio_amlogic_requst(struct gpio_chip *chip,unsigned offset)
 				gpio_print("clr reg=%d,bit =%d\n",reg,bit);
 			}
 		}
+		spin_unlock_irqrestore(&gpio_lock, flags);
 	}
 	return ret;
 }
@@ -553,25 +559,34 @@ int gpio_amlogic_to_irq(struct gpio_chip *chip,unsigned offset)
 int gpio_amlogic_direction_input(struct gpio_chip *chip,unsigned offset)
 {
 	unsigned int reg,bit;
+	unsigned long flags;
 	gpio_print("==%s==%d\n",__FUNCTION__,__LINE__);
+	spin_lock_irqsave(&gpio_lock, flags);
 	reg=GPIO_REG(amlogic_pins[offset].out_en_reg_bit);
 	bit=GPIO_BIT(amlogic_pins[offset].out_en_reg_bit);
 	aml_set_reg32_mask(p_gpio_oen_addr[reg],1<<bit);
+	spin_unlock_irqrestore(&gpio_lock, flags);
 	return 0;
 }
 
 int gpio_amlogic_get(struct gpio_chip *chip,unsigned offset)
 {
-	unsigned int reg,bit;
+	unsigned int reg,bit,ret;
+	unsigned long flags;
+	spin_lock_irqsave(&gpio_lock, flags);
 	gpio_print("==%s==%d\n",__FUNCTION__,__LINE__);
 	reg=GPIO_REG(amlogic_pins[offset].input_value_reg_bit);
 	bit=GPIO_BIT(amlogic_pins[offset].input_value_reg_bit);
-	return aml_get_reg32_bits(p_gpio_input_addr[reg],bit,1);
+	ret=aml_get_reg32_bits(p_gpio_input_addr[reg],bit,1);
+	spin_unlock_irqrestore(&gpio_lock, flags);
+	return ret;
 }
 
 int gpio_amlogic_direction_output(struct gpio_chip *chip,unsigned offset, int value)
 {
 	unsigned int reg,bit;
+	unsigned long flags;
+	spin_lock_irqsave(&gpio_lock, flags);
 	if(value){
 		reg=GPIO_REG(amlogic_pins[offset].out_value_reg_bit);
 		bit=GPIO_BIT(amlogic_pins[offset].out_value_reg_bit);
@@ -590,11 +605,14 @@ int gpio_amlogic_direction_output(struct gpio_chip *chip,unsigned offset, int va
 	gpio_print("==%s==%d\n",__FUNCTION__,__LINE__);
 	gpio_print("oen reg=%x,value=%x\n",p_gpio_oen_addr[reg],aml_read_reg32(p_gpio_oen_addr[reg]));
 	gpio_print("value=%d\n",value);
+	spin_unlock_irqrestore(&gpio_lock, flags);
 	return 0;
 }
 void	gpio_amlogic_set(struct gpio_chip *chip,unsigned offset, int value)
 {
 	unsigned int reg,bit;
+	unsigned long flags;
+	spin_lock_irqsave(&gpio_lock, flags);
 	reg=GPIO_REG(amlogic_pins[offset].out_value_reg_bit);
 	bit=GPIO_BIT(amlogic_pins[offset].out_value_reg_bit);
 	gpio_print("==%s==%d\n",__FUNCTION__,__LINE__);
@@ -602,6 +620,7 @@ void	gpio_amlogic_set(struct gpio_chip *chip,unsigned offset, int value)
 		aml_set_reg32_mask(p_gpio_output_addr[reg],1<<bit);
 	else
 		aml_clr_reg32_mask(p_gpio_output_addr[reg],1<<bit);
+	spin_unlock_irqrestore(&gpio_lock, flags);
 }
 int gpio_amlogic_name_to_num(const char *name)
 {
