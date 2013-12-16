@@ -858,9 +858,11 @@ static void vsync_toggle_frame(vframe_t *vf)
             video_prot_axis(&video_prot, video_angle, prot_parms.VPP_hd_start_lines_, prot_parms.VPP_hd_end_lines_, prot_parms.VPP_vd_start_lines_, prot_parms.VPP_vd_end_lines_);
             prot_axis_changed = 0x2;
         }
+#if 0
         if (video_prot.status) {
             video_prot_set_canvas(vf);
         }
+#endif
     }
     frame_count++;
     if(debug_flag& DEBUG_FLAG_PRINT_TOGGLE_FRAME){
@@ -974,29 +976,36 @@ static void vsync_toggle_frame(vframe_t *vf)
         canvas_copy((vf->canvas1Addr >> 16) & 0xff, disp_canvas_index[rdma_canvas_id][5]);
 
 	VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS0 + cur_dev->viu_off, disp_canvas[rdma_canvas_id][0]);
-        //if(cur_frame_par && (cur_frame_par->vpp_2pic_mode == 1))
-	    VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[rdma_canvas_id][0]);
-	    //else
-	    //VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[rdma_canvas_id][1]);
+	VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[rdma_canvas_id][0]);
 	VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS0, disp_canvas[rdma_canvas_id][1]);
 	VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[rdma_canvas_id][1]);
-
         next_rdma_canvas_id = rdma_canvas_id?0:1;
-#else
-    canvas_copy(vf->canvas0Addr & 0xff, disp_canvas_index[0]);
-    canvas_copy((vf->canvas0Addr >> 8) & 0xff, disp_canvas_index[1]);
-    canvas_copy((vf->canvas0Addr >> 16) & 0xff, disp_canvas_index[2]);
-    canvas_copy(vf->canvas1Addr & 0xff, disp_canvas_index[3]);
-    canvas_copy((vf->canvas1Addr >> 8) & 0xff, disp_canvas_index[4]);
-    canvas_copy((vf->canvas1Addr >> 16) & 0xff, disp_canvas_index[5]);
 
-    VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS0 + cur_dev->viu_off, disp_canvas[0]);
-	    //if(cur_frame_par && (cur_frame_par->vpp_2pic_mode == 1))
-	        VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[0]);
-	    //else
-        //VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[1]);
-	    VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS0, disp_canvas[1]);
-	    VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[1]);
+        if (use_prot && video_prot.status) {
+             VSYNC_WR_MPEG_REG_BITS(VPU_PROT2_DDR, disp_canvas[rdma_canvas_id][0] & 0xff, 0, 8);
+             if (!(vf->type & VIDTYPE_VIU_444)) {
+                 VSYNC_WR_MPEG_REG_BITS(VPU_PROT3_DDR, (disp_canvas[rdma_canvas_id][0] >> 8) & 0xff, 0, 8);
+             }
+        }
+#else
+        canvas_copy(vf->canvas0Addr & 0xff, disp_canvas_index[0]);
+        canvas_copy((vf->canvas0Addr >> 8) & 0xff, disp_canvas_index[1]);
+        canvas_copy((vf->canvas0Addr >> 16) & 0xff, disp_canvas_index[2]);
+        canvas_copy(vf->canvas1Addr & 0xff, disp_canvas_index[3]);
+        canvas_copy((vf->canvas1Addr >> 8) & 0xff, disp_canvas_index[4]);
+        canvas_copy((vf->canvas1Addr >> 16) & 0xff, disp_canvas_index[5]);
+
+        VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS0 + cur_dev->viu_off, disp_canvas[0]);
+        VSYNC_WR_MPEG_REG(VD1_IF0_CANVAS1 + cur_dev->viu_off, disp_canvas[0]);
+        VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS0, disp_canvas[1]);
+        VSYNC_WR_MPEG_REG(VD2_IF0_CANVAS1, disp_canvas[1]);
+
+        if (use_prot && video_prot.status) {
+             VSYNC_WR_MPEG_REG_BITS(VPU_PROT2_DDR, disp_canvas_index[0], 0, 8);
+             if (!(vf->type & VIDTYPE_VIU_444)) {
+                 VSYNC_WR_MPEG_REG_BITS(VPU_PROT3_DDR, disp_canvas_index[1], 0, 8);
+             }
+        }
 #endif
     }
     /* set video PTS */
@@ -2652,7 +2661,6 @@ unsigned int vf_keep_current(void)
         return 0;
     }
 
-
     if (!keep_y_addr_remap) {
         //if (alloc_keep_buffer())
         return -1;
@@ -2676,7 +2684,12 @@ unsigned int vf_keep_current(void)
         }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))) {
+#ifdef CONFIG_VSYNC_RDMA
+            canvas_update_addr(disp_canvas_index[0][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[1][0], keep_phy_addr(keep_y_addr));
+#else
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
+#endif
             if(debug_flag& DEBUG_FLAG_BLACKOUT){
                 printk("%s: VIDTYPE_VIU_422\n", __func__);
             }
@@ -2690,7 +2703,12 @@ unsigned int vf_keep_current(void)
         }
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cd.width)*(cd.height))){
+#ifdef CONFIG_VSYNC_RDMA
+            canvas_update_addr(disp_canvas_index[0][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[1][0], keep_phy_addr(keep_y_addr));
+#else
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
+#endif
             if(debug_flag& DEBUG_FLAG_BLACKOUT){
                 printk("%s: VIDTYPE_VIU_444\n", __func__);
             }
@@ -2706,8 +2724,15 @@ unsigned int vf_keep_current(void)
         if (keep_phy_addr(keep_y_addr) != canvas_get_addr(y_index) &&
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height))){
+#ifdef CONFIG_VSYNC_RDMA
+            canvas_update_addr(disp_canvas_index[0][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[1][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[0][1], keep_phy_addr(keep_u_addr));
+            canvas_update_addr(disp_canvas_index[1][1], keep_phy_addr(keep_u_addr));
+#else
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
             canvas_update_addr(u_index, keep_phy_addr(keep_u_addr));
+#endif
             if(debug_flag& DEBUG_FLAG_BLACKOUT){
                 printk("%s: VIDTYPE_VIU_NV21\n", __func__);
             }
@@ -2729,9 +2754,18 @@ unsigned int vf_keep_current(void)
             canvas_dup(keep_y_addr_remap, canvas_get_addr(y_index), (cs0.width *cs0.height)) &&
             canvas_dup(keep_u_addr_remap, canvas_get_addr(u_index), (cs1.width *cs1.height)) &&
             canvas_dup(keep_v_addr_remap, canvas_get_addr(v_index), (cs2.width *cs2.height))) {
+#ifdef CONFIG_VSYNC_RDMA
+            canvas_update_addr(disp_canvas_index[0][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[1][0], keep_phy_addr(keep_y_addr));
+            canvas_update_addr(disp_canvas_index[0][1], keep_phy_addr(keep_u_addr));
+            canvas_update_addr(disp_canvas_index[1][1], keep_phy_addr(keep_u_addr));
+            canvas_update_addr(disp_canvas_index[0][2], keep_phy_addr(keep_v_addr));
+            canvas_update_addr(disp_canvas_index[1][2], keep_phy_addr(keep_v_addr));
+#else
             canvas_update_addr(y_index, keep_phy_addr(keep_y_addr));
             canvas_update_addr(u_index, keep_phy_addr(keep_u_addr));
             canvas_update_addr(v_index, keep_phy_addr(keep_v_addr));
+#endif
             if(debug_flag& DEBUG_FLAG_BLACKOUT){
                 printk("%s: VIDTYPE_VIU_420\n", __func__);
             }

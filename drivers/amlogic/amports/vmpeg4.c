@@ -125,6 +125,9 @@ static void vmpeg4_local_init(void);
 static const char vmpeg4_dec_id[] = "vmpeg4-dev";
 
 #define PROVIDER_NAME   "decoder.mpeg4"
+
+extern int query_video_status(int type, int *value);
+
 static const struct vframe_operations_s vmpeg_vf_provider = {
     .peek = vmpeg_vf_peek,
     .get = vmpeg_vf_get,
@@ -769,12 +772,17 @@ static void vmpeg4_local_init(void)
 
 static s32 vmpeg4_init(void)
 {
+    int trickmode_fffb = 0;
     dma_addr_t buf_start_map;
 
-    memset(phys_to_virt(buf_start), 0, buf_size);
+    query_video_status(0, &trickmode_fffb);
 
-    buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
-    
+    if (!trickmode_fffb) {
+        memset(phys_to_virt(buf_start), 0, buf_size);
+
+        buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
+    }
+
     amlog_level(LOG_LEVEL_INFO, "vmpeg4_init\n");
     init_timer(&recycle_timer);
 
@@ -820,8 +828,11 @@ static s32 vmpeg4_init(void)
         amlog_level(LOG_LEVEL_ERROR, "not supported MPEG4 format\n");
     }
 
-    dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
     stat |= STAT_MC_LOAD;
+
+    if (!trickmode_fffb) {
+        dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
+    }
 
     /* enable AMRISC side protocol */
     vmpeg4_prot_init();
