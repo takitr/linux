@@ -745,60 +745,34 @@
 		pinctrl-0=<&remote_pins>;
 	};
 
-/// ***************************************************************************************
-/// -   Audio
-//$$ MODULE="Audio"
-//$$ DEVICE="audio_i2s"
-//$$ L2 PROP_STR = "status"
-    audio_platform{
-        compatible = "amlogic,aml-i2s";
-        dev_name = "aml-i2s.0";
-        status = "okay";
-    };
-
-//$$ DEVICE="audio_i2s_dai"
-//$$ L2 PROP_STR = "status"
-    audio_dai{
-        compatible = "amlogic,aml-i2s-dai";
-        dev_name = "aml-i2s-dai.0";
-        status = "okay";
-    };
-    audio_spdif_dai{
-        compatible = "amlogic,aml-spdif-dai";
-        dev_name = "aml-spdif-dai.0";
-        status = "okay";
-    };
-
-audio_spdif_codec{
-        compatible = "amlogic,aml-spdif-codec";
-        dev_name = "spdif-dit.0";
-        status = "okay";
-    };
-
-//$$ DEVICE="audio_pcm2BT_codec"
-//$$ L2 PROP_STR = "status"
-    audio_pcm2BT_codec{
-        compatible = "amlogic,pcm2BT-codec";
-        dev_name = "pcm2bt.0";
-        status = "okay";
-    };
-
-//$$ DEVICE="audio_pcm_dai"
-//$$ L2 PROP_STR = "status"
-    audio_pcm_dai{
-        compatible = "amlogic,aml-pcm-dai";
-        dev_name = "aml-pcm-dai.0";
-        status = "okay";
-    };
-
-//$$ DEVICE="audio_pcm"
-//$$ L2 PROP_STR = "status"
-    audio_pcm{
-        compatible = "amlogic,aml-pcm";
-        dev_name = "aml-pcm.0";
-        status = "okay";
+    aml_audio_codc{
+        compatible = "amlogic,audio_codec";
+        codec_rt5631:rt5631{
+            codec_name = "rt5631";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            capless = <0>;
+            status = "disabled";    
+        };  
+        codec_wm8960:wm8960{
+            codec_name = "wm8960";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            capless = <1>;
+            status = "okay";
+        };
     };
     
+    audio_platform{
+        compatible = "amlogic,aml-audio";
+        dev_name = "aml-audio.0";
+    };
+
+    audio_dai{
+        compatible = "amlogic,aml-dai";
+        dev_name = "aml-dai.0";
+    };
+
     wm8960_sound_card{
         compatible = "sound_card,wm8960";
         aml,sound_card = "AML-WM8960";
@@ -824,8 +798,7 @@ audio_spdif_codec{
         pinctrl-0 = <&aml_i2s_pins &config_aml_hp_det_pins>;
         wm8960_gpio = "GPIOA_19";
         hp_det_inv;
-        status = "disabled";
-        
+        status = "okay";
     };
 
     rt5631_sound_card{
@@ -852,20 +825,6 @@ audio_spdif_codec{
         rt5631_gpio = "GPIOA_19";
         hp_det_inv;
         status = "disabled";
-    };
-
-	dummy_codec_audio{
-        status = "okay";
-        compatible = "amlogic,aml_dummy_codec_audio";
-        dev_name = "aml_dummy_codec_audio.0";
-        pinctrl-names = "dummy_codec_audio";
-        pinctrl-0 = <&aml_dummy_codec_pins>;
-    };
-    
-    dummy_codec{
-        status = "okay";
-        compatible = "amlogic,aml_dummy_codec";
-        dev_name = "dummy_codec.0";
     };
     
     touch{
