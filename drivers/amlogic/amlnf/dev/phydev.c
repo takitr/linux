@@ -817,7 +817,7 @@ static void show_phydev_info()
 				config2 = "multi_plane";
 			else
 				config2 = "single_plane";
-			aml_nand_msg("%s : offset: 0x%012llx -0x%012llx : partitons %d : %s %s",
+			aml_nand_msg("%-10s : offset: 0x%012llx -0x%012llx : partitons %d : %s %s",
 				phydev->name,phydev->offset,phydev->size,phydev->nr_partitions,config1,config2);
 		}
 	}

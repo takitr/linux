@@ -25,7 +25,7 @@ extern int cache_init(struct aml_nftl_part_t *part);
 extern int cache_exit(struct aml_nftl_part_t *part);
 extern uint32 get_vaild_blocks(struct aml_nftl_part_t * part,uint32 start_block,uint32 blocks);
 extern uint32 __nand_read(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf);
-extern uint32 __nand_write(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf);
+extern uint32 __nand_write(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf,int sync_flag);
 extern uint32 __nand_flush_write_cache(struct aml_nftl_part_t* part);
 extern void print_free_list(struct aml_nftl_part_t* part);
 extern void print_block_invalid_list(struct aml_nftl_part_t* part);
@@ -225,7 +225,7 @@ uint32 _blk_nand_read(struct aml_nftl_blk *nftl_blk,uint32 start_sector,uint32 l
 uint32 _nand_write(struct aml_nftl_dev *nftl_dev,uint32 start_sector,uint32 len,unsigned char *buf)
 {
     uint32 ret;
-    ret = __nand_write(nftl_dev->aml_nftl_part,start_sector,len,buf);
+    ret = __nand_write(nftl_dev->aml_nftl_part,start_sector,len,buf,nftl_dev->sync_flag);
     ktime_get_ts(&nftl_dev->ts_write_start);
     return ret;
 }
