@@ -94,12 +94,16 @@ static void set_hpll_clk_out(unsigned clk)
             break;
     }
 #ifdef CONFIG_ARCH_MESON8
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 1);       // Soft Reset HDMI PHY
-    h_delay();
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
-    h_delay();
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);       // Enable HDMI PHY
+    // P_HHI_HDMI_PHY_CNTL1     bit[1]: enable clock    bit[0]: soft reset
+#define RESET_HDMI_PHY()                        \
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 3);   \
+    h_delay();                                  \
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);   \
+    h_delay()
+
+    RESET_HDMI_PHY();
+    RESET_HDMI_PHY();
+    RESET_HDMI_PHY();
 #endif
 }
 
