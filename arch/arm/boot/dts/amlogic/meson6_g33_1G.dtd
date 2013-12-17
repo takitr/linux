@@ -255,7 +255,7 @@
  	
  	 cpufreq-meson{
 		compatible = "amlogic,cpufreq-meson";
-		cpufreq_info = <&vcck_opp_table>;
+//		cpufreq_info = <&vcck_opp_table>;
 	};
  	
     battery_parameter:battery_parameter{
