@@ -24,7 +24,9 @@
 #endif /* CONFIG_PPC */
 
 #include <asm/page.h>
-
+#if defined(CONFIG_PLAT_MESON)
+#include <mach/cpu.h>
+#endif
 char *of_fdt_get_string(struct boot_param_header *blob, u32 offset)
 {
 	return ((char *)blob) +
@@ -676,7 +678,7 @@ void set_memory_total_size(unsigned long long size)
 	pReserve_Manager->total_memory = size;
 }
 
-int find_reserve_block(char * name,int idx)
+int find_reserve_block(const char * name,int idx)
 {
 	int i;
 
@@ -854,8 +856,10 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	high_reserve_size = get_high_reserve_size();
 
 	reg = of_get_flat_dt_prop(node, "linux,total-memory", &l);
-	if (reg == NULL)
+	if (reg == NULL){
 		printk("error: can not get total-memory for AML\n");
+		return -1;
+	}
 	else
 		total =  of_read_number(reg,1);
 
