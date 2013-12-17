@@ -2052,7 +2052,7 @@ void set_chroma_regs(unsigned int offset, unsigned int h_active,unsigned int v_a
 	pr_info("%s cm2 init ok.\n",__func__);
 #endif
 }
-void vdin_set_cm2(unsigned int offset,unsigned int *cm2)
+void vdin_set_cm2(unsigned int offset,unsigned int w,unsigned int h,unsigned int *cm2)
 {
 	unsigned int i=0,j=0,start_addr=0x100;
 
@@ -2067,6 +2067,10 @@ void vdin_set_cm2(unsigned int offset,unsigned int *cm2)
 	for(i=0;i<28;i++){
 		WR(VDIN_CHROMA_ADDR_PORT,0x200+i);
 		WR(VDIN_CHROMA_DATA_PORT,cm2[160+i]);
-	}	
+	}
+	/*config cm2 frame size*/
+	WR(VDIN_CHROMA_ADDR_PORT,0x205);
+	WR(VDIN_CHROMA_DATA_PORT,h<<16|w);
+	
     WR_BITS(VDIN_CM_BRI_CON_CTRL, 1, CM_TOP_EN_BIT,CM_TOP_EN_WID);
 }

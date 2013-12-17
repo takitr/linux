@@ -805,7 +805,7 @@ static int vdin_func(int no, vdin_arg_t *arg)
 			vdin_set_matrixs(devp,parm->matrix_id,parm->color_convert);
 			break;
 		case VDIN_CMD_SET_CM2:
-			vdin_set_cm2(devp->addr_offset,parm->cm2);
+			vdin_set_cm2(devp->addr_offset,devp->h_active,devp->v_active,parm->cm2);
 		default:
 			break;
 	}
