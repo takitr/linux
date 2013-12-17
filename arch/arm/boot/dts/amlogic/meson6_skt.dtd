@@ -202,62 +202,78 @@
 		compatible = "amlogic,pm";
 		dev_name = "aml_pm";
 	};
-	
-	meson-cs-regulator{
-		compatible = "amlogic,meson-cs-regulator";
-		dev_name = "meson-cs-regulator";
-		default_uV = <1110000>;
-		consumer_supplies-supply = "vcck-armcore";
-		init-data = <&vcck_init_data>;
-		vcck-table = <&vcck_opp_table>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&aml_pwm_pins>;
-			
-		voltage_step_table = <
-			1400000 1380000 1350000 1330000
-			1300000 1280000 1260000 1240000
-			1210000 1180000 1140000 1110000
-			1070000 1040000 1010000   970000
-		>;
-
-		vcck_pwm_table = <
-		    0x00001c 0x01001b 0x030019 0x040018
-	        0x060016 0x070015 0x080014 0x090013
-	        0x0b0011 0x0d000f 0x0f000d 0x11000b 
-	        0x130009 0x150007 0x170005 0x190003
-		>;
-			
-		vcck_init_data: vcck_init_data{
-			cons_name = "vcck";
-			min_uV = <1010000>;
-			max_uV = <1380000>;
-			valid_ops_mask = <0x9>; /*REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS */
-			num = <1>;	/*the number of vcck_data-supply*/
-			vcck_data-supply = "vcck-armcore";	
-		};
-			
-		vcck_opp_table: vcck_opp_table{
-			num = <11>;
-			table = <
-			1500000 1330000 1330000
-			1320000 1330000 1330000
-			1200000 1260000 1260000
-			1080000 1240000 1240000
-			1000000 1140000 1140000
-			  984000 1140000 1140000
-			  840000 1110000 1110000
-			  816000 1110000 1110000
-			  792000 1040000 1040000
-			  600000 1040000 1040000
-			  200000 1040000 1040000
-			>;
-		};
-	};
 
     cpufreq-meson{
-		compatible = "amlogic,cpufreq-meson";
-		cpufreq_info = <&vcck_opp_table>;
-	};
+        compatible = "amlogic,cpufreq-meson";
+        status = "okay";
+    };
+
+    meson_vcck_dvfs_driver{
+        compatible = "amlogic, meson_vcck_dvfs";
+        default_uV = <1110000>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&aml_pwm_pins>;
+        use_pwm = <1>; 
+        table_count = <16>;
+        cs_voltage_table = <
+        /*   
+         * Note: This table is hardware depended, If your hardware use PWM method,
+         * then first line in this table is PWM register value, second line is
+         * voltage of VCCK according this PWM register value. If your platform use
+         * constant-current source to adjust vcck voltage, then the first line should 
+         * set to 0, means not valid, member 'use_pwm' in this node should set to 0.
+         *
+         *  ---- This table must be in ascending order by voltage ----
+         *    
+         *  PWM value       VCCK voltage 
+         */   
+            0x190003         970000
+            0x170005        1010000
+            0x150007        1040000
+            0x130009        1070000
+            0x11000b        1110000
+            0x0f000d        1140000
+            0x0d000f        1180000
+            0x0b0011        1210000
+            0x090013        1240000
+            0x080014        1260000
+            0x070015        1280000
+            0x060016        1300000
+            0x040018        1330000
+            0x030019        1350000
+            0x01001b        1380000
+            0x00001c        1400000
+        >;   
+    };   
+
+    dvfs {
+        compatible = "amlogic, amlogic-dvfs";                   /** fixed for driver, don't change       */
+        #address-cells = <1>;
+        #size-cells = <0>;
+        status = "ok";
+
+        vcck_dvfs {
+            dvfs_id     = <1>;                                  /** must be value of (1 << n)            */
+            table_count = <11>;                                 /** must be correct count for dvfs_table */
+            dvfs_table  = <
+                /* NOTE: frequent in this table must be ascending order */
+                /* frequent(Khz)    min_uV      max_uV                  */
+                 200000             1040000     1040000
+                 600000             1040000     1040000
+                 792000             1040000     1040000
+                 816000             1110000     1110000
+                 840000             1110000     1110000
+                 984000             1140000     1140000
+                1000000             1140000     1140000
+                1080000             1240000     1240000
+                1200000             1260000     1260000
+                1320000             1330000     1330000
+                1500000             1330000     1330000
+            >;
+
+    };
+
+
 	
 	i2c@c8100500{ /*I2C-AO*/
 		compatible = "amlogic,aml_i2c";

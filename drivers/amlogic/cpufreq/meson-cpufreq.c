@@ -394,8 +394,8 @@ static int __init meson_cpufreq_probe(struct platform_device *pdev)
 
 static int __exit meson_cpufreq_remove(struct platform_device *pdev)
 {
-#ifdef CONFIGG_USE_OF
-	kfree(pdev->dev->platform_data);
+#ifdef CONFIG_USE_OF
+	kfree(pdev->dev.platform_data);
 	//kfree(vcck_opp_table);
 #endif
 

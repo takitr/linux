@@ -25,7 +25,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <mach/am_regs.h>
-#include <linux/regulator/meson_cs_dcdc_regulator.h>
+#include <linux/amlogic/meson_cs_dcdc_regulator.h>
 #include <linux/of.h>
 #include <linux/pinctrl/consumer.h>
 
@@ -189,10 +189,6 @@ static struct regulator_ops meson_cs_ops = {
 };
 
 
-
-
-
-
 static void update_voltage_constraints(struct meson_cs_regulator_dev *data)
 {
 	int ret;
@@ -265,7 +261,7 @@ static struct device_attribute *attributes_virtual[] = {
 };
 
 
-static int of_get_voltage() {
+static int of_get_voltage(void) {
 	//printk("***vcck: get_voltage\n");	 
 	int i;    
 	unsigned int reg = aml_read_reg32(P_PWM_PWM_C);	  
@@ -285,6 +281,7 @@ static int of_set_voltage(unsigned int level) {
 	//printk("***vcck: set_voltage\n");	 
 	//printk("level is %d  *(vcck_pwm_table+level) is %d\n",level,*(vcck_pwm_table+level));
 	aml_write_reg32(P_PWM_PWM_C, *(vcck_pwm_table+level));
+    return 0;
 }
 
 
@@ -588,6 +585,259 @@ static void __exit meson_cs_cleanup(void)
 
 subsys_initcall(meson_cs_init);
 module_exit(meson_cs_cleanup);
+
+#ifdef CONFIG_AML_DVFS
+#include <linux/amlogic/aml_dvfs.h>
+
+struct cs_voltage {
+    int pwm_value;
+    int voltage;
+};
+
+static struct cs_voltage *g_table = NULL;
+static int g_table_cnt = 0;
+static int use_pwm = 0;
+
+static int dvfs_get_voltage_step(void)
+{
+    int i = 0;
+    unsigned int reg_val;
+
+    if (use_pwm) {
+        reg_val = aml_read_reg32(P_PWM_PWM_C); 
+        for (i = 0; i < g_table_cnt; i++) {
+            if (g_table[i].pwm_value == reg_val) {
+                return i;    
+            }
+        }
+        if (i >= g_table_cnt) {
+            return -1;    
+        }
+    } else {
+		reg_val = aml_read_reg32(P_VGHL_PWM_REG0);
+		if ((reg_val>>12&3) != 1) {
+			return -1;
+		}
+        return reg_val & 0xf;
+    }
+}
+
+static int dvfs_set_voltage(int from, int to)
+{
+    int cur;
+
+	if (to < 0 || to > g_table_cnt) {
+		printk(KERN_ERR "%s: to(%d) out of range!\n", __FUNCTION__, to);
+		return -EINVAL;
+	} 
+	if (from < 0 || from > g_table_cnt) {
+        if (use_pwm) {
+            /*
+             * use PMW method to adjust vcck voltage
+             */
+            aml_write_reg32(P_PWM_PWM_C, g_table[to].pwm_value);
+        } else {
+            /*
+             * use constant-current source to adjust vcck voltage
+             */
+			aml_set_reg32_bits(P_VGHL_PWM_REG0, to, 0, 4);
+        }
+		udelay(200);
+        return 0;
+	}
+    cur = from;
+    while (cur != to) {
+        /*
+         * if target step is far away from current step, don't change 
+         * voltage by one-step-done. You should change voltage step by
+         * step to make sure voltage output is stable
+         */
+        if (cur < to) {
+            if (cur < to - 3) {
+                cur += 3;    
+            } else {
+                cur = to;    
+            }
+        } else {
+            if (cur > to + 3) {
+                cur -= 3;    
+            } else {
+                cur = to;    
+            }
+        }
+        if (use_pwm) {
+            aml_write_reg32(P_PWM_PWM_C, g_table[cur].pwm_value);    
+        } else {
+			aml_set_reg32_bits(P_VGHL_PWM_REG0, cur, 0, 4);
+        }
+        udelay(100);
+    }
+    return 0;
+}
+
+static int meson_cs_set_voltage(uint32_t id, uint32_t min_uV, uint32_t max_uV)
+{
+    uint32_t vol = 0;
+    int      i;
+    int      cur;
+
+    if (min_uV > max_uV || !g_table) {
+        printk("%s, invalid voltage or NULL table\n", __func__);
+        return -1;    
+    }   
+    vol = (min_uV + max_uV) / 2;
+    for (i = 0; i < g_table_cnt; i++) {
+        if (g_table[i].voltage >= vol) {
+            break;
+        }
+    }
+    if (i == g_table_cnt) {
+        printk("%s, voltage is too large:%d\n", __func__, vol);    
+        return -EINVAL;
+    }
+
+    cur = dvfs_get_voltage_step();
+    return dvfs_set_voltage(cur, i);
+}
+
+static int meson_cs_get_voltage(uint32_t id, uint32_t *uV)
+{
+    int cur;
+
+    if (!g_table) {
+        printk("%s, no voltage table\n", __func__);
+        return -1;
+    }
+    cur = dvfs_get_voltage_step(); 
+    if (cur < 0) {
+        return cur;
+    } else {
+        *uV = g_table[cur].voltage; 
+        return 0;
+    }
+}
+
+struct aml_dvfs_driver aml_cs_dvfs_driver = { 
+    .name        = "meson-cs-dvfs",
+    .id_mask     = (AML_DVFS_ID_VCCK),
+    .set_voltage = meson_cs_set_voltage, 
+    .get_voltage = meson_cs_get_voltage,
+};
+
+#define DEBUG_PARSE 1
+#define PARSE_UINT32_PROPERTY(node, prop_name, value, exception)        \
+    if (of_property_read_u32(node, prop_name, (u32*)(&value))) {        \
+        printk("failed to get property: %s\n", prop_name);              \
+        goto exception;                                                 \
+    }                                                                   \
+    if (DEBUG_PARSE) {                                                  \
+        printk("get property:%25s, value:0x%08x, dec:%8d\n",            \
+            prop_name, value, value);                                   \
+    }
+
+#ifdef CONFIG_OF
+static const struct of_device_id amlogic_meson_cs_dvfs_match[]={
+	{	.compatible = "amlogic, meson_vcck_dvfs",
+	},
+	{},
+};
+#endif
+
+static void dvfs_vcck_pwm_init(struct device * dev) {
+	aml_write_reg32(P_PWM_MISC_REG_CD, (aml_read_reg32(P_PWM_MISC_REG_CD) & ~(0x7f << 8)) | ((1 << 15) | (0 << 8) | (1 << 0)));    
+	aml_write_reg32(P_PWM_PWM_C, g_table[g_table_cnt - 1].pwm_value);    
+
+    if (IS_ERR(devm_pinctrl_get_select_default(dev))) {
+		printk("did not get pins for pwm--------\n");
+	} else {
+	    printk("get pin for pwm--------\n");
+    }
+}
+
+static int meson_cs_dvfs_probe(struct platform_device *pdev)
+{
+    int ret;    
+	struct device_node *np = pdev->dev.of_node;
+    int default_uv = 0;
+    int i = 0;
+
+    if (!np) {
+        return -ENODEV;
+    }
+    PARSE_UINT32_PROPERTY(np, "use_pwm", use_pwm, out);
+    PARSE_UINT32_PROPERTY(np, "table_count", g_table_cnt, out);
+    g_table = kzalloc(sizeof(struct cs_voltage) * g_table_cnt, GFP_KERNEL);
+    if (g_table == NULL) {
+        printk("%s, allocate memory failed\n", __func__);    
+        return -ENOMEM;
+    }
+    ret = of_property_read_u32_array(np, 
+                                     "cs_voltage_table", 
+                                     g_table, 
+                                     (sizeof(struct cs_voltage) * g_table_cnt) / sizeof(int));
+    if (ret < 0) {
+        printk("%s, failed to read 'cs_voltage_table', ret:%d\n", __func__, ret);
+        goto out;
+    }
+    printk("%s, table count:%d, use_pwm:%d\n", __func__, g_table_cnt, use_pwm);
+    for (i = 0; i < g_table_cnt; i++) {
+        printk("%2d, %08x, %7d\n", i, g_table[i].pwm_value, g_table[i].voltage);    
+    }
+
+    PARSE_UINT32_PROPERTY(np, "default_uV", default_uv, next);
+    if (default_uv) {
+        meson_cs_set_voltage(AML_DVFS_ID_VCCK, default_uv, default_uv); 
+    }
+next:
+    if (use_pwm) {
+        dvfs_vcck_pwm_init(&pdev->dev);
+    }
+    aml_dvfs_register_driver(&aml_cs_dvfs_driver);
+    return 0;
+out:
+    if (g_table) {
+        kfree(g_table);
+        g_table = NULL;
+    }
+    return -1;
+}
+
+static int meson_cs_dvfs_remove(struct platform_device *pdev)
+{
+    if (g_table) {
+        kfree(g_table);    
+    } 
+    aml_dvfs_unregister_driver(&aml_cs_dvfs_driver);
+    return 0;
+}
+
+static struct platform_driver meson_cs_dvfs_driver = {
+	.driver = {
+		.name = "meson_vcck_dvfs",
+		.owner = THIS_MODULE,
+    #ifdef CONFIG_OF
+		.of_match_table = amlogic_meson_cs_dvfs_match,
+    #endif
+	},
+	.probe = meson_cs_dvfs_probe,
+	.remove = meson_cs_dvfs_remove,
+};
+
+
+static int __init meson_cs_dvfs_init(void)
+{
+	return platform_driver_register(&meson_cs_dvfs_driver);
+}
+
+static void __exit meson_cs_dvfs_cleanup(void)
+{
+	platform_driver_unregister(&meson_cs_driver);
+}
+
+subsys_initcall(meson_cs_dvfs_init);
+module_exit(meson_cs_dvfs_cleanup);
+
+#endif      /* CONFIG_AML_DVFS */
 
 MODULE_AUTHOR("Elvis Yu <elvis.yu@amlogic.com>");
 MODULE_DESCRIPTION("Amlogic Meson current source voltage regulator driver");
