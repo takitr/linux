@@ -22,7 +22,7 @@
 #define AML_NFTL_BOUNCE_SIZE	 		0x40000
 
 #define NFTL_MAX_SCHEDULE_TIMEOUT		         1000
-#define NFTL_FLUSH_DATA_TIME			         8
+#define NFTL_FLUSH_DATA_TIME			         1
 #define NFTL_CACHE_FORCE_WRITE_LEN               16
 
 #define RET_YES                           1
@@ -47,7 +47,7 @@ struct aml_nftl_dev{
 	struct notifier_block   nb;
 	struct class            debug;
 	struct _nftl_cfg        nftl_cfg;
-
+	int 				  sync_flag;
 	uint32 (*read_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*write_data)(struct aml_nftl_dev *nftl_dev, unsigned long block, unsigned nblk, unsigned char *buf);
 	uint32 (*flush_write_cache)(struct aml_nftl_dev *nftl_dev);
