@@ -1711,7 +1711,9 @@ sdio{
 			xres = <2048>;
 			yres = <1536>;
 			pol = <0x4>;
+			auto_update_fw = <0x1>;
 			config_file = "/etc/touch/goodix.cfg";
+			fw_file = "/etc/touch/goodix.bin";
 		};
    };
 

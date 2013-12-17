@@ -829,6 +829,14 @@ void fts_ctpm_fw_upgrade_with_i_file(void)
 				printk("uc_tp_fm_ver-2 = 0x%x\n", uc_tp_fm_ver);
     }
 		printk("[FTS] upgrade start.\n");
+	if (g_pdata->auto_update_fw)
+	{
+		if ( uc_tp_fm_ver == 0xa6  ||   //the firmware in touch panel maybe corrupted
+         uc_tp_fm_ver < uc_host_fm_ver   //the firmware in host flash is new, need upgrade
+         )
+		i_ret =  fts_ctpm_fw_upgrade();
+	}
+	else
 		i_ret =  fts_ctpm_fw_upgrade();
 		mdelay(200);
 #if 0
@@ -1178,6 +1186,26 @@ static void ft5x0x_read_version(char* ver)
 	else
 		printk("[FST] Firmware version = 0x%x\n", uc_reg_value);
 }
+
+static void ft5x0x_late_upgrade(void)
+{
+	int file_size;
+//	static int count;
+	while(1) {
+		file_size = touch_open_fw(ts_com->fw_file);
+		if(file_size < 0) {
+			//printk("%s: %d\n", __func__, count++);
+			msleep(10);
+		}
+		else break;
+	}
+	touch_close_fw();
+	fts_ctpm_fw_upgrade_with_i_file();
+	enable_irq(ts_com->irq);
+	printk("%s :first load firmware\n", ts_com->owner);
+	do_exit(0);
+}
+
 /***********************************************************************************************
 Name	:	 
 
@@ -1310,6 +1338,17 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
   uc_reg_value = ft5x0x_read_fw_ver();
   printk("%s: Firmware version = 0x%x\n", __FUNCTION__, uc_reg_value);
+#ifdef CONFIG_OF
+  if (ts_com->auto_update_fw)
+  {
+    disable_irq(ts_com->irq);
+    ts_com->upgrade_task = kthread_run(ft5x0x_late_upgrade, NULL, "ft5x0x_late_upgrade");
+    if (!ts_com->upgrade_task)
+      printk("%s creat upgrade process failed\n", __func__);
+    else
+      printk("%s creat upgrade process sucessful\n", __func__);
+  }
+#endif
 #if 0//CONFIG_FOCALTECH_TOUCHSCREEN_CODE_UPG
     fts_ctpm_fw_upgrade_with_i_file();
     mdelay(200);

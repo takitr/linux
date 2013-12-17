@@ -13,19 +13,18 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
  * General Public License for more details.
  * 
- * Version:1.2
+ * Version:1.6
  *        V1.0:2012/05/01,create file.
  *        V1.2:2012/06/08,modify some warning.
  *        V1.4:2012/08/28,modified to support GT9XX
- *
+ *        V1.6:new proc name
  */
 
 #include "gt9xx.h"
 
-//#define IC_TYPE_NAME        "GT813" //Default
 #define DATA_LENGTH_UINT    512
 #define CMD_HEAD_LENGTH     (sizeof(st_cmd_head) - sizeof(u8*))
-#define GOODIX_ENTRY_NAME   "goodix_tool"
+static char procname[20] = {0};
 
 #define UPDATE_FUNCTIONS
 
@@ -62,13 +61,45 @@ static struct i2c_client *gt_client = NULL;
 
 static struct proc_dir_entry *goodix_proc_entry;
 
-//static s32 goodix_tool_write(struct file *filp, const char __user *buff, unsigned long len, void *data);
-//static s32 goodix_tool_read( char *page, char **start, off_t off, int count, int *eof, void *data );
+static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len, loff_t *offset);
+static ssize_t goodix_tool_read(struct file *file, char __user *buf, size_t count, loff_t *offset);
 static s32 (*tool_i2c_read)(u8 *, u16);
 static s32 (*tool_i2c_write)(u8 *, u16);
 
+#if GTP_ESD_PROTECT
+extern void gtp_esd_switch(struct i2c_client *, s32);
+#endif
 s32 DATA_LENGTH = 0;
-s8 IC_TYPE[16] = {0};
+s8 IC_TYPE[16] = "GT9XX";
+
+static void tool_set_proc_name(char * procname)
+{
+    char *months[12] = {"Jan", "Feb", "Mar", "Apr", "May", 
+        "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    char date[20] = {0};
+    char month[4] = {0};
+    int i = 0, n_month = 1, n_day = 0, n_year = 0;
+    
+    sprintf(date, "%s", __DATE__);
+    
+    //GTP_DEBUG("compile date: %s", date);
+    
+    sscanf(date, "%s %d %d", month, &n_day, &n_year);
+    
+    for (i = 0; i < 12; ++i)
+    {
+        if (!memcmp(months[i], month, 3))
+        {
+            n_month = i+1;
+            break;
+        }
+    }
+    
+    sprintf(procname, "gmnode%04d%02d%02d", n_year, n_month, n_day);    
+    
+    //GTP_DEBUG("procname = %s", procname);
+}
+
 
 static s32 tool_i2c_read_no_extra(u8* buf, u16 len)
 {
@@ -154,7 +185,7 @@ static void register_i2c_func(void)
     if (strncmp(IC_TYPE, "GT8110", 6) && strncmp(IC_TYPE, "GT8105", 6)
         && strncmp(IC_TYPE, "GT801", 5) && strncmp(IC_TYPE, "GT800", 5)
         && strncmp(IC_TYPE, "GT801PLUS", 9) && strncmp(IC_TYPE, "GT811", 5)
-        && strncmp(IC_TYPE, "GTxxx", 5))
+        && strncmp(IC_TYPE, "GTxxx", 5) && strncmp(IC_TYPE, "GT9XX", 5))
     {
         tool_i2c_read = tool_i2c_read_with_extra;
         tool_i2c_write = tool_i2c_write_with_extra;
@@ -173,6 +204,84 @@ static void unregister_i2c_func(void)
     tool_i2c_read = NULL;
     tool_i2c_write = NULL;
     GTP_INFO("I2C function: unregister i2c transfer function!");
+}
+
+static int goodix_ts_open(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static int goodix_ts_close(struct inode *inode, struct file *file)
+{
+	return 0;
+}
+
+static struct file_operations goodix_ts_fops = {
+	.owner = THIS_MODULE,
+	.open = goodix_ts_open,
+	.release = goodix_ts_close,
+	.write = goodix_tool_write,
+	.read = goodix_tool_read,
+};
+
+s32 init_wr_node(struct i2c_client *client)
+{
+    s32 i;
+
+    gt_client = client;
+    memset(&cmd_head, 0, sizeof(cmd_head));
+    cmd_head.data = NULL;
+
+    i = 5;
+    while ((!cmd_head.data) && i)
+    {
+        cmd_head.data = kzalloc(i * DATA_LENGTH_UINT, GFP_KERNEL);
+        if (NULL != cmd_head.data)
+        {
+            break;
+        }
+        i--;
+    }
+    if (i)
+    {
+        DATA_LENGTH = i * DATA_LENGTH_UINT + GTP_ADDR_LENGTH;
+        GTP_INFO("Applied memory size:%d.", DATA_LENGTH);
+    }
+    else
+    {
+        GTP_ERROR("Apply for memory failed.");
+        return FAIL;
+    }
+
+    cmd_head.addr_len = 2;
+    cmd_head.retry = 5;
+
+    register_i2c_func();
+
+    tool_set_proc_name(procname);
+    //goodix_proc_entry = create_proc_entry(procname, 0666, NULL);
+    goodix_proc_entry = proc_create(procname, 0666, NULL, &goodix_ts_fops);
+    if (goodix_proc_entry == NULL)
+    {
+        GTP_ERROR("Couldn't create proc entry!");
+        return FAIL;
+    }
+//    else
+//    {
+//        GTP_INFO("Create proc entry success!");
+//        goodix_proc_entry->write_proc = goodix_tool_write;
+//        goodix_proc_entry->read_proc = goodix_tool_read;
+//    }
+
+    return SUCCESS;
+}
+
+void uninit_wr_node(void)
+{
+    kfree(cmd_head.data);
+    cmd_head.data = NULL;
+    unregister_i2c_func();
+    remove_proc_entry(procname, NULL);
 }
 
 static u8 relation(u8 src, u8 dst, u8 rlt)
@@ -214,13 +323,13 @@ static u8 relation(u8 src, u8 dst, u8 rlt)
     return ret;
 }
 
-/*******************************************************	
+/*******************************************************    
 Function:
-	Comfirm function.
+    Comfirm function.
 Input:
   None.
 Output:
-	Return write length.
+    Return write length.
 ********************************************************/
 static u8 comfirm(void)
 {
@@ -257,13 +366,13 @@ static u8 comfirm(void)
     return SUCCESS;
 }
 
-/*******************************************************	
+/*******************************************************    
 Function:
-	Goodix tool write function.
+    Goodix tool write function.
 Input:
   standard proc write function param.
 Output:
-	Return write length.
+    Return write length.
 ********************************************************/
 static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, size_t len, loff_t *offset)
 {
@@ -334,7 +443,7 @@ static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, siz
     }
     else if (3 == cmd_head.wr)  //Write ic type
     {
-	ret = copy_from_user(&cmd_head.data[0], &buff[CMD_HEAD_LENGTH], cmd_head.data_len);
+    ret = copy_from_user(&cmd_head.data[0], &buff[CMD_HEAD_LENGTH], cmd_head.data_len);
         if(ret)
         {
             GTP_ERROR("copy_from_user failed.");
@@ -355,12 +464,18 @@ static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, siz
     {
         gtp_irq_disable(i2c_get_clientdata(gt_client));
         
+    #if GTP_ESD_PROTECT
+        gtp_esd_switch(gt_client, SWITCH_OFF);
+    #endif
         return CMD_HEAD_LENGTH;
     }
     else if (9 == cmd_head.wr) //enable irq!
     {
         gtp_irq_enable(i2c_get_clientdata(gt_client));
 
+    #if GTP_ESD_PROTECT
+        gtp_esd_switch(gt_client, SWITCH_ON);
+    #endif
         return CMD_HEAD_LENGTH;
     }
     else if(17 == cmd_head.wr)
@@ -412,13 +527,13 @@ static ssize_t goodix_tool_write(struct file *filp, const char __user *buff, siz
     return CMD_HEAD_LENGTH;
 }
 
-/*******************************************************	
+/*******************************************************    
 Function:
-	Goodix tool read function.
+    Goodix tool read function.
 Input:
   standard proc read function param.
 Output:
-	Return read length.
+    Return read length.
 ********************************************************/
 static ssize_t goodix_tool_read(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
@@ -515,82 +630,4 @@ static ssize_t goodix_tool_read(struct file *file, char __user *buf, size_t coun
     }
 
     return cmd_head.data_len;
-}
-
-static int goodix_ts_open(struct inode *inode, struct file *file)
-{
-	return 0;
-}
-
-static int goodix_ts_close(struct inode *inode, struct file *file)
-{
-	return 0;
-}
-
-static struct file_operations goodix_ts_fops = {
-	.owner = THIS_MODULE,
-	.open = goodix_ts_open,
-	.release = goodix_ts_close,
-	.write = goodix_tool_write,
-	.read = goodix_tool_read,
-};
-
-
-s32 init_wr_node(struct i2c_client *client)
-{
-    s32 i;
-
-    gt_client = client;
-    memset(&cmd_head, 0, sizeof(cmd_head));
-    cmd_head.data = NULL;
-
-    i = 5;
-    while ((!cmd_head.data) && i)
-    {
-        cmd_head.data = kzalloc(i * DATA_LENGTH_UINT, GFP_KERNEL);
-        if (NULL != cmd_head.data)
-        {
-            break;
-        }
-        i--;
-    }
-    if (i)
-    {
-        DATA_LENGTH = i * DATA_LENGTH_UINT + GTP_ADDR_LENGTH;
-        GTP_INFO("Applied memory size:%d.", DATA_LENGTH);
-    }
-    else
-    {
-        GTP_ERROR("Apply for memory failed.");
-        return FAIL;
-    }
-
-    cmd_head.addr_len = 2;
-    cmd_head.retry = 5;
-
-    register_i2c_func();
-
-    //goodix_proc_entry = create_proc_entry(GOODIX_ENTRY_NAME, 0666, NULL);
-    goodix_proc_entry = proc_create(GOODIX_ENTRY_NAME, 0666, NULL, &goodix_ts_fops);
-    if (goodix_proc_entry == NULL)
-    {
-        GTP_ERROR("Couldn't create proc entry!");
-        return FAIL;
-    }
-//    else
-//    {
-//        GTP_INFO("Create proc entry success!");
-//        goodix_proc_entry->write_proc = goodix_tool_write;
-//        goodix_proc_entry->read_proc = goodix_tool_read;
-//    }
-
-    return SUCCESS;
-}
-
-void uninit_wr_node(void)
-{
-    kfree(cmd_head.data);
-    cmd_head.data = NULL;
-    unregister_i2c_func();
-    remove_proc_entry(GOODIX_ENTRY_NAME, NULL);
 }
