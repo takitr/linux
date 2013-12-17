@@ -549,7 +549,8 @@ static void aml_m8_pinmux_init(struct snd_soc_card *card)
     
         
  #if USE_EXTERNAL_DAC
-    aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+    //aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1)));
  #endif
     ret = of_property_read_string(card->dev->of_node, "mute_gpio", &str);
     if (ret < 0) {

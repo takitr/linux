@@ -612,11 +612,12 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #define aml_jtag_gpioao() do{\
-    writel(0x102, (u32 *)P_AO_SECURE_REG1); \
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
 }while(0)
 
 #define aml_jtag_sd() do{\
-    writel(0x220, (u32 *)P_AO_SECURE_REG1); \
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
+    aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \  
 }while(0)
 
 #define aml_uart_pinctrl() do {\
