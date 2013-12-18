@@ -375,8 +375,8 @@
 			i2c_bus = "i2c_bus_a";
 			gpio_pwdn = "GPIOE_11";
 			gpio_rst = "GPIOZ_0";
-			mirror_flip = <1>;
-			vertical_flip = <0>;
+			mirror_flip = <0>;
+			vertical_flip = <1>;
 		};
 		cam_1{
 			cam_name = "gc0328";
