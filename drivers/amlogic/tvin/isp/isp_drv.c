@@ -192,7 +192,7 @@ static ssize_t af_debug_store(struct device *dev,struct device_attribute *attr, 
 	if(!strcmp(parm[0],"jump")){
 		data[0] = simple_strtol(parm[1],NULL,16);
 		pr_info("%s to 0x%x.\n",parm[0],data[0]);
-		devp->cam_param->cam_function.set_af_new_step(data[0]);
+		devp->cam_param->cam_function.set_af_new_step(devp->cam_param->cam_function.priv_data,data[0]);
 	//echo start control min max dir delay step >af_debug
 	}else if(!strcmp(parm[0],"start")){
 		af = kmalloc(sizeof(af_debug_t),GFP_KERNEL);
@@ -338,7 +338,7 @@ static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 {
 	if (af->state == 0) {
 		if(ops&&ops->set_af_new_step)
-			ops->set_af_new_step(af->cur_step);
+			ops->set_af_new_step(ops->priv_data,af->cur_step);
 		af->state = 1;
 		if(af_pr)
 			pr_info("set step %u.\n",af->cur_step);
@@ -357,7 +357,7 @@ static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 				af->cur_step = 0;
 				/*stop*/
 				af->state = 0xffffffff;
-				ops->set_af_new_step(0);
+				ops->set_af_new_step(ops->priv_data,0);
 				pr_info("%s get statics ok.\n",__func__);
 			}
 		}else{
@@ -366,7 +366,7 @@ static void af_stat(struct af_debug_s *af,cam_function_t *ops)
 				af->cur_step = 0;
 				/*stop*/
 				af->state = 0xffffffff;
-				ops->set_af_new_step(0);
+				ops->set_af_new_step(ops->priv_data,0);
 				pr_info("%s get statics ok.\n",__func__);
 			}
 		}
@@ -750,7 +750,7 @@ static int isp_thread(isp_dev_t *devp) {
 		ae_flag &= (~0x1);
 		printk("set new step %d \n",ae_new_step);
 		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(ae_new_step,true,true);
+		func->set_aet_new_step(func->priv_data,ae_new_step,true,true);
 	}
 	if(ae_flag&0x2)
 	{
@@ -758,14 +758,14 @@ static int isp_thread(isp_dev_t *devp) {
 		newstep = isp_tune_exposure(devp);
 		printk("set new step2 %d \n",newstep);
 		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(newstep,true,true);
+		func->set_aet_new_step(func->priv_data,newstep,true,true);
 	}
 	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
 	{
 		if(isp_debug)
 			printk("[isp] set new step:%d \n",ae_sens.new_step);
 		if(ae_adjust_enable)
-			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
+			func->set_aet_new_step(func->priv_data,ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
 		atomic_set(&devp->ae_info.writeable,0);
 	}
 	if(devp->flag&ISP_FLAG_AF_DBG){
@@ -773,7 +773,7 @@ static int isp_thread(isp_dev_t *devp) {
 	}
 	if(devp->flag & ISP_AF_SM_MASK) {
 		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
-			func->set_af_new_step(devp->af_info.cur_step);
+			func->set_af_new_step(func->priv_data,devp->af_info.cur_step);
 			atomic_set(&devp->af_info.writeable,0);
 		}
 	}
@@ -874,8 +874,6 @@ static void isp_fe_close(struct tvin_frontend_s *fe)
 			kfree(devp->af_info.af_detect);
 		if(devp->af_info.v_dc)
 			kfree(devp->af_info.v_dc);
-		if(devp->isp_af_parm)
-			kfree(devp->isp_af_parm);
 	if(devp->isp_fe)
 		devp->isp_fe->dec_ops->close(devp->isp_fe);
         memset(&devp->info,0,sizeof(isp_info_t));
@@ -1182,7 +1180,7 @@ static void  isp_do_work(struct work_struct *work)
 		ae_flag &= (~0x1);
 		printk("set new step %d \n",ae_new_step);
 		if(func&&func->set_aet_new_step)
-			func->set_aet_new_step(ae_new_step,true,true);
+			func->set_aet_new_step(func->priv_data,ae_new_step,true,true);
 	}
 	if(ae_flag&0x2)
 	{
@@ -1190,14 +1188,14 @@ static void  isp_do_work(struct work_struct *work)
 		newstep = isp_tune_exposure(devp);
 		printk("wq:set new step2 %d \n",newstep);
 		if(func&&func->set_aet_new_step)
-			func->set_aet_new_step(newstep,true,true);
+			func->set_aet_new_step(func->priv_data,newstep,true,true);
 	}
 	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
 	{
 		if(isp_debug)
 		printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
 		if(ae_adjust_enable)
-			func->set_aet_new_step(ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
+			func->set_aet_new_step(func->priv_data,ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
 		atomic_set(&devp->ae_info.writeable,0);
 	}
 	if(devp->flag&ISP_FLAG_AF_DBG){
@@ -1205,7 +1203,7 @@ static void  isp_do_work(struct work_struct *work)
 	}
 	if(devp->flag & ISP_AF_SM_MASK) {
 		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
-			func->set_af_new_step(devp->af_info.cur_step);
+			func->set_af_new_step(func->priv_data,devp->af_info.cur_step);
 			atomic_set(&devp->af_info.writeable,0);
 		}
 	}

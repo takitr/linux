@@ -600,15 +600,16 @@ typedef struct xml_effect_manual_s {
 } cam_format_t;
 */
 typedef struct cam_function_s {
-	bool (*set_af_new_step)(unsigned int af_debug_control);
-	unsigned int (*get_aet_current_step)(void);
-	unsigned int (*get_aet_current_gain)(void);
-	unsigned int (*get_aet_min_gain)(void);
-	unsigned int (*get_aet_max_gain)(void);
-	unsigned int (*get_aet_max_step)(void);
-	unsigned int (*get_aet_gain_by_step)(unsigned int new_step);
-	bool (*set_aet_new_step)(unsigned int new_step, bool exp_mode, bool ag_mode);
-	bool (*check_mains_freq)(void);
+	bool (*set_af_new_step)(void *priv, unsigned int af_debug_control);
+	unsigned int (*get_aet_current_step)(void *priv);
+	unsigned int (*get_aet_current_gain)(void *priv);
+	unsigned int (*get_aet_min_gain)(void *priv);
+	unsigned int (*get_aet_max_gain)(void *priv);
+	unsigned int (*get_aet_max_step)(void *priv);
+	unsigned int (*get_aet_gain_by_step)(void *priv, unsigned int new_step);
+	bool (*set_aet_new_step)(void *priv, unsigned int new_step, bool exp_mode, bool ag_mode);
+	bool (*check_mains_freq)(void *priv);
+	void *priv_data;
 } cam_function_t;
 
 

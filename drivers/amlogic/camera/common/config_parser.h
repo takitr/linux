@@ -19,6 +19,7 @@
 #define SCENE_ITEM_MAX 1
 #define EFFECT_MAX 18
 #define HW_MAX 64
+#define WB_MAX 2
 #define GAMMA_MAX 257
 #define SCENE_MAX 281
 #define WB_SENSOR_MAX 4
@@ -37,6 +38,7 @@ enum error_code {
 	NO_MEM = 1,
 	READ_ERROR,
 	WRONG_FORMAT,
+	CHECK_LEN_FAILED,
 	CHECK_FAILED,
 	HEAD_FAILED,
 	BODY_HEAD_FAILED,
@@ -220,7 +222,7 @@ typedef struct{
     int nr_valid;
     peaking_struct peaking;
     int peaking_valid;
-}configure;
+}configure_t;
 
 typedef struct{
 	unsigned int effect_index;
@@ -249,17 +251,24 @@ typedef struct sensor_dg_s {
     unsigned short dg_default;
 }sensor_dg_t;
 
-int parse_config(char *path);
-int generate_para(cam_parameter_t *para,para_index_t pindex);
-void free_para(cam_parameter_t *para);
-void update_index(int width,int height,para_index_t *pindex);
+typedef struct{
+	sensor_aet_info_t *sensor_aet_info; // point to 1 of up to 16 aet information
+	sensor_aet_t *sensor_aet_table;
+	unsigned int sensor_aet_step; // current step of the current aet
+	configure_t *configure;
+}camera_priv_data_t;
 
-unsigned int get_aet_current_step(void);
-unsigned int get_aet_current_gain(void);
-unsigned int get_aet_min_gain(void);
-unsigned int get_aet_max_gain(void);
-unsigned int get_aet_max_step(void);
-unsigned int get_aet_gain_by_step(unsigned int new_step);
+int parse_config(char *path,configure_t *cf);
+int generate_para(cam_parameter_t *para,para_index_t pindex,configure_t *cf);
+void free_para(cam_parameter_t *para);
+int update_fmt_para(int width,int height,cam_parameter_t *para,para_index_t *pindex,configure_t *cf);
+
+unsigned int get_aet_current_step(void *priv);
+unsigned int get_aet_current_gain(void *pirv);
+unsigned int get_aet_min_gain(void *priv);
+unsigned int get_aet_max_gain(void *priv);
+unsigned int get_aet_max_step(void *priv);
+unsigned int get_aet_gain_by_step(void *priv,unsigned int new_step);
 
 
 int my_i2c_put_byte(struct i2c_adapter *adapter,unsigned short i2c_addr,unsigned short addr,unsigned char data);

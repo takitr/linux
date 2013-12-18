@@ -97,16 +97,11 @@ static struct v4l2_fract ar0833_frmintervals_active = {
 
 static int ar0833_have_open=0;
 
-extern configure *cf;
 static camera_mode_t ar0833_work_mode = CAMERA_PREVIEW;
 static struct class *cam_class;
 static unsigned int g_ae_manual_exp;
 static unsigned int g_ae_manual_ag;
 static unsigned int g_ae_manual_vts;
-extern sensor_aet_info_t *sensor_aet_info; // point to 1 of up to 16 aet information
-extern sensor_aet_t *sensor_aet_table;
-extern unsigned int sensor_aet_step;
-
 static unsigned int exp_mode;
 static unsigned int change_cnt;
 static unsigned int current_fmt;
@@ -135,6 +130,7 @@ static int t_index = -1;
 static int dest_hactive = 640;
 static int dest_vactive = 480;
 static bool bDoingAutoFocusMode = false;
+static configure_t *cf;
 /* supported controls */
 static struct v4l2_queryctrl ar0833_qctrl[] = {
 	{
@@ -175,7 +171,7 @@ static struct v4l2_queryctrl ar0833_qctrl[] = {
 		.flags         = V4L2_CTRL_FLAG_DISABLED,
 	},{
 		.id            = V4L2_CID_DO_WHITE_BALANCE,
-		.type          = V4L2_CTRL_TYPE_INTEGER,
+		.type          = V4L2_CTRL_TYPE_MENU,
 		.name          = "white balance",
 		.minimum       = 0,
 		.maximum       = 6,
@@ -289,6 +285,30 @@ static struct v4l2_frmivalenum ar0833_frmivalenum[]={
                         .discrete	={
                                 .numerator	= 1,
                                 .denominator	= 30,
+                        }
+                }
+        },{
+                .index 		= 0,
+                .pixel_format	= V4L2_PIX_FMT_NV21,
+                .width		= 1280,
+                .height		= 960,
+                .type		= V4L2_FRMIVAL_TYPE_DISCRETE,
+                {
+                        .discrete	={
+                                .numerator	= 1,
+                                .denominator	= 30,
+                        }
+                }
+        },{
+                .index 		= 0,
+                .pixel_format	= V4L2_PIX_FMT_NV21,
+                .width		= 2048,
+                .height		= 1536,
+                .type		= V4L2_FRMIVAL_TYPE_DISCRETE,
+                {
+                        .discrete	={
+                                .numerator	= 1,
+                                .denominator	= 15,
                         }
                 }
         },{
@@ -618,11 +638,16 @@ struct ar0833_device {
 	struct vdin_v4l2_ops_s *vops;
 	
 	fe_arg_t fe_arg;
+	
+	vdin_arg_t vdin_arg;
 	/* wake lock */
 	struct wake_lock	wake_lock;
 	/* ae status */
 	bool ae_on;
 	
+	camera_priv_data_t camera_priv_data;
+	
+	configure_t *configure;
 	/* Control 'registers' */
 	int 			   qctl_regs[ARRAY_SIZE(ar0833_qctrl)];
 };
@@ -3629,17 +3654,22 @@ static ssize_t aet_manual_show(struct class *cls,struct class_attribute *attr, c
 static CLASS_ATTR(aet_debug, 0664, aet_manual_show, aet_manual_store);
 
 /* ar0833 uses exp+ag mode */
-static bool AR0833_set_aet_new_step(unsigned int new_step, bool exp_mode, bool ag_mode){
-  unsigned int exp = 0, ag = 0, vts = 0;
-
-  if ((!exp_mode) || (!ag_mode) || (new_step > sensor_aet_info[current_fmt].tbl_max_step))
+static bool AR0833_set_aet_new_step(void *priv, unsigned int new_step, bool exp_mode, bool ag_mode){
+  	unsigned int exp = 0, ag = 0, vts = 0;
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv; 
+	sensor_aet_t *sensor_aet_table = camera_priv_data->sensor_aet_table;
+	sensor_aet_info_t *sensor_aet_info = camera_priv_data->sensor_aet_info;
+	
+	if(camera_priv_data == NULL || sensor_aet_table == NULL || sensor_aet_info == NULL)
+		return false;	
+	if (((!exp_mode) && (!ag_mode)) || (new_step > sensor_aet_info[current_fmt].tbl_max_step))
 		return(false);
 	else
 	{
-		sensor_aet_step = new_step;
-		exp = sensor_aet_table[sensor_aet_step].exp;
-		ag = sensor_aet_table[sensor_aet_step].ag;
-		vts = sensor_aet_table[sensor_aet_step].vts;
+		camera_priv_data->sensor_aet_step = new_step;
+		exp = sensor_aet_table[camera_priv_data->sensor_aet_step].exp;
+		ag = sensor_aet_table[camera_priv_data->sensor_aet_step].ag;
+		vts = sensor_aet_table[camera_priv_data->sensor_aet_step].vts;
 		
 		AR0833_manual_set_aet(exp,ag,vts);
 		return true;
@@ -3650,27 +3680,6 @@ static bool AR0833_set_aet_new_step(unsigned int new_step, bool exp_mode, bool a
 static bool AR0833_check_mains_freq(void){// when the fr change,we need to change the aet table
     int detection; 
     struct i2c_adapter *adapter;
-#if 0		
-    if(exp_mode != 2)//if current is not auto mode ,return
-        return false;
-
-    detection = my_i2c_get_byte(adapter,0x36,0x3c0c) & 1;
-    if(current_fr != detection){
-        change_cnt++;
-        if(change_cnt > 5){
-            aet_index ^= 1;
-            sensor_aet_info = cf->aet.aet[aet_index].info;
-            sensor_aet_table = cf->aet.aet[aet_index].aet_table;
-            sensor_aet_step = sensor_aet_info->tbl_rated_step;
-            change_cnt = 0;
-            current_fr = detection;
-            return true;
-        }	
-    }else{
-        change_cnt = 0;	
-    }
-    return false;
-#endif
     return true;
 }
 
@@ -3704,26 +3713,30 @@ bool AR0833_set_af_new_step(unsigned int af_step){
 
 
 
-void AR0833_set_new_format(int width,int height,int fr){
+void AR0833_set_new_format(void *priv,int width,int height,int fr){
     int index = 0;
     current_fr = fr;
-    printk("sum:%d,mode:%d,fr:%d\n",cf->aet.sum,ar0833_work_mode,fr);
-    while(index < cf->aet.sum){
-        if(width == cf->aet.aet[index].info->fmt_hactive && height == cf->aet.aet[index].info->fmt_vactive \
-                && fr == cf->aet.aet[index].info->fmt_main_fr && ar0833_work_mode == cf->aet.aet[index].info->fmt_capture){
+    camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+    configure_t *configure = camera_priv_data->configure;
+    if(camera_priv_data == NULL)
+    	return;
+    printk("sum:%d,mode:%d,fr:%d\n",configure->aet.sum,ar0833_work_mode,fr);
+    while(index < configure->aet.sum){
+        if(width == configure->aet.aet[index].info->fmt_hactive && height == configure->aet.aet[index].info->fmt_vactive \
+                && fr == configure->aet.aet[index].info->fmt_main_fr && ar0833_work_mode == configure->aet.aet[index].info->fmt_capture){
             break;	
         }
         index++;	
     }
-    if(index >= cf->aet.sum){
+    if(index >= configure->aet.sum){
         printk("use default value\n");
         index = 0;	
     }
     printk("current aet index :%d\n",index);
-    sensor_aet_info = cf->aet.aet[index].info;
-    sensor_aet_table = cf->aet.aet[index].aet_table;
-    sensor_aet_step = sensor_aet_info->tbl_rated_step;
-    AR0833_set_aet_new_step(sensor_aet_step,1,1);
+    camera_priv_data->sensor_aet_info = configure->aet.aet[index].info;
+    camera_priv_data->sensor_aet_table = configure->aet.aet[index].aet_table;
+    camera_priv_data->sensor_aet_step = camera_priv_data->sensor_aet_info->tbl_rated_step;
+    return;
 }
 
 
@@ -3964,14 +3977,14 @@ void AR0833_set_param_wb(struct ar0833_device *dev,enum  camera_wb_flip_e para)/
         printk("not support\n");
         return;
     }
-    if(cf != NULL && cf->wb_valid == 1){
-        while(index < cf->wb.sum){
-            if(strcmp(wb_pair[i].name, cf->wb.wb[index].name) == 0){
+    if(dev->configure != NULL && dev->configure->wb_valid == 1){
+        while(index < dev->configure->wb.sum){
+            if(strcmp(wb_pair[i].name, dev->configure->wb.wb[index].name) == 0){
                 break;	
             }
             index++;
         }
-        if(index == cf->wb.sum){
+        if(index == dev->configure->wb.sum){
             printk("invalid wb value\n");
             return;	
         }
@@ -3980,7 +3993,7 @@ void AR0833_set_param_wb(struct ar0833_device *dev,enum  camera_wb_flip_e para)/
             dev->cam_para->cam_command = CAM_COMMAND_AWB;
         }else{
             dev->cam_para->cam_command = CAM_COMMAND_MWB;
-            memcpy(dev->cam_para->xml_wb_manual->reg_map,cf->wb.wb[index].export,2*sizeof(int));
+            memcpy(dev->cam_para->xml_wb_manual->reg_map,dev->configure->wb.wb[index].export,WB_MAX * sizeof(int));
         }
         printk("set wb :%d\n",index);
         dev->fe_arg.port = TVIN_PORT_ISP;
@@ -4078,24 +4091,23 @@ void AR0833_set_param_effect(struct ar0833_device *dev,enum camera_effect_flip_e
         printk("not support\n");
         return;
     }
-    if(cf != NULL && cf->effect_valid == 1){
-        while(index < cf->eff.sum){
-            if(strcmp(effect_pair[i].name, cf->eff.eff[index].name) == 0){
+    if(dev->configure != NULL && dev->configure->effect_valid == 1){
+        while(index < dev->configure->eff.sum){
+            if(strcmp(effect_pair[i].name, dev->configure->eff.eff[index].name) == 0){
                 break;	
             }
             index++;
         }
-        if(index == cf->eff.sum){
+        if(index == dev->configure->eff.sum){
             printk("invalid effect value\n");
             return;	
         }
         dev->cam_para->cam_command = CAM_COMMAND_EFFECT;
-        memcpy(dev->cam_para->xml_effect_manual->csc.reg_map,cf->eff.eff[index].export,18*sizeof(unsigned int));
+        memcpy(dev->cam_para->xml_effect_manual->csc.reg_map,dev->configure->eff.eff[index].export,EFFECT_MAX * sizeof(unsigned int));
 
         dev->fe_arg.port = TVIN_PORT_ISP;
         dev->fe_arg.index = 0;
         dev->fe_arg.arg = (void *)(dev->cam_para);
-        printk("call tvin fe func\n");
         dev->vops->tvin_fe_func(0,&dev->fe_arg);
         return;
     } 
@@ -4316,13 +4328,15 @@ static void set_resolution_param(struct ar0833_device *dev, resolution_param_t* 
             printk("fail in setting resolution param. i=%d\n",i);
             break;
         }
+        if(res_param->reg_script[t][i].addr == 0x0103) //soft reset,need 5ms delay
+        	msleep(5);
         i++;
     }
     ar0833_frmintervals_active.numerator = 1;
     ar0833_frmintervals_active.denominator = res_param->active_fps;
     ar0833_h_active = res_param->frmsize.width;
     ar0833_v_active = res_param->frmsize.height;
-    AR0833_set_new_format(ar0833_h_active,ar0833_v_active,current_fr);// should set new para
+    AR0833_set_new_format((void *)&dev->camera_priv_data,ar0833_h_active,ar0833_v_active,current_fr);// should set new para
 }    /* AR0833_set_resolution */
 
 static int set_focus_zone(struct ar0833_device *dev, int value)
@@ -4472,7 +4486,9 @@ static int ar0833_setting(struct ar0833_device *dev,int PROP_ID,int value )
 		if(ar0833_qctrl[13].default_value!=value){
 			ar0833_qctrl[13].default_value=value;
 			printk(" set camera  focus zone =%d. \n ",value);
-			set_focus_zone(dev, value);
+			if(fh->stream_on) {
+				set_focus_zone(dev, value);
+			}
 		}
 		break;
 	case V4L2_CID_FOCUS_AUTO:
@@ -4902,6 +4918,12 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct videobuf_queue *q = &fh->vb_vidq;
 	struct ar0833_device *dev = fh->dev;
 	resolution_param_t* res_param = NULL;
+
+    f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN-1) ) & (~(CANVAS_WIDTH_ALIGN-1));
+	if ((f->fmt.pix.pixelformat==V4L2_PIX_FMT_YVU420) ||
+            (f->fmt.pix.pixelformat==V4L2_PIX_FMT_YUV420)){
+    	f->fmt.pix.width = (f->fmt.pix.width + (CANVAS_WIDTH_ALIGN*2-1) ) & (~(CANVAS_WIDTH_ALIGN*2-1));
+    }
 	int ret = vidioc_try_fmt_vid_cap(file, fh, f);
 	if (ret < 0)
 		return ret;
@@ -5087,16 +5109,10 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	current_fmt = 0;
 	if(dev->cam_para == NULL)
 		return -EINVAL;
-	if(generate_para(dev->cam_para,dev->pindex) == 0){
+   	if(update_fmt_para(ar0833_h_active,ar0833_v_active,dev->cam_para,&dev->pindex,dev->configure) != 0)
+   		return -EINVAL;
 	    para.reserved = (int)(dev->cam_para);
-	}else{
-		free_para(dev->cam_para);
-		para.reserved = 0;
-	}
-	dev->cam_para->cam_function.set_aet_new_step = AR0833_set_aet_new_step;
-	dev->cam_para->cam_function.check_mains_freq = AR0833_check_mains_freq;
-	dev->cam_para->cam_function.set_af_new_step = AR0833_set_af_new_step;
-	dev->cam_para->cam_mode = CAMERA_PREVIEW;	
+	
 	if (CAM_MIPI == dev->cam_info.interface)
 	{
 	        para.csi_hw_info.lanes = 2;
@@ -5110,10 +5126,11 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	        para.csi_hw_info.urgent = 1;
 	        para.csi_hw_info.clk_channel = dev->cam_info.clk_channel; //clock channel a or b
 	}
-	if(cf->aet_valid == 1){
-	    dev->cam_para->xml_scenes->ae.aet_fmt_gain = sensor_aet_info->format_transfer_parameter;        	
-	}else
-	    dev->cam_para->xml_scenes->ae.aet_fmt_gain = 0;
+    if(dev->configure->aet_valid == 1){
+        dev->cam_para->xml_scenes->ae.aet_fmt_gain = (dev->camera_priv_data).sensor_aet_info->format_transfer_parameter;        	
+    }
+    else
+        dev->cam_para->xml_scenes->ae.aet_fmt_gain = 100;
 	printk("aet_fmt_gain:%d\n",dev->cam_para->xml_scenes->ae.aet_fmt_gain);
 
 	printk("ar0833,h=%d, v=%d, frame_rate=%d\n", 
@@ -5123,6 +5140,10 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 		dev->vops->start_tvin_service(0,&para);
 		fh->stream_on        = 1;
 	}
+    /*** 		set cm2 		***/
+	dev->vdin_arg.cmd = VDIN_CMD_SET_CM2;
+	dev->vdin_arg.cm2 = dev->configure->cm.export;
+	dev->vops->tvin_vdin_func(0,&dev->vdin_arg);
 	AR0833_set_param_wb(fh->dev,ar0833_qctrl[4].default_value);
 	AR0833_set_param_exposure(fh->dev,ar0833_qctrl[5].default_value);
 	AR0833_set_param_effect(fh->dev,ar0833_qctrl[6].default_value);
@@ -5412,8 +5433,8 @@ static int ar0833_open(struct file *file)
     aml_cam_init(&dev->cam_info);
     printk("config path:%s\n",(dev->cam_info).config);
     if((dev->cam_info).config != NULL){
-        if((cf = kmalloc(sizeof(configure),0)) != NULL){
-            if(parse_config((dev->cam_info).config) == 0){
+        if((dev->configure = kmalloc(sizeof(configure_t),0)) != NULL){
+            if(parse_config((dev->cam_info).config,dev->configure) == 0){
                 printk("parse successfully");
             }else{
                 printk("parse failed");
@@ -5428,6 +5449,18 @@ static int ar0833_open(struct file *file)
         printk("memalloc failed\n");
         return -ENOMEM;
     }
+    if(generate_para(dev->cam_para,dev->pindex,dev->configure) != 0){
+        printk("generate para failed\n");
+        free_para(dev->cam_para);
+        kfree(dev->cam_para);
+        return -EINVAL;
+    }
+    dev->cam_para->cam_function.set_aet_new_step = AR0833_set_aet_new_step;
+    dev->cam_para->cam_function.check_mains_freq = AR0833_check_mains_freq;
+    dev->cam_para->cam_function.set_af_new_step = AR0833_set_af_new_step;
+    dev->camera_priv_data.configure = dev->configure;
+    dev->cam_para->cam_function.priv_data = (void *)&dev->camera_priv_data;  
+    dev->ae_on = false;
     AR0833_init_regs(dev);
     msleep(40);
     mutex_lock(&dev->mutex);
@@ -5488,16 +5521,6 @@ static int ar0833_open(struct file *file)
     dev->pindex.nr_index = 0;
     dev->pindex.peaking_index = 0;
     dev->pindex.lens_index = 0;
-    if(generate_para(dev->cam_para,dev->pindex) != 0){
-        printk("generate para failed\n");
-        free_para(dev->cam_para);
-        kfree(dev->cam_para);
-        return -EINVAL;
-    }
-    dev->cam_para->cam_function.set_aet_new_step = AR0833_set_aet_new_step;
-    dev->cam_para->cam_function.check_mains_freq = AR0833_check_mains_freq;
-    dev->cam_para->cam_function.set_af_new_step = AR0833_set_af_new_step;  
-    dev->ae_on = false;
     /**creat class file**/		
     cam_class = class_create(THIS_MODULE,"camera"); 
     if(IS_ERR(cam_class)){
@@ -5510,9 +5533,11 @@ static int ar0833_open(struct file *file)
     retval = class_create_file(cam_class,&class_attr_resolution_debug);
     retval = class_create_file(cam_class,&class_attr_light_source_debug);
     retval = class_create_file(cam_class,&class_attr_version_debug);
-    printk("open successfully\n");
+
     dev->vops = get_vdin_v4l2_ops();
 	bDoingAutoFocusMode=false;
+    cf = dev->configure;
+    printk("open successfully\n");
     return 0;
 }
 
@@ -5559,11 +5584,13 @@ static int ar0833_close(struct file *file)
     videobuf_mmap_free(&fh->vb_vidq);
 
     kfree(fh);
-    if(cf != NULL){
-        if(cf->aet_valid){
-            for(i = 0; i < cf->aet.sum; i++){
-                kfree(cf->aet.aet[i].info);
-                kfree(cf->aet.aet[i].aet_table);
+    if(dev->configure != NULL){
+        if(dev->configure->aet_valid){
+            for(i = 0; i < dev->configure->aet.sum; i++){
+                kfree(dev->configure->aet.aet[i].info);
+                dev->configure->aet.aet[i].info = NULL;
+                kfree(dev->configure->aet.aet[i].aet_table);
+                dev->configure->aet.aet[i].aet_table = NULL;
             }
         }
         kfree(cf);
@@ -5591,6 +5618,7 @@ static int ar0833_close(struct file *file)
     ar0833_qctrl[6].default_value=0;
     ar0833_qctrl[10].default_value=100;
     ar0833_qctrl[11].default_value=0;
+    dev->ae_on = false;
     //ar0833_frmintervals_active.numerator = 1;
     //ar0833_frmintervals_active.denominator = 15;
     power_down_ar0833(dev);

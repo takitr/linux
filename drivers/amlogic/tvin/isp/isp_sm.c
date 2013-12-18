@@ -92,7 +92,7 @@ static inline int find_step(cam_function_t *func, unsigned int low, unsigned int
 	{
 		mid = (hign + low)/2;
 		if(func&&func->get_aet_gain_by_step)
-			rate = func->get_aet_gain_by_step(mid);
+			rate = func->get_aet_gain_by_step(func->priv_data,mid);
 		if(0)
 			printk("mid = %d,rate = %d, gain = %d,%d,%d,%d,%d\n",mid,rate,gain,hign,low,func,func->get_aet_gain_by_step);
 		if(gain < rate)
@@ -120,7 +120,7 @@ static unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
     struct cam_function_s *func = &devp->cam_param->cam_function;
     unsigned int aet_gain_new = 0, format_gain_new = 0;
 
-    aepa->max_step = func->get_aet_max_step();
+    aepa->max_step = func->get_aet_max_step(func->priv_data);
     format_gain_new = devp->isp_ae_parm->aet_fmt_gain;
     aet_gain_new = ((aet_gain_pre * format_gain_pre) / format_gain_new);
     if (aet_gain_new == 0) {
@@ -135,7 +135,7 @@ static unsigned int isp_ae_cal_new_para(isp_dev_t *devp)
             format_gain_new, aet_gain_new, ae_sens.new_step);
 
     if (func && func->set_aet_new_step) {
-        func->set_aet_new_step(ae_sens.new_step, ae_sens.shutter, ae_sens.gain);
+        func->set_aet_new_step(func->priv_data,ae_sens.new_step, ae_sens.shutter, ae_sens.gain);
         pr_info("[isp] %s: write new step to sensor... ...\n", __func__);
     }
 
@@ -222,7 +222,7 @@ void af_sm_init(isp_dev_t *devp)
 	}
 	if(devp->flag & ISP_FLAG_CAPTURE){
 		af_info->cur_step = af_info->capture_step;
-		func->set_af_new_step(devp->af_info.cur_step);
+		func->set_af_new_step(func->priv_data,devp->af_info.cur_step);
 	}
 }
 void isp_ae_low_gain()
@@ -234,10 +234,10 @@ int isp_ae_save_current_para(isp_dev_t *devp)
 {
     struct cam_function_s *func = &devp->cam_param->cam_function;
     struct isp_ae_sm_s *aepa = &sm_state.isp_ae_parm;
-    aepa->max_step = func->get_aet_max_step();
+    aepa->max_step = func->get_aet_max_step(func->priv_data);
 
     if (func && func->get_aet_gain_by_step)
-        aet_gain_pre = func->get_aet_gain_by_step(ae_sens.new_step);
+        aet_gain_pre = func->get_aet_gain_by_step(func->priv_data,ae_sens.new_step);
     format_gain_pre = devp->isp_ae_parm->aet_fmt_gain;
     pr_info("[isp] %s format_gain_pre:%d aet_gain_pre:%d ... ...\n",
                 __func__, format_gain_pre, aet_gain_pre);
@@ -253,7 +253,7 @@ unsigned int isp_tune_exposure(isp_dev_t *devp)
 	unsigned int gain_cur = 0;
 	unsigned int gain_target = 0;
 	if(func&&func->get_aet_current_gain)
-	gain_cur = func->get_aet_current_gain();
+	gain_cur = func->get_aet_current_gain(func->priv_data);
 	gain_target = (gain_cur*exposure_extra + 512) >> 10;
 	new_step = find_step(func, 0, aepa->max_step, gain_target);
 	return new_step;
@@ -313,11 +313,11 @@ void isp_ae_sm(isp_dev_t *devp)
 			aepa->alert_b = ((aepa->pixel_sum >> 4) * aep->ratio_b) >> 8;
 			aepa->change_step = 0;
 			if(func&&func->get_aet_max_gain)
-				aepa->max_gain = func->get_aet_max_gain();
+				aepa->max_gain = func->get_aet_max_gain(func->priv_data);
 			if(func&&func->get_aet_min_gain)
-				aepa->min_gain = func->get_aet_min_gain();
+				aepa->min_gain = func->get_aet_min_gain(func->priv_data);
 			if(func&&func->get_aet_max_step)
-				aepa->max_step = func->get_aet_max_step();
+				aepa->max_step = func->get_aet_max_step(func->priv_data);
 			pr_info("ae,win_l=%d,win_r=%d,win_t=%d,win_b=%d\n",aepa->win_l,aepa->win_r,aepa->win_t,aepa->win_b);
 			pr_info("aepa->max_lumasum1=%d,max_lumasum2=%d,=%d,=%d",aepa->max_lumasum1,aepa->max_lumasum2,aepa->max_lumasum3,aepa->max_lumasum4);
 			pr_info("aepa->alert_r=%d,g=%d,b=%d\n",aepa->alert_r,aepa->alert_g,aepa->alert_b);
@@ -366,7 +366,7 @@ void isp_ae_sm(isp_dev_t *devp)
 			}
 			break;
 		case AE_LOW_GAIN:
-			aepa->cur_gain = func->get_aet_current_gain;
+			aepa->cur_gain = func->get_aet_current_gain(func->priv_data);
 			targrate = (aepa->cur_gain << 10)/aepa->tf_ratio;
 			newstep = find_step(func,0,aepa->max_step,targrate);
 			if(aep->ae_skip[1] == 0x1){
@@ -388,10 +388,10 @@ void isp_ae_sm(isp_dev_t *devp)
 			break;
 		case AE_SHUTTER_ADJUST:
 			if(func&&func->get_aet_current_gain)
-				aepa->cur_gain = func->get_aet_current_gain();
+				aepa->cur_gain = func->get_aet_current_gain(func->priv_data);
 			aepa->pre_gain = aepa->cur_gain;
 			if(func&&func->get_aet_current_gain)
-				aepa->cur_step = func->get_aet_current_step();
+				aepa->cur_step = func->get_aet_current_step(func->priv_data);
 			if(ae_sm_dg&AE_SHUTTER_ADJUST_DG)
 				pr_info("cur_gain = %d,cur_step = %d\n",aepa->cur_gain,aepa->cur_step);
 			if(aepa->cur_gain == 0)
@@ -1181,7 +1181,6 @@ void isp_af_fine_tune(isp_dev_t *devp)
 
 	switch(sm_state.af_state){
 		case AF_SCAN_INIT:
-			devp->cmd_state = CAM_STATE_DOING;
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			af_delay = 0;
 			af_info->valid_step_cnt = 0;
