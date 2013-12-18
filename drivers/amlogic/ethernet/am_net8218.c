@@ -45,16 +45,20 @@
 #include <linux/of_platform.h>
 #include <linux/kthread.h> 
 #include "am_net8218.h"
+#include <mach/mod_gate.h>
 
 #define MODULE_NAME "ethernet"
 #define DRIVER_NAME "ethernet"
 
 #define DRV_NAME	DRIVER_NAME
 #define DRV_VERSION	"v2.0.0"
-
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+static struct early_suspend early_suspend;
+#endif
 MODULE_DESCRIPTION("Amlogic Ethernet Driver");
 MODULE_AUTHOR("Platform-BJ@amlogic.com>");
-MODULE_LICENSE("Amlogic");
+MODULE_LICENSE("GPL");
 MODULE_VERSION(DRV_VERSION);
 
 // >0 basic init and remove info;
@@ -1010,8 +1014,8 @@ static int aml_phy_init(struct net_device *dev)
         snprintf(bus_id, MII_BUS_ID_SIZE, "%x", 0);
         snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
                  priv->phy_addr);
-        pr_debug("aml_phy_init:  trying to attach to %s\n", phy_id);
-
+        printk("aml_phy_init:  trying to attach to %s\n", phy_id);
+	 priv->phydev->drv->resume(priv->phydev);
         phydev = phy_connect(dev, phy_id, &aml_adjust_link, priv->phy_interface);
 
         if (IS_ERR(phydev)) {
@@ -1034,7 +1038,6 @@ static int aml_phy_init(struct net_device *dev)
                " Link = %d\n", dev->name, phydev->phy_id, phydev->link);
 
         priv->phydev = phydev;
-
 	if (priv->phydev)
 		phy_start(priv->phydev);
 
@@ -1093,7 +1096,8 @@ static int netdev_open(struct net_device *dev)
 {
 	struct am_net_private *np = netdev_priv(dev);
 	unsigned long val;
-
+	np->refcnt++;
+	switch_mod_gate_by_name("ethernet",1);
 	int res;
 	if (running) {
 		return 0;
@@ -1149,6 +1153,7 @@ static int netdev_close(struct net_device *dev)
 	}
 
 	if (np->phydev) {
+		np->phydev->drv->suspend(np->phydev);
 		phy_stop(np->phydev);
 		phy_disconnect(np->phydev);
 	}
@@ -1175,7 +1180,10 @@ static int netdev_close(struct net_device *dev)
 	if (g_debug > 0) {
 		printk(KERN_DEBUG "%s: closed\n", dev->name);
 	}
-
+	np->refcnt--;
+	if(np->refcnt == 0){
+		switch_mod_gate_by_name("ethernet",0);
+	}
 	return 0;
 }
 
@@ -1589,7 +1597,11 @@ static void set_multicast_list(struct net_device *dev)
 		writel(tmp, np->base_addr + ETH_MAC_1_Frame_Filter);//hash muticast
 	}
 }
+static void set_mac_addr_n(struct net_device *dev, void *p){
+	eth_mac_addr(dev,p);
+	write_mac_addr(dev, dev->dev_addr);
 
+}
 
 static const struct net_device_ops am_netdev_ops = {
 	.ndo_open               = netdev_open,
@@ -1600,7 +1612,7 @@ static const struct net_device_ops am_netdev_ops = {
 	.ndo_do_ioctl			= netdev_ioctl,
 	.ndo_get_stats          = get_stats,
 	.ndo_change_mtu         = eth_change_mtu,
-	.ndo_set_mac_address    = eth_mac_addr,
+	.ndo_set_mac_address    = set_mac_addr_n,
 	.ndo_validate_addr      = eth_validate_addr,
 };
 
@@ -1659,6 +1671,7 @@ static int probe_init(struct net_device *ndev)
 	ndev->irq = ETH_INTERRUPT;
 	spin_lock_init(&priv->lock);
 	priv->base_addr = ndev->base_addr;
+	priv->refcnt = 0;
 	if (g_debug > 0) {
 		printk("ethernet base addr is %x\n", (unsigned int)ndev->base_addr);
 	}
@@ -2310,6 +2323,26 @@ static int __init am_eth_class_init(void)
 	return ret;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static int ethernet_early_suspend(struct early_suspend *dev)
+{
+	printk("ethernet_early_suspend!\n");
+	netdev_close(my_ndev);
+	switch_mod_gate_by_name("ethernet",0);
+	return 0;
+}
+static int ethernet_late_resume(struct early_suspend *dev)
+{
+	int res = 0;
+	printk("ethernet_late_resume()\n");
+	res = netdev_open(my_ndev);
+	if (res != 0) {
+		printk("nono, it can not be true!\n");
+	}
+	
+	return 0;
+}
+#endif
 /* --------------------------------------------------------------------------*/
 /**
  * @brief ethernet_probe 
@@ -2341,11 +2374,18 @@ static int ethernet_probe(struct platform_device *pdev)
 	}
 #endif
 	printk(DRV_NAME "init(dbg[%p]=%d)\n", (&g_debug), g_debug);
+	switch_mod_gate_by_name("ethernet",1);
 	my_ndev = alloc_etherdev(sizeof(struct am_net_private));
 	if (my_ndev == NULL) {
 		printk(DRV_NAME "ndev alloc failed!!\n");
 		return -ENOMEM;
 	}
+#ifdef CONFIG_HAS_EARLYSUSPEND
+       early_suspend.level = EARLY_SUSPEND_LEVEL_STOP_DRAWING;
+       early_suspend.suspend = ethernet_early_suspend;
+       early_suspend.resume = ethernet_late_resume;
+       register_early_suspend(&early_suspend);
+#endif
 	res = probe_init(my_ndev);
 	if (res != 0) 
 		free_netdev(my_ndev);
@@ -2353,16 +2393,13 @@ static int ethernet_probe(struct platform_device *pdev)
 		res = am_eth_class_init();
 
 	eth_pdata = (struct aml_eth_platdata *)pdev->dev.platform_data;
+	struct am_net_private *np = netdev_priv(my_ndev);
+	np->phydev->drv->suspend(np->phydev);
+	switch_mod_gate_by_name("ethernet",0);
 	if (!eth_pdata) {
 		printk("\nethernet pm ops resource undefined.\n");
 		return -EFAULT;
 	}
-
-	if (eth_pdata->pinmux_setup)
-		eth_pdata->pinmux_setup();
-
-	if (eth_pdata->clock_enable)
-		eth_pdata->clock_enable();
 
 	return 0;
 }
@@ -2379,6 +2416,10 @@ static int ethernet_probe(struct platform_device *pdev)
 static int ethernet_remove(struct platform_device *pdev)
 {
 	printk("ethernet_driver remove!\n");
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	 unregister_early_suspend(&early_suspend);
+#endif
+	switch_mod_gate_by_name("ethernet",0);
 	return 0;
 }
 
@@ -2395,13 +2436,11 @@ static int ethernet_remove(struct platform_device *pdev)
 static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 {
 	printk("ethernet_suspend!\n");
-
-	netdev_close(my_ndev);
-	if (eth_pdata && eth_pdata->clock_disable)
-		eth_pdata->clock_disable();
-
+	netdev_close(my_ndev);	
+	switch_mod_gate_by_name("ethernet",0);
 	return 0;
 }
+
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -2415,19 +2454,12 @@ static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 static int ethernet_resume(struct platform_device *dev)
 {
 	int res = 0;
-
 	printk("ethernet_resume()\n");
-	if (eth_pdata && eth_pdata->clock_enable)
-		eth_pdata->clock_enable();
-
-	if (eth_pdata && eth_pdata->reset)
-		eth_pdata->reset();
-
 	res = netdev_open(my_ndev);
 	if (res != 0) {
 		printk("nono, it can not be true!\n");
 	}
-
+	
 	return 0;
 }
 #ifdef CONFIG_OF
@@ -2442,14 +2474,19 @@ static const struct of_device_id eth_dt_match[]={
 
 static struct platform_driver ethernet_driver = {
 	.probe   = ethernet_probe,
-	.remove  = ethernet_remove,
+	.remove  = ethernet_remove, 
+#ifdef  CONFIG_PM      
 	.suspend = ethernet_suspend,
 	.resume  = ethernet_resume,
+#endif
 	.driver  = {
 		.name = "meson-eth",
 		.of_match_table = eth_dt_match,
 	}
 };
+
+
+ 
 
 /* --------------------------------------------------------------------------*/
 /**
@@ -2460,7 +2497,6 @@ static struct platform_driver ethernet_driver = {
 /* --------------------------------------------------------------------------*/
 static int __init am_net_init(void)
 {
-
 	if (platform_driver_register(&ethernet_driver)) {
 		printk("failed to register ethernet_pm driver\n");
 		g_ethernet_registered = 0;
@@ -2509,3 +2545,5 @@ static void __exit am_net_exit(void)
 
 module_init(am_net_init);
 module_exit(am_net_exit);
+
+

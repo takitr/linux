@@ -183,6 +183,7 @@ struct am_net_private {
 	int oldlink;
 	int speed;
 	int oldduplex;
+	int refcnt;
 
 
 };
