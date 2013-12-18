@@ -2174,10 +2174,9 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
 			div_pre_sel_max = DIV_PRE_SEL_MAX;
 			div_post = 1;
 			crt_xd_max = 16;
-			dsi_clk_min = fout*8-40*1000;
-			dsi_clk_max = fout*8+40*1000;
-			dsi_clk_div = 2; //2¡¢4¡¢8
-			pConf->lcd_control.mipi_config->dsi_clk_div=dsi_clk_div;
+			dsi_clk_min = pConf->lcd_control.mipi_config->dsi_clk_min;
+			dsi_clk_max = pConf->lcd_control.mipi_config->dsi_clk_max;
+			dsi_clk_div=pConf->lcd_control.mipi_config->dsi_clk_div;
 			iflogic_vid_clk_in_max = MIPI_MAX_VID_CLK_IN;
 			break;
 		case LCD_DIGITAL_EDP:
@@ -2231,8 +2230,8 @@ static void generate_clk_parameter(Lcd_Config_t *pConf)
                                                                 fout_pll = div_pre_out * div_pre;
                                                                 DBG_PRINT("pre_div_sel=%d, div_pre=%d, fout_pll=%d\n", pre_div_sel, div_pre, fout_pll);
 
-                                                                if ((fout_pll <= dsi_clk_div*dsi_clk_max) &&
-                                                                                (fout_pll >= dsi_clk_div*dsi_clk_min)){
+                                                                if ((fout_pll <= dsi_clk_div*dsi_clk_max*1000) &&
+                                                                                (fout_pll >= dsi_clk_div*dsi_clk_min*1000)){
                                                                         for (od_sel = OD_SEL_MAX; od_sel > 0; od_sel--) {
                                                                                 od = od_table[od_sel - 1];
                                                                                 pll_vco = fout_pll * od;
@@ -2685,9 +2684,21 @@ static void select_edp_link_config(Lcd_Config_t *pConf)
 
 static void lcd_control_config(Lcd_Config_t *pConf)
 {
+	DSI_Config_t *cfg = pDev->pConf->lcd_control.mipi_config;
 	switch (pConf->lcd_basic.lcd_type) {
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 		case LCD_DIGITAL_MIPI:
+				if(pDev->pConf->lcd_basic.lcd_bits==6){
+							cfg->dpi_color_type  = 4;
+							cfg->venc_color_type = 2;
+					}else{
+							cfg->dpi_color_type  = 5;
+							cfg->venc_color_type = 1;
+					}
+				cfg->trans_mode = 1;
+        cfg->venc_fmt = TV_ENC_LCD768x1024p;
+				cfg->dpi_chroma_subsamp = 0;
+				cfg->lane_num=cfg->lane_num-1;
 			break;
 		case LCD_DIGITAL_EDP:
 			select_edp_link_config(pConf);
@@ -3510,6 +3521,10 @@ static const char * lcd_usage_str =
 "    echo swap <rb_swap> <bit_swap> > debug ; write ttl RGB swap config\n"
 "    echo lvds <vswing_level> <lvds_repack> <pn_swap> > debug ; write lvds config\n"
 "    echo edp <link_rate> <lane_count> > debug ; write edp config\n"
+"    echo mreg register > debug ; read mipi register\n"
+"    echo mfactor denominator numerator  > debug ; write factor to config hline hsa hbp\n"
+"    echo mdsi dsi_clk_min dsi_clk_max > debug ; write dsi_clk to config dsi_clk_min dsi_clk_max\n"
+"\n"
 //"    echo phy <phy_ctrl> > debug ; write lvds phy config\n"
 "data format:\n"
 "    <xx_swap>      : 0=normal, 1=swap\n"
@@ -3896,7 +3911,23 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			printk("vswing_level: %u, lvds_repack: %s, rb_swap: %s\n", t[0], ((t[1] == 1) ? "VESA mode" : "JEIDA mode"), ((t[2] == 0) ? "disable" : "enable"));
 			break;
 		case 'm':	//write mlvds config
-			//to do
+			if (buf[1] == 'r'){
+  			ret = sscanf(buf, "mreg %d ", &t[0]);
+  			printk("mipi_reg%x=%x\n",t[0],READ_DSI_REG(t[0]));
+  		}
+  		else if (buf[1] == 'f'){
+  			ret = sscanf(buf, "mfactor %d %d", &t[0], &t[1]);
+  			pDev->pConf->lcd_control.mipi_config->numerator=t[0];
+  			pDev->pConf->lcd_control.mipi_config->denominator=t[1];
+  			dsi_probe(pDev->pConf);
+       }
+      else if (buf[1] == 'd'){
+       	ret = sscanf(buf, "mdsi %d %d", &t[0],&t[1]);
+  			pDev->pConf->lcd_control.mipi_config->dsi_clk_min = t[0];
+  			pDev->pConf->lcd_control.mipi_config->dsi_clk_max = t[1];
+  			lcd_config_init(pDev->pConf);
+  			printk("dsi_clk_min_max_div=%d,%d",pDev->pConf->lcd_control.mipi_config->dsi_clk_min,pDev->pConf->lcd_control.mipi_config->dsi_clk_max);    	
+       }
 			break;
 		// case 'p':
 			// t[0] = 0xaf40;
@@ -4108,41 +4139,39 @@ static inline int _get_lcd_model_timing(struct platform_device *pdev)
 /////////////////////////////////////
 		if (LCD_DIGITAL_MIPI == pDev->pConf->lcd_basic.lcd_type) {
 
-                        DSI_Config_t *cfg = pDev->pConf->lcd_control.mipi_config;
-												if(pDev->pConf->lcd_basic.lcd_bits==6){
-				 											cfg->dpi_color_type  = 4;
-				 											cfg->venc_color_type = 2;
-													}else{
-				 											cfg->dpi_color_type  = 5;
-				 											cfg->venc_color_type = 1;
-													}
-												cfg->trans_mode = 1;
-                        cfg->venc_fmt = TV_ENC_LCD768x1024p;
-												cfg->dpi_chroma_subsamp = 0;
-                        ret = of_property_read_u32_array(lcd_model_node,"lane_num",&lcd_para[0], 1);
-                        if(ret){
-                                printk("faild to get lane num\n");
-                                cfg->lane_num = 3;
-                        } else {
-                                cfg->lane_num = lcd_para[0] - 1;
-                        }
-                        DBG_PRINT("lane num= %d\n",  cfg->lane_num+1);
-
-
-                        ret = of_property_read_u32_array(lcd_model_node,"factor",&lcd_para[0], 2);
-                        if(ret){
-                                printk("faild to get factor\n");
-                                cfg->numerator  = 0; //calculator
-                                cfg->denominator = 0;
-                        } else {
-                                cfg->denominator = lcd_para[0];
-                                cfg->numerator  = lcd_para[1]; //calculator
-                        }
-                        DBG_PRINT("denominator= %d, numerator=%d\n",  cfg->denominator, cfg->numerator);
-
-                }
-/////////////////////////////////////
+        DSI_Config_t *cfg = pDev->pConf->lcd_control.mipi_config;
+        ret = of_property_read_u32_array(lcd_model_node,"lane_num",&lcd_para[0], 1);
+        if(ret){
+                printk("faild to get lane num\n");
+                cfg->lane_num = 4;
+        } else {
+                cfg->lane_num = lcd_para[0];
         }
+        DBG_PRINT("lane num= %d\n",  cfg->lane_num);
+				cfg->dsi_clk_div  =1;
+ 				ret = of_property_read_u32_array(lcd_model_node,"dsi_clk_min_max",&lcd_para[0], 2);
+        if(ret){
+        					printk("faild to get dsi_clk_min_max\n");
+        					cfg->dsi_clk_min  = 900;
+        					cfg->dsi_clk_max  = 1000;
+        		} 
+        else {
+        					cfg->dsi_clk_min  = lcd_para[0];
+        					cfg->dsi_clk_max  = lcd_para[1];
+				    }
+				cfg->denominator = 10;
+        ret = of_property_read_u32_array(lcd_model_node,"pclk_div_lanebyteclk",&lcd_para[0], 2);
+        if(ret){
+                printk("faild to get pclk_div_lanebyteclk\n");
+                cfg->numerator  = 0; //calculator
+        } else {
+                cfg->numerator  = lcd_para[1]; //calculator
+        }
+        DBG_PRINT("denominator= %d, numerator=%d\n",  cfg->denominator, cfg->numerator);
+
+     }
+/////////////////////////////////////
+   }
 	return ret;
 }
 

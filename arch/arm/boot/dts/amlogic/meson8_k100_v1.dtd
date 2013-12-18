@@ -1047,6 +1047,7 @@ sdio{
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
 //$$ L2 PROP_U32 = "lane_num"
+//$$ L2 PROP_U32 = "dsi_clk_min_max"
 	lcd_B080XAN01:lcd_B080XAN01{	//k101
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
@@ -1061,6 +1062,7 @@ sdio{
 		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
                 lane_num=<4>;//lane num
+    dsi_clk_min_max=<500 600>;/*area of bit rate of one lane:(dsi_clk_min=500, dsi_clk_max=600)*/
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>

@@ -405,8 +405,8 @@ typedef struct {
 
 typedef struct DSI_Config_s{
         unsigned int    dsi_clk_div;
- //       unsigned int    dsi_clk_max;
- //       unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
+        unsigned int    dsi_clk_max;
+        unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
 
         unsigned int    denominator; //
         unsigned int    numerator;//default 10000

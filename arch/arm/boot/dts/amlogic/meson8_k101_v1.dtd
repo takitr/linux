@@ -767,7 +767,7 @@ sdio{
 			status = "okay";
 		};
 	};
-
+    
 /// ***************************************************************************************
 ///	-	LCD
 //$$ MODULE="LCD"
@@ -1013,7 +1013,7 @@ sdio{
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
 //$$ L2 PROP_U32 = "lane_num"
-//$$ L2 PROP_U32 2 = "factor"
+//$$ L2 PROP_U32 2 = "dsi_clk_min_max"
 	lcd_B080XAN01:lcd_B080XAN01{	//k101
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
@@ -1028,7 +1028,7 @@ sdio{
 		vsync_width_backporch=<50 80>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
     lane_num=<4>;//lane num
-
+    dsi_clk_min_max=<500 600>;/*area of bit rate of one lane:(dsi_clk_min=500, dsi_clk_max=600)*/
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
@@ -1121,8 +1121,9 @@ sdio{
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
 //$$ L2 PROP_U32 = "lane_num"
-//$$ L2 PROP_U32 2 = "factor"
-	lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{	//k101
+//$$ L2 PROP_U32 2 = "pclk_div_lanebyteclk"
+//$$ L2 PROP_U32 2 = "dsi_clk_min_max"     	
+lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{	//k101
 		model_name="CLAA101FP05XG";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<216 135>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
@@ -1135,8 +1136,9 @@ sdio{
 		hsync_width_backporch=<32 80>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<6 26>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-    factor = < 2 3 >;
     lane_num=<4>;//lane num
+    pclk_div_lanebyteclk =<15>;/**(pix_clk/lane_byte_clk)*10 */                                    
+	  dsi_clk_min_max=<900 1000>;/*area of bit rate of one lane:(dsi_clk_min=900, dsi_clk_max=1000)*/  
 	};
 
 //$$ DEVICE="lcd_extern"
