@@ -434,7 +434,7 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           reserve[16];
 } xml_algorithm_awb_t;
 
-#define AF_PARM_NUM			12
+#define AF_PARM_NUM			13
 
 #define FOCUS_GRIDS 16
 
