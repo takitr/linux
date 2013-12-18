@@ -22,7 +22,6 @@
 #include <linux/fs.h>
 #include <linux/init.h>
 #include <linux/device.h>
-#include <linux/delay.h>
 #include <linux/mm.h>
 #include <linux/major.h>
 #include <linux/platform_device.h>
@@ -33,7 +32,6 @@
 
 #include "hdmi_tx_reg.h"
 static DEFINE_SPINLOCK(reg_lock);
-static DEFINE_SPINLOCK(reg_lock2);
 // if the following bits are 0, then access HDMI IP Port will cause system hungup
 #define GATE_NUM    2
 Hdmi_Gate_s hdmi_gate[GATE_NUM] =   {   {HHI_HDMI_CLK_CNTL, 8},
@@ -102,38 +100,3 @@ void hdmi_wr_reg(unsigned long addr, unsigned long data)
     spin_unlock(&reg_lock);
 #endif
 }
-
-#ifdef CONFIG_ARCH_MESON8
-#define waiting_aocec_free()    while(aml_read_reg32(P_AO_CEC_RW_REG) & (1<<23))
-unsigned long aocec_rd_reg (unsigned long addr)
-{
-    unsigned long data32;
-    waiting_aocec_free();
-    spin_lock(&reg_lock2);
-    data32  = 0;
-    data32 |= 0     << 16;  // [16]     cec_reg_wr
-    data32 |= 0     << 8;   // [15:8]   cec_reg_wrdata
-    data32 |= addr  << 0;   // [7:0]    cec_reg_addr
-    aml_write_reg32(P_AO_CEC_RW_REG, data32);
-
-    waiting_aocec_free();
-    data32 = ((aml_read_reg32(P_AO_CEC_RW_REG)) >> 24) & 0xff;
-    spin_unlock(&reg_lock2);
-    return (data32);
-} /* aocec_rd_reg */
-
-void aocec_wr_reg (unsigned long addr, unsigned long data)
-{
-    unsigned long data32;
-    waiting_aocec_free();
-    spin_lock(&reg_lock2);
-    data32  = 0;
-    data32 |= 1     << 16;  // [16]     cec_reg_wr
-    data32 |= data  << 8;   // [15:8]   cec_reg_wrdata
-    data32 |= addr  << 0;   // [7:0]    cec_reg_addr
-    aml_write_reg32(P_AO_CEC_RW_REG, data32);
-    spin_unlock(&reg_lock2);
-    waiting_aocec_free();
-    //waiting_aocec_free();
-} /* aocec_wr_only_reg */
-#endif

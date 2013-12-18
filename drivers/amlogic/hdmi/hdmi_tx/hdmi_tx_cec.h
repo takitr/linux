@@ -19,12 +19,15 @@
 #define _TV_CEC_H_
 #include "hdmi_tx_module.h"
 
+//#define CEC0_LOG_ADDR 0 // TV logical address
 #define CEC0_LOG_ADDR 4 // MBX logical address
 #define TV_CEC_INTERVAL     (HZ*3)
 
 #define CEC_VERSION     "v1.3"
-#define _RX_DATA_BUF_SIZE_ 16
+#define _RX_DATA_BUF_SIZE_ 6
 
+
+//#define _SUPPORT_CEC_TV_MASTER_
 #define _RX_CEC_DBG_ON_
 #define _TX_CEC_DBG_ON_
 
@@ -39,7 +42,6 @@
 #else
 #define hdmitx_cec_dbg_print(fmt, args...)
 #endif
-#define HDMI_CEC_DEBUG()  printk("HDMI CEC DEBUG: %s [%d]\n", __FUNCTION__, __LINE__)
 
 extern unsigned int cec_tx_irq_flag;
 extern unsigned int cec_tx_irq_syn_flag;
@@ -231,6 +233,8 @@ typedef struct {
             unsigned char header;          // 4bit Initiator logical address + 4bit Destination logical address
             unsigned char opcode;          // message opcode
             unsigned char operands[14];    // the maximun operand is 14
+            //unsigned int  flag;            // flag = 1 ,cec key pressed;flag = 0, cec key released
+            //struct input_dev *remote_cec_dev; //cec input device
         }msg;                              // message struct
     }content;                              // message content
     unsigned char operand_num;             // number of operand
@@ -330,7 +334,6 @@ typedef enum {
     CEC_VERSION_12A,
     CEC_VERSION_13,
     CEC_VERSION_13A,
-    CEC_VERSION_14A,
 } cec_version_e;
 
 typedef enum {
@@ -339,6 +342,16 @@ typedef enum {
     CEC_HDMI_PORT_2,
     CEC_HDMI_PORT_3,
 } cec_hdmi_port_e;
+
+//typedef enum {
+//    CEC_MENU_LANG_CHN = 0,
+//    CEC_MENU_LANG_ENG,
+//    CEC_MENU_LANG_JAP,
+//    CEC_MENU_LANG_KOR,
+//    CEC_MENU_LANG_FRA,
+//    CEC_MENU_LANG_GER,
+//    //CEC_MENU_LANG_UNSUPPORTED = 0xff;
+//} cec_menu_lang_e;
 
 typedef enum {
     OFF = 0,
@@ -364,12 +377,23 @@ typedef unsigned long cec_info_mask;
 #define ONE_TOUCH_STANDBY_MASK               2
 #define AUTO_POWER_ON_MASK                   3
 
+//typedef struct {
+//    unsigned long vendor_id;
+//    unsigned char vendor_id_byte_num;
+//} vendor_id_t;
+
+//typedef struct {
+//    unsigned char vsdb_phy_addr_offset;
+//    unsigned short phy_addr[3];
+//    unsigned char checksum[3];
+//} vsdb_phy_addr_t;
 
 typedef struct {
     cec_hdmi_port_e hdmi_port;
     cec_info_mask real_info_mask;
     unsigned char cec_version;
     unsigned int vendor_id:24;
+//    vendor_id_t vendor_id;
     unsigned char dev_type;
     unsigned char menu_status;
     cec_power_status_e power_status;
@@ -416,6 +440,8 @@ typedef struct {
 
 typedef struct {
     unsigned short dev_mask;
+    //unsigned char tv_log_addr;
+    //unsigned short tv_phy_addr;
     unsigned char active_log_dev;
     unsigned char my_node_index;
     cec_node_info_t cec_node_info[MAX_NUM_OF_DEV];
@@ -452,6 +478,7 @@ typedef enum {
     SET_ACTIVE_SOURCE,
     SET_DEACTIVE_SOURCE,
     CLR_NODE_DEV_REAL_INFO_MASK,
+    //SET_STREAM_PATH,
     REPORT_PHYSICAL_ADDRESS,    //0x17
     SET_TEXT_VIEW_ON,
     POLLING_ONLINE_DEV, //0x19
@@ -499,8 +526,8 @@ void cec_set_pending(tv_cec_pending_e on_off);
 void cec_polling_online_dev(int log_addr, int *bool);
 unsigned short cec_log_addr_to_dev_type(unsigned char log_addr);
 
-void cec_routing_information(cec_rx_message_t* pcec_message);
-void cec_routing_change(cec_rx_message_t* pcec_message);
+void cec_usrcmd_routing_information(cec_rx_message_t* pcec_message);
+void cec_usrcmd_routing_change(cec_rx_message_t* pcec_message);
 void cec_usrcmd_set_osd_name(cec_rx_message_t* pcec_message);
 void cec_usrcmd_set_device_vendor_id(void);
 void cec_usrcmd_get_cec_version(unsigned char log_addr);
@@ -520,6 +547,7 @@ void cec_usrcmd_set_play_mode(unsigned char log_addr, play_mode_e play_mode);
 void cec_usrcmd_get_menu_state(unsigned char log_addr);
 void cec_usrcmd_set_menu_state(unsigned char log_addr, menu_req_type_e menu_req_type);
 void cec_usrcmd_get_menu_language(unsigned char log_addr);
+//void cec_usrcmd_set_menu_language(unsigned char log_addr, cec_menu_lang_e menu_lang);
 void cec_usrcmd_get_active_source(void);
 void cec_usrcmd_set_active_source(void);
 void cec_usrcmd_set_deactive_source(unsigned char log_addr);
@@ -533,7 +561,7 @@ void cec_active_source(cec_rx_message_t* pcec_message);
 void cec_set_stream_path(cec_rx_message_t* pcec_message);
 void cec_set_osd_name(cec_rx_message_t* pcec_message);
 void cec_set_osd_name_init(void);
-void cec_inactive_source_rx(cec_rx_message_t* pcec_message);
+void cec_deactive_source(cec_rx_message_t* pcec_message);
 void cec_set_system_audio_mode(void);
 void cec_system_audio_mode_request(void);
 void cec_report_audio_status(void);
@@ -545,7 +573,7 @@ void cec_set_imageview_on_irq(void);
 void cec_report_physical_address_smp(void);
 void cec_imageview_on_smp(void);
 void cec_active_source_smp(void);
-void cec_active_source_rx(cec_rx_message_t* pcec_message);
+void cec_active_source_irq(void);
 
 size_t cec_usrcmd_get_global_info(char * buf);
 void cec_usrcmd_set_dispatch(const char * buf, size_t count);
@@ -558,11 +586,6 @@ void cec_user_control_released_irq(void);
 void cec_user_control_pressed_irq(void);
 void cec_inactive_source(void);
 void cec_set_standby(void);
-void cec_isr_post_process(void);
-void cec_clear_buf(unsigned int flag);
-void cec_arbit_bit_time_set(unsigned bit_set, unsigned time_set, unsigned flag);
-void tx_irq_handle(void);
-void cec_arbit_bit_time_read(void);
 
 extern struct input_dev *remote_cec_dev;
 extern __u16 cec_key_map[];
