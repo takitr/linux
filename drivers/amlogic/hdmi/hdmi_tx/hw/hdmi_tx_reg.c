@@ -79,8 +79,8 @@ unsigned long hdmi_rd_reg(unsigned long addr)
 
 void hdmi_wr_reg(unsigned long addr, unsigned long data)
 {
-    unsigned long flags, fiq_flag;
 #ifdef CONFIG_ARCH_MESON6
+    unsigned long flags, fiq_flag;
     spin_lock_irqsave(&reg_lock, flags);
     raw_local_save_flags(fiq_flag);
     local_fiq_disable();

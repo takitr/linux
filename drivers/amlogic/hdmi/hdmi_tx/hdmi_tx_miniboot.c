@@ -307,6 +307,9 @@ void vclk_set_encp_1920x1080( int pll_sel, int pll_div_sel, int vclk_sel, int up
 
 void set_tv_enc_1920x1080p (int viu1_sel, int viu2_sel, int enable)
 {
+#ifdef CONFIG_AM_LOGO
+	logo_object_t  *init_logo_obj=NULL;
+#endif
     aml_write_reg32_op(P_ENCP_VIDEO_MODE,             0x0040 | (1<<14)); // Enable Hsync and equalization pulse switch in center; bit[14] cfg_de_v = 1
     aml_write_reg32_op(P_ENCP_VIDEO_MODE_ADV,         0x0008); // Sampling rate: 1
     aml_write_reg32_op(P_ENCP_VIDEO_YFP1_HTIME,       140);
@@ -331,7 +334,6 @@ void set_tv_enc_1920x1080p (int viu1_sel, int viu2_sel, int enable)
     aml_write_reg32_op(P_ENCP_VIDEO_VSO_ELINE,        5);
     aml_write_reg32_op(P_ENCP_VIDEO_MAX_LNCNT,        1124);
 
-	logo_object_t  *init_logo_obj=NULL;
 #ifdef CONFIG_AM_LOGO
     init_logo_obj = get_current_logo_obj();
 #endif

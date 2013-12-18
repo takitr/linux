@@ -1160,7 +1160,9 @@ static void digital_clk_off(unsigned char flag)
 
 static void digital_clk_on(unsigned char flag)
 {
+#ifdef CONFIG_ARCH_MESON6
     int i;
+#endif
 //    clk81_set();
     if(flag&4){
         /* on hdmi sys clock */
@@ -1370,11 +1372,12 @@ void hdmi_hw_set_powermode(hdmitx_dev_t* hdmitx_device, int power_mode, int vic)
 
 void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
 {
+    unsigned int tmp_add_data;
+
 #ifdef CONFIG_ARCH_MESON8
     aml_set_reg32_bits(P_PERIPHS_PIN_MUX_1, 0xf, 23, 4); //Enable reg1[23:24]:HDMI SDA(5v)/SCL(5V)
 #endif
-    unsigned int tmp_add_data;
-    
+
     HDMI_DEBUG();
     
     digital_clk_on(7);
@@ -3691,6 +3694,7 @@ typedef struct
     unsigned long val_save;
 }hdmi_phy_t;
 
+#ifdef CONFIG_ARCH_MESON6
 static char hdmi_phy_reg_save_flag = 0;
 
 #define HDMI_PHY_REG_NUM    7
@@ -3703,6 +3707,7 @@ static hdmi_phy_t hdmi_phy_reg [HDMI_PHY_REG_NUM] = {
                          {0x15, 0x04, 0x0},
                          {0x16, 0x30, 0x00},
                         };
+#endif
 
 #ifdef CONFIG_ARCH_MESON8
 static unsigned int hdmi_phy_save = 0x08930e9b;     // Default setting
