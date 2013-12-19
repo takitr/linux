@@ -158,6 +158,9 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 			devp->flag &= (~ISP_FLAG_RECONFIG);
 			pr_info("config according to configure file.\n");
 		}
+	}else if(!strcmp(parm[0],"bypass_all")){
+		isp_bypass_all();
+		pr_info("isp bypass all.\n");
 	}
 	return len;
 }
@@ -1129,8 +1132,8 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		ret = max(isp_capture_sm(devp),ret);
 	if(isr_debug&&ret)
 		pr_info("%s isp %d buf.\n",__func__,ret);
-	if(!(devp->flag & ISP_FLAG_TEST_WB))
 #ifndef USE_WORK_QUEUE
+	if(!(devp->flag & ISP_FLAG_TEST_WB))
 	    tasklet_schedule(&devp->isp_task);
 #else
         schedule_work(&devp->isp_wq);
@@ -1163,16 +1166,17 @@ static void  isp_do_work(struct work_struct *work)
 	unsigned newstep = 0;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 
-	if((devp->flag & ISP_FLAG_AE)&&(ae_enable)){
-		isp_ae_sm(devp);
+	if(!(devp->flag & ISP_FLAG_TEST_WB)){
+		if((devp->flag & ISP_FLAG_AE)&&(ae_enable)){
+			isp_ae_sm(devp);
+		}
+		if((devp->flag&ISP_FLAG_AWB)&&(awb_enable)){
+			isp_awb_sm(devp);
+		}
+		if((devp->flag&ISP_AF_SM_MASK)&&(af_enable)){
+			isp_af_detect(devp);
+		}
 	}
-	if((devp->flag&ISP_FLAG_AWB)&&(awb_enable)){
-		isp_awb_sm(devp);
-	}
-	if((devp->flag&ISP_AF_SM_MASK)&&(af_enable)){
-		isp_af_detect(devp);
-	}
-
 	if(ae_flag&0x1)
 	{
 		ae_flag &= (~0x1);

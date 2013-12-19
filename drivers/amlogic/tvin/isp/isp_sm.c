@@ -106,7 +106,7 @@ static inline int find_step(cam_function_t *func, unsigned int low, unsigned int
 	}
 	//pr_info("[isp] %s step:%d set default .\n", __func__, (mid + 1));
 	if((mid + 1) > hign){
-		pr_info("[isp]find_step,warning mid:%d,hign:%d\n",mid,hign);
+		//pr_info("[isp]find_step,warning mid:%d,hign:%d\n",mid,hign);
 		return hign;
 	}
 	return (mid + 1);
@@ -305,6 +305,7 @@ void isp_ae_sm(isp_dev_t *devp)
 			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_mid2high) >> 10;
 			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_high) >> 10;
 			aepa->pre_gain = 400;
+			if(devp->ae_info.manul_level==0)
 			aepa->targ = aep->targetmid;
 			temp = 1;
 			aepa->alert_r = ((aepa->pixel_sum >> 4) * aep->ratio_r) >> 8;

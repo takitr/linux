@@ -506,11 +506,15 @@ static void isp_set_lnsd(xml_lut_ls_t *lnsd)
 	int i = 0;
 	if(lnsd){
 		pr_info("%s\n",__func__);
+		WRITE_VCBUS_REG(0x2d28, (READ_VCBUS_REG(0x2d28)&0xefffffff)); // disable lens shielding
+		WRITE_VCBUS_REG(0x2daf, 0x0000000c);         // lens shielding lut ram: v-bus write mode		
 		WRITE_VCBUS_REG(ISP_LNS_XYSCAL, lnsd->reg_map[i]);
 		for(i=1;i<XML_LUT_LS;i++){
 			WR(ISP_LNSD_LUT_ADDR,i-1);
 			WR(ISP_LNSD_LUT_DATA,lnsd->reg_map[i]);
 		}
+	    WRITE_VCBUS_REG(0x2daf, 0x00000000); // lens shielding lut ram: hardware read mode	
+	    WRITE_VCBUS_REG(0x2d28, (READ_VCBUS_REG(0x2d28)|0x10000000));		
 	}
 }
 

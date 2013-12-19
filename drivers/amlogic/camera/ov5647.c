@@ -2674,7 +2674,7 @@ void OV5647_set_param_exposure(struct ov5647_device *dev,enum camera_exposure_e 
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
     int value;
-    if(para == EXPOSURE_0_STEP){
+    if(0){//para == EXPOSURE_0_STEP){
         dev->cam_para->cam_command = CAM_COMMAND_AE_ON;
         dev->ae_on = true;
     }else{

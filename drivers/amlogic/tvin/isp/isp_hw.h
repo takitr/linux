@@ -111,6 +111,7 @@ extern void flash_on(bool mode_pol_inv,bool led1_pol_inv,bool pin_mux_inv,wave_t
 extern void torch_level(bool mode_pol_inv,bool led1_pol_inv,bool pin_mux_inv,bool torch_pol_inv,wave_t *wave_param,unsigned int level);
 extern void wave_power_manage(bool enable);
 extern void isp_hw_reset(void);
+extern void isp_bypass_all(void);
 extern void isp_hw_enable(bool enable);
 extern void isp_awb_set_gain(unsigned int r, unsigned int g, unsigned int b);
 extern void isp_awb_get_gain(isp_awb_gain_t *awb_gain);
