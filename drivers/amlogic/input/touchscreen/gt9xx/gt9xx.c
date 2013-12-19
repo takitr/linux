@@ -2394,10 +2394,10 @@ Output:
     {
         GTP_INFO("GTP works in interrupt mode.");
     }
-#ifndef LATE_UPGRADE
+#ifdef LATE_UPGRADE
     if (ts->use_irq)
     {
-        gtp_irq_enable(ts);
+        gtp_irq_disable(ts);
     }
 #endif
 #if GTP_CREATE_WR_NODE

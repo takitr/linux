@@ -1813,7 +1813,7 @@ s32 gup_update_proc(void *dir)
          GTP_ERROR("[update_proc]enter update mode fail.");
          goto update_fail;
     }
-    
+    retry = 0;
     while(retry++ < 5)
     {
         show_len = 10;
