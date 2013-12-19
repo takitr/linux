@@ -1655,7 +1655,7 @@ void vdin_enable_module(unsigned int offset, bool enable)
 	}
 }
 #if 0
-inline void vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp)
+inline bool vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp)
 {
 
 	if (RD_BITS(VDIN_COM_STATUS0, DIRECT_DONE_STATUS_BIT, DIRECT_DONE_STATUS_WID))
@@ -1685,6 +1685,20 @@ inline void vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp)
 		devp->flags |= VDIN_FLAG_FORCE_UNSTABLE;
 	}
 }
+#else
+inline bool vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp)
+{
+
+	if (RD_BITS(VDIN_COM_STATUS0, DIRECT_DONE_STATUS_BIT, DIRECT_DONE_STATUS_WID))
+	{
+		WR_BITS(VDIN_WR_CTRL, 1, DIRECT_DONE_CLR_BIT, DIRECT_DONE_CLR_WID);
+		WR_BITS(VDIN_WR_CTRL, 0, DIRECT_DONE_CLR_BIT, DIRECT_DONE_CLR_WID);
+		return true;
+	}
+	devp->abnormal_cnt++;
+	return false;
+}
+
 #endif
 /* check invalid vs to avoid screen flicker */
 inline bool vdin_check_vs(struct vdin_dev_s *devp)

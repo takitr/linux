@@ -37,7 +37,7 @@ vdin_v4l2_ops_t *get_vdin_v4l2_ops()
         if((ops.start_tvin_service != NULL) && (ops.stop_tvin_service != NULL))
                 return &ops;
         else{
-                pr_err("[vdin..]%s: vdin v4l2 operation haven't registered.",__func__);
+                //pr_err("[vdin..]%s: vdin v4l2 operation haven't registered.",__func__);
                 return NULL;
         }
 }

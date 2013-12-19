@@ -34,7 +34,7 @@
 #include "../tvin_frontend.h"
 #include "vdin_vf.h"
 
-#define VDIN_VER "Ref.2013/12/17a"
+#define VDIN_VER "Ref.2013/12/19a"
 
 /*the counter of vdin*/
 #define VDIN_MAX_DEVS			2
@@ -143,6 +143,7 @@ typedef struct vdin_dev_s {
 	unsigned int			canvas_max_size;
 	unsigned int			canvas_max_num;
 	struct vf_entry			*curr_wr_vfe;
+	struct vf_entry         *last_wr_vfe;
 	unsigned int			curr_field_type;
 
 	unsigned int			irq;

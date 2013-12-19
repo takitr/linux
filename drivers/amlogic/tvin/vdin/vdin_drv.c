@@ -564,7 +564,7 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_vf_init(devp);
 
 	devp->abnormal_cnt = 0;
-
+	devp->last_wr_vfe = NULL;
 	irq_max_count = 0;
 	//devp->stamp_valid = false;
 	devp->stamp = 0;
@@ -608,9 +608,10 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	udelay(start_provider_delay);
 	vf_reg_provider(&devp->vprov);
 	vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_START,NULL);
-
+if(devp->parm.port != TVIN_PORT_VIU){
         /*enable irq */
         enable_irq(devp->irq);
+}
         /*disable audio&video sync used for libplayer*/
         tsync_set_enable(0);
 	/* enable system_time */
@@ -664,9 +665,11 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		pr_err("%s: port 0x%x, decode started already.\n",__func__,para->port);
 		ret = -EBUSY;
 	}
+	if(para->port != TVIN_PORT_VIU){
 	ret = request_irq(devp->irq, vdin_v4l2_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
         /*disable vsync irq until vdin configured completely*/
         disable_irq_nosync(devp->irq);
+	}
         /*config the vdin use default value*/
         vdin_set_default_regmap(devp->addr_offset);
 
@@ -712,9 +715,9 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		return -1;
 	}
 	//disable cut window?
-	devp->parm.cutwin.ve = v_cut_offset;
-	devp->parm.cutwin.vs = v_cut_offset;
-		
+	if(para->port == TVIN_PORT_VIU) {
+		devp->parm.cutwin.vs = v_cut_offset;
+	} 
         /*add for scaler down*/
 	if(!(devp->flags & VDIN_FLAG_MANUAL_CONVERTION)) {
 		devp->scaler4w = para->dest_hactive;
@@ -726,6 +729,7 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 	vdin_start_dec(devp);
 	devp->flags |= VDIN_FLAG_DEC_OPENED;
 	devp->flags |= VDIN_FLAG_DEC_STARTED;
+	irq_cnt = 0;
 	return 0;
 }
 
@@ -756,8 +760,10 @@ int stop_tvin_service(int no)
 #endif
 	devp->flags &= (~VDIN_FLAG_DEC_OPENED);
 	devp->flags &= (~VDIN_FLAG_DEC_STARTED);
+	if(devp->parm.port!= TVIN_PORT_VIU){
 	/* free irq */
 	free_irq(devp->irq,(void *)devp);
+	}
 	end_time = jiffies_to_msecs(jiffies);
 	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
 	return 0;
@@ -788,14 +794,19 @@ static int vdin_ioctl_fe(int no, fe_arg_t *parm)
 	}
 	return ret;
 }
-
+static void vdin_rdma_isr(struct vdin_dev_s *devp)
+{
+	if(devp->parm.port==TVIN_PORT_VIU)
+		vdin_v4l2_isr(devp->irq,devp);
+}
 static int vdin_func(int no, vdin_arg_t *arg)
 {
 	struct vdin_dev_s *devp = vdin_devp[no];
 	int ret = 0;
 	struct vdin_arg_s *parm = NULL;
-        if(IS_ERR(devp)){
-                pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
+        if(IS_ERR(devp)||!(devp->flags&VDIN_FLAG_DEC_STARTED)){
+		if(vdin_dbg_en)
+			pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
                 return -1;
         }
 	parm = arg;
@@ -806,6 +817,10 @@ static int vdin_func(int no, vdin_arg_t *arg)
 			break;
 		case VDIN_CMD_SET_CM2:
 			vdin_set_cm2(devp->addr_offset,devp->h_active,devp->v_active,parm->cm2);
+			break;
+		case VDIN_CMD_ISR:
+			vdin_rdma_isr(devp);
+			break;
 		default:
 			break;
 	}
@@ -1286,6 +1301,23 @@ irq_handled:
 * there are too much logic in vdin_isr which is useless in camera&viu
 *so vdin_v4l2_isr use to the sample v4l2 application such as camera,viu
 */
+static unsigned char skip_ratio = 1;
+module_param(skip_ratio,uint,0664);
+MODULE_PARM_DESC(skip_ratio,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_enter_line_max = 0;
+module_param(vsync_enter_line_max,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_exit_line_max = 0;
+module_param(vsync_exit_line_max,uint,0664);
+MODULE_PARM_DESC(vsync_exit_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+
+static unsigned int vsync_enter_line_curr = 0;
+module_param(vsync_enter_line_curr,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_exit_line_curr = 0;
+module_param(vsync_exit_line_curr,uint,0664);
+MODULE_PARM_DESC(vsync_exit_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+
 static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 {
 	ulong flags;
@@ -1299,16 +1331,45 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	int ret = 0;
 	if (!devp)
                 return IRQ_HANDLED;
+	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
+                case 0:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 1:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 2:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 3:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
+                        break;
+        }
+        if(vsync_enter_line_curr > vsync_enter_line_max)
+                vsync_enter_line_max = vsync_enter_line_curr;
+
+	isr_log(devp->vfp);
                 irq_cnt++;
 	spin_lock_irqsave(&devp->isr_lock, flags);
-                if(devp)
-	/* avoid null pointer oops */
-	stamp  = vdin_get_meas_vstamp(devp->addr_offset);
+        if(devp)
+	        /* avoid null pointer oops */
+	        stamp  = vdin_get_meas_vstamp(devp->addr_offset);
 	if (!devp->curr_wr_vfe) {
 		devp->curr_wr_vfe = provider_vf_get(devp->vfp);
 		/*save the first field stamp*/
 		devp->stamp = stamp;
 		goto irq_handled;
+	}
+	
+        if(!vdin_write_done_check(devp->addr_offset, devp)){
+                goto irq_handled;
+        }   
+
+
+	if(devp->last_wr_vfe){
+		provider_vf_put(devp->last_wr_vfe, devp->vfp);
+	        devp->last_wr_vfe = NULL;
+		vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 	}
 	/*check vs is valid base on the time during continuous vs*/
         vdin_check_cycle(devp);
@@ -1361,7 +1422,6 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
             	        goto irq_handled;
                 }
         }
-
         next_wr_vfe = provider_vf_peek(devp->vfp);
 
 	if (!next_wr_vfe) {
@@ -1379,22 +1439,46 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	}
 	if(curr_wr_vfe){
 		curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
-		provider_vf_put(curr_wr_vfe, devp->vfp);
+		//provider_vf_put(curr_wr_vfe, devp->vfp);
+		devp->last_wr_vfe = curr_wr_vfe;
 	}
 
 	/* prepare for next input data */
 	next_wr_vfe = provider_vf_get(devp->vfp);
-	vdin_set_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff));
-        /* prepare for chroma canvas*/
-        if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
-                vdin_set_chma_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff);
-
+	if(devp->parm.port == TVIN_PORT_VIU){
+	        VSYNC_WR_MPEG_REG_BITS(VDIN_WR_CTRL+devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff), WR_CANVAS_BIT, WR_CANVAS_WID);
+                /* prepare for chroma canvas*/
+                if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
+			VSYNC_WR_MPEG_REG_BITS(VDIN_WR_CTRL2+devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff, WRITE_CHROMA_CANVAS_ADDR_BIT,WRITE_CHROMA_CANVAS_ADDR_WID);
+	}else{	
+		vdin_set_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff));
+                if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
+                        vdin_set_chma_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff);
+	}
         devp->curr_wr_vfe = next_wr_vfe;
 	vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
 
 irq_handled:
+	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
+		case 0:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
+			break;
+		case 1:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
+			break;
+		case 2:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
+			break;
+		case 3:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
+			break;
+	}
+	if(vsync_exit_line_curr > vsync_exit_line_max)
+		vsync_exit_line_max = vsync_exit_line_curr;
+
 	spin_unlock_irqrestore(&devp->isr_lock, flags);
+	isr_log(devp->vfp);
 	return IRQ_HANDLED;
 }
 
@@ -1452,7 +1536,7 @@ static int vdin_release(struct inode *inode, struct file *file)
 	file->private_data = NULL;
 
 	/* reset the hardware limit to vertical [0-1079]  */
-    WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000437);
+        WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000437);
 	pr_info("close device %s ok\n", dev_name(devp->dev));
 	return 0;
 }

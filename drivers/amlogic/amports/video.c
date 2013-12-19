@@ -80,7 +80,7 @@ MODULE_AMLOG(LOG_LEVEL_ERROR, 0, LOG_DEFAULT_LEVEL_DESC, LOG_MASK_DESC);
 
 #include "linux/amlogic/amports/ve.h"
 #include "linux/amlogic/amports/cm.h"
-
+#include "linux/amlogic/tvin/tvin_v4l2.h"
 #include "ve_regs.h"
 #include "amve.h"
 #include "cm_regs.h"
@@ -310,6 +310,7 @@ static int vpts_chase_pts_diff;
 #define DEBUG_FLAG_BLACKOUT     0x1
 #define DEBUG_FLAG_PRINT_TOGGLE_FRAME 0x2
 #define DEBUG_FLAG_PRINT_RDMA                0x4
+#define DEBUG_FLAG_LOG_RDMA_LINE_MAX         0x100
 #define DEBUG_FLAG_TOGGLE_SKIP_KEEP_CURRENT  0x10000
 #define DEBUG_FLAG_TOGGLE_FRAME_PER_VSYNC    0x20000
 #define DEBUG_FLAG_RDMA_WAIT_1		     0x40000
@@ -318,6 +319,9 @@ static int debug_flag = 0x0;//DEBUG_FLAG_BLACKOUT;
 static int vsync_enter_line_max = 0;
 static int vsync_exit_line_max = 0;
 
+#ifdef CONFIG_VSYNC_RDMA
+static int vsync_rdma_line_max = 0;
+#endif
 static int video_3d_format = 0;
 
 const char video_dev_id[] = "amvideo-dev";
@@ -1682,6 +1686,39 @@ int get_vsync_pts_inc_mode(void)
 }
 EXPORT_SYMBOL(get_vsync_pts_inc_mode);
 
+#ifdef CONFIG_VSYNC_RDMA
+void vsync_rdma_process(void)
+{
+    unsigned long enc_line_adr = 0;
+    int enc_line;
+    switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
+        case 0:
+            enc_line_adr = ENCL_INFO_READ;
+            break;
+        case 1:
+            enc_line_adr = ENCI_INFO_READ;
+            break;
+        case 2:
+            enc_line_adr = ENCP_INFO_READ;
+            break;
+        case 3:
+            enc_line_adr = ENCT_INFO_READ;
+            break;
+    }
+    enc_line_adr = ENCL_INFO_READ;
+    if((debug_flag&DEBUG_FLAG_LOG_RDMA_LINE_MAX)&&(enc_line_adr>0)){
+        RDMA_SET_READ(enc_line_adr);
+        enc_line = RDMA_READ_REG(enc_line_adr);
+        if(enc_line != 0xffffffff){
+            enc_line = (enc_line>>16)&0x1fff;
+            if(enc_line > vsync_rdma_line_max)
+                vsync_rdma_line_max = enc_line;
+        }
+    }
+    vsync_rdma_config();
+}
+#endif
+
 #ifdef FIQ_VSYNC
 void vsync_fisr(void)
 #else
@@ -1694,6 +1731,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     s32 i, vout_type;
     vframe_t *vf;
     unsigned long flags;
+    vdin_v4l2_ops_t *vdin_ops = NULL;
+    vdin_arg_t arg;
+	
 #ifdef CONFIG_AM_VIDEO_LOG
     int toggle_cnt;
 #endif
@@ -1776,6 +1816,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	/* amvecm video latch function */
 	amvecm_video_latch();
 #endif
+    vdin_ops=get_vdin_v4l2_ops();
+    if(vdin_ops){
+	arg.cmd = VDIN_CMD_ISR;
+	vdin_ops->tvin_vdin_func(1,&arg);
+    }
     vout_type = detect_vout_type();
     hold_line = calc_hold_line();
 
@@ -2250,7 +2295,8 @@ exit:
 
 #ifdef CONFIG_VSYNC_RDMA
     cur_rdma_buf = cur_dispbuf;
-    vsync_rdma_config();
+    //vsync_rdma_config();
+    vsync_rdma_process();
     if(frame_par_di_set){
         start_rdma(); //work around, need set one frame without RDMA???
     }
@@ -4744,6 +4790,11 @@ module_param(vsync_enter_line_max, uint, 0664);
 
 MODULE_PARM_DESC(vsync_exit_line_max, "\n vsync_exit_line_max\n");
 module_param(vsync_exit_line_max, uint, 0664);
+
+#ifdef CONFIG_VSYNC_RDMA
+MODULE_PARM_DESC(vsync_rdma_line_max, "\n vsync_rdma_line_max\n");
+module_param(vsync_rdma_line_max, uint, 0664);
+#endif
 
 module_param(underflow, uint, 0664);
 MODULE_PARM_DESC(underflow, "\n Underflow count \n");

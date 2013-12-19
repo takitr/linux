@@ -691,6 +691,7 @@ typedef enum vdin_cmd_e {
 	VDIN_CMD_NULL = 0,
 	VDIN_CMD_SET_CSC,
 	VDIN_CMD_SET_CM2,
+	VDIN_CMD_ISR,
 } vdin_cmd_t;
 
 typedef struct vdin_arg_s {
