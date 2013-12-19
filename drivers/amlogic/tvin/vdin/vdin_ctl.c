@@ -1167,6 +1167,7 @@ inline void vdin_set_vframe_prop_info(struct vframe_s *vf, struct vdin_dev_s *de
 #endif
 	// fetch hist info
 	//vf->prop.hist.luma_sum   = READ_CBUS_REG_BITS(VDIN_HIST_SPL_VAL,     HIST_LUMA_SUM_BIT,    HIST_LUMA_SUM_WID   );
+	vf->prop.hist.hist_pow   = RD_BITS(VDIN_HIST_CTRL, HIST_POW_BIT, HIST_POW_WID);
 	vf->prop.hist.luma_sum   = RD(VDIN_HIST_SPL_VAL);
 	//vf->prop.hist.chroma_sum = READ_CBUS_REG_BITS(VDIN_HIST_CHROMA_SUM,  HIST_CHROMA_SUM_BIT,  HIST_CHROMA_SUM_WID );
 	vf->prop.hist.chroma_sum = RD(VDIN_HIST_CHROMA_SUM);

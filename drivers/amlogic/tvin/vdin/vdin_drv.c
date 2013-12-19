@@ -1006,7 +1006,7 @@ static irqreturn_t vdin_isr_simple(int irq, void *dev_id)
 static void vdin_backup_histgram(struct vframe_s *vf, struct vdin_dev_s *devp)
 {
 	unsigned int i = 0;
-
+    devp->parm.hist_pow = vf->prop.hist.hist_pow;
 	for (i = 0; i < 64; i++)
 		devp->parm.histgram[i] = vf->prop.hist.gamma[i];
 }

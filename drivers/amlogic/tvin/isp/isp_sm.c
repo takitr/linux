@@ -30,6 +30,7 @@ static unsigned int capture_debug = 0;
 #define AE_LUMA_AVG_CHECK_DG		0x00000020
 #define AE_EXPOSURE_ADJUST_DG		0x00000040
 #define AE_STATUS_DG			0x00000080
+#define AE_DYNAMIC_ADJUST_DG    0x00000100
 
 static unsigned int ae_sm_dg = 0;
 module_param(ae_sm_dg,uint,0664);
@@ -300,10 +301,10 @@ void isp_ae_sm(isp_dev_t *devp)
 			isp_set_ae_thrlpf(aep->thr_r_mid, aep->thr_g_mid, aep->thr_b_mid, aep->lpftype_mid);
 			aepa->pixel_sum = parm->h_active * parm->v_active;
 			aepa->sub_pixel_sum = aepa->pixel_sum >> 4;
-			aepa->max_lumasum1 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low) >> 10;
-			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low2mid) >> 10;
-			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_mid2high) >> 10;
-			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_high) >> 10;
+			aepa->max_lumasum1 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low) >> 7;
+			aepa->max_lumasum2 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_low2mid) >> 7;
+			aepa->max_lumasum3 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_mid2high) >> 7;
+			aepa->max_lumasum4 = ((aepa->pixel_sum >> 4) * aep->ae_ratio_high) >> 7;
 			aepa->pre_gain = 400;
 			if(devp->ae_info.manul_level==0)
 			aepa->targ = aep->targetmid;
@@ -424,12 +425,12 @@ void isp_ae_sm(isp_dev_t *devp)
 						if(aepa->cur_gain == 0)
 							printk("[AE_CALCULATE_LUMA_TARG]:error,aepa->cur_gain = 0\n");
 						avg_envo = (avg_env << 10)/aepa->cur_gain;
-						sum = ph->hist.gamma[58]+ph->hist.gamma[57];
+						sum = (ph->hist.gamma[58]+ph->hist.gamma[57]) << ph->hist.hist_pow;
 						if(ae_sm_dg&AE_CALCULATE_LUMA_TARG_DG){
 							pr_info("avg=%d,avg_envo=%d,aepa->cur_gain=%d,avg_env=%d,avg_env_sum=%d,avg_sum=%d,luma_win[9]=%d,sub[9]=%d\n",avg,avg_envo,aepa->cur_gain,avg_env,avg_env_sum,avg_sum,ae->luma_win[9],sub_avg[9]);
-							pr_info("ph->hist.gamma[58]=%d,%d\n",ph->hist.gamma[58],sum);
+							pr_info("ph->hist.gamma[58]=%d,%d,%d\n",ph->hist.gamma[58],sum,ph->hist.hist_pow);
 						}
-						if(devp->ae_info.manul_level==0){//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
+						if((devp->ae_info.manul_level==0)&&((ae_sm_dg&AE_DYNAMIC_ADJUST_DG)==0)){//(avg_envo <= aep->env_low)||((avg_envo <= aep->env_low2mid)&&targ == (aep->targetlow)))
 							//targ = aep->targetlow;
 							if((sum > aepa->max_lumasum4)||((sum > aepa->max_lumasum3)&&(temp==2))){
 								temp = 2;
