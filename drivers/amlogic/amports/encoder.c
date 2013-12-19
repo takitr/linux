@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/platform_device.h>
+#include <linux/spinlock.h>
 #include <mach/am_regs.h>
 #include <mach/power_gate.h>
 #include <plat/io.h>
@@ -26,7 +27,9 @@
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
+#include <linux/amlogic/amports/vformat.h>
 #include "vdec_reg.h"
+#include "vdec.h"
 #include <linux/delay.h>
 #include <linux/poll.h>
 #include <linux/of.h>
@@ -125,6 +128,8 @@ static int avc_endian = 6;
 static wait_queue_head_t avc_wait;
 atomic_t avc_ready = ATOMIC_INIT(0);
 static struct tasklet_struct encode_tasklet;
+
+static DEFINE_SPINLOCK(lock);
 
 static const char avc_dec_id[] = "avc-dev";
 
@@ -940,12 +945,11 @@ static void avc_prot_init(void)
     data32 = data32 | (1<<0); // set pop_coeff_even_all_zero
     WRITE_HREG(VLC_CONFIG , data32);	
     
-        /* clear mailbox interrupt */
+    /* clear mailbox interrupt */
     WRITE_HREG(HCODEC_ASSIST_MBOX2_CLR_REG, 1);
 
     /* enable mailbox interrupt */
     WRITE_HREG(HCODEC_ASSIST_MBOX2_MASK, 1);
-    
 }
 
 void amvenc_reset(void)
@@ -1042,6 +1046,56 @@ s32 amvenc_loadmc(const u32 *p)
 
     return ret;
 }
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+const u32 fix_mc[] __attribute__ ((aligned (8))) = {
+    0x0809c05a, 0x06696000, 0x0c780000, 0x00000000
+};
+
+
+/*
+ * DOS top level register access fix.
+ * When hcodec is running, a protocol register HCODEC_CCPU_INTR_MSK
+ * is set to make hcodec access one CBUS out of DOS domain once
+ * to work around a HW bug for 4k2k dual decoder implementation.
+ * If hcodec is not running, then a ucode is loaded and executed
+ * instead.
+ */
+void amvenc_dos_top_reg_fix(void)
+{
+    bool hcodec_on;
+    unsigned long flags;
+
+    spin_lock_irqsave(&lock, flags);
+
+    hcodec_on = vdec_on(VDEC_HCODEC);
+
+    if ((hcodec_on) && (READ_VREG(HCODEC_MPSR) & 1)) {
+        WRITE_HREG(HCODEC_CCPU_INTR_MSK, 1);
+        spin_unlock_irqrestore(&lock, flags);
+        return;
+    }
+
+    if (!hcodec_on) {
+        vdec_poweron(VDEC_HCODEC);
+    }
+
+    amhcodec_loadmc(fix_mc);
+
+    amhcodec_start();
+
+    udelay(1000);
+
+    amhcodec_stop();
+
+    if (!hcodec_on) {
+        vdec_poweroff(VDEC_HCODEC);
+    }
+
+    spin_unlock_irqrestore(&lock, flags);
+}
+#endif
+
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV
 #define  DMC_SEC_PORT8_RANGE0  0x840
 #define  DMC_SEC_CTRL  0x829
@@ -1057,11 +1111,15 @@ void enable_hcoder_ddr_access(void)
 
 static s32 avc_poweron(void)
 {
+	unsigned long flags;
 	u32 data32 = 0;
 	data32 = 0;
 	enable_hcoder_ddr_access();
+
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	CLK_GATE_ON(DOS);
+
+	spin_lock_irqsave(&lock, flags);
 
 	data32 = READ_AOREG(AO_RTI_PWR_CNTL_REG0);
 	data32 = data32 & (~(0x18));
@@ -1096,14 +1154,22 @@ static s32 avc_poweron(void)
 	data32 = READ_VREG(DOS_GEN_CTRL0);
 	data32 = data32 & 0xFFFFFFFE;
 	WRITE_VREG(DOS_GEN_CTRL0, data32);
+
+	spin_unlock_irqrestore(&lock, flags);
 #endif
+
 	mdelay(10);
+
 	return 0;
 }
 
 static s32 avc_poweroff(void)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	unsigned long flags;
+
+	spin_lock_irqsave(&lock, flags);
+
 	// enable HCODEC isolation
 	WRITE_AOREG(AO_RTI_GEN_PWR_ISO0, READ_AOREG(AO_RTI_GEN_PWR_ISO0) | 0x30);
 	// power off HCODEC memories
@@ -1112,6 +1178,9 @@ static s32 avc_poweroff(void)
 	hvdec_clock_disable();
 	// HCODEC power off
 	WRITE_AOREG(AO_RTI_GEN_PWR_SLEEP0, READ_AOREG(AO_RTI_GEN_PWR_SLEEP0) | 0x3);
+
+	spin_unlock_irqrestore(&lock, flags);
+
 	// release DOS clk81 clock gating
 	CLK_GATE_OFF(DOS);
 #else
