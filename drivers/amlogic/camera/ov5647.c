@@ -2793,8 +2793,6 @@ static void OV5647_set_param_banding(struct ov5647_device *dev,enum  camera_nigh
     }
 }
 
-static int set_focus_zone(struct ov5647_device *dev, int value);
-
 static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
 {
     struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
@@ -2804,15 +2802,13 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
         case CAM_FOCUS_MODE_AUTO:       
             printk("auto focus mode start\n");
             bDoingAutoFocusMode = true;
-            /*dev->cam_para->cam_command = CAM_COMMAND_FULLSCAN;
+            dev->cam_para->cam_command = CAM_COMMAND_FULLSCAN;
             dev->fe_arg.port = TVIN_PORT_ISP;
             dev->fe_arg.index = 0;
             dev->fe_arg.arg = (void *)(dev->cam_para);
             if(dev->vops != NULL){
                 dev->vops->tvin_fe_func(0,&dev->fe_arg);
-            }*/
-	    printk(" set camera  focus zone =%d. \n ",ov5647_qctrl[13].default_value);
-	    set_focus_zone(dev, ov5647_qctrl[13].default_value);
+            }
             break;
         case CAM_FOCUS_MODE_CONTI_VID:
         case CAM_FOCUS_MODE_CONTI_PIC:

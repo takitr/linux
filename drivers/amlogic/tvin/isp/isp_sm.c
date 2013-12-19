@@ -1181,6 +1181,7 @@ void isp_af_fine_tune(isp_dev_t *devp)
 
 	switch(sm_state.af_state){
 		case AF_SCAN_INIT:
+			devp->cmd_state = CAM_STATE_DOING;
 			isp_set_blenr_stat(af_info->x0,af_info->y0,af_info->x1,af_info->y1);
 			af_delay = 0;
 			af_info->valid_step_cnt = 0;
@@ -1287,7 +1288,7 @@ void isp_af_fine_tune(isp_dev_t *devp)
 			}
 			break;
 		case AF_SUCCESS:
-			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay)){
+			if((atomic_read(&af_info->writeable) <= 0)&&(af_delay >= af_alg->field_delay*2)){
 				/*get last blnr*/
 				memcpy(&af_info->last_blnr,&af_info->isr_af_data,sizeof(isp_blnr_stat_t));
 			        if(af_sm_dg&AF_FINE_TUNE){
