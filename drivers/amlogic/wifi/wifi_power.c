@@ -83,8 +83,6 @@ static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 	switch (cmd) 
 	{
     	case POWER_UP:
-    		usb_wifi_power(0);
-    		mdelay(100);
     		usb_wifi_power(1);
     		mdelay(500);
    	        usb_wifi_power(0);
