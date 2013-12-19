@@ -1978,10 +1978,17 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
+		.frmsize			= {320, 240},
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
+		.size_type			= SIZE_320X240,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	},{
 		.frmsize			= {640, 480},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
-		.size_type			= SIZE_640X480,
+		.size_type			= SIZE_1280X960,
 		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
@@ -2019,17 +2026,24 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 static resolution_param_t  prev_resolution_array[] = {
 	{
 		.frmsize			= {352, 288},
-		.active_frmsize		= {640, 480},
+		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
 		.size_type			= SIZE_352X288,
-		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	}, {
+		.frmsize			= {320, 240},
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
+		.size_type			= SIZE_320X240,
+		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {640, 480},
-		.active_frmsize		= {640, 480},
+		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
 		.size_type			= SIZE_640X480,
-		.reg_script[0]			= OV5647_preview_VGA_script,
+		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
