@@ -28,6 +28,7 @@
 #include <linux/amlogic/amports/vframe_receiver.h>
 #include "vdec_reg.h"
 #include <linux/delay.h>
+#include <linux/poll.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 
@@ -118,6 +119,12 @@ static u32 half_ucode_mode = 0;
 #endif
 static int encode_inited = 0;
 static int encode_opened = 0;
+static int encoder_status = 0;
+static int avc_endian = 6;
+
+static wait_queue_head_t avc_wait;
+atomic_t avc_ready = ATOMIC_INIT(0);
+static struct tasklet_struct encode_tasklet;
 
 static const char avc_dec_id[] = "avc-dev";
 
@@ -603,21 +610,26 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
 }
 #endif
 
-/*
-static void init_scaler(void)
+static void encode_isr_tasklet(ulong data)
 {
+    int temp_canvas;
+    temp_canvas = dblk_buf_canvas;
+    dblk_buf_canvas = ref_buf_canvas;
+    ref_buf_canvas = temp_canvas;   //current dblk buffer as next reference buffer
+    frame_start = 1;
+    frame_number ++;
+    pic_order_cnt_lsb += 2;
+    debug_level(0,"encoder is done %d\n",encoder_status);
+    if(((encoder_status == ENCODER_IDR_DONE)
+	||(encoder_status == ENCODER_NON_IDR_DONE))&&(process_irq)){
+        atomic_inc(&avc_ready);
+        wake_up_interruptible(&avc_wait);
+    }
 }
 
-static void avc_local_init(void)
-{
-
-}
-*/
-
-static int encoder_status;
 static irqreturn_t enc_isr(int irq, void *dev_id)
 {
-	int temp_canvas;
+
 	WRITE_HREG(HCODEC_ASSIST_MBOX2_CLR_REG, 1);
 	encoder_status  = READ_HREG(ENCODER_STATUS);
 	if((encoder_status == ENCODER_IDR_DONE)
@@ -628,18 +640,12 @@ static irqreturn_t enc_isr(int irq, void *dev_id)
 	}
 	if(((encoder_status == ENCODER_IDR_DONE)
 	||(encoder_status == ENCODER_NON_IDR_DONE))&&(!process_irq)){
-		temp_canvas = dblk_buf_canvas;
-		dblk_buf_canvas = ref_buf_canvas;
-		ref_buf_canvas = temp_canvas;   //current dblk buffer as next reference buffer
-		frame_start = 1;
-		frame_number ++;
-		pic_order_cnt_lsb += 2;
 		process_irq = 1;
-		debug_level(0,"encoder is done %d\n",encoder_status);
+		tasklet_schedule(&encode_tasklet);
 	}
 	return IRQ_HANDLED;
 }
-int avc_endian = 6;
+
 static void avc_prot_init(void)
 {
 	unsigned int data32;
@@ -1167,10 +1173,9 @@ void amvenc_avc_start_cmd(int cmd, unsigned* input_info)
 	if(frame_number > 65535){
 		frame_number = 0;
 	}
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if((idr_pic_id == 0)&&(cmd == ENCODER_IDR)&&(half_ucode_mode == 0))
+
+	if((idr_pic_id == 0)&&(cmd == ENCODER_IDR))
 		frame_start = 1;
-#endif
 
 	if(frame_start){
 		frame_start = 0;
@@ -1211,7 +1216,6 @@ void amvenc_avc_start_cmd(int cmd, unsigned* input_info)
 
 void amvenc_avc_stop(void)
 {
-	//WRITE_HREG(HCODEC_MPSR, 0);
 	amvenc_stop();
 	avc_poweroff();
 	debug_level(1,"amvenc_avc_stop\n");
@@ -1224,14 +1228,10 @@ static int amvenc_avc_open(struct inode *inode, struct file *file)
         amlog_level(LOG_LEVEL_ERROR, "amvenc_avc open busy.\n");
         return -EBUSY;
     }
+    init_waitqueue_head(&avc_wait);
+    atomic_set(&avc_ready, 0);
+    tasklet_init(&encode_tasklet, encode_isr_tasklet, 0);
     encode_opened++;
-#if 0
-    if (avc_poweron() < 0) {
-        amlog_level(LOG_LEVEL_ERROR, "amvenc_avc init failed.\n");
-        encode_opened--;
-        return -ENODEV;
-    }
-#endif
     return r;
 }
 
@@ -1425,12 +1425,26 @@ static int avc_mmap(struct file *filp, struct vm_area_struct *vma)
 
 }
 
+static unsigned int amvenc_avc_poll(struct file *file, poll_table *wait_table)
+{
+    if(((encoder_status != ENCODER_IDR_DONE)&&(encoder_status != ENCODER_NON_IDR_DONE))||(process_irq!=1))
+        poll_wait(file, &avc_wait, wait_table);
+
+    if (atomic_read(&avc_ready)) {
+        atomic_dec(&avc_ready);
+        return POLLIN | POLLRDNORM;
+    }
+
+    return 0;
+}
+
 const static struct file_operations amvenc_avc_fops = {
     .owner    = THIS_MODULE,
     .open     = amvenc_avc_open,
     .mmap     = avc_mmap,
     .release  = amvenc_avc_release,
     .unlocked_ioctl    = amvenc_avc_ioctl,
+    .poll     = amvenc_avc_poll,
 };
 
 int  init_avc_device(void)

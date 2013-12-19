@@ -3202,7 +3202,7 @@ static void ov5647_fillbuff(struct ov5647_fh *fh, struct ov5647_buffer *buf)
 	para.vaddr = (unsigned)vbuf;
 	para.ext_canvas = buf->canvas_id;
 	para.width = buf->vb.width;
-	para.height = buf->vb.height;
+	para.height = (buf->vb.height==1080)?1088:buf->vb.height;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }
