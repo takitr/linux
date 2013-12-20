@@ -1192,11 +1192,13 @@ static int hdmi_task_handle(void *data)
         if(hdmitx_device->HWOp.Cntl) {
             static int st = 0;
             st = hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_HPD_GPI_TEST, 0);
-            if((st == 0) && (hdmitx_device->hpd_state == 1)) {
-                hdmitx_device->hpd_event = 2;
-            }
-            if((st == 1) && (hdmitx_device->hpd_state == 0)) {
-                hdmitx_device->hpd_event = 1;
+            if(hdmitx_device->hpd_lock != 1) {
+                if((st == 0) && (hdmitx_device->hpd_state == 1)) {
+                    hdmitx_device->hpd_event = 2;
+                }
+                if((st == 1) && (hdmitx_device->hpd_state == 0)) {
+                    hdmitx_device->hpd_event = 1;
+                }
             }
         }
         
