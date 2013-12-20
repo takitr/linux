@@ -1988,7 +1988,7 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.frmsize			= {640, 480},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
-		.size_type			= SIZE_1280X960,
+		.size_type			= SIZE_640X480,
 		.reg_script[0]			= OV5647_preview_960P_script,
 		.reg_script[1]			= OV5647_VGA_script_mipi,
 	}, {
@@ -2957,6 +2957,7 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
     int i=0;
     unsigned char t = dev->cam_info.interface;
     if(i_index != -1 && ov5647_work_mode != CAMERA_CAPTURE){
+    	printk("i_index is %d\n", i_index);
         res_param = &debug_prev_resolution_array[i_index];
     }
     if (!res_param->reg_script[t]) {
@@ -3865,6 +3866,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 
 char *res_size[]={
 	"cif",
+	"320p"
 	"480p",
 	"720p",
 	"960p",
@@ -3892,7 +3894,6 @@ static ssize_t manual_format_store(struct class *cls,struct class_attribute *att
 	char target[20];
 	char *param[3] = {NULL};
 	resolution_param_t *res_param;
-
 	
 	parse_param(buf,&param[0]);
 	if(param[0] == NULL || param[1] == NULL){
