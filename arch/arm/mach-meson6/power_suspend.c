@@ -6,11 +6,6 @@
 #include <linux/ioport.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
-#include <linux/dma-mapping.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
-#include <linux/mtd/nand_ecc.h>
-#include <linux/mtd/partitions.h>
 #include <linux/device.h>
 #include <linux/spi/flash.h>
 #include <mach/hardware.h>
@@ -23,7 +18,6 @@
 //#include <mach/lm.h>
 #include <asm/memory.h>
 #include <asm/mach/map.h>
-#include <mach/nand.h>
 #include <linux/i2c.h>
 #include <linux/i2c-aml.h>
 #include <mach/power_gate.h>
