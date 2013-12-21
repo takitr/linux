@@ -20,6 +20,13 @@ int vdin_reg_v4l2(vdin_v4l2_ops_t *v4l2_ops)
 }
 EXPORT_SYMBOL(vdin_reg_v4l2);
 
+void vdin_unreg_v4l2(void)
+{
+        memset(&ops,0,sizeof(vdin_v4l2_ops_t));
+}
+EXPORT_SYMBOL(vdin_unreg_v4l2);
+
+
 int v4l2_vdin_ops_init(vdin_v4l2_ops_t *vdin_v4l2p)
 {
         void * ret = 0;

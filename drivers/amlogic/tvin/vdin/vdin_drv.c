@@ -804,11 +804,15 @@ static int vdin_func(int no, vdin_arg_t *arg)
 	struct vdin_dev_s *devp = vdin_devp[no];
 	int ret = 0;
 	struct vdin_arg_s *parm = NULL;
-        if(IS_ERR(devp)||!(devp->flags&VDIN_FLAG_DEC_STARTED)){
+        if(IS_ERR_OR_NULL(devp)){
 		if(vdin_dbg_en)
-			pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
+		        pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
                 return -1;
-        }
+        }else if(!(devp->flags&VDIN_FLAG_DEC_STARTED)){
+        	if(vdin_dbg_en)
+			pr_err("[vdin..]%s vdin%d has't started.\n",__func__,no);
+		return -1;
+	}
 	parm = arg;
 	switch(parm->cmd){
                 /*ajust vdin1 matrix1 & matrix2 for isp to get histogram information*/
@@ -2838,9 +2842,6 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	/* @todo provider name */
 	sprintf(vdevp->name, "%s%d", PROVIDER_NAME, vdevp->index);
 	vf_provider_init(&vdevp->vprov, vdevp->name, &vdin_vf_ops, vdevp->vfp);
-        /*register vdin for v4l2 interface*/
-        if(vdin_reg_v4l2(&vdin_4v4l2_ops))
-                pr_err("[vdin..] %s: register vdin v4l2 error.\n",__func__);
 	/* @todo canvas_config_mode */
 	if (canvas_config_mode == 0 || canvas_config_mode == 1) {
 		vdin_canvas_init(vdevp);
@@ -2872,7 +2873,7 @@ static int vdin_drv_remove(struct platform_device *pdev)
 
 	mutex_destroy(&vdevp->mm_lock);
 	mutex_destroy(&vdevp->fe_lock);
-
+	
 	vf_pool_free(vdevp->vfp);
 
         #ifdef VF_LOG_EN
@@ -2887,8 +2888,9 @@ static int vdin_drv_remove(struct platform_device *pdev)
 
 	vdin_delete_device(vdevp->index);
 	cdev_del(&vdevp->cdev);
+	vdin_devp[vdevp->index] = NULL;
 	kfree(vdevp);
-
+	
 	/* free drvdata */
 	dev_set_drvdata(vdevp->dev, NULL);
 	platform_set_drvdata(pdev, NULL);
@@ -2937,6 +2939,9 @@ static struct platform_driver vdin_driver = {
 }
 };
 
+extern int vdin_reg_v4l2(vdin_v4l2_ops_t *v4l2_ops);
+extern void vdin_unreg_v4l2(void);
+
 static int __init vdin_drv_init(void)
 {
 	int ret = 0;
@@ -2961,10 +2966,14 @@ static int __init vdin_drv_init(void)
 	ret = class_create_file(vdin_clsp, &class_attr_memp);
 
 	ret = platform_driver_register(&vdin_driver);
+	
 	if (ret != 0) {
 		pr_err("%s: failed to register driver\n", __func__);
 		goto fail_pdrv_register;
 	}
+	/*register vdin for v4l2 interface*/
+        if(vdin_reg_v4l2(&vdin_4v4l2_ops))
+                pr_err("[vdin..] %s: register vdin v4l2 error.\n",__func__);
 #ifdef CONFIG_ARCH_MESON6TV
 #ifndef CONFIG_MESON_M6C_ENHANCEMENT
 	aml_write_reg32(P_MMC_CHAN5_CTRL, 0xc01f); // adjust vdin weight and age limit
@@ -2982,6 +2991,7 @@ fail_alloc_cdev_region:
 
 static void __exit vdin_drv_exit(void)
 {
+	vdin_unreg_v4l2();
 	//device_remove_file(vdin_clsp, &dev_attr_test);
 	class_remove_file(vdin_clsp, &class_attr_memp);
 	class_destroy(vdin_clsp);
