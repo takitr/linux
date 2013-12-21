@@ -52,6 +52,7 @@ obj-$(CONFIG_I2C) += i2c/
 
 #obj-y += extern_io/
 
+obj-$(CONFIG_EFUSE)+=efuse/
 obj-y += input/
 
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
@@ -74,7 +75,7 @@ obj-y += power/
 obj-y += tvin_v4l2/
 obj-y += tvin/
 
-obj-$(CONFIG_EFUSE)+=efuse/
+obj-y += thermal/
 
 
 #obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/

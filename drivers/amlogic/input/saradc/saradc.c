@@ -9,6 +9,7 @@
 #ifdef CONFIG_MESON_CPU_TEMP_SENSOR
 #include <mach/cpu.h>
 #endif
+#include <linux/amlogic/efuse.h>
 //#define ENABLE_CALIBRATION
 #ifndef CONFIG_OF
 #define CONFIG_OF
@@ -17,7 +18,11 @@ struct saradc {
 	spinlock_t lock;
 	struct calibration *cal;
 	int cal_num;
-
+#ifdef CONFIG_ARCH_MESON8
+	int flag;
+	int trimming;
+	int adc_efuse;
+#endif
 };
 
 static struct saradc *gp_saradc;
@@ -134,6 +139,7 @@ static int saradc_get_cal_value(struct calibration *cal, int num, int val)
 
 static int last_value[] = {-1,-1,-1,-1,-1 ,-1,-1 ,-1};
 static u8 print_flag = 0; //(1<<CHAN_4)
+
 int get_adc_sample(int chan)
 {
 	int count;
@@ -413,6 +419,18 @@ static struct class saradc_class = {
     .class_attrs = saradc_class_attrs,
 };
 
+int get_cpu_temp()
+{
+	int ret=-1,tempa;
+	if(gp_saradc->flag){
+		ret=get_adc_sample(6);
+		if(ret>=0){
+			tempa=(18*(ret-gp_saradc->adc_efuse)*10000)/1024/10/85+27;
+			return tempa;
+		}
+	}
+	return ret;
+}
 static int saradc_probe(struct platform_device *pdev)
 {
 	int err;
@@ -451,6 +469,36 @@ static int saradc_probe(struct platform_device *pdev)
 				printk(KERN_INFO "saradc calibration ok\n");
 			}
 		}
+	}
+#endif
+#ifdef CONFIG_ARCH_MESON8
+	char buf[2]={0};
+	int temp=-1,TS_C=-1,flag=0;
+	err=efuse_read_intlItem("temperature",buf,2);
+	if(err>=0){
+		printk("buf[0]=%x,buf[1]=%x,err=%d\n",buf[0],buf[1],err);
+		temp=0;TS_C=0;
+		temp=buf[1];
+		temp=(temp<<8)|buf[0];
+		TS_C=temp&0xf;
+		flag=0;
+		flag=(temp&0x8000)>>15;
+		temp=(temp&0x7fff)>>4;
+		printk("adc=%d,TS_C=%d,flag=%d\n",temp,TS_C,flag);
+		saradc->flag=flag;
+		saradc->trimming=TS_C;
+		saradc->adc_efuse=temp;
+	}
+	else{
+		saradc->flag=flag;
+		saradc->trimming=TS_C;
+		saradc->adc_efuse=temp;
+	}
+	if(gp_saradc->flag){
+		select_temp();
+		set_trimming(gp_saradc->trimming);
+		enable_temp();
+		enable_temp__();
 	}
 #endif
 	set_cal_voltage(7);

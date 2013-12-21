@@ -50,8 +50,8 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 				enum thermal_trend trend, bool throttle)
 {
 	struct thermal_cooling_device *cdev = instance->cdev;
-	unsigned long cur_state;
-	unsigned long next_target;
+	int cur_state;
+	int next_target;
 
 	/*
 	 * We keep this instance the way it is by default.
@@ -60,7 +60,7 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 	 */
 	cdev->ops->get_cur_state(cdev, &cur_state);
 	next_target = instance->target;
-
+	
 	switch (trend) {
 	case THERMAL_TREND_RAISING:
 		if (throttle) {
@@ -75,7 +75,7 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 			next_target = instance->upper;
 		break;
 	case THERMAL_TREND_DROPPING:
-		if (cur_state == instance->lower) {
+		if (cur_state <= instance->lower) {
 			if (!throttle)
 				next_target = THERMAL_NO_TARGET;
 		} else {
@@ -85,7 +85,7 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 		}
 		break;
 	case THERMAL_TREND_DROP_FULL:
-		if (cur_state == instance->lower) {
+		if (cur_state <= instance->lower) {
 			if (!throttle)
 				next_target = THERMAL_NO_TARGET;
 		} else
@@ -94,6 +94,14 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 	default:
 		break;
 	}
+
+	printk("instance:%s,trend=%d,throttle=%d,instace->target=%d,cur_state=%d,next_target=%d\n",
+		instance->name,
+		trend,
+		throttle,
+		instance->target,
+		cur_state,
+		next_target);
 
 	return next_target;
 }

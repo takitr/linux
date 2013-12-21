@@ -8,6 +8,7 @@
 #include <linux/platform_device.h>
 #include <mach/am_regs.h>
 #include <plat/io.h>
+#include <mach/power_gate.h>
 
 #include <linux/amlogic/efuse.h>
 #include "efuse_regs.h"
@@ -83,6 +84,7 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 	unsigned int byte_sel;
 #endif
 
+	CLK_GATE_ON(EFUSE);
 	//set efuse PD=0
 	aml_set_reg32_bits( P_EFUSE_CNTL1, 0, 27, 1);
 
@@ -140,6 +142,7 @@ static void __efuse_write_byte( unsigned long addr, unsigned long data )
 
 	//set efuse PD=1
 	aml_set_reg32_bits( P_EFUSE_CNTL1, 1, 27, 1);
+	CLK_GATE_OFF(EFUSE);
 	//printk(KERN_INFO "__efuse_write_byte: addr=%ld, data=0x%ld\n", addr, data);
 }
 
@@ -218,6 +221,7 @@ static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 	if (count > EFUSE_BYTES)
 		return -EFAULT;
 	
+	CLK_GATE_ON(EFUSE);
 	aml_set_reg32_bits( P_EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_ON,
 		CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 		
@@ -233,6 +237,7 @@ static ssize_t __efuse_read( char *buf, size_t count, loff_t *ppos )
 	aml_set_reg32_bits( P_EFUSE_CNTL1, CNTL1_AUTO_RD_ENABLE_OFF,
 			CNTL1_AUTO_RD_ENABLE_BIT, CNTL1_AUTO_RD_ENABLE_SIZE );
 		
+	CLK_GATE_OFF(EFUSE);
 	tmp_p = (char*)contents;
     tmp_p += *ppos;                           
 
@@ -924,7 +929,7 @@ int efuse_read_intlItem(char *intl_item,char *buf,int size)
 			break;
 		case EFUSE_SOC_CHIP_M8:
 			if(strcmp(intl_item,"temperature") == 0){
-				pos = 510;
+				pos = 502;
 				len = 2;
 				if(size <= 0){
 					printk("input size:%d is error\n",size);

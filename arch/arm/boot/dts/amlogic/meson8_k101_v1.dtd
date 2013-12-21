@@ -1558,6 +1558,17 @@ sdio{
 		usid-min = <8>; /*reserved*/
 		usid-max = <31>; /*reserved*/
 	};
+	thermal{
+		compatible = "amlogic-thermal";
+		#thermal-cells=<3>;
+		dev_name = "aml_thermal";
+		trip_point=<30 1200000 1200000
+			    70  800000 800000
+			    110 0xffffffff 0xffffffff>;
+		cpu_cali_a=<0>;
+		idle_interval=<1000>;
+
+	};
 
 /// ***************************************************************************************
 ///	-	HDMI
