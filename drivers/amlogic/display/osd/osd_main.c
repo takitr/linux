@@ -49,6 +49,8 @@
 #include <linux/of_fdt.h>
 #include "osd_log.h"
 #include <linux/amlogic/amlog.h>
+#include <linux/amlogic/logo/logo_dev.h>
+#include <linux/amlogic/logo/logo_dev_osd.h>
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
@@ -1485,17 +1487,20 @@ osd_probe(struct platform_device *pdev)
 {
 	int r;
 	int ret;
-       	struct fb_info *fbi=NULL;
+    struct fb_info *fbi=NULL;
 	const vinfo_t *vinfo;
-    	struct fb_var_screeninfo *var;
+    struct fb_var_screeninfo *var;
   	struct fb_fix_screeninfo *fix;
 	struct resource *mem;
 	int  index,Bpp;
 	logo_object_t  *init_logo_obj=NULL;
 	int  logo_osd_index=0,i;
 	myfb_dev_t 	*fbdev = NULL;
+	vmode_t current_mode = VMODE_MASK;
+	vmode_t cvbs_mode = VMODE_MASK;
+	int hpd_state = 0;
 	const void *prop;
-	int vmode,prop_idx=0;
+	int prop_idx=0;
 	int rotation = 0;
 	
 	vout_register_client(&osd_notifier_nb);
@@ -1518,19 +1523,38 @@ osd_probe(struct platform_device *pdev)
    	if (NULL==init_logo_obj )
     	{
     		prop = of_get_property(pdev->dev.of_node, "vmode", NULL);
-		if(prop)
+			if(prop)
 			prop_idx = of_read_ulong(prop,1);
-			if(prop_idx == 3)
-				vmode = VMODE_1080P;
-			else if(prop_idx == 1)
-				vmode = VMODE_LCD;
-			else if(prop_idx == 2)
-				vmode = VMODE_LVDS_1080P;
-			else
-				vmode = VMODE_720P;
+			if(prop_idx == 3){
+				if(get_current_mode_state() == VMODE_SETTED){
+					amlog_level(LOG_LEVEL_HIGH,"vmode has setted in aml logo module\r\n");
+				}else{
+					DisableVideoLayer();
+					#ifdef CONFIG_AM_HDMI_ONLY
+						extern int read_hpd_gpio(void);
+						hpd_state = read_hpd_gpio();
 
-    		set_current_vmode(vmode);
-		osddev_init();
+						cvbs_mode = get_current_cvbs_vmode();
+						current_mode = get_current_hdmi_vmode();
+						if (hpd_state == 0)
+							set_current_vmode(cvbs_mode);
+						else
+							set_current_vmode(current_mode);
+					#else
+						current_mode = get_resolution_vmode();
+						set_current_vmode(current_mode);
+					#endif
+				}
+			}
+			else if(prop_idx == 1){
+				current_mode = VMODE_LCD;
+				set_current_vmode(VMODE_LCD);
+			}
+			else if(prop_idx == 2){
+				current_mode = VMODE_LVDS_1080P;
+				set_current_vmode(VMODE_LVDS_1080P);
+			}
+			osddev_init();
     	}
 	vinfo = get_current_vinfo();
     	for (index=0;index<OSD_COUNT;index++)

@@ -7,11 +7,7 @@
 #include	"amlogo_log.h" 
 #include <linux/amlogic/amlog.h>
 #include <linux/amlogic/vout/vinfo.h>
-
-#define DisableVideoLayer() \
-    do { aml_clr_reg32_mask(P_VPP_MISC, \
-         VPP_VD1_PREBLEND | VPP_VD1_POSTBLEND); \
-    } while (0)
+#include <linux/amlogic/vout/vout_notify.h>
 
 static  logo_output_dev_t   output_osd0={
 	.idx=LOGO_DEV_OSD0,
@@ -53,9 +49,9 @@ static  hdmi_only_info_t hdmi_only_info[PARA_HDMI_ONLY]={
 };
 
 static vmode_t hdmimode_hdmionly = VMODE_1080P;
-static vmode_t cvbsmode_hdmionly = VMODE_480CVBS;
 #endif
 
+static vmode_t cvbsmode_hdmionly = VMODE_480CVBS;
 
 static  inline void  setup_color_mode(const color_bit_define_t *color,u32  reg)
 {
@@ -103,7 +99,6 @@ static int osd_hw_setup(logo_object_t *plogo)
 	osd_ctl.disp_start_y=0;
 	osd_ctl.disp_end_y=osd_ctl.yres-1;
 	osd_init_hw(0);
-	DisableVideoLayer();
 	setup_color_mode(color,osd_ctl.index==0?P_VIU_OSD1_BLK0_CFG_W0:P_VIU_OSD2_BLK0_CFG_W0);
 	if(!plogo->para.loaded)
 	{
@@ -137,6 +132,7 @@ static int osd0_init(logo_object_t *plogo)
 
 	if(plogo->para.output_dev_type==output_osd0.idx)
 	{
+		DisableVideoLayer();
 		if((plogo->platform_res[output_osd0.idx].mem_end - plogo->platform_res[output_osd0.idx].mem_start) ==0 ) 
 		{
 			return OUTPUT_DEV_UNFOUND;
@@ -146,10 +142,8 @@ static int osd0_init(logo_object_t *plogo)
 			osd_init_hw(plogo->para.loaded);
 			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
 		}
-#ifdef CONFIG_AM_HDMI_ONLY	
-		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
-			set_current_vmode(plogo->para.vout_mode);
-		} else {
+#ifdef CONFIG_AM_HDMI_ONLY
+		{
 			extern int read_hpd_gpio(void);
 			hpd_state = read_hpd_gpio();
     		
@@ -180,6 +174,7 @@ static int osd1_init(logo_object_t *plogo)
 
 	if(plogo->para.output_dev_type==output_osd1.idx)
 	{
+		DisableVideoLayer();
 		if((plogo->platform_res[output_osd1.idx].mem_end - plogo->platform_res[output_osd1.idx].mem_start) ==0)
 		{
 			return OUTPUT_DEV_UNFOUND;
@@ -189,17 +184,19 @@ static int osd1_init(logo_object_t *plogo)
 			osd_init_hw(plogo->para.loaded);
 			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
 		}
-#ifdef CONFIG_AM_HDMI_ONLY	
-		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
-			set_current_vmode(plogo->para.vout_mode);
-		} else {
+#ifdef CONFIG_AM_HDMI_ONLY
+		{
+			printk("**********vmode is HDMIONLY\n");
 			extern int read_hpd_gpio(void);
 			hpd_state = read_hpd_gpio();
     		
-			if (hpd_state == 0)
+			if (hpd_state == 0){
 			    set_current_vmode(cvbsmode_hdmionly);
-			else
+			}
+			else{
+			    printk("********hdmi mode is %d\n", hdmimode_hdmionly);
 			    set_current_vmode(hdmimode_hdmionly);
+			}
 		}
 #else
 		set_current_vmode(plogo->para.vout_mode);
@@ -399,8 +396,17 @@ int dev_osd_setup(void)
 	return SUCCESS;
 }
 
+vmode_t get_current_cvbs_vmode(void)
+{
+	return cvbsmode_hdmionly;
+}
 
 #ifdef CONFIG_AM_HDMI_ONLY
+vmode_t get_current_hdmi_vmode(void)
+{
+	return hdmimode_hdmionly;
+}
+#endif
 
 static int __init get_cvbs_mode(char *str)
 {
@@ -415,6 +421,7 @@ static int __init get_cvbs_mode(char *str)
 }
 __setup("cvbsmode=", get_cvbs_mode);
 
+#ifdef CONFIG_AM_HDMI_ONLY
 static int __init get_hdmi_mode(char *str)
 {
     u32 i;

@@ -2174,7 +2174,7 @@ void osd_init_hw(u32  logo_loaded)
 		data32 = 0x1 << 0;
 		#endif
 	    	data32 |= OSD_GLOBAL_ALPHA_DEF<< 12;
-		data32 |= (1<<21)	;
+		data32 |= (1<<21);
 	    	aml_write_reg32(P_VIU_OSD1_CTRL_STAT , data32);
 		aml_write_reg32(P_VIU_OSD2_CTRL_STAT , data32);
 	}

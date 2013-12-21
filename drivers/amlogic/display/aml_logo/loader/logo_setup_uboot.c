@@ -144,6 +144,27 @@ logo_object_t*	 get_current_logo_obj(void)
         aml_logo.dev->output_dev.osd.color_depth=32;
 	return &aml_logo;
 }
+
+vmode_t get_resolution_vmode(void)
+{
+	logo_object_t *plogo=&aml_logo;
+
+	if (plogo != NULL)
+		return plogo->para.vout_mode;
+	else
+		return VMODE_1080P;
+}
+
+vmode_set_t get_current_mode_state(void)
+{
+	if(aml_logo.dev == NULL)
+	{
+		return VMODE_NOT_SETTED;
+	}else{
+		return VMODE_SETTED;
+	}
+}
+
 int  __init  logo_setup(char *str)
 {
 
