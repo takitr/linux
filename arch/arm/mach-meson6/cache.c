@@ -25,7 +25,7 @@
 #include <linux/printk.h>
 #include <linux/string.h>
 #include <asm/hardware/cache-l2x0.h>
-
+#if 0
 extern void meson6_l2x0_init(void __iomem *);
 
 #ifdef  CONFIG_MESON_L2CC_OPTIMIZE
@@ -47,7 +47,7 @@ static inline void __init write_actlr(u32 actlr)
 static int __init meson_cache_init(void)
 {
 
-	__u32 prefetch,aux;
+	__u32 prefetch,aux=0;
 	void __iomem *l2x0_base;
 #ifdef 	CONFIG_MESON_L2CC_OPTIMIZE
 	__u32 scu_ctrl;
@@ -68,6 +68,7 @@ static int __init meson_cache_init(void)
 #ifdef  CONFIG_MESON_L2CC_OPTIMIZE
 	aux |=  (1<<0 | (1<<L2X0_AUX_CTRL_EARLY_BRESP_SHIFT));
 #endif
+	printk("before init aux=%x\n",aux);
 	l2x0_init(l2x0_base, aux, ~0);
 
 #ifdef CONFIG_MESON_L2CC_STANDBY
@@ -108,3 +109,16 @@ static int __init meson_cache_init(void)
 	return 0;
 }
 early_initcall(meson_cache_init);
+#else
+static int __init meson_cache_of_init(void)
+{
+	int aux = 0;
+	/*
+		put some default aux setting here
+	*/
+	
+	l2x0_of_init(aux,~0);
+	return 0;
+}
+early_initcall(meson_cache_of_init);
+#endif
