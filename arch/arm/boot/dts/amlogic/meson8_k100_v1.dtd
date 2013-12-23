@@ -223,6 +223,18 @@ void root_func(){
 	};
 
 /// ***************************************************************************************
+///	-	DISP&MM-Video Input Manager
+//$$ MODULE = "DISP&MM-Video Input Manager"
+//$$ DEVICE="vm"
+//$$ L2 PROP_STR = "status"
+    vm{
+		compatible = "amlogic,vm";
+		dev_name = "vm.0";
+		status = "okay";
+		reserve-memory = <0x01800000>;
+	};
+
+/// ***************************************************************************************
 ///	-	ION
 //$$ MODULE="ION"
 //$$ DEVICE="ion_dev"

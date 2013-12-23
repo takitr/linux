@@ -63,9 +63,6 @@ static __init void meson8_reserve(void)
       *   flushing valid data on "zero address"
       */
     memblock_reserve(PHYS_OFFSET,__pa(swapper_pg_dir) - PHYS_OFFSET);
-#ifdef CONFIG_AMLOGIC_VIDEOIN_MANAGER && CONFIG_CMA
-    vm_reserve_cma();
-#endif
 }
 
 __initdata struct map_desc meson_board_io_desc[1];

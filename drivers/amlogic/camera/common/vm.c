@@ -51,7 +51,8 @@
 
 #include <linux/sizes.h>
 #include <linux/dma-mapping.h>
-#include <linux/dma-contiguous.h>
+#include <linux/of_fdt.h>
+
 
 /*class property info.*/
 #include "vmcls.h"
@@ -95,7 +96,6 @@ static int test_zoom = 0;
 
 static void vm_cache_flush(unsigned buf_start , unsigned buf_size);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
-static struct platform_device vm_plat_dev;
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 #endif
@@ -1833,73 +1833,6 @@ int uninit_vm_device(void)
 }
 
 
-#ifdef CONFIG_CMA
-void set_vm_buf_info(resource_size_t start,unsigned int size);
-void unset_vm_buf_info(void);
-
-static dma_addr_t vm_buf_phys = ~0;
-static void *vm_buf_virt;
-static size_t vm_buf_size;
-
-int vm_init_buf(size_t size)
-{
-
-    if(size ==0)
-        return -1;
-
-    if(vm_buf_phys != ~0)
-    {
-        //pr_info("phys already in use phys %p, virt %p, size %d\n", vm_buf_phys, vm_buf_virt, size/1024);
-        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-    }
-
-    vm_buf_virt = dma_alloc_coherent(&vm_plat_dev.dev, size, &vm_buf_phys, GFP_KERNEL);
-
-    //pr_info("%s: allocating virt %p, phys %p, size %dk\n", __func__, vm_buf_virt, vm_buf_phys, size/1024);
-    if(vm_buf_virt == 0)
-    {
-        pr_err("CMA failed to allocate dma buffer\n");
-        return -1;
-    }
-    else
-        set_vm_buf_info(vm_buf_phys, size);
-
-    vm_buf_size = size;
-    return 0;
-}
-
-EXPORT_SYMBOL(vm_init_buf);
-
-void vm_deinit_buf()
-{
-    if(0 == vm_buf_size)
-    {
-        pr_warn("vm buf size equals 0\n");
-        return;
-    }
-    unset_vm_buf_info();
-    if(vm_buf_phys != ~0)
-    {
-        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-        vm_buf_phys = ~0;
-        vm_buf_virt = 0;
-        vm_buf_size = 0;
-    }
-    pr_info("%s\n", __func__);
-}
-
-EXPORT_SYMBOL(vm_deinit_buf);
-
-void __init vm_reserve_cma(void)
-{
-    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 68 * SZ_1M, 0, 0);
-    if(ret)
-        pr_err("%s : dma_declare_contiguous failed\n", __func__);
-}
-#endif
-
-
-
 /*******************************************************************
  *
  * interface for Linux driver
@@ -1911,11 +1844,12 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 /* for driver. */
 static int vm_driver_probe(struct platform_device *pdev)
 {
-#ifndef CONFIG_CMA
 	char* buf_start;
 	unsigned int buf_size;
 	struct resource *mem;
+    int idx;
 
+#if 0
 	if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
 	{
 		buf_start = 0;
@@ -1924,10 +1858,25 @@ static int vm_driver_probe(struct platform_device *pdev)
 		buf_start = (char *)mem->start;
 		buf_size = mem->end - mem->start + 1;
 	}
-	set_vm_buf_info(mem->start,buf_size);
-#endif
-	vm_device.pdev = pdev;
+#else
+     idx = find_reserve_block(pdev->dev.of_node->name,0);
+     if(idx < 0){
+         buf_start = 0;
+         buf_size = 0;
+         amlog_level(LOG_LEVEL_HIGH, "vm memory resource undefined.\n");
+     }
+     else
+     {
+         buf_start = (char *)get_reserve_block_addr(idx);
+         buf_size = (unsigned int)get_reserve_block_size(idx);
+     }
+#endif 
+    vm_device.pdev = pdev;
+
+	set_vm_buf_info(buf_start,buf_size);
+
 	init_vm_device();
+
 	return 0;
 }
 
@@ -1949,15 +1898,6 @@ static const struct of_device_id amlogic_vm_dt_match[]={
 #endif
 
 
-static struct platform_device vm_plat_dev = 
-{
-    .name = "vm",
-    .id = 0,
-    .dev = {
-        .coherent_dma_mask = ~0,
-    }
-};
-
 /* general interface for a linux driver .*/
 static struct platform_driver vm_drv = {
 	.probe  = vm_driver_probe,
@@ -1977,12 +1917,8 @@ vm_init_module(void)
 	amlog_level(LOG_LEVEL_HIGH,"vm_init\n");
 	if ((err = platform_driver_register(&vm_drv))) {
 		printk(KERN_ERR "Failed to register vm driver (error=%d\n", err);
-		return err;
 	}
 
-    err = platform_device_register(&vm_plat_dev);
-    if(err)
-        platform_driver_unregister(&vm_drv);
 	return err;
 }
 
@@ -1990,7 +1926,6 @@ static void __exit
 vm_remove_module(void)
 {
 	platform_driver_unregister(&vm_drv);
-    platform_device_unregister(&vm_plat_dev);
 	amlog_level(LOG_LEVEL_HIGH,"vm module removed.\n");
 }
 
