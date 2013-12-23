@@ -49,14 +49,12 @@ static void aml_sdio_soft_reset(struct amlsd_host* host)
 /*
  * init sdio reg
  */
-static void aml_sdio_init_param(struct amlsd_platform* pdata)
+static void aml_sdio_init_param(struct amlsd_host* host)
 {
-	struct amlsd_host* host = pdata->host;
     struct sdio_status_irq irqs={0};
     struct sdio_config conf={0};
 
-    writel(pdata->port, host->base + SDIO_MULT);
-    aml_sdio_soft_reset(host);
+    // aml_sdio_soft_reset(host);
 
     /*write 1 clear bit8,9*/
     irqs.sdio_if_int = 1;
@@ -146,6 +144,20 @@ void aml_sdio_set_port_ios(struct mmc_host* mmc)
     struct amlsd_host* host = pdata->host;
     u32 vconf = readl(host->base + SDIO_CONF);
     struct sdio_config* conf = (void*)&vconf;
+
+        if(aml_card_type_sdio(pdata) && (pdata->mmc->actual_clock > 50000000))
+        { // if > 50MHz  
+            conf->data_latch_at_negedge = 1; //[19] //0     
+            conf->do_not_delay_data = 1; //[18]        
+            conf->cmd_out_at_posedge =0; //[11]    
+        } 
+        else 
+        { 
+            conf->data_latch_at_negedge = 0; //[19] //0       
+            conf->do_not_delay_data = 0; //[18]       
+            conf->cmd_out_at_posedge =0; //[11]    
+        }
+        writel(vconf, host->base+SDIO_CONF);
 
     if ((conf->cmd_clk_divide == pdata->clkc) && (conf->bus_width == pdata->width))
         return ;
@@ -310,7 +322,7 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
     sdio_err("%s: %s, Cmd%d arg %08x Xfer %d Bytes, "
             "host->xfer_step=%d, host->cmd_is_stop=%d, pdata->port=%d, "
             "virqs=%#0x, virqc=%#0x, conf->cmd_clk_divide=%d, pdata->clkc=%d, "
-            "conf->bus_width=%d, pdata->width=%d, clock=%d\n",
+            "conf->bus_width=%d, pdata->width=%d, conf=%#x, clock=%d\n",
             mmc_hostname(host->mmc),
             msg,
             host->mrq->cmd->opcode,
@@ -324,15 +336,17 @@ static void aml_sdio_print_err (struct amlsd_host *host, char *msg)
             pdata->clkc,
             conf->bus_width,
             pdata->width,
+            vconf,
             clk_rate / (pdata->clkc + 1));    
 }
 
 /*setup delayed workstruct in aml_sdio_request*/
 static void aml_sdio_timeout(struct work_struct *data)
 {
+    static int timeout_cnt = 0;
+    unsigned long flags;
     //struct amlsd_host* host = (void*)data;
     struct amlsd_host *host = container_of(data, struct amlsd_host, timeout);
-    unsigned long flags;
     // struct mmc_request *mrq = host->mrq;
     u32 virqs = readl(host->base + SDIO_IRQS);
     struct sdio_status_irq* irqs = (void*)&virqs;
@@ -353,12 +367,18 @@ static void aml_sdio_timeout(struct work_struct *data)
         //mod_timer(&host->timeout_tlist, jiffies + 10);
         schedule_delayed_work(&host->timeout, 10);
         spin_unlock_irqrestore(&host->mrq_lock, flags);
-        if(irqs->sdio_cmd_int)
+        if(irqs->sdio_cmd_int) {
+            timeout_cnt++;
+            if (timeout_cnt > 100)
+                goto timeout_handle;
             sdio_err("%s: irq have been occured\n", mmc_hostname(host->mmc));
+        }
         else
             sdio_err("%s: isr have been run\n",  mmc_hostname(host->mmc));
 		return;
 	}
+timeout_handle:
+    timeout_cnt = 0;
 
     if (!(irqc->arc_cmd_int_en)) {
         sdio_err("%s: arc_cmd_int_en is not enable\n",  mmc_hostname(host->mmc));
@@ -742,6 +762,11 @@ static void aml_sdio_set_clk_rate(struct amlsd_platform* pdata, u32 clk_ios)
 	/*0: dont set it, 1:div2, 2:div3, 3:div4...*/
 	clk_div = clk_rate / clk_ios - !(clk_rate%clk_ios);
 
+   if(aml_card_type_sdio(pdata) && (pdata->f_max > 50000000)) // if > 50MHz
+          clk_div = 0;
+       
+
+
     conf->cmd_clk_divide = clk_div;
     pdata->clkc = clk_div;
     pdata->mmc->actual_clock = clk_rate / (clk_div + 1);
@@ -958,6 +983,7 @@ static struct amlsd_host* aml_sdio_init_host(void)
     
     host->version = AML_MMC_VERSION;
     host->storage_flag = storage_flag;
+    host->pinctrl = NULL;
 
 #ifdef      CONFIG_MMC_AML_DEBUG
 	host->req_cnt = 0;
@@ -983,6 +1009,9 @@ static int aml_sdio_probe(struct platform_device *pdev)
 
 	if(amlsd_get_reg_base(pdev, host))
 		goto fail_init_host;
+    
+    //init sdio reg here
+    aml_sdio_init_param(host);
 
 	host->pdev = pdev;
 	for(i=0;i<MMC_MAX_DEVICE;i++){
@@ -1046,11 +1075,6 @@ static int aml_sdio_probe(struct platform_device *pdev)
 
 		if(pdata->port_init)
 			pdata->port_init(pdata);
-
-        if (i == 0) {
-            //init sdio reg here
-            aml_sdio_init_param(pdata);
-        }
 
         aml_sduart_pre(pdata);
 
@@ -1122,6 +1146,9 @@ int aml_sdio_remove(struct platform_device *pdev)
 		mmc_remove_host(mmc);
 		mmc_free_host(mmc);
 	}
+    
+    aml_devm_pinctrl_put(host);
+
     kfree(host);
 	return 0;
 }
