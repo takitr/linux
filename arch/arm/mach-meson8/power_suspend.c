@@ -50,18 +50,6 @@
 #define APPF_SAVE_DEBUG        (1<<3)
 #define APPF_SAVE_L2           (1<<4)
 
-/******************
-***You need sync this param struct with arc_pwr.h is suspend firmware.
-***1st word is used for arc output control: serial_disable.
-***2nd word...
-***
-***If you need transfer more params, you need sync the struck define in arc_pwr.h
-*******************/
-#define PARAM_ADDR             (IO_SRAM_BASE + 0x10200)
-
-unsigned int arc_serial_disable;
-
-
 #if 0
 #ifdef CONFIG_HARDWARE_WATCHDOG
 void disable_watchdog(void)
@@ -86,15 +74,6 @@ void reset_watchdog(void)
 #endif /* CONFIG_HARDWARE_WATCHDOG */
 #endif
 
-static void check_in_param(void)
-{
-	unsigned int p_addr;
-
-	p_addr = PARAM_ADDR;
-	*((unsigned int *)p_addr) = arc_serial_disable;
-
-	return;
-}
 
 int meson_power_suspend(void)
 {
@@ -103,7 +82,6 @@ int meson_power_suspend(void)
 	unsigned p_addr;
 	void	(*pwrtest_entry)(unsigned,unsigned,unsigned,unsigned);
 
-	check_in_param();
 	flush_cache_all();
 
 	addr = 0x04F04400;//entry.s start
