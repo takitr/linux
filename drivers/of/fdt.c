@@ -805,12 +805,17 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	char *type = of_get_flat_dt_prop(node, "device_type", NULL);
 	__be32 *reg;
 	unsigned long l;
+	struct reserve_mem * prm;
 #if defined(CONFIG_PLAT_MESON)
+<<<<<<< HEAD
 	unsigned long long high_reserve_size;
 	struct reserve_mem * prm;
 	int i;
 	u64 total;
 	unsigned long long phys_offset=0;
+=======
+	u64 total = 0;
+>>>>>>> 196279f... change reserved memory print
 #else
 	__be32 * endp;
 #endif
@@ -831,7 +836,6 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 		printk("error: can not get reserved mem start for AML\n");
 	else
 		aml_reserved_start = of_read_number(reg,1);
-	pr_info("reserved_start is %llx \n ",aml_reserved_start);
 
 	reg = of_get_flat_dt_prop(node, "aml_reserved_end", &l);
 	if (reg == NULL)
@@ -893,7 +897,26 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 				(unsigned long)(prm->size >> 20));
 		}
 	}
+<<<<<<< HEAD
 
+=======
+#endif
+	pr_info("Total memory is %4d MiB\n",((unsigned int)total >> 20));
+	pr_info("Reserved memory from 0x%llx to 0x%llx, size: %3d MiB \n",
+		aml_reserved_start,aml_reserved_end,
+		((unsigned int)(aml_reserved_end - aml_reserved_start + 1)) >> 20);
+	int i;
+	for(i = 0; i < MAX_RESERVE_BLOCK; i++){
+		prm = &pReserve_Manager->reserve[i];
+		if(!prm->size)
+			break;
+		pr_info("\t%s   \t: 0x%08llx - 0x%08llx (%3ld MiB)\n",
+			prm->name,
+			prm->startaddr + aml_reserved_start ,
+			prm->startaddr + prm->size + aml_reserved_start,
+			prm->size >> 20);
+	}
+>>>>>>> 196279f... change reserved memory print
 #else
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
