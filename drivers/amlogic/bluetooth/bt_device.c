@@ -130,7 +130,7 @@ static int bt_resume(struct platform_device *pdev)
     return 0;
 }
 
-static int __init bt_probe(struct platform_device *pdev)
+static int bt_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct rfkill *bt_rfk;
