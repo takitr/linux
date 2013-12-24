@@ -1,5 +1,4 @@
 #ifdef CONFIG_MMC_AML
-#ifdef CONFIG_ARCH_MESON8
 //$$ DEVICE="aml_sdio"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2 ="reg"
@@ -109,5 +108,4 @@ sdio{
           card_type = <3>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
         };
     };
-#endif
 #endif
