@@ -1,6 +1,6 @@
 #ifndef __LINUX_SARADC_H
 #define __LINUX_SARADC_H
-
+#define  NOT_WRITE_EFUSE 0xffff0000
 enum {
 	CHAN_0 = 0,
 	CHAN_1,

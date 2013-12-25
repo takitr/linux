@@ -1101,7 +1101,27 @@ void root_func(){
 		usid-min = <8>; /*reserved*/
 		usid-max = <31>; /*reserved*/
 	};
+	
+/// ***************************************************************************************
+///	-	Thermal
+//$$ MODULE="Thermal"
+//$$ DEVICE="thermal"
+//$$ L2 PROP_U32 3*3 = "trip_point"
+//$$ L2 PROP_U32 = "#thermal-cells"
+//$$ L2 PROP_U32 = "cpu_cali_a"
+//$$ L2 PROP_U32 = "idle_interval"
+	thermal{
+		compatible = "amlogic-thermal";
+		#thermal-cells=<3>;
+		dev_name = "aml_thermal";
+		trip_point=<50 1200000 1200000
+			    70  800000 800000
+			    110 0xffffffff 0xffffffff>;
+		cpu_cali_a=<0>;
+		idle_interval=<1000>;
 
+	};
+	
 /// ***************************************************************************************
 ///	-	Securitykey
 //$$ MODULE="Securitykey"

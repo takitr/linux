@@ -94,7 +94,7 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 	default:
 		break;
 	}
-
+#if 0
 	printk("instance:%s,trend=%d,throttle=%d,instace->target=%d,cur_state=%d,next_target=%d\n",
 		instance->name,
 		trend,
@@ -102,7 +102,7 @@ static unsigned long get_target_state(struct thermal_instance *instance,
 		instance->target,
 		cur_state,
 		next_target);
-
+#endif
 	return next_target;
 }
 

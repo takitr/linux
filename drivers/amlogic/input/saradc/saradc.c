@@ -426,8 +426,11 @@ int get_cpu_temp()
 		ret=get_adc_sample(6);
 		if(ret>=0){
 			tempa=(18*(ret-gp_saradc->adc_efuse)*10000)/1024/10/85+27;
-			return tempa;
+			ret=tempa;
 		}
+	}else
+		{
+		ret=NOT_WRITE_EFUSE;
 	}
 	return ret;
 }

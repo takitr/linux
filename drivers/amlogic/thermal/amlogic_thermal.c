@@ -508,9 +508,9 @@ static int amlogic_thermal_probe(struct platform_device *pdev)
 	struct amlogic_thermal_platform_data *pdata=NULL;
 	//pdata = amlogic_get_driver_data(pdev);
 	ret=get_cpu_temp();
-	if(ret<0){
+	if(NOT_WRITE_EFUSE==ret){
 		printk("cpu sensor not ready!!!!!!\n");
-		return ret;
+		return -1;
 	}
 	dev_info(&pdev->dev, "amlogic thermal probe start\n");
 	pdata = amlogic_thermal_initialize(pdev);
