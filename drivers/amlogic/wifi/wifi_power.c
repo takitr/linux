@@ -80,6 +80,17 @@ static int  wifi_power_release(struct inode *inode,struct file *file)
 
 static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {	
+	struct wifi_power_platform_data *pdata = NULL;
+    
+        
+    pdata = (struct wifi_power_platform_data*)devp->platform_data;
+    if(pdata == NULL){
+        printk("%s platform data is required!\n",__FUNCTION__);
+        return -1;
+    }
+    
+    amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
+    
 	switch (cmd) 
 	{
     	case POWER_UP:
@@ -294,7 +305,7 @@ static int wifi_power_probe(struct platform_device *pdev)
 	     }else{
 	        pdata->power_gpio = amlogic_gpio_name_map_num(str);
 	        printk("wifi_power power_gpio is %d\n",pdata->power_gpio);
-	        ret = amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
+	        //ret = amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
 	        //mcli pdata->usb_set_power(0);    //power on   
 	     }
 	}

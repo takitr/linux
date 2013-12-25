@@ -586,6 +586,7 @@ void aml_sdhc_request(struct mmc_host *mmc, struct mmc_request *mrq);
 int aml_sdhc_get_cd(struct mmc_host *mmc);
 extern void amlsd_init_debugfs(struct mmc_host *host);
 
+extern struct mmc_host *sdio_host;
 
 #define     SPI_BOOT_FLAG                   0
 #define     NAND_BOOT_FLAG                  1
@@ -617,7 +618,7 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 
 #define aml_jtag_sd() do{\
     aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
-    aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \  
+    aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
 }while(0)
 
 #define aml_uart_pinctrl() do {\

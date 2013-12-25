@@ -663,15 +663,18 @@ void of_amlsd_pwr_on(struct amlsd_platform* pdata)
 {
 	if(pdata->gpio_power)
 		amlogic_set_value(pdata->gpio_power, pdata->power_level, MODULE_NAME);
-	if(pdata->port == MESON_SDIO_PORT_A)
-        extern_wifi_set_enable(1); //power on wifi
+	// if(pdata->port == MESON_SDIO_PORT_A) {
+        // extern_wifi_set_enable(1); //power on wifi
+    // }
 }
+
 void of_amlsd_pwr_off(struct amlsd_platform* pdata)
 {
 	if(pdata->gpio_power)
 		amlogic_set_value(pdata->gpio_power, !pdata->power_level, MODULE_NAME);
-	if(pdata->port == MESON_SDIO_PORT_A)
-        extern_wifi_set_enable(0); //power off wifi
+	// if(pdata->port == MESON_SDIO_PORT_A){
+        // extern_wifi_set_enable(0); //power off wifi
+    // }
 }
 int of_amlsd_init(struct amlsd_platform* pdata)
 {
@@ -704,8 +707,8 @@ int of_amlsd_init(struct amlsd_platform* pdata)
         }
 	}
 
-	if(pdata->port == MESON_SDIO_PORT_A)
-		wifi_setup_dt();
+	// if(pdata->port == MESON_SDIO_PORT_A)
+		// wifi_setup_dt();
 	return 0;
 }
 
@@ -1230,14 +1233,14 @@ int aml_dbg_verify_pinmux (struct amlsd_platform * pdata)
 }
 #endif // #ifdef      CONFIG_MMC_AML_DEBUG
 
-#ifndef CONFIG_AM_WIFI_SD_MMC
-int wifi_setup_dt()
-{
-	return 0;
-}
-void extern_wifi_set_enable(int is_on)
-{
-    return;
-}
-#endif
+// #ifndef CONFIG_AM_WIFI_SD_MMC
+// int wifi_setup_dt()
+// {
+	// return 0;
+// }
+// void extern_wifi_set_enable(int is_on)
+// {
+    // return;
+// }
+// #endif
 

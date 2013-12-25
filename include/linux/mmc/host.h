@@ -16,6 +16,7 @@
 #include <linux/device.h>
 #include <linux/fault-inject.h>
 #include <linux/wakelock.h>
+// #include <linux/genhd.h>
 
 #include <linux/mmc/core.h>
 #include <linux/mmc/pm.h>
@@ -329,7 +330,7 @@ struct mmc_host {
 #endif
 	struct mmc_claim* alldev_claim;
     int         is_emmc_port;
-	int 		(*add_part)(struct gendisk * disk);
+	// int 		(*add_part)(struct gendisk *disk);
 
 	int			rescan_disable;	/* disable card detection */
 	int			rescan_entered;	/* used with nonremovable devices */

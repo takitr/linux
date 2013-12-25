@@ -35,6 +35,7 @@
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/amlogic/wifi_dt.h>
 
+struct mmc_host *sdio_host = NULL;
 static struct mmc_claim aml_sdio_claim;
 
 static void aml_sdio_soft_reset(struct amlsd_host* host)
@@ -764,8 +765,6 @@ static void aml_sdio_set_clk_rate(struct amlsd_platform* pdata, u32 clk_ios)
 
    if(aml_card_type_sdio(pdata) && (pdata->f_max > 50000000)) // if > 50MHz
           clk_div = 0;
-       
-
 
     conf->cmd_clk_divide = clk_div;
     pdata->clkc = clk_div;
@@ -898,9 +897,9 @@ static int aml_sdio_suspend(struct platform_device *pdev, pm_message_t state)
             if (i < 0) {
                 break;
             }
-            if(aml_card_type_sdio(pdata)) { // sdio_wifi
-                wifi_setup_dt();
-            }
+            // if(aml_card_type_sdio(pdata)) { // sdio_wifi
+                // wifi_setup_dt();
+            // }
             mmc = pdata->mmc;
             mmc_resume_host(mmc);
         }
@@ -920,9 +919,9 @@ static int aml_sdio_resume(struct platform_device *pdev)
 	printk("***Entered %s:%s\n", __FILE__,__func__);
 	list_for_each_entry(pdata, &host->sibling, sibling){
         // if(pdata->port == MESON_SDIO_PORT_A) { // sdio_wifi
-        if(aml_card_type_sdio(pdata)) {
-            wifi_setup_dt();
-        }
+        // if(aml_card_type_sdio(pdata)) {
+            // wifi_setup_dt();
+        // }
 
         // detect if a card is insert or inset if it is removable
         if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
@@ -1079,10 +1078,16 @@ static int aml_sdio_probe(struct platform_device *pdev)
         aml_sduart_pre(pdata);
 
 		ret = mmc_add_host(mmc);
-		if (ret) {
+		if (ret) { // error
 			sdhc_err("Failed to add mmc host.\n");
 			goto probe_free_host;
-		}
+		} else { // ok
+            if (aml_card_type_sdio(pdata)) { // if sdio_wifi
+                sdio_host = mmc;
+                mmc->rescan_entered = 1; // do NOT run mmc_rescan for the first time
+            }
+        }
+
 		aml_sdio_init_debugfs(mmc);
 		/*Add each mmc host pdata to this controller host list*/
 		INIT_LIST_HEAD(&pdata->sibling);

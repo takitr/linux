@@ -5,9 +5,9 @@
 
 
 #define AML_MMC_MAJOR_VERSION   1
-#define AML_MMC_MINOR_VERSION   01
+#define AML_MMC_MINOR_VERSION   03
 #define AML_MMC_VERSION         ((AML_MMC_MAJOR_VERSION << 8) | AML_MMC_MINOR_VERSION)
-#define AML_MMC_VER_MESSAGE     "2013-12-12: switch pinmux in the most save time way for sd/sdio"
+#define AML_MMC_VER_MESSAGE     "2013-12-20: defer init&resume of sdio-wifi"
 
 extern unsigned sdhc_debug;
 extern unsigned sdio_debug;
