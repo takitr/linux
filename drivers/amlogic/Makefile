@@ -78,7 +78,7 @@ obj-y += tvin/
 obj-y += thermal/
 
 
-#obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/
+obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/
 
 #obj-$(CONFIG_AML_WATCHDOG) += aml_watchdog/
 #####Sound system is later init in kernel default..######################
