@@ -35,15 +35,16 @@ static void set_hpll_clk_out(unsigned clk)
     printk("config HPLL\n");
     aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69c88000);
     aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xca563823);
-    aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x00238100);
+    aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x40238100);
     aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012286);
+    aml_write_reg32(P_HHI_VID2_PLL_CNTL2, 0x430a800);       // internal LDO share with HPLL & VIID PLL
 #endif
     switch(clk){
 #ifdef CONFIG_ARCH_MESON8
         case 2970:
             aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84e00);
             aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce49c822);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x0123b100);
+            aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x4123b100);
             aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
             
             aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x6000043d);
