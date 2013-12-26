@@ -2858,17 +2858,24 @@ static int OV5647_AutoFocus(struct ov5647_device *dev, int focus_mode)
 
 static int set_flip(struct ov5647_device *dev)
 {
-    struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
-    unsigned char temp;
-    temp = i2c_get_byte(client, 0x0101);
-    temp &= 0xfc;
-    temp |= dev->cam_info.m_flip << 0;
-    temp |= dev->cam_info.v_flip << 1;
-    //printk("dst temp is 0x%x\n", temp);
-    if((i2c_put_byte(client, 0x0101, temp)) < 0) {
-        printk("fail in setting sensor orientation \n");
-        return -1;
-    }
+	struct i2c_client *client = v4l2_get_subdevdata(&dev->sd);
+	unsigned char temp;
+	temp = i2c_get_byte(client, 0x3821);
+	temp &= 0xf9;
+	temp |= dev->cam_info.m_flip << 1 | dev->cam_info.m_flip << 2;
+	if((i2c_put_byte(client, 0x3821, temp)) < 0) {
+		printk("fail in setting sensor orientation\n");
+		return -1;
+        }
+	temp = i2c_get_byte(client, 0x3820);
+	temp &= 0xf9;
+	temp |= dev->cam_info.v_flip << 1 | dev->cam_info.v_flip << 2;
+	if((i2c_put_byte(client, 0x3820, temp)) < 0) {
+		printk("fail in setting sensor orientation\n");
+		return -1;
+        }
+        
+        return 0;
 }
 
 static resulution_size_t get_size_type(int width, int height)
@@ -2977,6 +2984,8 @@ void set_resolution_param(struct ov5647_device *dev, resolution_param_t* res_par
         	msleep(5);
         i++;
     }
+    
+    set_flip(dev);
 
     int default_sensor_data[4] = {0x00000668,0x00000400,0x00000400,0x00000878};
     int *sensor_data;
@@ -3785,7 +3794,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     para.vsync_phase  = 1;
     para.hs_bp = 0;
     para.vs_bp = 2;
-    para.cfmt = TVIN_YUV422;
+    para.cfmt = dev->cam_info.bayer_fmt;
     para.dfmt = TVIN_NV21;
     para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
     para.bt_path = dev->cam_info.bt_path;
@@ -4167,7 +4176,7 @@ static int ov5647_open(struct file *file)
     dev->ae_on = false;
     OV5647_init_regs(dev);
     msleep(40);
-    dw9714_init(1);
+    dw9714_init(dev->cam_info.vcm_mode);
     mutex_lock(&dev->mutex);
     dev->users++;
     if (dev->users > 1) {

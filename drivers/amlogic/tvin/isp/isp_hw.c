@@ -241,9 +241,7 @@ void isp_set_test_pattern(xml_tp_t *tp)
 	if(tp){
 		for(i=0;i<XML_TP;i++)
 			WR(ISP_PAT_GEN_CTRL+i,tp->reg_map[i]);
-	} else {
-
-	}
+	} 
 	return;
 }
 /*
@@ -305,9 +303,6 @@ void isp_set_demosaicing(xml_dm_t *dms)
 		for(i=0;i<XML_DM;i++)
 		        WR(ISP_DMS_CTRL0+i, dms->reg_map[i]);
 	}
-	//GBRG defaulty
-	WR_BITS(ISP_DMS_CTRL0,1,DMS_XPHASE_OFST_BIT,DMS_XPHASE_OFST_WID);
-	WR_BITS(ISP_DMS_CTRL0,0,DMS_YPHASE_OFST_BIT,DMS_YPHASE_OFST_WID);
 }
 /*
 *reg 0x42~0x4a
@@ -625,13 +620,22 @@ void isp_bypass_all()
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);	
 }
+static void isp_set_bayer_fmt(tvin_color_fmt_t bfmt)
+{
+	unsigned int tmp = bfmt - TVIN_BGGR;
+	WR_BITS(ISP_PAT_GEN_CTRL,tmp,PAT_BAYER_FMT_BIT,PAT_BAYER_FMT_WID);
+	WR_BITS(ISP_CLAMPGAIN_CTRL,tmp,CLP_BAYER_FMT_BIT,CLP_BAYER_FMT_WID);
+	WR_BITS(ISP_LNS_CTRL,tmp,LNS_BAYER_FMT_BIT,LNS_BAYER_FMT_WID);
+	WR_BITS(ISP_GMR0_CTRL,tmp,GMR_BAYER_FMT_BIT,GMR_BAYER_FMT_WID);
+	WR_BITS(ISP_DFT_CTRL,tmp,DFT_BAYER_FMT_BIT,DFT_BAYER_FMT_WID);
+	WR_BITS(ISP_DMS_CTRL0,tmp,DMS_BAYER_FMT_BIT,DMS_BAYER_FMT_BIT);
+}
 /*
-*
+*load isp config according to config file
 */
-void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h)
+void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,tvin_color_fmt_t bfmt,unsigned int w,unsigned int h)
 {
 	unsigned int mux = 0;
-
 	
 	switch(fe_port){
 		case TVIN_PORT_CAMERA:
@@ -664,10 +668,13 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	isp_set_lnsd(&regs->lnsd);
 	//isp_set_lnsd_test(w,h);
 	isp_set_gamma_table(&regs->lut_gc);
+	/*config bayer fmt*/
+	if(TVIN_BGGR<=bfmt && bfmt<=TVIN_GRBG)
+		isp_set_bayer_fmt(bfmt);
 	//enable isp
 	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
 	WR_BITS(ISP_TIMING_MODE,0,5,1);
-	pr_info("[%s..]%s: init ok(w:%d,h:%d).\n",DEVICE_NAME,__func__,w,h);
+	pr_info("[%s..]%s: init ok(w:%d,h:%d) bayer fmt %s.\n",DEVICE_NAME,__func__,w,h,tvin_color_fmt_str(bfmt));
 }
 
 void isp_hw_enable(bool flag)

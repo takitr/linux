@@ -21,6 +21,7 @@
 #include <linux/delay.h>
 #include <mach/gpio.h>
 //#include <mach/gpio_data.h>
+#include <linux/amlogic/tvin/tvin.h>
 
 #include <linux/amlogic/camera/aml_cam_info.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
@@ -882,6 +883,7 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 	aml_cam_dev_info_t* cam_info = NULL;
 	struct i2c_adapter *adapter;
 	unsigned mclk = 0;
+	unsigned vcm_mode = 0;
 	
 	if (!p_node || !cam_dev)
 		return -1;
@@ -997,6 +999,14 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 		cam_dev->mclk = mclk;
 	}
 	
+	ret = of_property_read_u32(p_node, "vcm_mode", &vcm_mode);
+	if (ret) {
+		cam_dev->vcm_mode = 0;
+	} else {
+		cam_dev->vcm_mode = vcm_mode;
+	}
+	printk("vcm mode is %d\n", cam_dev->vcm_mode);
+	
 	ret = of_property_read_string(p_node, "flash_support", &str);
 	if (ret) {
 		printk("failed to read camera flash_support\n");
@@ -1041,6 +1051,25 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
                 if ( ret < 0 )
                         goto err_out;
         }
+        
+        ret = of_property_read_string(p_node, "bayer_fmt", &str);
+	if (ret) {
+		printk("failed to read camera bayer fmt \n");
+		cam_dev->bayer_fmt = TVIN_GBRG;
+	} else {
+		printk("color format:%s\n", str);
+		if (strncmp("BGGR", str, 4) == 0){
+                        cam_dev->bayer_fmt = TVIN_BGGR;
+                } else if (strncmp("RGGB", str, 4) == 0){
+                        cam_dev->bayer_fmt = TVIN_RGGB;
+                } else if (strncmp("GBRG", str, 4) == 0){
+                        cam_dev->bayer_fmt = TVIN_GBRG;
+                } else if (strncmp("GRBG", str, 4) == 0){
+                        cam_dev->bayer_fmt = TVIN_GRBG;
+                } else {
+                	cam_dev->bayer_fmt = TVIN_GBRG;
+                }
+	}
 
 	ret = of_property_read_string(p_node, "config_path", &cam_dev->config);
 	// cam_dev->config = "/system/etc/myconfig";

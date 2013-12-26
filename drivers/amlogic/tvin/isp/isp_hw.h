@@ -93,7 +93,7 @@ extern void isp_set_af_scan_stat(unsigned int x0,unsigned int y0,unsigned int x1
 extern void isp_set_blenr_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsigned int y1);
 extern void isp_set_dbg(xml_dbg_t *dbg);
 extern void isp_set_lnsd_mode(unsigned int mode);
-extern void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h);
+extern void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,tvin_color_fmt_t bfmt,unsigned int w,unsigned int h);
 extern void isp_load_def_setting(unsigned int hsize,unsigned int vsize,unsigned char bayer_fmt);
 extern void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal);
 extern void isp_set_manual_wb(xml_wb_manual_t *wb);

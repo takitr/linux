@@ -2111,11 +2111,11 @@ static int set_flip(struct ar0543_device *dev)
     temp &= 0xfc;
     temp |= dev->cam_info.m_flip << 0;
     temp |= dev->cam_info.v_flip << 1;
-    //printk("dst temp is 0x%x\n", temp);
-    /*if((i2c_put_byte(client, 0x0101, temp)) < 0) {
+    printk("dst temp is 0x%x\n", temp);
+    if((i2c_put_byte(client, 0x0101, temp)) < 0) {
         printk("fail in setting sensor orientation \n");
         return -1;
-    }*/
+    }
 }
 
 
@@ -2222,6 +2222,7 @@ static void set_resolution_param(struct ar0543_device *dev, resolution_param_t* 
         	msleep(5);
 		i++;
 	}
+	set_flip(dev);
 	#if 0
     int default_sensor_data[4] = {0x00000100,0x000001a0,0x000001ff,0x00000108};
 	int *sensor_data;
@@ -2242,6 +2243,7 @@ static void set_resolution_param(struct ar0543_device *dev, resolution_param_t* 
 	ar0543_h_active = res_param->active_frmsize.width;
 	ar0543_v_active = res_param->active_frmsize.height;
 	AR0543_set_new_format((void *)&dev->camera_priv_data,ar0543_h_active,ar0543_v_active,current_fr);// should set new para
+	
 }    /* AR0543_set_resolution */
 
 static int set_focus_zone(struct ar0543_device *dev, int value)
@@ -3006,7 +3008,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vsync_phase  = 1;
 	para.hs_bp = 0;
 	para.vs_bp = 2;
-	para.cfmt = TVIN_YUV422;
+	para.cfmt = dev->cam_info.bayer_fmt;
 	para.dfmt = TVIN_NV21;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
 	para.bt_path = dev->cam_info.bt_path;

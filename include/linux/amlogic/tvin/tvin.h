@@ -414,6 +414,10 @@ typedef enum tvin_color_fmt_e {
         TVIN_VYUY422,// 6
         TVIN_NV12,   // 7
         TVIN_NV21,   // 8
+        TVIN_BGGR,   // 9  raw data
+        TVIN_RGGB,   // 10 raw data
+        TVIN_GBRG,   // 11 raw data
+        TVIN_GRBG,   // 12 raw data
         TVIN_COLOR_FMT_MAX,
 }tvin_color_fmt_t;
 

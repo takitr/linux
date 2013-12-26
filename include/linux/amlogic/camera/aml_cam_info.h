@@ -5,6 +5,7 @@
 #include <linux/i2c-aml.h>
 #include <mach/gpio.h>
 #include <linux/amlogic/tvin/tvin_v4l2.h>
+#include <linux/amlogic/tvin/tvin.h>
 #include <linux/amlogic/camera/flashlight.h>
 
 //#define AML_I2C_BUS_A 0
@@ -76,6 +77,7 @@ typedef struct {
 	unsigned mclk;
 	unsigned flash_support;
 	unsigned flash_ctrl_level;
+	unsigned vcm_mode;
 	bt_path_t bt_path;
 	cam_interface_t         interface;
 	clk_channel_t           clk_channel;
@@ -83,6 +85,7 @@ typedef struct {
 	gpio_t rst_pin;
 	gpio_t flash_ctrl_pin;
 	resulution_size_t max_cap_size;
+	tvin_color_fmt_t bayer_fmt;
 	char* config;
 }aml_cam_info_t;
 

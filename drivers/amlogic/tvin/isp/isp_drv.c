@@ -818,6 +818,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	isp_info_t *info = &devp->info;
 
 	info->fe_port = parm->isp_fe_port;
+	info->bayer_fmt = parm->cfmt;
 	info->dfmt = parm->dfmt;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
@@ -849,7 +850,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		devp->capture_parm = devp->cam_param->xml_capture;
 		devp->wave = devp->cam_param->xml_wave;
 		isp_hw_enable(false);
-		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->h_active,info->v_active);
+		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->bayer_fmt,info->h_active,info->v_active);
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
 		/*test for wb test disable gamma & lens*/
 		if(devp->flag & ISP_FLAG_TEST_WB)

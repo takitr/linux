@@ -4221,11 +4221,11 @@ static int set_flip(struct ar0833_device *dev)
     temp &= 0xfc;
     temp |= dev->cam_info.m_flip << 0;
     temp |= dev->cam_info.v_flip << 1;
-    //printk("dst temp is 0x%x\n", temp);
-    /*if((i2c_put_byte(client, 0x0101, temp)) < 0) {
+    printk("dst temp is 0x%x\n", temp);
+    if((i2c_put_byte(client, 0x0101, temp)) < 0) {
         printk("fail in setting sensor orientation \n");
         return -1;
-    }*/
+    }
 }
 
 
@@ -4332,6 +4332,8 @@ static void set_resolution_param(struct ar0833_device *dev, resolution_param_t* 
         	msleep(5);
         i++;
     }
+    set_flip(dev);
+    
     ar0833_frmintervals_active.numerator = 1;
     ar0833_frmintervals_active.denominator = res_param->active_fps;
     ar0833_h_active = res_param->frmsize.width;
@@ -5102,7 +5104,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	para.vsync_phase  = 1;
 	para.hs_bp = 0;
 	para.vs_bp = 2;
-	para.cfmt = TVIN_YUV422;
+	para.cfmt = dev->cam_info.bayer_fmt;
 	para.dfmt = TVIN_NV21;
 	para.scan_mode = TVIN_SCAN_MODE_PROGRESSIVE;
 	para.bt_path = dev->cam_info.bt_path;

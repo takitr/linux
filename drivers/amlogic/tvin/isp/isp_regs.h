@@ -115,11 +115,8 @@
 #define ISP_PAT_YINVT_BIT		    26
 #define ISP_PAT_YINVT_WID		    1
 //Bit    26, reg_isp_pat_yinvt              invert the pattern in vertical direction,   0- no invert; 1- invert; default=0 
-#define ISP_PAT_XPHASE_OFST_BIT		    25
-#define ISP_PAT_XPHASE_OFST_WID		    1
-//Bit    25, reg_isp_pat_xphase_ofst        bayer pattern xphase offset in pattern generator, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define ISP_PAT_YPHASE_OFST_BIT		    24
-#define ISP_PAT_YPHASE_OFST_WID		    1
+#define PAT_BAYER_FMT_BIT		    24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define PAT_BAYER_FMT_WID		    2
 //Bit    24, reg_isp_pat_yphase_ofst        bayer pattern yphase offset in pattern generator, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0
 //Bit    23, reserved
 #define ISP_PAT_XMODE_BIT	            20
@@ -411,11 +408,8 @@
 
 #define ISP_CLAMPGAIN_CTRL                  0x2d20  
 //Bit 31:26, reserved
-#define CLP_XPHASE_OFST_BIT		    25
-#define CLP_XPHASE_OFST_WID		    1
-//Bit    25, reg_isp_clp_xphase_ofst        bayer pattern xphase offset in clamp gain, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define CLP_YPHASE_OFST_BIT		    24
-#define CLP_YPHASE_OFST_WID		    1
+#define CLP_BAYER_FMT_BIT		    24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define CLP_BAYER_FMT_WID		    2
 //Bit    24, reg_isp_clp_yphase_ofst        bayer pattern yphase offset in clamp gain, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0 
 //Bit 23:22, reserved
 #define AECRAW_LPF_SEL_BIT		    20
@@ -492,11 +486,8 @@
 #define LNS_CMOP_ENABLE_WID		    1
 //Bit    28, reg_isp_lns_cmop_enable    lens shading compensation enable. 0: no compensation; 1: compensation enable;  default= 0
 //Bit 27:26, reserved
-#define LNS_XPHASE_OFST_BIT		    25
-#define LNS_XPHASE_OFST_WID		    1
-//Bit    25, reg_isp_lns_xphase_ofst    bayer pattern xphase offset in lens shading correction, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define LNS_YPHASE_OFST_BIT		    24
-#define LNS_YPHASE_OFST_WID		    1
+#define LNS_BAYER_FMT_BIT		    24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define LNS_BAYER_FMT_WID		    2
 //Bit    24, reg_isp_lns_yphase_ofst    bayer pattern yphase offset in lens shading correction, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0 
 #define LNS_GAINNORM_GRBG0_BIT		    22
 #define LNS_GAINNORM_GRBG0_WID		    2
@@ -579,11 +570,8 @@
 #define GMR_CORRECT_ENABLE_WID		    1
 //Bit    28, reg_isp_gmr_correct_enable     raw data gammar correction enable;    default= 0;
 //Bit 27:26, reserved
-#define GMR_XPHASE_OFST_BIT		    25
-#define GMR_XPHASE_OFST_WID		    1
-//Bit    25, reg_isp_gmr_xphase_ofst        bayer pattern xphase offset in gammar correction, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define GMR_YPHASE_OFST_BIT		    24
-#define GMR_YPHASE_OFST_WID		    1
+#define GMR_BAYER_FMT_BIT		    24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define GMR_BAYER_FMT_WID		    2
 //Bit    24, reg_isp_gmr_yphase_ofst        bayer pattern yphase offset in gammar correction, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0 
 //Bit 23: 1, reserved 
 #define GCLUT_ACCMODE_BIT		    0
@@ -600,11 +588,8 @@
 #define ISP_DFT_ENABLE_WID		    1
 //Bit    28, reg_isp_dft_enable             defect pixel detection block operation enable, reg_isp_dft_detect_mode decides the detection mode; 0: no defect_detection; 1: detection logic on;    default= 1;
 //Bit 27:26, reserved
-#define DFT_XPHASE_OFST_BIT		    25
-#define DFT_XPHASE_OFST_WID		    1
-//Bit    25, reg_isp_dft_xphase_ofst        bayer pattern xphase offset in defect pixel correction, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define DFT_YPHASE_OFST_BIT		    24
-#define DFT_YPHASE_OFST_WID		    1
+#define DFT_BAYER_FMT_BIT		    24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define DFT_BAYER_FMT_WID		    2
 //Bit    24, reg_isp_dft_yphase_ofst        bayer pattern yphase offset in defect pixel correction, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0 
 //Bit 23:20, reserved
 #define DFTMAP_WRITETO_LUT_STLINE_BIT	    16
@@ -778,11 +763,8 @@
 #define ISP_DMS_BYPASS_WID		   3
 //Bit 30:28, reg_isp_dms_bypass             bypass of demosaicing module. 0: no bypass; 1: replace (n-2) line dms result to current line; 2: (n-1) line to current; 3: (n+1) line to current; 4: (n+2) lines to current; 5~6: (n)line tocurrent; 7: bypass dms and put bayer data to RGB channels as repeat; default =0;
 //Bit 27:26, reserved
-#define DMS_XPHASE_OFST_BIT		   25
-#define DMS_XPHASE_OFST_WID		   1
-//Bit    25, reg_isp_dms_xphase_ofst        bayer pattern xphase offset in demosaicing, 0- horizontally start from G(R)/B(G); 1- horizontally start from R(G)/G(B); default=0
-#define DMS_YPHASE_OFST_BIT		   24
-#define DMS_YPHASE_OFST_WID		   1
+#define DMS_BAYER_FMT_BIT		   24//bayer fmt 0:BGGR 1:RGGB 2:GBRG 3:GRBG
+#define DMS_BAYER_FMT_WID		   2
 //Bit    24, reg_isp_dms_yphase_ofst        bayer pattern yphase offset in demosaicing, 0- vertically start from G(B)/R(G); 1- vertially start from B(G)/G(R); default=0
 //Bit 23:22, reserved                       
 #define DMS_L28_SIMPLE_BIT		   20
