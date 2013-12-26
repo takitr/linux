@@ -318,6 +318,16 @@
 			amlogic,pins = "GPIODV_9";
 		};
 		
+//$$ MATCH "Bl_pin_1_match" = "&lcd_backlight_combo_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 4 = "amlogic,clrmask"
+//$$ L2 PROP_STR 2 = "amlogic,pins"
+		lcd_backlight_combo_pins:lcd_backlight_pwm_combo{
+			amlogic,setmask=<3 0x5000000>;
+			amlogic,clrmask=<0 0x48 7 0x18000200>;
+			amlogic,pins = "GPIODV_9","GPIODV_28";
+		};
+		
 		lcd_ttl_hvsync_pins_on:lcd_ttl_hvsync_on{
 			amlogic,setmask=<8 0x1800000>;
 			amlogic,clrmask=<0 0x3c0300 6 0xc00000>;
