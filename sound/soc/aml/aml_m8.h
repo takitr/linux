@@ -7,6 +7,10 @@ struct aml_audio_private_data {
 	int gpio_hp_det;
 	bool det_pol_inv;
 	int gpio_mute;
+    int gpio_i2s_m;
+    int gpio_i2s_s;
+    int gpio_i2s_r;
+    int gpio_i2s_o;
 	bool mute_inv;
 	struct pinctrl *pin_ctl;
     int hp_last_state;
