@@ -88,6 +88,10 @@ static unsigned int vid_limit = 32;
 //module_param(vid_limit, uint, 0644);
 //MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
+static unsigned int vcm_mod = 0;
+module_param(vcm_mod,uint,0664);
+MODULE_PARM_DESC(vcm_mod,"\n vcm_mod,1:DLC;0:LSC.\n");
+
 static int ar0543_h_active = 800;
 static int ar0543_v_active = 600;
 static struct v4l2_fract ar0543_frmintervals_active = {
@@ -1542,28 +1546,31 @@ static bool AR0543_check_mains_freq(void){// when the fr change,we need to chang
     return true;
 }
 
-bool AR0543_set_af_new_step(unsigned int af_step){
+bool AR0543_set_af_new_step(void *priv,unsigned int af_step){
     struct i2c_adapter *adapter;
     char buf[3];
     if(af_step == last_af_step)
         return true;
-	/*
-    diff = (af_step > last_af_step) ? af_step - last_af_step : last_af_step - af_step;
-    last_af_step = af_step;
-    if(diff < 256){
-        codes = 1;
-    }else if(diff < 512){
-        codes = 2;	
-    }else
-        codes = 3;
-    vcm_data |= (codes << 2); // bit[3:2]
-    vcm_data |= (last_af_step << 4);  // bit[4:13]
-    byte_h  = (vcm_data >> 8) & 0x000000ff;
-    byte_l  = (vcm_data >> 0) & 0x000000ff;
-*/	
+    if(vcm_mod == 0){
+	unsigned int diff,vcm_data,codes;
+	diff = (af_step > last_af_step) ? af_step - last_af_step : last_af_step - af_step;
 	last_af_step = af_step;
-    buf[0] = (af_step>>4)&0xff;
-    buf[1] = (af_step<<4)&0xff;
+	if(diff < 256){
+	codes = 1;
+	}else if(diff < 512){
+	codes = 2;
+	}else
+	codes = 3;
+	vcm_data |= (codes << 2); // bit[3:2]
+	vcm_data |= (last_af_step << 4);  // bit[4:13]
+	buf[0]  = (vcm_data >> 8) & 0x000000ff;
+	buf[1]  = (vcm_data >> 0) & 0x000000ff;
+    }
+    else{
+	last_af_step = af_step;
+	buf[0] = (af_step>>4)&0xff;
+	buf[1] = (af_step<<4)&0xff;
+    }
     adapter = i2c_get_adapter(4);
     my_i2c_put_byte_add8(adapter,0x0c,buf,2);
     return true;
@@ -3364,7 +3371,7 @@ static int ar0543_open(struct file *file)
     dev->ae_on = false;
     AR0543_init_regs(dev);
     msleep(40);
-    dw9714_init(1);
+    dw9714_init(vcm_mod);
     mutex_lock(&dev->mutex);
     dev->users++;
     if (dev->users > 1) {

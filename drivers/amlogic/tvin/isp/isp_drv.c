@@ -854,7 +854,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
 		/*test for wb test disable gamma & lens*/
 		if(devp->flag & ISP_FLAG_TEST_WB)
-			disable_gc_lns(false);
+			disable_gc_lns_pk(false);
 		/*enable isp hw*/
 		isp_hw_enable(true);
 		devp->af_info.x0 = info->h_active/devp->isp_af_parm->win_ratio;

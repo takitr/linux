@@ -1088,6 +1088,11 @@ static unsigned int check_hillside(isp_af_info_t *af_info,xml_algorithm_af_t *af
 	cur_ac = af_info->af_fine_data[af_info->valid_step_cnt - 1].af_data.af_ac[0];
 	last_ac = af_info->af_fine_data[af_info->valid_step_cnt - 2].af_data.af_ac[0];
 	delta_ac = isp_abs64(cur_ac,last_ac);
+	if((cur_ac == 0)||(last_ac == 0)){/*avoid wrong*/
+		if(af_sm_dg&AF_FINE_TUNE)
+			pr_info("[check_hillside]error:ac is 0\n");
+		return 3;
+	}
 	delta_ac_ratio = delta_ac*100/((last_ac < cur_ac)?cur_ac:last_ac);
 	if(af_sm_dg&AF_FINE_TUNE)
 		pr_info("[check hillside]delta_ac_ratio:%d,cur_ac:%d,last_ac:%d .\n",delta_ac_ratio,cur_ac,last_ac);

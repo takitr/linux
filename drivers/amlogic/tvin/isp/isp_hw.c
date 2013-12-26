@@ -582,14 +582,16 @@ static void isp_set_gamma_table(struct xml_lut_gc_s *gt)
 /*
 *disable gamma correction & lnsd
 */
-void disable_gc_lns(bool flag)
+void disable_gc_lns_pk(bool flag)
 {
 	if(flag){
 		WR_BITS(ISP_LNS_CTRL,1,LNS_CMOP_ENABLE_BIT,LNS_CMOP_ENABLE_WID);
 		WR_BITS(ISP_GMR0_CTRL,1,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+		WR_BITS(ISP_PKNR_ENABLE,1,ISP_PK_EN_BIT,ISP_PK_EN_WID);
 	}else{
 		WR_BITS(ISP_LNS_CTRL,0,LNS_CMOP_ENABLE_BIT,LNS_CMOP_ENABLE_WID);
 		WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
+		WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);
 	}
 }
 
@@ -742,10 +744,9 @@ void isp_load_def_setting(unsigned int w,unsigned int h,unsigned char bayer_fmt)
 	//disable pattern generator
 	WR_BITS(ISP_PAT_GEN_CTRL,0,ISP_PAT_ENABLE_BIT,ISP_PAT_ENABLE_WID);
 	//disable gamma & lnsd
-	disable_gc_lns(false);
+	disable_gc_lns_pk(false);
 	//disable nr,pk
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
-	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);
 	//disable defect pixel
 	WR_BITS(ISP_DFT_CTRL,0,ISP_DFT_ENABLE_BIT,ISP_DFT_ENABLE_WID);
 	WR_BITS(ISP_DFT_CTRL,0,DFTMAP_CORRECT_MODE_BIT,DFTMAP_CORRECT_MODE_WID);
