@@ -1353,6 +1353,10 @@ aml_audio_codc{
             "micbias1","MAIN MIC",
             "IN2P","micbias1";
         mute_gpio = "GPIOY_15";
+        I2S_MCLK = "GPIOAO_8";
+        I2S_SCLK = "GPIOAO_9";
+        I2S_LRCLK = "GPIOAO_10";
+        I2S_ODAT = "GPIOAO_11";
         //mute_inv;
         hp_paraments = <800 300 0 5 1>;
         pinctrl-names = "aml_snd_m8";
