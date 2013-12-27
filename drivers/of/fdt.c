@@ -667,6 +667,19 @@ int find_reserve_block(char * name,int idx)
 	return -1;
 }
 
+int find_reserve_block_by_name(char * name)
+{
+	int i;
+
+	for(i=0;i<pReserve_Manager->count;i++)
+	{
+		if(strcmp(pReserve_Manager->reserve[i].name,name)==0)
+			return i;
+	}
+
+	return -1;
+}
+
 unsigned long long get_reserve_block_addr(int blockid)
 {
 	if(blockid >= MAX_RESERVE_BLOCK)
