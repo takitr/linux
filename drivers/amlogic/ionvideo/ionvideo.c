@@ -15,6 +15,7 @@
 static int is_actived = 0;
 
 static unsigned video_nr = 13;
+static int receiver_register = 0;
 module_param(video_nr, uint, 0644);
 MODULE_PARM_DESC(video_nr, "videoX start number, 13 is autodetect");
 
@@ -113,11 +114,11 @@ EXPORT_SYMBOL(is_ionvideo_active);
 static void videoc_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
     if (vf->pts) {
         timestamp_vpts_set(vf->pts);
-        dev->receiver_register = 0;
+        receiver_register = 0;
         dev->pts = vf->pts_us64;
-    } else if (dev->receiver_register){
+    } else if (receiver_register){
         timestamp_vpts_set(timestamp_pcrscr_get());
-        dev->receiver_register = 0;
+        receiver_register = 0;
         dev->pts = timestamp_vpts_get();
     } else {
         timestamp_vpts_inc(DUR2PTS(vf->duration));
@@ -356,7 +357,7 @@ static void buffer_queue(struct vb2_buffer *vb) {
 static int start_streaming(struct vb2_queue *vq, unsigned int count) {
     struct ionvideo_dev *dev = vb2_get_drv_priv(vq);
     is_actived = 1;
-    dev->receiver_register = 1;
+    receiver_register = 1;
     dprintk(dev, 2, "%s\n", __func__);
     return ionvideo_start_generating(dev);
 }
@@ -634,10 +635,10 @@ static int video_receiver_event_fun(int type, void* data, void* private_data) {
     struct ionvideo_dev *dev = (struct ionvideo_dev *) private_data;
 
     if (type == VFRAME_EVENT_PROVIDER_UNREG) {
-        dev->receiver_register = 0;
+        receiver_register = 0;
         printk("unreg:ionvideo\n");
     }else if (type == VFRAME_EVENT_PROVIDER_REG) {
-        dev->receiver_register = 1;
+        receiver_register = 1;
         printk("reg:ionvideo\n");
     }
     return 0;
