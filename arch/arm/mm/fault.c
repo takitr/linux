@@ -317,6 +317,9 @@ do_user_fault_inatomic(struct mm_struct *mm, unsigned long addr, unsigned int fs
 	struct vm_area_struct *vma;
 	int fault;
 
+	if(!mm)
+		return 1;
+
 	vma = find_vma(mm, addr);
 	fault = VM_FAULT_BADMAP;
 	if (unlikely(!vma))
