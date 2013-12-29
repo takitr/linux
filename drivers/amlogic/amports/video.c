@@ -2250,7 +2250,7 @@ exit:
              */
             video_onoff_state = VIDEO_ENABLE_STATE_ON_PENDING;
         } else if (video_onoff_state == VIDEO_ENABLE_STATE_ON_PENDING) {
-            SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, VPP_VD1_PREBLEND|VPP_VD1_POSTBLEND|VPP_POSTBLEND_EN);
+            SET_VCBUS_REG_MASK(VPP_MISC + cur_dev->vpp_off, VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND|VPP_POSTBLEND_EN);
 
             video_onoff_state = VIDEO_ENABLE_STATE_IDLE;
 
