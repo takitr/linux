@@ -331,12 +331,10 @@ int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		if (!have_governor_per_policy()){
 			cdata->gdbs_data = dbs_data;
 		}
-
 		if(dbs_data->cdata->governor == GOV_HOTPLUG){
 			hg_dbs_info = dbs_data->cdata->get_cpu_dbs_info_s(policy->cpu);
 			mutex_init(&hg_dbs_info->hotplug_thread_mutex);
 		}
-
 		return 0;
 	case CPUFREQ_GOV_POLICY_EXIT:
 		if (!--dbs_data->usage_count) {

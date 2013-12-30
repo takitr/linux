@@ -445,6 +445,26 @@ static struct attribute_group hg_attr_group_gov_sys = {
 	.name = "hotplug",
 };
 
+static struct attribute *dbs_attributes_gov_pol[] = {
+	&sampling_rate_gov_pol.attr,
+	&up_threshold_gov_pol.attr,
+	&down_differential_gov_pol.attr,
+	&down_threshold_gov_pol.attr,
+	&hotplug_in_sampling_periods_gov_pol.attr,
+	&hotplug_out_sampling_periods_gov_pol.attr,
+	&ignore_nice_load_gov_pol.attr,
+	&io_is_busy_gov_pol.attr,
+	&cpu_num_unplug_once_gov_pol.attr,
+	&cpu_num_plug_once_gov_pol.attr,
+	&hotplug_min_freq_gov_pol.attr,
+	&hotplug_max_freq_gov_pol.attr,
+	NULL
+};
+
+static struct attribute_group hg_attr_group_gov_pol = {
+	.attrs = dbs_attributes_gov_pol,
+	.name = "hotplug",
+};
 /************************** sysfs end ************************/
 static int hg_init(struct dbs_data *dbs_data)
 {
@@ -479,16 +499,24 @@ static void hg_exit(struct dbs_data *dbs_data)
 {
 	kfree(dbs_data->tuners);
 }
-static void cpu_idle_thread()
+static int cpu_idle_thread(void *data)
 {
-	int cpu = get_cpu();
+	int cpu;
+	struct hg_cpu_dbs_info_s *dbs_info = NULL;
+	struct cpufreq_policy *policy = NULL;
+	struct dbs_data *dbs_data = NULL;
+	struct cpu_dbs_common_info *cdbs = NULL;
+	struct hg_dbs_tuners *hg_tuners = NULL;
+	unsigned int sampling_rate;
+
+	cpu = get_cpu();
 	put_cpu();
-	struct hg_cpu_dbs_info_s *dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
-	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
-	struct dbs_data *dbs_data = policy->governor_data;
-	struct cpu_dbs_common_info *cdbs = dbs_data->cdata->get_cpu_cdbs(cpu);
-	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
-	unsigned int sampling_rate = hg_tuners->sampling_rate;
+	dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
+	policy = dbs_info->cdbs.cur_policy;
+	dbs_data = policy->governor_data;
+	cdbs = dbs_data->cdata->get_cpu_cdbs(cpu);
+	hg_tuners = dbs_data->tuners;
+	sampling_rate = hg_tuners->sampling_rate;
 
 	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
 	while(1){
@@ -509,17 +537,27 @@ wait_next_event:
 		schedule();
 		set_current_state(TASK_RUNNING);
 	}
+	return 1;
 }
-static void __cpuinit cpu_hotplug_thread(int *hotplug_flag)
+static int __ref cpu_hotplug_thread(void *data)
 {
 	int i, j,target_cpu = 1;
 	unsigned long flags, cpu_down_num;
-	int cpu = get_cpu();
+	int cpu;
+	int *hotplug_flag = NULL;
+	struct hg_cpu_dbs_info_s *dbs_info = NULL;
+	struct cpufreq_policy *policy = NULL;
+	struct dbs_data *dbs_data = NULL;
+	struct hg_dbs_tuners *hg_tuners = NULL;
+
+	hotplug_flag = (int *)data;
+	cpu = get_cpu();
 	put_cpu();
-	struct hg_cpu_dbs_info_s *dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
-	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
-	struct dbs_data *dbs_data = policy->governor_data;
-	struct hg_dbs_tuners *hg_tuners = dbs_data->tuners;
+	dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
+	policy = dbs_info->cdbs.cur_policy;
+	dbs_data = policy->governor_data;
+	hg_tuners = dbs_data->tuners;
+	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
 
 	dbs_info = &per_cpu(hg_cpu_dbs_info, policy->cpu);
 
@@ -570,6 +608,7 @@ wait_next_hotplug:
 		schedule();
 		set_current_state(TASK_RUNNING);
 	}
+	return 1;
 }
 static void hg_check_cpu(int cpu, unsigned int max_load)
 {
@@ -583,7 +622,6 @@ static void hg_check_cpu(int cpu, unsigned int max_load)
 	/* number of sampling periods averaged for hotplug decisions */
 	unsigned int periods;
 	unsigned int i, j;
-	int ret = 0;
 
 	struct hg_cpu_dbs_info_s *dbs_info = &per_cpu(hg_cpu_dbs_info, cpu);
 	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
@@ -717,7 +755,6 @@ static void hg_dbs_timer(struct work_struct *work)
 {
 	struct hg_cpu_dbs_info_s *dbs_info =
 		container_of(work, struct hg_cpu_dbs_info_s, cdbs.work.work);
-	unsigned long flags;
 	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
 	unsigned int cpu = policy->cpu;
 	struct dbs_data *dbs_data = policy->governor_data;
@@ -802,6 +839,7 @@ static struct hg_ops hg_ops = {
 static struct common_dbs_data hg_dbs_cdata = {
 	.governor = GOV_HOTPLUG,
 	.attr_group_gov_sys = &hg_attr_group_gov_sys,
+	.attr_group_gov_pol = &hg_attr_group_gov_pol,
 	.get_cpu_cdbs = get_cpu_cdbs,
 	.get_cpu_dbs_info_s = get_cpu_dbs_info_s,
 	.gov_dbs_timer = hg_dbs_timer,
@@ -816,9 +854,10 @@ static int hg_cpufreq_governor_dbs(struct cpufreq_policy *policy,
 {
 	return cpufreq_governor_dbs(policy, &hg_dbs_cdata, event);
 }
-static void do_null_task()
+static int do_null_task(void *data)
 {
 	printk("---add for hotplug governor\n");
+	return 1;
 }
 struct cpufreq_governor cpufreq_gov_hotplug = {
 	.name			= "hotplug",
