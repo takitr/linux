@@ -374,11 +374,7 @@ static int content_top = 0, content_left = 0, content_w = 0, content_h = 0;
 static int scaler_pos_changed = 0;
 #endif
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-static u32 use_prot = 1;
-#else
 static u32 use_prot = 0;
-#endif
 static video_prot_t video_prot;
 static u32 video_angle = 0;
 u32 get_prot_status(void) { return video_prot.status; }
@@ -1975,12 +1971,15 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             }
 #endif
             vf = video_vf_get();
-            if (use_prot && video_prot.video_started) {
+            use_prot = get_use_prot();
+            if (use_prot && (video_prot.video_started || video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
                 video_prot_init(&video_prot, vf);
                 video_prot.angle_changed = 1;
                 video_prot.video_started = 0;
-            }
-            if (use_prot && (video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
+            } else if (!use_prot && video_prot.status) {
+                video_prot_set_angle(&video_prot, 0);
+                video_prot_gate(0);
+                PROT_MEM_POWER_OFF();
                 video_property_changed = true;
             }
             force_blackout = 0;
@@ -2039,12 +2038,15 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 }
 #endif
                 vf = video_vf_get();
-                if (use_prot && video_prot.video_started) {
+                use_prot = get_use_prot();
+                if (use_prot && (video_prot.video_started || video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
                     video_prot_init(&video_prot, vf);
                     video_prot.angle_changed = 1;
                     video_prot.video_started = 0;
-                }
-                if (use_prot && (video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
+                } else if (!use_prot && video_prot.status) {
+                    video_prot_set_angle(&video_prot, 0);
+                    video_prot_gate(0);
+                    PROT_MEM_POWER_OFF();
                     video_property_changed = true;
                 }
                 vsync_toggle_frame(vf);
