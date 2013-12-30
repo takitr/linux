@@ -1015,7 +1015,8 @@ static int aml_phy_init(struct net_device *dev)
         snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
                  priv->phy_addr);
         printk("aml_phy_init:  trying to attach to %s\n", phy_id);
-	 priv->phydev->drv->resume(priv->phydev);
+	if(priv->phydev)
+		 priv->phydev->drv->resume(priv->phydev);
         phydev = phy_connect(dev, phy_id, &aml_adjust_link, priv->phy_interface);
 
         if (IS_ERR(phydev)) {
@@ -2394,7 +2395,8 @@ static int ethernet_probe(struct platform_device *pdev)
 
 	eth_pdata = (struct aml_eth_platdata *)pdev->dev.platform_data;
 	struct am_net_private *np = netdev_priv(my_ndev);
-	np->phydev->drv->suspend(np->phydev);
+	if(np->phydev)
+		np->phydev->drv->suspend(np->phydev);
 	switch_mod_gate_by_name("ethernet",0);
 	if (!eth_pdata) {
 		printk("\nethernet pm ops resource undefined.\n");
