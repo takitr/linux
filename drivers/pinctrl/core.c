@@ -48,6 +48,9 @@ static bool pinctrl_dummy_state;
 /* Mutex taken by all entry points */
 DEFINE_MUTEX(pinctrl_mutex);
 
+/* Mutex taken to protect pinctrl_maps */
+DEFINE_MUTEX(pinctrl_maps_mutex);
+
 /* Global list of pin control devices (struct pinctrl_dev) */
 LIST_HEAD(pinctrldev_list);
 
@@ -686,7 +689,7 @@ static struct pinctrl *create_pinctrl(struct device *dev)
 	}
 
 	devname = dev_name(dev);
-
+	mutex_lock(&pinctrl_maps_mutex);
 	/* Iterate over the pin control maps to locate the right ones */
 	for_each_maps(maps_node, i, map) {
 		/* Map must be for this device */
@@ -696,10 +699,11 @@ static struct pinctrl *create_pinctrl(struct device *dev)
 		ret = add_setting(p, map);
 		if (ret < 0) {
 			pinctrl_put_locked(p, false);
+			mutex_unlock(&pinctrl_maps_mutex);
 			return ERR_PTR(ret);
 		}
 	}
-
+	mutex_unlock(&pinctrl_maps_mutex);
 	/* Add the pinctrl handle to the global list */
 	list_add_tail(&p->node, &pinctrl_list);
 
@@ -710,8 +714,11 @@ static struct pinctrl *pinctrl_get_locked(struct device *dev)
 {
 	struct pinctrl *p;
 
-	if (WARN_ON(!dev))
+	if ((unsigned int )dev<PAGE_OFFSET){
+		printk("dev paramter error,%p\n",dev);
+		dump_stack();
 		return ERR_PTR(-EINVAL);
+		}
 
 	p = find_pinctrl(dev);
 	if (p != NULL) {
@@ -787,6 +794,12 @@ static struct pinctrl_state *pinctrl_lookup_state_locked(struct pinctrl *p,
 							 const char *name)
 {
 	struct pinctrl_state *state;
+	if((unsigned int )p<PAGE_OFFSET || (unsigned int)name < PAGE_OFFSET)
+	{
+		printk("p=%p,name=%p\n",p,name);
+		dump_stack();
+		return ERR_PTR(-ENODEV);
+	}
 
 	state = find_state(p, name);
 	if (!state) {
@@ -1023,10 +1036,10 @@ int pinctrl_register_map(struct pinctrl_map const *maps, unsigned num_maps,
 	}
 
 	if (!locked)
-		mutex_lock(&pinctrl_mutex);
+		mutex_lock(&pinctrl_maps_mutex);
 	list_add_tail(&maps_node->node, &pinctrl_maps);
 	if (!locked)
-		mutex_unlock(&pinctrl_mutex);
+		mutex_unlock(&pinctrl_maps_mutex);
 
 	return 0;
 }
@@ -1047,14 +1060,17 @@ int pinctrl_register_mappings(struct pinctrl_map const *maps,
 void pinctrl_unregister_map(struct pinctrl_map const *map)
 {
 	struct pinctrl_maps *maps_node;
-
+	
+	mutex_lock(&pinctrl_maps_mutex);
 	list_for_each_entry(maps_node, &pinctrl_maps, node) {
 		if (maps_node->maps == map) {
 			list_del(&maps_node->node);
 			kfree(maps_node);
+			mutex_unlock(&pinctrl_maps_mutex);
 			return;
 		}
 	}
+	mutex_unlock(&pinctrl_maps_mutex);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -1210,7 +1226,7 @@ static int pinctrl_maps_show(struct seq_file *s, void *what)
 
 	seq_puts(s, "Pinctrl maps:\n");
 
-	mutex_lock(&pinctrl_mutex);
+	mutex_lock(&pinctrl_maps_mutex);
 
 	for_each_maps(maps_node, i, map) {
 		seq_printf(s, "device %s\nstate %s\ntype %s (%d)\n",
@@ -1236,7 +1252,7 @@ static int pinctrl_maps_show(struct seq_file *s, void *what)
 		seq_printf(s, "\n");
 	}
 
-	mutex_unlock(&pinctrl_mutex);
+	mutex_unlock(&pinctrl_maps_mutex);
 
 	return 0;
 }
