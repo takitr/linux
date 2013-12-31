@@ -140,10 +140,14 @@ static int osd0_init(logo_object_t *plogo)
 		if(plogo->para.loaded)
 		{
 			osd_init_hw(plogo->para.loaded);
-			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+			if(plogo->para.vout_mode > VMODE_4K2K_SMPTE){
+				plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+			}
 		}
 #ifdef CONFIG_AM_HDMI_ONLY
-		{
+		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
+			set_current_vmode(plogo->para.vout_mode);
+		}else{
 			extern int read_hpd_gpio(void);
 			hpd_state = read_hpd_gpio();
     		
@@ -182,11 +186,14 @@ static int osd1_init(logo_object_t *plogo)
 		if(plogo->para.loaded)
 		{
 			osd_init_hw(plogo->para.loaded);
-			plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+			if(plogo->para.vout_mode > VMODE_4K2K_SMPTE){
+				plogo->para.vout_mode|=VMODE_LOGO_BIT_MASK;
+			}
 		}
 #ifdef CONFIG_AM_HDMI_ONLY
-		{
-			printk("**********vmode is HDMIONLY\n");
+		if(plogo->para.vout_mode > VMODE_4K2K_SMPTE) {
+			set_current_vmode(plogo->para.vout_mode);
+		}else{
 			extern int read_hpd_gpio(void);
 			hpd_state = read_hpd_gpio();
     		
@@ -194,7 +201,6 @@ static int osd1_init(logo_object_t *plogo)
 			    set_current_vmode(cvbsmode_hdmionly);
 			}
 			else{
-			    printk("********hdmi mode is %d\n", hdmimode_hdmionly);
 			    set_current_vmode(hdmimode_hdmionly);
 			}
 		}
