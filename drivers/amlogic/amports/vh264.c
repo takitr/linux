@@ -199,6 +199,7 @@ static u32 vh264_no_disp_wd_count;
 static u32 vh264_running;
 static s32 vh264_stream_switching;
 static s32 vh264_stream_new;
+static s32 vh264_eos;
 static struct vframe_s *p_last_vf;
 static s32 last_ptr;
 static u32 wait_buffer_counter;
@@ -837,7 +838,7 @@ static void vh264_isr(void)
         vh264_set_params();
 
     } else if ((cpu_cmd & 0xff) == 2) {
-        int frame_mb_only, pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, neg_poc;
+        int frame_mb_only, pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, neg_poc, eos;
         int i, status, num_frame, b_offset;
         int current_error_count;
 
@@ -853,7 +854,7 @@ static void vh264_isr(void)
             vh264_error_count = current_error_count;
         }
 
-        for (i = 0 ; i < num_frame ; i++) {
+        for (i = 0 ; (i < num_frame) && (!vh264_eos) ; i++) {
             status = READ_VREG(AV_SCRATCH_1 + i);
             buffer_index = status & 0x1f;
 
@@ -877,7 +878,12 @@ static void vh264_isr(void)
             poc_sel = status & 0x200;
             idr_flag = status & 0x400;
             neg_poc = status & 0x800;
-            frame_packing_type = (status >> 12) & 0xf;
+            frame_packing_type = (status >> 12) & 0x7;
+            eos = (status >> 15) & 1;
+
+            if (eos) {
+                vh264_eos = 1;
+            }
 
             b_offset = (status >> 16) & 0xffff;
 #ifdef DROP_B_FRAME_FOR_1080P_50_60FPS
@@ -1444,6 +1450,7 @@ static s32 vh264_init(void)
     stat |= STAT_TIMER_INIT;
 
     vh264_running = 0;    //init here to reset last_mb_width&last_mb_height
+    vh264_eos = 0;
 
     vh264_local_init();
 
