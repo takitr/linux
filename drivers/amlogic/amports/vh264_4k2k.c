@@ -55,6 +55,8 @@
 #define STAT_TIMER_ARM      0x10
 #define STAT_VDEC_RUN       0x20
 
+extern void amvenc_dos_top_reg_fix(void);
+
 static int  vh264_4k2k_vf_states(vframe_states_t *states, void*);
 static vframe_t *vh264_4k2k_vf_peek(void*);
 static vframe_t *vh264_4k2k_vf_get(void*);
@@ -1111,6 +1113,8 @@ static void vh264_4k2k_prot_init(void)
 
     WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
     WRITE_VREG(VDEC2_MDEC_PIC_DC_THRESH, 0x404038aa);
+
+    amvenc_dos_top_reg_fix();
 }
 
 static void vh264_4k2k_local_init(void)

@@ -22,6 +22,8 @@
 #include <linux/amlogic/pinctrl-amlogic.h>
 #include <linux/pinctrl/pinctrl-state.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
+#include <linux/vmalloc.h>
+
 //#define AML_PIN_DEBUG_GUP
 const char *pctdev_name;
 //#define debug
@@ -80,7 +82,7 @@ void amlogic_pinctrl_dt_free_map(struct pinctrl_dev *pctldev,
 		if (map[i].type == PIN_MAP_TYPE_CONFIGS_GROUP)
 			kfree(map[i].data.configs.configs);
 	}
-	kfree(map);
+	vfree(map);
 }
 
 
@@ -89,7 +91,7 @@ int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 				 struct device_node *np,
 				 struct pinctrl_map **map, unsigned *num_maps)
 {
-	struct pinctrl_map *new_map;
+	struct pinctrl_map *new_map=NULL;
 	unsigned new_num = 1;
 	unsigned long config = 0;
 	unsigned long *pconfig;
@@ -118,9 +120,11 @@ int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 	if (!purecfg&&config)
 		new_num =2;
 
-	new_map = kzalloc(sizeof(*new_map) * new_num, GFP_KERNEL);
-	if (!new_map)
+	new_map = vmalloc(sizeof(*new_map) * new_num);
+	if (!new_map){
+		printk("vmalloc map fail\n");
 		return -ENOMEM;
+	}
 
 	if (config) {
 		pconfig = kmemdup(&config, sizeof(config), GFP_KERNEL);
@@ -148,7 +152,7 @@ int amlogic_pinctrl_dt_node_to_map(struct pinctrl_dev *pctldev,
 	return 0;
 
 free_group:
-	kfree(new_map);
+	vfree(new_map);
 	return ret;
 }
 #else

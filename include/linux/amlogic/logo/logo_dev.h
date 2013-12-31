@@ -48,5 +48,7 @@ typedef  struct{
 extern int  setup_output_device(logo_object_t *plogo);
 extern int dev_osd_setup(void);
 extern int dev_vid_setup(void) ;
+extern vmode_t get_current_cvbs_vmode(void);
+extern vmode_t get_current_hdmi_vmode(void);
 
 #endif

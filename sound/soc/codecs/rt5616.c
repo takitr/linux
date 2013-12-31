@@ -1519,6 +1519,8 @@ static int rt5616_set_bias_level(struct snd_soc_codec *codec,
    printk(KERN_INFO"rt5616_set_bias_level : level=%d\n",level);
     switch (level) {
     case SND_SOC_BIAS_ON:
+        snd_soc_update_bits(codec, RT5616_HP_VOL,
+            RT5616_L_MUTE | RT5616_R_MUTE, 0);
         break;
 
     case SND_SOC_BIAS_PREPARE:

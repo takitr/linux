@@ -569,10 +569,12 @@ static ssize_t show_i2c_info(struct class *class,
     printk( "i2c_token_rdata_0:  0x%x\n", regs->i2c_token_rdata_0);
     printk( "i2c_token_rdata_1:  0x%x\n", regs->i2c_token_rdata_1);
 
-    printk( "master pinmux\n");
-    printk( "pinmux_reg:  0x%02x\n", i2c->master_pinmux.pinmux->reg);
-    printk( "clrmask:  0x%08x\n", i2c->master_pinmux.pinmux->clrmask);
-    printk( "setmask:  0x%08x\n", i2c->master_pinmux.pinmux->setmask);
+    if (i2c->master_pinmux.pinmux) {
+        printk( "master pinmux\n");
+        printk( "pinmux_reg:  0x%02x\n", i2c->master_pinmux.pinmux->reg);
+        printk( "clrmask:  0x%08x\n", i2c->master_pinmux.pinmux->clrmask);
+        printk( "setmask:  0x%08x\n", i2c->master_pinmux.pinmux->setmask);
+    }
     return 0;
 }
 
@@ -822,10 +824,10 @@ static ssize_t store_i2c_mode(struct class *class, struct class_attribute *attr,
 static struct class_attribute i2c_class_attrs[] = {
     __ATTR(silence,  S_IRUGO | S_IWUSR, show_i2c_silence,    store_i2c_silence),
     __ATTR(debug,  S_IRUGO | S_IWUSR, show_i2c_debug,    store_i2c_debug),
-    __ATTR(info,       S_IRUGO | S_IWUSR, show_i2c_info,    NULL),
-    __ATTR(cbus_reg,  S_IRUGO | S_IWUSR, NULL,    store_register),
-    __ATTR(customize,  S_IRUGO | S_IWUSR, NULL,    rw_special_reg),
-    __ATTR(test_slave,  S_IRUGO | S_IWUSR, NULL,    test_slave_device),
+    __ATTR(info, (S_IRUSR|S_IRGRP), show_i2c_info,    NULL),
+    __ATTR(cbus_reg,  S_IWUSR, NULL,    store_register),
+    __ATTR(customize,  S_IWUSR, NULL,    rw_special_reg),
+    __ATTR(test_slave,  S_IWUSR, NULL,    test_slave_device),
 #ifdef AML_I2C_REDUCE_CPURATE
     __ATTR(mode,  S_IRUGO | S_IWUSR, show_i2c_mode,   store_i2c_mode),
 #endif //AML_I2C_REDUCE_CPURATE

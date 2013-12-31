@@ -326,6 +326,7 @@ vpp_set_filters2(u32 width_in,
     u32 video_width, video_height;
     u32 ratio_x = 0;
     u32 ratio_y = 0;
+    u32 tmp_ratio_y = 0;
     vppfilter_mode_t *filter = &next_frame_par->vpp_filter;
     u32 wide_mode;
     s32 height_shift = 0;
@@ -370,17 +371,31 @@ RESTART:
 
     /* keep 8 bits resolution for aspect conversion */
     if (wide_mode == VIDEO_WIDEOPTION_4_3) {
-        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-            aspect_factor = 0x155;
-        else
-            aspect_factor = 0xc0;
+        if (get_prot_status()) {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0xc0;
+            else
+                aspect_factor = 0x155;
+        } else {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x155;
+            else
+                aspect_factor = 0xc0;
+        }
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
     else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
-        if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-            aspect_factor = 0x1c7;
-        else
-            aspect_factor = 0x90;
+        if (get_prot_status()) {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x90;
+            else
+                aspect_factor = 0x1c7;
+        } else {
+            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+                aspect_factor = 0x1c7;
+            else
+                aspect_factor = 0x90;
+        }
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
 
@@ -530,6 +545,7 @@ RESTART:
     }
 
     /* set filter co-efficients */
+    tmp_ratio_y = ratio_y;
     ratio_y <<= height_shift;
     ratio_y = ratio_y / (next_frame_par->vscale_skip_count + 1);
 
@@ -665,6 +681,41 @@ RESTART:
     }
 
     next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
+    if (get_prot_status()){
+        s32 tmp_height = (((s32)next_frame_par->VPP_vd_end_lines_ + 1) << 18) / tmp_ratio_y;
+        s32 tmp_top = 0;
+        s32 tmp_bottom = 0;
+
+        //printk("height_out %d video_height %d\n", height_out, video_height);
+        //printk("vf1 %d %d %d %d vs %d %d\n", next_frame_par->VPP_hd_start_lines_, next_frame_par->VPP_hd_end_lines_,
+        //        next_frame_par->VPP_vd_start_lines_, next_frame_par->VPP_vd_end_lines_,
+        //        next_frame_par->hscale_skip_count, next_frame_par->vscale_skip_count);
+        if ((s32)video_height > tmp_height) {
+            tmp_top = (s32)video_top + (((s32)video_height - tmp_height) >> 1);
+        } else {
+            tmp_top = (s32)video_top;
+        }
+        tmp_bottom = tmp_top + (((s32)next_frame_par->VPP_vd_end_lines_ + 1) << 18) / (s32)tmp_ratio_y;
+        if(tmp_bottom > (s32)height_out && tmp_top < (s32)height_out) {
+            s32 tmp_end = (s32)next_frame_par->VPP_vd_end_lines_ - ((tmp_bottom - (s32)height_out) * (s32)tmp_ratio_y >> 18);
+            if (tmp_end < (s32)next_frame_par->VPP_vd_end_lines_) {
+                next_frame_par->VPP_vd_end_lines_ = tmp_end;
+            }
+
+        } else if(tmp_bottom > (s32)height_out && tmp_top >= (s32)height_out){
+            next_frame_par->VPP_vd_end_lines_ = 1;
+        }
+        next_frame_par->VPP_vd_end_lines_ = next_frame_par->VPP_vd_end_lines_ - h_in /  height_out;
+        if ((s32)next_frame_par->VPP_vd_end_lines_ < (s32)next_frame_par->VPP_vd_start_lines_) {
+            next_frame_par->VPP_vd_end_lines_ = next_frame_par->VPP_vd_start_lines_;
+        }
+        if ((s32)next_frame_par->VPP_hd_end_lines_ < (s32)next_frame_par->VPP_hd_start_lines_) {
+            next_frame_par->VPP_hd_end_lines_ = next_frame_par->VPP_hd_start_lines_;
+        }
+        //printk("tmp_top %d tmp_bottom %d tmp_height %d\n", tmp_top, tmp_bottom, tmp_height);
+        //printk("vf2 %d %d %d %d\n", next_frame_par->VPP_hd_start_lines_, next_frame_par->VPP_hd_end_lines_,
+        //        next_frame_par->VPP_vd_start_lines_, next_frame_par->VPP_vd_end_lines_);
+    }
 }
 
 void
@@ -736,7 +787,7 @@ vpp_set_filters(u32 wide_mode,
     vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
 }
 
-void 
+void
 prot_get_parameter(u32 wide_mode,
                 vframe_t *vf,
                 vpp_frame_par_t *next_frame_par,

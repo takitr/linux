@@ -49,6 +49,9 @@
 #include <asm/div64.h>
 
 #include <linux/swapops.h>
+#include <plat/io.h>
+#include <mach/io.h>
+#include <mach/register.h>
 
 #include "internal.h"
 
@@ -1523,7 +1526,9 @@ static void shrink_active_list(unsigned long nr_to_scan,
 	spin_unlock_irq(&zone->lru_lock);
 
 	while (!list_empty(&l_hold)) {
+
 		cond_resched();
+
 		page = lru_to_page(&l_hold);
 		list_del(&page->lru);
 
@@ -1772,11 +1777,12 @@ static void get_scan_count(struct lruvec *lruvec, struct scan_control *sc,
 	 * There is enough inactive page cache, do not reclaim
 	 * anything from the anonymous working set right now.
 	 */
+#if 0
 	if (!inactive_file_is_low(lruvec)) {
 		scan_balance = SCAN_FILE;
 		goto out;
 	}
-
+#endif
 	scan_balance = SCAN_FRACT;
 
 	/*
@@ -1823,6 +1829,7 @@ static void get_scan_count(struct lruvec *lruvec, struct scan_control *sc,
 	fraction[0] = ap;
 	fraction[1] = fp;
 	denominator = ap + fp + 1;
+	//denominator = 1;
 out:
 	for_each_evictable_lru(lru) {
 		int file = is_file_lru(lru);
@@ -1831,6 +1838,7 @@ out:
 
 		size = get_lru_size(lruvec, lru);
 		scan = size >> sc->priority;
+		//scan = size;// >> sc->priority;
 
 		if (!scan && force_scan)
 			scan = min(size, SWAP_CLUSTER_MAX);
@@ -1871,12 +1879,12 @@ static void shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 	unsigned long nr_reclaimed = 0;
 	unsigned long nr_to_reclaim = sc->nr_to_reclaim;
 	struct blk_plug plug;
-
 	get_scan_count(lruvec, sc, nr);
 
 	blk_start_plug(&plug);
 	while (nr[LRU_INACTIVE_ANON] || nr[LRU_ACTIVE_FILE] ||
 					nr[LRU_INACTIVE_FILE]) {
+		//cond_resched();
 		for_each_evictable_lru(lru) {
 			if (nr[lru]) {
 				nr_to_scan = min(nr[lru], SWAP_CLUSTER_MAX);

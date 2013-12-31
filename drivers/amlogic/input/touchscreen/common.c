@@ -286,7 +286,11 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 		else
 			pdata->irq_edge = irq_table[retry];
 	}
-
+	err = of_property_read_u32(of_node,"auto_update_fw",&pdata->auto_update_fw);
+	if (err) {
+	  printk("%s warnning: faild to get auto_update_fw!\n", pdata->owner);
+	  pdata->auto_update_fw = 0;
+  }
 	err = of_property_read_u32(of_node,"xres",&pdata->xres);
 	if (err) {
 	  printk("%s: faild to get x resolution!\n", pdata->owner);

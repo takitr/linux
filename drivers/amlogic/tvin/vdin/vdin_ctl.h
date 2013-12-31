@@ -161,13 +161,13 @@ extern void vdin_set_matrix_blank(struct vdin_dev_s *devp);
 extern void vdin_delay_line(unsigned short num,unsigned int offset);
 extern void set_wr_ctrl(int h_pos,int v_pos,struct vdin_dev_s *devp);
 extern bool vdin_check_cycle(struct vdin_dev_s *devp);
-extern void vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp);
+extern bool vdin_write_done_check(unsigned int offset, struct vdin_dev_s *devp);
 extern bool vdin_check_vs(struct vdin_dev_s *devp);
 extern void vdin_calculate_duration(struct vdin_dev_s *devp);
 extern void vdin_output_ctl(unsigned int offset, unsigned int output_flag);
 extern void vdin_wr_reverse(unsigned int offset, bool hreverse, bool vreverse);
 extern void vdin_set_hvscale(struct vdin_dev_s *devp);
 extern void set_chroma_regs(unsigned int offset, unsigned int h_active,unsigned int v_active);
-extern void vdin_set_cm2(unsigned int offset,unsigned int index);
+extern void vdin_set_cm2(unsigned int offset,unsigned int w,unsigned int h,unsigned int *data);
 extern void vdin_bypass_isp(unsigned int offset);
 #endif

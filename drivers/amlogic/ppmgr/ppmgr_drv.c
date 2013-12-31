@@ -19,7 +19,7 @@
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_provider.h>
 #include <linux/amlogic/amports/vframe_receiver.h>
-
+#include <linux/of_fdt.h>
 
 
 #include "ppmgr_log.h"
@@ -1173,20 +1173,31 @@ int uninit_ppmgr_device(void)
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 
 static struct platform_device *ppmgr_dev0 = NULL;
-
+static struct resource memobj;
 /* for driver. */
 static int ppmgr_driver_probe(struct platform_device *pdev)
 {
     char* buf_start;
     unsigned int buf_size;
     struct resource *mem;
+    int idx;
 
+#if 0
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
     {
         amlog_level(LOG_LEVEL_HIGH, "ppmgr memory resource undefined.\n");
         return -EFAULT;
     }
-
+#else
+    mem = &memobj;
+    idx = find_reserve_block(pdev->dev.of_node->name,0);
+    if(idx < 0){
+	 amlog_level(LOG_LEVEL_HIGH, "ppmgr memory resource undefined.\n");
+        return -EFAULT;
+    }
+    mem->start = (phys_addr_t)get_reserve_block_addr(idx);
+    mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(idx)-1;
+#endif
     buf_start = (char *)mem->start;
     buf_size = mem->end - mem->start + 1;
     set_ppmgr_buf_info((char *)mem->start,buf_size);

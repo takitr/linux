@@ -56,6 +56,16 @@
 #endif
 
 //#define RDMA_CHECK_PRE
+#define READ_BACK_SUPPORT
+
+#ifdef READ_BACK_SUPPORT
+static ulong* rmda_rd_table = NULL;
+static ulong rmda_rd_table_phy_addr = 0, * rmda_rd_table_addr_remap = NULL;
+static int rmda_rd_item_count = 0;
+static int rmda_rd_item_count_pre = 0;
+#endif
+
+
 
 #define RDMA_TABLE_SIZE                     (PAGE_SIZE)
 
@@ -144,6 +154,20 @@ void rdma_table_prepare_write(unsigned long reg_adr, unsigned long val)
     }
 }
 
+#ifdef READ_BACK_SUPPORT
+void rdma_table_prepare_read(unsigned long reg_adr)
+{
+    if(((rmda_rd_item_count<<1)+1)<(RDMA_TABLE_SIZE/4)){
+        rmda_rd_table[rmda_rd_item_count] = reg_adr; //CBUS_REG_ADDR(reg_adr);
+        //printk("%s %d: %x %x\n",__func__, rmda_item_count, rmda_table[rmda_item_count<<1], rmda_table[(rmda_item_count<<1)+1]);
+        rmda_rd_item_count++;
+    }
+    else{
+        printk("%s fail: %d, %x %x\n",__func__, rmda_rd_item_count, reg_adr);
+    }
+}
+#endif
+
 EXPORT_SYMBOL(rdma_table_prepare_write);
 static int rdma_config(unsigned char type)
 {
@@ -164,7 +188,7 @@ static int rdma_config(unsigned char type)
     rmda_item_count_pre = rmda_item_count;
 #endif
     data32  = 0;
-    data32 |= 0                         << 6;   // [31: 6] Rsrv.
+    data32 |= 1                         << 6;   // [31: 6] Rsrv.
     data32 |= ctrl_ahb_wr_burst_size    << 4;   // [ 5: 4] ctrl_ahb_wr_burst_size. 0=16; 1=24; 2=32; 3=48.
     data32 |= ctrl_ahb_rd_burst_size    << 2;   // [ 3: 2] ctrl_ahb_rd_burst_size. 0=16; 1=24; 2=32; 3=48.
     data32 |= 0                         << 1;   // [    1] ctrl_sw_reset.
@@ -209,6 +233,25 @@ static int rdma_config(unsigned char type)
 		data32 &= 0xffffedd;
 		Wr(RDMA_ACCESS_AUTO, data32);
 	}
+#ifdef READ_BACK_SUPPORT
+        if(rmda_rd_item_count > 0){
+            memset(rmda_rd_table_addr_remap, 0xff, rmda_rd_item_count*8);
+            memcpy(rmda_rd_table_addr_remap, rmda_rd_table, rmda_rd_item_count*4);
+            
+            Wr(RDMA_AHB_START_ADDR_2, rmda_rd_table_phy_addr);
+            Wr(RDMA_AHB_END_ADDR_2,   rmda_rd_table_phy_addr + rmda_rd_item_count*8 - 1);
+    
+            data32 |= 0x1                       << 16;   // [23: 16] interrupt inputs enable mask for auto-start 2: vsync int bit 0
+            data32 |= 0                         << 6;   // [    6] ctrl_cbus_write_2. 1=Register write; 0=Register read.
+            data32 |= 0                         << 2;   // [    2] ctrl_cbus_addr_incr_2. 1=Incremental register access; 0=Non-incremental.
+            Wr(RDMA_ACCESS_AUTO, data32);
+        }
+        else{
+            data32 &= (~(1<<16));    
+        }
+        rmda_rd_item_count_pre = rmda_rd_item_count;
+        rmda_rd_item_count = 0;
+#endif        
     }
     else if(type == 2){
         int i,j;
@@ -333,7 +376,9 @@ static irqreturn_t rdma_isr(int irq, void *dev_id)
 static int __init rmda_early_init(void)
 {
     ulong rmda_table_addr;
-    
+#ifdef READ_BACK_SUPPORT
+    ulong rmda_rd_table_addr;
+#endif    
     rmda_table_addr = __get_free_pages(GFP_KERNEL, get_order(RDMA_TABLE_SIZE));
     if (!rmda_table_addr) {
         printk("%s: failed to alloc rmda_table_addr\n", __func__);
@@ -352,6 +397,23 @@ static int __init rmda_early_init(void)
 #ifdef RDMA_CHECK_PRE    
     rmda_table_pre = kmalloc(RDMA_TABLE_SIZE, GFP_KERNEL);
 #endif    
+#ifdef READ_BACK_SUPPORT
+    rmda_rd_table_addr = __get_free_pages(GFP_KERNEL, get_order(RDMA_TABLE_SIZE));
+    if (!rmda_rd_table_addr) {
+        printk("%s: failed to alloc rmda_rd_table_addr\n", __func__);
+        return -1;
+    }
+
+    rmda_rd_table_phy_addr = virt_to_phys((u8 *)rmda_rd_table_addr);
+    
+    rmda_rd_table_addr_remap = ioremap_nocache(rmda_rd_table_phy_addr, RDMA_TABLE_SIZE);
+    if (!rmda_rd_table_addr_remap) {
+            printk("%s: failed to remap rmda_rd_table_addr\n", __func__);
+            return -1;
+    }
+    
+    rmda_rd_table = kmalloc(RDMA_TABLE_SIZE, GFP_KERNEL);
+#endif
 
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
     request_irq(INT_RDMA, &rdma_isr,
@@ -476,6 +538,40 @@ int VSYNC_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long s
     return 0;
 }
 EXPORT_SYMBOL(VSYNC_WR_MPEG_REG_BITS);
+
+unsigned long RDMA_READ_REG(unsigned long adr)
+{
+    unsigned long read_val = 0xffffffff;
+#ifdef READ_BACK_SUPPORT
+    int i;
+    int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
+    if((enable_!=0)&&rdma_start){
+        for(i=(rmda_rd_item_count_pre-1); i>=0; i--){
+            if(rmda_rd_table_addr_remap[i]==adr){
+                read_val = rmda_rd_table_addr_remap[rmda_rd_item_count_pre + i];
+                break;
+            }
+        }   
+    }
+#endif
+    return read_val;    
+}    
+EXPORT_SYMBOL(RDMA_READ_REG);
+
+int RDMA_SET_READ(unsigned long adr)
+{ 
+#ifdef READ_BACK_SUPPORT
+    int enable_ = ((enable&enable_mask)|(enable_mask>>8))&0xff;
+    if((enable_!=0)&&rdma_start){
+        if(debug_flag&1)
+            printk("RDMA_SET_READ %d(%x)\n", rmda_rd_item_count, adr);
+
+        rdma_table_prepare_read(adr);
+    }
+#endif
+    return 0;
+}
+EXPORT_SYMBOL(RDMA_SET_READ);
 
 bool is_vsync_rdma_enable(void)
 {

@@ -232,6 +232,7 @@ int remote_reprot_key( struct remote * remote_data){
 static void remote_release_timer_sr(unsigned long data)
 {
 	struct remote *remote_data = (struct remote *)data;
+	//key report release use timer interrupt 
 	remote_data->key_release_report = remote_report_release_key[remote_data->work_mode];
 	remote_data->key_release_report(remote_data);
 }
@@ -245,7 +246,6 @@ static void remote_fiq_interrupt(unsigned long data)
 {
 	struct remote *remote_data = (struct remote *)data;
 	remote_reprot_key(gp_remote);
-//	WRITE_MPEG_REG(IRQ_CLR_REG(NEC_REMOTE_IRQ_NO), 1 << IRQ_BIT(NEC_REMOTE_IRQ_NO));
 }
 
 
@@ -313,7 +313,7 @@ static int work_mode_config(unsigned int cur_mode)
 	set_remote_init(gp_remote);
 	if(cur_mode == gp_remote->save_mode)
 		return 0;
-	if(cur_mode <= DECODEMODE_MAX ){
+	if((cur_mode <= DECODEMODE_MAX)  && (gp_remote->save_mode > DECODEMODE_MAX) ){
 		unregister_fiq_bridge_handle(&gp_remote->fiq_handle_item);
 		free_fiq(NEC_REMOTE_IRQ_NO, &remote_fiq_interrupt);
 		ret = request_irq(NEC_REMOTE_IRQ_NO, remote_interrupt, IRQF_SHARED, "keypad", (void *)remote_interrupt);
@@ -322,7 +322,7 @@ static int work_mode_config(unsigned int cur_mode)
 			return ret;
 		}
 	}
-	else{
+	else if((cur_mode > DECODEMODE_MAX)  && (gp_remote->save_mode < DECODEMODE_MAX)){
 		free_irq(NEC_REMOTE_IRQ_NO, remote_interrupt);
 		gp_remote->fiq_handle_item.handle = remote_bridge_sw_isr[gp_remote->work_mode];
 		gp_remote->fiq_handle_item.key = (u32) gp_remote;
@@ -331,8 +331,10 @@ static int work_mode_config(unsigned int cur_mode)
 		desc->depth++;
 		request_fiq(NEC_REMOTE_IRQ_NO, &remote_fiq_interrupt);
 	}
+	else{
+		printk("do nothing\n");
+	}
 	gp_remote->save_mode = cur_mode;
-	del_timer(&gp_remote->repeat_timer);
 	return 0;
 }
 
@@ -385,6 +387,9 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 				return -1;
 			}
 			mouse_map[remote->map_num][val >> 16] = val & 0xff;
+			break;
+		case REMOTE_IOC_SET_RELT_DELAY:
+			ret = copy_from_user(&remote->relt_delay, argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_REPEAT_DELAY:
 			ret = copy_from_user(&remote->repeat_delay, argp, sizeof(long));
@@ -560,7 +565,6 @@ static int remote_probe(struct platform_device *pdev)
 	gp_remote = remote;
 	remote->debug_enable = 1;
 	remote->ig_custom_enable = 1;
-	//gp_remote->key_report = remote_report_key[DECODEMODE_NEC];
 	gp_remote->remote_send_key = remote_send_key;
 	input_dbg = remote_printk;
 	platform_set_drvdata(pdev, remote);
@@ -645,7 +649,6 @@ err1:
 	input_free_device(input_dev);
 	return -EINVAL;
 }
-
 static int remote_remove(struct platform_device *pdev)
 {
 	struct remote *remote = platform_get_drvdata(pdev);
@@ -695,11 +698,14 @@ static int remote_resume(struct platform_device * pdev)
 		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
 	}
 	return 0;
+}static int remote_suspend(struct platform_device * pdev)
+{
+	return 0;
 }
 static struct platform_driver remote_driver = {
 	.probe = remote_probe,
 	.remove = remote_remove,
-	.suspend = NULL,
+	.suspend = remote_suspend,
 	.resume = remote_resume,
 	.driver = {
 		.name = "meson-remote",

@@ -153,6 +153,11 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)dev_instance;
     data32 = hdmi_rd_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT); 
     hdmi_print(1, "HDMI irq %x\n", data32);
+    if(hdmitx_device->hpd_lock == 1) {
+        hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR, 0xf);
+        printk("hdmitx: hpd locked\n");
+        return IRQ_HANDLED;
+    }
     if(hdmitx_device->internal_mode_change == 1){     // if the irq from the internal mode change, just do nothing and return
         hdmi_wr_reg(OTHER_BASE_ADDR + HDMI_OTHER_INTR_STAT_CLR, 0x7);
         printk("hdmitx: ignore irq\n");
@@ -3366,6 +3371,15 @@ static void hdmitx_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     tmpbuf[i]=0;
     if((strncmp(tmpbuf, "dumpreg", 7)==0) || (strncmp(tmpbuf, "dumptvencreg", 12)==0)){
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
+        return;
+    }
+    else if(strncmp(tmpbuf, "hpd_lock", 8) == 0) {
+        if(tmpbuf[8] == '1') {
+            hdmitx_device->hpd_lock = 1;
+        }
+        else {
+            hdmitx_device->hpd_lock = 0;
+        }
         return;
     }
     else if(strncmp(tmpbuf, "vic", 3)==0) {

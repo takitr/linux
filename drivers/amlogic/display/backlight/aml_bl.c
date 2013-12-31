@@ -16,7 +16,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
  *
  * Author:  Wang Han <han.wang@amlogic.com>
- *
+ *  
+ * Modify:  Evoke Zhang <evoke.zhang@amlogic.com>
+ * compatible dts
  */
 
 #include <linux/init.h>
@@ -45,7 +47,7 @@
 #define DTRACE()
 #endif /* MESON_BACKLIGHT_DEBUG */
 
-#define BL_LEVEL_DEFAULT					200
+#define BL_LEVEL_DEFAULT					BL_LEVEL_MID
 #define BL_NAME 							"backlight"
 #define bl_gpio_request(gpio) 				amlogic_gpio_request(gpio, BL_NAME)
 #define bl_gpio_free(gpio) 					amlogic_gpio_free(gpio, BL_NAME)
@@ -56,18 +58,62 @@
 
 #include "aml_lcd_bl.h"
 #ifdef LCD_BACKLIGHT_SUPPORT
+/* for lcd backlight power */
+typedef enum {
+	BL_CTL_GPIO = 0,
+	BL_CTL_PWM_NEGATIVE,
+	BL_CTL_PWM_POSITIVE,
+	BL_CTL_PWM_COMBO,
+	BL_CTL_MAX,
+} BL_Ctrl_Method_t;
+
+static const char* bl_ctrl_method_table[]={
+	"gpio",
+	"pwm_negative",
+	"pwm_positive",
+	"pwm_combo",
+	"null"
+};
+
+typedef enum {
+	BL_PWM_A = 0,
+	BL_PWM_B,
+	BL_PWM_C,
+	BL_PWM_D,
+	BL_PWM_MAX,
+} BL_PWM_t;
+
 typedef struct {
 	unsigned level_default;
+	unsigned level_mid;
+	unsigned level_mid_mapping;
+	unsigned level_min;
+	unsigned level_max;
     unsigned char method;
 	int gpio;
 	unsigned dim_max;
 	unsigned dim_min;
-	unsigned short pwm_port;
+	unsigned char pwm_port;
 	unsigned char pwm_gpio_used;
 	unsigned pwm_cnt;
 	unsigned pwm_pre_div;
 	unsigned pwm_max;
 	unsigned pwm_min;
+	
+	unsigned combo_level_switch;
+	unsigned char combo_high_port;
+	unsigned char combo_high_method;
+	unsigned char combo_low_port;
+	unsigned char combo_low_method;
+	unsigned combo_high_cnt;
+	unsigned combo_high_pre_div;
+	unsigned combo_high_duty_max;
+	unsigned combo_high_duty_min;
+	unsigned combo_low_cnt;
+	unsigned combo_low_pre_div;
+	unsigned combo_low_duty_max;
+	unsigned combo_low_duty_min;
+	
 	struct pinctrl *p;
 } Lcd_Bl_Config_t;
 
@@ -97,37 +143,40 @@ void bl_power_on(int bl_flag)
 		aml_set_reg32_bits(P_LED_PWM_REG0, 1, 12, 2);
 		bl_gpio_direction_output(bl_config.gpio, 1);
 	}
-	else {
-		if (bl_config.pwm_port == BL_PWM_A) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.pwm_pre_div, 8, 7);  //pwm_a_clk_div
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 4, 2);  //pwm_a_clk_sel
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 15, 1);  //pwm_a_clk_en
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 0, 1);  //enable pwm_a
-		}
-		else if (bl_config.pwm_port == BL_PWM_B) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.pwm_pre_div, 16, 7);  //pwm_b_clk_div
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 6, 2);  //pwm_b_clk_sel
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 23, 1);  //pwm_b_clk_en
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 1, 1);  //enable pwm_b
-		}
-		else if (bl_config.pwm_port == BL_PWM_C) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.pwm_pre_div, 8, 7);  //pwm_c_clk_div
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 4, 2);  //pwm_c_clk_sel
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 15, 1);  //pwm_c_clk_en
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 0, 1);  //enable pwm_c
-		}
-		else if (bl_config.pwm_port == BL_PWM_D) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.pwm_pre_div, 16, 7);  //pwm_d_clk_div
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 6, 2);  //pwm_d_clk_sel
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 23, 1);  //pwm_d_clk_en
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 1, 1);  //enable pwm_d
+	else if ((bl_config.method == BL_CTL_PWM_NEGATIVE) || (bl_config.method == BL_CTL_PWM_POSITIVE)) {
+		switch (bl_config.pwm_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 8, 7);  //pwm_a_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 4, 2);  //pwm_a_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 15, 1);  //pwm_a_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 0, 1);  //enable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 16, 7);  //pwm_b_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 6, 2);  //pwm_b_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 23, 1);  //pwm_b_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 1, 1);  //enable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 8, 7);  //pwm_c_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 4, 2);  //pwm_c_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 15, 1);  //pwm_c_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 0, 1);  //enable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 16, 7);  //pwm_d_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 6, 2);  //pwm_d_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 23, 1);  //pwm_d_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 1, 1);  //enable pwm_d
+				break;
+			default:
+				break;
 		}
 	
-		if (IS_ERR(bl_config.p)) {			
+		if (IS_ERR(bl_config.p)) {
 			printk("set backlight pinmux error.\n");
 			goto exit_bl_power_on;
-		}	
-			
+		}
 		s = pinctrl_lookup_state(bl_config.p, "default");	//select pinctrl
 		if (IS_ERR(s)) {
 			printk("set backlight pinmux error.\n");
@@ -146,8 +195,89 @@ void bl_power_on(int bl_flag)
 				bl_gpio_direction_output(bl_config.gpio, 1);
 		}
 	}
+	else if (bl_config.method == BL_CTL_PWM_COMBO) {
+		switch (bl_config.combo_high_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 8, 7);  //pwm_a_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 4, 2);  //pwm_a_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 15, 1);  //pwm_a_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 0, 1);  //enable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 16, 7);  //pwm_b_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 6, 2);  //pwm_b_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 23, 1);  //pwm_b_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 1, 1);  //enable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 8, 7);  //pwm_c_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 4, 2);  //pwm_c_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 15, 1);  //pwm_c_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 0, 1);  //enable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 16, 7);  //pwm_d_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 6, 2);  //pwm_d_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 23, 1);  //pwm_d_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 1, 1);  //enable pwm_d
+				break;
+			default:
+				break;
+		}
+		switch (bl_config.combo_low_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 8, 7);  //pwm_a_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 4, 2);  //pwm_a_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 15, 1);  //pwm_a_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 0, 1);  //enable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, bl_config.combo_high_pre_div, 16, 7);  //pwm_b_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 6, 2);  //pwm_b_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 23, 1);  //pwm_b_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 1, 1, 1);  //enable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 8, 7);  //pwm_c_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 4, 2);  //pwm_c_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 15, 1);  //pwm_c_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 0, 1);  //enable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, bl_config.combo_high_pre_div, 16, 7);  //pwm_d_clk_div
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 6, 2);  //pwm_d_clk_sel
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 23, 1);  //pwm_d_clk_en
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 1, 1, 1);  //enable pwm_d
+				break;
+			default:
+				break;
+		}
+	
+		if (IS_ERR(bl_config.p)) {
+			printk("set backlight pinmux error.\n");
+			goto exit_bl_power_on;
+		}
+		s = pinctrl_lookup_state(bl_config.p, "pwm_combo");	//select pinctrl	
+		if (IS_ERR(s)) {
+			printk("set backlight pinmux error.\n");
+			devm_pinctrl_put(bl_config.p);
+			goto exit_bl_power_on;
+		}
+	
+		ret = pinctrl_select_state(bl_config.p, s);	//set pinmux and lock pins
+		if (ret < 0) {
+			printk("set backlight pinmux error.\n");
+			devm_pinctrl_put(bl_config.p);
+			goto exit_bl_power_on;
+		}
+	}
+	else {
+		printk("Wrong backlight control method\n");
+		goto exit_bl_power_on;
+	}
 	bl_real_status = 1;
-
+	printk("backlight power on\n");
+	
 exit_bl_power_on:
 	mutex_unlock(&bl_power_mutex);
 }
@@ -168,25 +298,64 @@ void bl_power_off(int bl_flag)
 	if (bl_config.method == BL_CTL_GPIO) {
 		bl_gpio_direction_output(bl_config.gpio, 0);
 	}
-	else {
+	else if ((bl_config.method == BL_CTL_PWM_NEGATIVE) || (bl_config.method == BL_CTL_PWM_POSITIVE)) {
 		if (bl_config.pwm_gpio_used) {
 			if (bl_config.gpio)
 				bl_gpio_direction_output(bl_config.gpio, 0);
 		}
-		if (bl_config.pwm_port == BL_PWM_A) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 0, 1);  //enable pwm_a
+		switch (bl_config.pwm_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 0, 1);  //disable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 1, 1);  //disable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 0, 1);  //disable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 1, 1);	//disable pwm_d
+				break;
+			default:
+				break;
 		}
-		else if (bl_config.pwm_port == BL_PWM_B) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 1, 1);  //enable pwm_b
+	}
+	else if (bl_config.method == BL_CTL_PWM_COMBO) {
+		switch (bl_config.combo_high_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 0, 1);  //disable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 1, 1);  //disable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 0, 1);  //disable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 1, 1);	//disable pwm_d
+				break;
+			default:
+				break;
 		}
-		else if (bl_config.pwm_port == BL_PWM_C) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 0, 1);  //enable pwm_c
-		}
-		else if (bl_config.pwm_port == BL_PWM_D) {
-			aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 1, 1);	//disable pwm_d
+		switch (bl_config.combo_low_port) {
+			case BL_PWM_A:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 0, 1);  //disable pwm_a
+				break;
+			case BL_PWM_B:
+				aml_set_reg32_bits(P_PWM_MISC_REG_AB, 0, 1, 1);  //disable pwm_b
+				break;
+			case BL_PWM_C:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 0, 1);  //disable pwm_c
+				break;
+			case BL_PWM_D:
+				aml_set_reg32_bits(P_PWM_MISC_REG_CD, 0, 1, 1);	//disable pwm_d
+				break;
+			default:
+				break;
 		}
 	}
 	bl_real_status = 0;
+	printk("backlight power off\n");
 	mutex_unlock(&bl_power_mutex);
 }
 
@@ -194,28 +363,30 @@ static DEFINE_MUTEX(bl_level_mutex);
 static void set_backlight_level(unsigned level)
 {
 	unsigned pwm_hi = 0, pwm_lo = 0;
-	
+
 	mutex_lock(&bl_level_mutex);
 	
 	DPRINT("set_backlight_level: %u, last level: %u\n", level, bl_level);
-	level = (level > BL_LEVEL_MAX ? BL_LEVEL_MAX : (level < BL_LEVEL_MIN ? (level < BL_LEVEL_OFF ? 0 : BL_LEVEL_MIN) : level));
+	level = (level > bl_config.level_max ? bl_config.level_max : (level < bl_config.level_min ? (level < BL_LEVEL_OFF ? 0 : bl_config.level_min) : level));
 	bl_level = level;
 
-	if ((level == 0) && (bl_status == 1)) {
-		bl_power_off(DRV_BL_FLAG);
+	if (bl_level == 0) {
+		if (bl_real_status == 1)
+			bl_power_off(DRV_BL_FLAG);
 	}
-	else {		
-		if (level > BL_LEVEL_MID)
-			level = ((level - BL_LEVEL_MID) * (BL_LEVEL_MAX - BL_LEVEL_MAPPED_MID)) / (BL_LEVEL_MAX - BL_LEVEL_MID) + BL_LEVEL_MAPPED_MID;
+	else {
+		//mapping
+		if (level > bl_config.level_mid)
+			level = ((level - bl_config.level_mid) * (bl_config.level_max - bl_config.level_mid_mapping)) / (bl_config.level_max - bl_config.level_mid) + bl_config.level_mid_mapping;
 		else
-			level = ((level - BL_LEVEL_MIN) * (BL_LEVEL_MAPPED_MID - BL_LEVEL_MIN)) / (BL_LEVEL_MID - BL_LEVEL_MIN) + BL_LEVEL_MIN;
-		
+			level = ((level - bl_config.level_min) * (bl_config.level_mid_mapping - bl_config.level_min)) / (bl_config.level_mid - bl_config.level_min) + bl_config.level_min;
+		DPRINT("level mapping=%u\n", level);
 		if (bl_config.method == BL_CTL_GPIO) {
-			level = bl_config.dim_min - ((level - BL_LEVEL_MIN) * (bl_config.dim_min - bl_config.dim_max)) / (BL_LEVEL_MAX - BL_LEVEL_MIN);
+			level = bl_config.dim_min - ((level - bl_config.level_min) * (bl_config.dim_min - bl_config.dim_max)) / (bl_config.level_max - bl_config.level_min);
 			aml_set_reg32_bits(P_LED_PWM_REG0, level, 0, 4);
 		}
-		else {
-			level = (bl_config.pwm_max - bl_config.pwm_min) * (level - BL_LEVEL_MIN) / (BL_LEVEL_MAX - BL_LEVEL_MIN) + bl_config.pwm_min;
+		else if ((bl_config.method == BL_CTL_PWM_NEGATIVE) || (bl_config.method == BL_CTL_PWM_POSITIVE)) {
+			level = (bl_config.pwm_max - bl_config.pwm_min) * (level - bl_config.level_min) / (bl_config.level_max - bl_config.level_min) + bl_config.pwm_min;
 			if (bl_config.method == BL_CTL_PWM_NEGATIVE) {
 				pwm_hi = bl_config.pwm_cnt - level;
 				pwm_lo = level;
@@ -224,21 +395,135 @@ static void set_backlight_level(unsigned level)
 				pwm_hi = level;
 				pwm_lo = bl_config.pwm_cnt - level;
 			}
-			if (bl_config.pwm_port == BL_PWM_A) {
-				aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
-			}
-			else if (bl_config.pwm_port == BL_PWM_B) {
-				aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
-			}
-			else if (bl_config.pwm_port == BL_PWM_C) {
-				aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
-			}
-			else if (bl_config.pwm_port == BL_PWM_D) {
-				aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+			switch (bl_config.pwm_port) {
+				case BL_PWM_A:
+					aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
+					break;
+				case BL_PWM_B:
+					aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
+					break;
+				case BL_PWM_C:
+					aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
+					break;
+				case BL_PWM_D:
+					aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+					break;
+				default:
+					break;
 			}
 		}
-		if (bl_status == 1)
-			bl_power_on(DRV_BL_FLAG);	
+		else if (bl_config.method == BL_CTL_PWM_COMBO) {
+			if (level >= bl_config.combo_level_switch) {
+				//pre_set combo_low duty max
+				if (bl_config.combo_low_method == BL_CTL_PWM_NEGATIVE) {
+					pwm_hi = bl_config.combo_low_cnt - bl_config.combo_low_duty_max;
+					pwm_lo = bl_config.combo_low_duty_max;
+				}
+				else {
+					pwm_hi = bl_config.combo_low_duty_max;
+					pwm_lo = bl_config.combo_low_cnt - bl_config.combo_low_duty_max;
+				}
+				switch (bl_config.combo_low_port) {
+					case BL_PWM_A:
+						aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_B:
+						aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_C:
+						aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_D:
+						aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+						break;
+					default:
+						break;
+				}
+				
+				//set combo_high duty
+				level = (bl_config.combo_high_duty_max - bl_config.combo_high_duty_min) * (level - bl_config.combo_level_switch) / (bl_config.level_max - bl_config.combo_level_switch) + bl_config.combo_high_duty_min;
+				if (bl_config.combo_high_method == BL_CTL_PWM_NEGATIVE) {
+					pwm_hi = bl_config.combo_high_cnt - level;
+					pwm_lo = level;
+				}
+				else {
+					pwm_hi = level;
+					pwm_lo = bl_config.combo_high_cnt - level;
+				}
+				switch (bl_config.combo_high_port) {
+					case BL_PWM_A:
+						aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_B:
+						aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_C:
+						aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_D:
+						aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+						break;
+					default:
+						break;
+				}
+			}
+			else {
+				//pre_set combo_high duty min
+				if (bl_config.combo_high_method == BL_CTL_PWM_NEGATIVE) {
+					pwm_hi = bl_config.combo_high_cnt - bl_config.combo_high_duty_min;
+					pwm_lo = bl_config.combo_high_duty_min;
+				}
+				else {
+					pwm_hi = bl_config.combo_high_duty_min;;
+					pwm_lo = bl_config.combo_high_cnt - bl_config.combo_high_duty_min;
+				}
+				switch (bl_config.combo_high_port) {
+					case BL_PWM_A:
+						aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_B:
+						aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_C:
+						aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_D:
+						aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+						break;
+					default:
+						break;
+				}
+				
+				//set combo_low duty
+				level = (bl_config.combo_low_duty_max - bl_config.combo_low_duty_min) * (level - bl_config.level_min) / (bl_config.combo_level_switch - bl_config.level_min) + bl_config.combo_low_duty_min;
+				if (bl_config.combo_low_method == BL_CTL_PWM_NEGATIVE) {
+					pwm_hi = bl_config.combo_low_cnt - level;
+					pwm_lo = level;
+				}
+				else {
+					pwm_hi = level;
+					pwm_lo = bl_config.combo_low_cnt - level;
+				}
+				switch (bl_config.combo_low_port) {
+					case BL_PWM_A:
+						aml_write_reg32(P_PWM_PWM_A, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_B:
+						aml_write_reg32(P_PWM_PWM_B, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_C:
+						aml_write_reg32(P_PWM_PWM_C, (pwm_hi << 16) | (pwm_lo));
+						break;
+					case BL_PWM_D:
+						aml_write_reg32(P_PWM_PWM_D, (pwm_hi << 16) | (pwm_lo));
+						break;
+					default:
+						break;
+				}
+			}
+		}
+		if ((bl_status == 1) && (bl_real_status == 0))
+			bl_power_on(DRV_BL_FLAG);
 	}
 	mutex_unlock(&bl_level_mutex);
 }
@@ -353,29 +638,57 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 	int ret=0;
 	int val;
 	const char *str;
-	unsigned int bl_para[2];
+	unsigned int bl_para[3];
 	unsigned pwm_freq, pwm_cnt, pwm_pre_div;
 	int i;
 	
 	if (pdev->dev.of_node) {
-		ret = of_property_read_u32(pdev->dev.of_node,"bl_level_default", &val);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_level_default_uboot_kernel", &bl_para[0], 2);
 		if(ret){
-			printk("faild to get bl_level_default\n");
+			printk("faild to get bl_level_default_uboot_kernel\n");
 			bl_config.level_default = BL_LEVEL_DEFAULT;
 		}
 		else {
-			bl_config.level_default = val;
+			bl_config.level_default = bl_para[1];
 		}
+		DPRINT("bl level default kernel=%u\n", bl_config.level_default);
+		ret = of_property_read_u32_array(pdev->dev.of_node, "bl_level_middle_mapping", &bl_para[0], 2);
+		if (ret) {
+			printk("faild to get bl_level_middle_mapping!\n");
+			bl_config.level_mid = BL_LEVEL_MID;
+			bl_config.level_mid_mapping = BL_LEVEL_MID_MAPPED;
+		}
+		else {
+			bl_config.level_mid = bl_para[0];
+			bl_config.level_mid_mapping = bl_para[1];
+		}
+		DPRINT("bl level mid=%u, mid_mapping=%u\n", bl_config.level_mid, bl_config.level_mid_mapping);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_level_max_min", &bl_para[0],2);
+		if(ret){
+			printk("faild to get bl_level_max_min\n");
+			bl_config.level_min = BL_LEVEL_MIN;
+			bl_config.level_max = BL_LEVEL_MAX;
+		}
+		else {
+			bl_config.level_max = bl_para[0];
+			bl_config.level_min = bl_para[1];
+		}
+		DPRINT("bl level max=%u, min=%u\n", bl_config.level_max, bl_config.level_min);
+		
 		ret = of_property_read_u32(pdev->dev.of_node, "bl_ctrl_method", &val);
 		if (ret) {
 			printk("faild to get bl_ctrl_method!\n");
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 			bl_config.method = BL_CTL_GPIO;
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+			bl_config.method = BL_CTL_PWM_NEGATIVE;
+#endif
 		}
 		else {
-			val = (val > 2) ? 2 : val;
+			val = (val >= BL_CTL_MAX) ? (BL_CTL_MAX-1) : val;
 			bl_config.method = (unsigned char)val;
 		}
-		DPRINT("bl control_method: %s(%u)\n", ((bl_config.method == 0) ? "GPIO" : ((bl_config.method == 1) ? "PWM_NEGATIVE" : "PWM_POSITIVE")), bl_config.method);
+		DPRINT("bl control_method: %s(%u)\n", bl_ctrl_method_table[bl_config.method], bl_config.method);
 		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_port_gpio_used", 1, &str);
 		if (ret) {
 			printk("faild to get bl_pwm_port_gpio_used!\n");
@@ -391,7 +704,11 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_port_gpio_used", 0, &str);
 		if (ret) {
 			printk("faild to get bl_pwm_port_gpio_used!\n");
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 			bl_config.pwm_port = BL_PWM_D;
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+			bl_config.pwm_port = BL_PWM_C;
+#endif
 		}
 		else {
 			if (strcmp(str, "PWM_A") == 0)
@@ -404,11 +721,15 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 				bl_config.pwm_port = BL_PWM_D;
 			DPRINT("bl pwm_port: %s(%u)\n", str, bl_config.pwm_port);
 		}
-		if ((bl_config.method == BL_CTL_GPIO) || (bl_config.pwm_gpio_used == 1)) {
+		if ((bl_config.method == BL_CTL_GPIO) || ((bl_config.pwm_gpio_used == 1) && ((bl_config.method == BL_CTL_PWM_NEGATIVE) || (bl_config.method == BL_CTL_PWM_POSITIVE)))) {
 			ret = of_property_read_string(pdev->dev.of_node, "bl_gpio_port", &str);
 			if (ret) {
 				printk("faild to get bl_gpio_port!\n");
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 				str = "GPIOD_1";
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+				str = "GPIODV_28";
+#endif
 			}
 			val = amlogic_gpio_name_map_num(str);
 			if (val > 0) {
@@ -436,11 +757,15 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 		DPRINT("bl dim max=%u, min=%u\n", bl_config.dim_max, bl_config.dim_min);
 		ret = of_property_read_u32(pdev->dev.of_node,"bl_pwm_freq",&val);
 		if (ret) {
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 			pwm_freq = 1000;
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+			pwm_freq = 300000;
+#endif
 			printk("faild to get bl_pwm_freq, default set to %u\n", pwm_freq);
 		}
 		else {	
-			pwm_freq = ((val >= (FIN_FREQ * 500)) ? (FIN_FREQ * 500) : val);			
+			pwm_freq = ((val >= (FIN_FREQ * 500)) ? (FIN_FREQ * 500) : val);
 		}
 		for (i=0; i<0x7f; i++) {
 			pwm_pre_div = i;
@@ -461,6 +786,118 @@ static inline int _get_backlight_config(struct platform_device *pdev)
 		bl_config.pwm_min = (bl_config.pwm_cnt * bl_para[1] / 100);
 		DPRINT("bl pwm_duty max=%u\%, min=%u\%\n", bl_para[0], bl_para[1]);
 		
+		//pwm combo
+		ret = of_property_read_u32(pdev->dev.of_node,"bl_pwm_combo_high_low_level_switch",&val);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_high_low_level_switch\n");
+			val = bl_config.level_mid;
+		}
+		if (val > bl_config.level_mid)
+			val = ((val - bl_config.level_mid) * (bl_config.level_max - bl_config.level_mid_mapping)) / (bl_config.level_max - bl_config.level_mid) + bl_config.level_mid_mapping;
+		else
+			val = ((val - bl_config.level_min) * (bl_config.level_mid_mapping - bl_config.level_min)) / (bl_config.level_mid - bl_config.level_min) + bl_config.level_min;
+		bl_config.combo_level_switch = val;
+		DPRINT("bl pwm_combo level switch =%u\n", bl_config.combo_level_switch);
+		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_combo_high_port_method", 0, &str);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_high_port_method!\n");
+			str = "PWM_C";
+			bl_config.combo_high_port = BL_PWM_C;
+		}
+		else {
+			if (strcmp(str, "PWM_A") == 0)
+				bl_config.combo_high_port = BL_PWM_A;
+			else if (strcmp(str, "PWM_B") == 0)
+				bl_config.combo_high_port = BL_PWM_B;
+			else if (strcmp(str, "PWM_C") == 0)
+				bl_config.combo_high_port = BL_PWM_C;
+			else if (strcmp(str, "PWM_D") == 0)
+				bl_config.combo_high_port = BL_PWM_D;
+		}
+		DPRINT("bl pwm_combo high port: %s(%u)\n", str, bl_config.combo_high_port);
+		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_combo_high_port_method", 1, &str);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_high_port_method!\n");
+			str = "1";
+			bl_config.combo_high_method = BL_CTL_PWM_NEGATIVE;
+		}
+		else {
+			if (strncmp(str, "1", 1) == 0)
+				bl_config.combo_high_method = BL_CTL_PWM_NEGATIVE;
+			else
+				bl_config.combo_high_method = BL_CTL_PWM_POSITIVE;
+		}
+		DPRINT("bl pwm_combo high method: %s(%u)\n", bl_ctrl_method_table[bl_config.combo_high_method], bl_config.combo_high_method);
+		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_combo_low_port_method", 0, &str);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_low_port_method!\n");
+			str = "PWM_D";
+			bl_config.combo_low_port = BL_PWM_D;
+		}
+		else {
+			if (strcmp(str, "PWM_A") == 0)
+				bl_config.combo_low_port = BL_PWM_A;
+			else if (strcmp(str, "PWM_B") == 0)
+				bl_config.combo_low_port = BL_PWM_B;
+			else if (strcmp(str, "PWM_C") == 0)
+				bl_config.combo_low_port = BL_PWM_C;
+			else if (strcmp(str, "PWM_D") == 0)
+				bl_config.combo_low_port = BL_PWM_D;
+		}
+		DPRINT("bl pwm_combo high port: %s(%u)\n", str, bl_config.combo_low_port);
+		ret = of_property_read_string_index(pdev->dev.of_node, "bl_pwm_combo_low_port_method", 1, &str);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_low_port_method!\n");
+			str = "1";
+			bl_config.combo_low_method = BL_CTL_PWM_NEGATIVE;
+		}
+		else {
+			if (strncmp(str, "1", 1) == 0)
+				bl_config.combo_low_method = BL_CTL_PWM_NEGATIVE;
+			else
+				bl_config.combo_low_method = BL_CTL_PWM_POSITIVE;
+		}
+		DPRINT("bl pwm_combo low method: %s(%u)\n", bl_ctrl_method_table[bl_config.combo_low_method], bl_config.combo_low_method);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_pwm_combo_high_freq_duty_max_min",&bl_para[0],3);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_high_freq_duty_max_min\n");
+			bl_para[0] = 300000;	//freq=300k
+			bl_para[1] = 100;
+			bl_para[2] = 50;
+		}
+		pwm_freq = ((bl_para[0] >= (FIN_FREQ * 500)) ? (FIN_FREQ * 500) : bl_para[0]);
+		for (i=0; i<0x7f; i++) {
+			pwm_pre_div = i;
+			pwm_cnt = FIN_FREQ * 1000 / (pwm_freq * (pwm_pre_div + 1)) - 2;
+			if (pwm_cnt <= 0xffff)
+				break;
+		}			
+		bl_config.combo_high_cnt = pwm_cnt;
+		bl_config.combo_high_pre_div = pwm_pre_div;
+		bl_config.combo_high_duty_max = (bl_config.combo_high_cnt * bl_para[1] / 100);
+		bl_config.combo_high_duty_min = (bl_config.combo_high_cnt * bl_para[2] / 100);
+		DPRINT("bl pwm_combo high freq=%uHz, duty_max=%u\%, duty_min=%u\%\n", pwm_freq, bl_para[1], bl_para[2]);
+		ret = of_property_read_u32_array(pdev->dev.of_node,"bl_pwm_combo_low_freq_duty_max_min",&bl_para[0],3);
+		if (ret) {
+			printk("faild to get bl_pwm_combo_low_freq_duty_max_min\n");
+			bl_para[0] = 1000;	//freq=1k
+			bl_para[1] = 100;
+			bl_para[2] = 50;
+		}
+		pwm_freq = ((bl_para[0] >= (FIN_FREQ * 500)) ? (FIN_FREQ * 500) : bl_para[0]);
+		for (i=0; i<0x7f; i++) {
+			pwm_pre_div = i;
+			pwm_cnt = FIN_FREQ * 1000 / (pwm_freq * (pwm_pre_div + 1)) - 2;
+			if (pwm_cnt <= 0xffff)
+				break;
+		}			
+		bl_config.combo_low_cnt = pwm_cnt;
+		bl_config.combo_low_pre_div = pwm_pre_div;
+		bl_config.combo_low_duty_max = (bl_config.combo_low_cnt * bl_para[1] / 100);
+		bl_config.combo_low_duty_min = (bl_config.combo_low_cnt * bl_para[2] / 100);
+		DPRINT("bl pwm_combo low freq=%uHz, duty_max=%u\%, duty_min=%u\%\n", pwm_freq, bl_para[1], bl_para[2]);
+		
+		//pinmux
 		bl_config.p = devm_pinctrl_get(&pdev->dev);
 		if (IS_ERR(bl_config.p))
 			printk("get backlight pinmux error.\n");
@@ -505,7 +942,7 @@ static int aml_bl_probe(struct platform_device *pdev)
     }
 
 #ifdef CONFIG_USE_OF
-	_get_backlight_config(pdev);	
+	_get_backlight_config(pdev);
 #endif
 	
     amlbl->pdata = pdata;
@@ -519,7 +956,11 @@ static int aml_bl_probe(struct platform_device *pdev)
     DPRINT("%s() pdata->dft_brightness=%d\n", __FUNCTION__, pdata->dft_brightness);
 
     memset(&props, 0, sizeof(struct backlight_properties));
-    props.max_brightness = (pdata->max_brightness > 0 ? pdata->max_brightness : 255);
+#ifdef CONFIG_USE_OF
+	props.max_brightness = (bl_config.level_max > 0 ? bl_config.level_max : BL_LEVEL_MAX);
+#else
+    props.max_brightness = (pdata->max_brightness > 0 ? pdata->max_brightness : BL_LEVEL_MAX);
+#endif
     props.type = BACKLIGHT_RAW;
     bldev = backlight_device_register("aml-bl", &pdev->dev, amlbl, &aml_bl_ops, &props);
     if (IS_ERR(bldev)) {
@@ -535,7 +976,7 @@ static int aml_bl_probe(struct platform_device *pdev)
     bldev->props.power = FB_BLANK_UNBLANK;
 #ifdef CONFIG_USE_OF
 	bldev->props.brightness = (bl_config.level_default > 0 ? bl_config.level_default : BL_LEVEL_DEFAULT);
-#else	
+#else
     bldev->props.brightness = (pdata->dft_brightness > 0 ? pdata->dft_brightness : BL_LEVEL_DEFAULT);
 #endif
 

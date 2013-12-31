@@ -92,8 +92,13 @@ static struct mutex sensor_lock;
 #define MAX_POLL_INTERVAL		200	
 #define DEFAULT_POLL_INTERVAL		50
 
+#define MCUBE_1_5G_8BIT 0x20
+#define MCUBE_8G_14BIT 0x10
+
+#ifdef CONFIG_PM
 static int mc32x0_suspend(struct device *dev);
 static int mc32x0_resume(struct device *dev);
+#endif
 
 static ssize_t	show_orientation(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t	show_axis_force(struct device *dev, struct device_attribute *attr, char *buf);
@@ -106,6 +111,7 @@ static struct input_polled_dev *mc32x0_idev;
 static u32 is_enabled;
 static u32 poll_interval;		//ms
 static u8 orientation;
+static u8 McubeID = 0;
 
 static SENSOR_DEVICE_ATTR(all_axis_force, S_IRUGO, show_xyz_force, NULL, 0);
 static SENSOR_DEVICE_ATTR(x_axis_force, S_IRUGO, show_axis_force, NULL, 0);
@@ -205,6 +211,25 @@ ssize_t	show_axis_force(struct device *dev, struct device_attribute *attr, char 
 	return sprintf(buf, "%d\n", force);	
 }
 
+ssize_t mc32x0_resolution_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+    if(McubeID == 0x11)
+        return sprintf(buf, "%d\n", 14);//mc3210: 14bit
+    else
+        return sprintf(buf, "%d\n", 8);//mc3230: 8bit
+}
+
+ssize_t mc32x0_range_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+
+    if(McubeID == 0x11)
+        return sprintf(buf, "%d\n", 16);//mc3210: 16G
+    else
+        return sprintf(buf, "%d\n", 3);//mc3230: 3G
+}
+
 ssize_t mc32x0_delay_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -255,11 +280,16 @@ static DEVICE_ATTR(delay, S_IRUGO|S_IWUSR|S_IWGRP,
 		mc32x0_delay_show, mc32x0_delay_store);
 static DEVICE_ATTR(enable, S_IRUGO|S_IWUSR|S_IWGRP,
 		mc32x0_enable_show, mc32x0_enable_store);
-
+static DEVICE_ATTR(resolution, S_IRUGO,
+		mc32x0_resolution_show, NULL);
+static DEVICE_ATTR(range, S_IRUGO,
+		mc32x0_range_show, NULL);
 
 static struct attribute *mc32x0_attributes[] = {
     &dev_attr_delay.attr,
     &dev_attr_enable.attr,
+    &dev_attr_resolution.attr,
+    &dev_attr_range.attr,
     NULL
 };
 
@@ -280,13 +310,14 @@ static void mc32x0_worker(struct work_struct *work)
 
 DECLARE_WORK(mc32x0_work, mc32x0_worker);
 
+#if 0
 // interrupt handler
 static irqreturn_t mmx7660_irq_handler(int irq, void *dev_id)
 {
 	schedule_work(&mc32x0_work);
 	return IRQ_RETVAL(1);
 }
-
+#endif
 
 /*
  * Initialization function
@@ -294,46 +325,47 @@ static irqreturn_t mmx7660_irq_handler(int irq, void *dev_id)
  int mc32x0_set_image (struct i2c_client *client) 
 {
 	int comres = 0;
-	unsigned char McubeID;
 	unsigned char data;
-	  if (client == NULL) {
 
-                comres = -1;
-		return comres;
-         } 
+    if (client == NULL) {
+		return -1;
+     } 
 	  
 	data = i2c_smbus_read_byte_data(client, 0x3B);	
-	if(data == 0x19)
+	if(data == 0x19 || data == 0x29)
 		McubeID = 0x22;
-	else if(data == 0x90)
+	else if(data == 0x90 || data == 0xa8 || data == 0x88)
 		McubeID = 0x11;
 	else
-		McubeID = 0;
-#if 0
+	{
+		printk("mc32x0: unrecognized product id: %x\n", data);
+		return -1;
+	}
+
 	if(McubeID &MCUBE_8G_14BIT)
 	{
+
 		//#ifdef MCUBE_8G_14BIT
-		data = MC32X0_MODE_DEF;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_Mode_Feature_REG, &data, 1 );
+		data = MC32X0_MODE_SLEEP;
+		comres += i2c_smbus_write_byte_data(client, MC32X0_Mode_Feature_REG, data );
 
 		data = 0x00;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_Sleep_Count_REG, &data, 1 );
+		comres += i2c_smbus_write_byte_data(client, MC32X0_Sleep_Count_REG, data );	
 
 		data = 0x00;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_Sample_Rate_REG, &data, 1 );	
+		comres += i2c_smbus_write_byte_data(client, MC32X0_Sample_Rate_REG, data );
 
 		data = 0x00;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_Tap_Detection_Enable_REG, &data, 1 );
+		comres += i2c_smbus_write_byte_data(client, MC32X0_Tap_Detection_Enable_REG, data );
 
 		data = 0x3F;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_RANGE_Control_REG, &data, 1 );
+		comres += i2c_smbus_write_byte_data(client, MC32X0_RANGE_Control_REG, data );
 
 		data = 0x00;
-		comres += p_mc32x0->MC32X0_BUS_WRITE_FUNC(p_mc32x0->dev_addr, MC32X0_Interrupt_Enable_REG, &data, 1 );
+		comres += i2c_smbus_write_byte_data(client, MC32X0_Interrupt_Enable_REG, data );
 	//#endif
 	}
 	else if(McubeID &MCUBE_1_5G_8BIT)
-#endif
 	{		
 		data = MC32X0_MODE_SLEEP;
 		comres += i2c_smbus_write_byte_data(client, MC32X0_Mode_Feature_REG, data );
@@ -373,11 +405,9 @@ static int mc32x0_init_client(struct i2c_client *client)
 	//assert(plat_data);
 
 
-	mc32x0_set_image(client);
-
-	result = request_irq(client->irq, mmx7660_irq_handler,
-		IRQF_TRIGGER_FALLING , MC32X0_DRV_NAME, NULL);
-	assert(result==0);
+	result = mc32x0_set_image(client);
+	if(result < 0)
+		return result;
 
 	mdelay(MODE_CHANGE_DELAY_MS);
 
@@ -414,11 +444,28 @@ static void report_abs(void)
 		return;
 	}
 
-	for(i=0; i<3; i++)
-		mc32x0_read_xyz(i, &xyz[i]);
+	if(McubeID == 0x22)//mc3230
+    {
+        for(i=0; i<3; i++)
+            mc32x0_read_xyz(i, &xyz[i]);
 
+        y = -xyz[0];
+        x = xyz[1];
+        z = xyz[2];
+    }//mc3210
+    else
+    {
+        unsigned char raw_buf[6];
+        for(i=0; i<6; i++)
+            raw_buf[i] = i2c_smbus_read_byte_data(mc32x0_i2c_client, i+MC32X0_XOUT_EX_L_REG);
+
+		x = (s16)((raw_buf[0])|(raw_buf[1]<<8));
+		y = (s16)((raw_buf[2])|(raw_buf[3]<<8));
+		z = (s16)((raw_buf[4])|(raw_buf[5]<<8));
+    }
 
     aml_sensor_report_acc(mc32x0_i2c_client, mc32x0_idev->input, x, y, z);
+
 	mutex_unlock(&sensor_lock);
 
 }
@@ -452,7 +499,9 @@ static int mc32x0_probe(struct i2c_client *client,
 
 	/* Initialize the MC32X0 chip */
 	result = mc32x0_init_client(client);
-	assert(result==0);
+
+	    if(result)
+	       return result;
 
 	result = sysfs_create_group(&client->dev.kobj, &mc32x0_group);
 	assert(result==0);
@@ -476,7 +525,6 @@ static int mc32x0_probe(struct i2c_client *client,
 	idev = mc32x0_idev->input;
 	idev->name = MC32X0_DRV_NAME;
 	idev->id.bustype = BUS_I2C;
-	idev->dev.parent = &client->dev;
 	idev->evbit[0] = BIT_MASK(EV_ABS);
 
 	//change the param by simon.wang,2012-04-09
@@ -500,8 +548,6 @@ static int mc32x0_probe(struct i2c_client *client,
 		return result;
 	}
 
-
-	
 	return result;
 }
 
@@ -522,6 +568,7 @@ static int mc32x0_remove(struct i2c_client *client)
 	return result;
 }
 
+#ifdef CONFIG_PM
 static int mc32x0_suspend(struct device *dev)
 {
 	int result;
@@ -550,6 +597,12 @@ static int mc32x0_resume(struct device *dev)
 	mutex_unlock(&sensor_lock);
 	return result;
 }
+#else
+
+#define mc32x0_suspend		NULL
+#define mc32x0_resume		NULL
+
+#endif
 
 
 static const struct dev_pm_ops mc32x0_dev_pm_ops = {
@@ -576,9 +629,6 @@ static struct i2c_driver mc32x0_driver = {
 	.remove	= mc32x0_remove,
 	.id_table = mc32x0_id,
 };
-
-
-
 
 static int __init mc32x0_init(void)
 {

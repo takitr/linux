@@ -11,7 +11,7 @@
 **************************************************************************/
 #define	LEFT		0
 #define	RIGHT		1
-#define	OSD_RELATIVE_BITS				0x333f0
+#define	OSD_RELATIVE_BITS				0x33370
 #define HW_OSD_COUNT					2
 #define HW_OSD_BLOCK_COUNT				4
 #define HW_OSD_BLOCK_REG_COUNT			(HW_OSD_BLOCK_COUNT*2)

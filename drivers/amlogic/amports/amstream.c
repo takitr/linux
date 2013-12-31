@@ -65,6 +65,7 @@
 #include "ampotrs_priv.h"
 
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 
 #define DEVICE_NAME "amstream-dev"
 #define DRIVER_NAME "amstream"
@@ -1314,10 +1315,12 @@ static long amstream_ioctl(struct file *file,
         	((PORT_TYPE_AUDIO | PORT_TYPE_VIDEO))) {	
         	r = -EINVAL;
         } else{
-            if (this->type & PORT_TYPE_VIDEO) {	
-                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],arg);
+			u64 pts;
+			memcpy(&pts,arg,sizeof(u64));
+            if (this->type & PORT_TYPE_VIDEO) {
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_VIDEO],pts);
             } else if (this->type & PORT_TYPE_AUDIO) {
-                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],arg);
+                r = es_vpts_checkin_us64(&bufs[BUF_TYPE_AUDIO],pts);
             }	
         }
         break;
@@ -1846,6 +1849,7 @@ static struct class amstream_class = {
         .class_attrs = amstream_class_attrs,
     };
 
+static struct resource memobj;
 static int  amstream_probe(struct platform_device *pdev)
 {
     int i;
@@ -1877,9 +1881,21 @@ static int  amstream_probe(struct platform_device *pdev)
 
         goto error2;
     }
-
+#if 0
     vdec_set_resource(platform_get_resource(pdev, IORESOURCE_MEM, 0), (void *)&amstream_dec_info);
-
+#else
+    res = &memobj;
+    r = find_reserve_block(pdev->dev.of_node->name,0);
+    if(r < 0){
+        printk("can not find %s%d reserve block\n",pdev->dev.of_node->name,0);
+	 r = -EFAULT;
+	 goto error2;
+    }
+    res->start = (phys_addr_t)get_reserve_block_addr(r);
+    res->end = res->start+ (phys_addr_t)get_reserve_block_size(r)-1;
+    res->flags = IORESOURCE_MEM;
+    vdec_set_resource(res, (void *)&amstream_dec_info);
+#endif
     amstream_dev_class = class_create(THIS_MODULE, DEVICE_NAME);
 
     for (st = &ports[0], i = 0; i < MAX_AMSTREAM_PORT_NUM; i++, st++) {
@@ -1895,7 +1911,19 @@ static int  amstream_probe(struct platform_device *pdev)
         goto error3;
     }
 
+#if 0
     res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+#else
+    res = &memobj;
+    r = find_reserve_block(pdev->dev.of_node->name,1);
+    if(r < 0){
+        printk("can not find %s%d reserve block\n",pdev->dev.of_node->name,1);
+	 r = -EFAULT;
+	 goto error3;
+    }
+    res->start = (phys_addr_t)get_reserve_block_addr(r);
+    res->end = res->start+ (phys_addr_t)get_reserve_block_size(r)-1;
+#endif
     if (!res) {
         printk("Can not obtain I/O memory, and will allocate stream buffer!\n");
 

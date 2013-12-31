@@ -29,9 +29,11 @@ source "drivers/amlogic/efuse/Kconfig"
 #source "drivers/amlogic/modem/Kconfig"
 #source "drivers/amlogic/debug/Kconfig"
 #source "drivers/amlogic/sensors/Kconfig"
-#source "drivers/amlogic/boot_monitor/Kconfig"
+source "drivers/amlogic/boot_monitor/Kconfig"
 #source "drivers/amlogic/aml_watchdog/Kconfig"
 #source "drivers/amlogic/spi/Kconfig"
+source "drivers/amlogic/thermal/Kconfig"
+
 #
 #	Block devices
 #

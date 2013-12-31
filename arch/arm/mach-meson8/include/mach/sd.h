@@ -613,20 +613,22 @@ extern void amlsd_init_debugfs(struct mmc_host *host);
 #ifndef CONFIG_MESON_TRUSTZONE
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #define aml_jtag_gpioao() do{\
-    writel(0x102, (u32 *)P_AO_SECURE_REG1); \
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \
 }while(0)
 
 #define aml_jtag_sd() do{\
-    writel(0x220, (u32 *)P_AO_SECURE_REG1); \
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1))); \
+    aml_set_reg32_mask(P_AO_SECURE_REG1, ((1<<5) | (1<<9))); \  
 }while(0)
 #else
 /* Secure REG can only be accessed in Secure World if TrustZone enabled.*/
 #include <mach/meson-secure.h>
 #define aml_jtag_gpioao() do {\
-	meson_secure_reg_write(P_AO_SECURE_REG1, 0x102); \
+	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~((1<<5) | (1<<9)))); \
 } while(0)
 #define aml_jtag_sd() do {\
-	meson_secure_reg_write(P_AO_SECURE_REG1, 0x220); \
+	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) & (~(1<<8) | (1<<1))); \
+	meson_secure_reg_write(P_AO_SECURE_REG1, meson_secure_reg_read(P_AO_SECURE_REG1) | ((1<<5) | (1<<9))); \
 } while(0)
 #endif /* CONFIG_MESON_TRUSTZONE */
 

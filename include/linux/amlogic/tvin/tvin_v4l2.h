@@ -226,7 +226,7 @@ typedef enum cam_cmd_state_e {
 
 typedef enum cam_command_e {
         // common
-        CAM_COMMAND_INIT = 0,        
+        CAM_COMMAND_INIT = 0,
         CAM_COMMAND_GET_STATE,
         CAM_COMMAND_SCENES,
         CAM_COMMAND_EFFECT,
@@ -294,7 +294,7 @@ typedef struct xml_window_s {
         unsigned char ratio_y1; // 0 ~ 255, y1 = (format.v * ratio_y1) >> 8
 } xml_window_t;
 
-#define AE_PARM_NUM			60
+#define AE_PARM_NUM			67
 typedef struct xml_algorithm_ae_s {
         unsigned int  ae_algorithm;       //0:basic;    1:enhanced
         unsigned int  ae_statistics[3];   //0: false, 1: true
@@ -358,10 +358,20 @@ typedef struct xml_algorithm_ae_s {
         unsigned int           slow_lpfcoef_enh;     // 0 ~ 255
         unsigned int           fast_lpfcoef_enh;     // 0 ~ 255
         unsigned int           flash_thr_enh;	     // 0 ~ 255
+    /***********************AE_ADD********************************/
+        unsigned int ae_ratio_low;				//0 ~ 1024			0x00000005
+        unsigned int ae_ratio_low2mid;			//0 ~ 1024			0x0000000f
+        unsigned int ae_ratio_mid2high; 		//0 ~ 1024			0x0000001e
+        unsigned int ae_ratio_high; 			//0 ~ 1024			0x00000028
+        unsigned int ae_min_diff;				//0 ~ 255			0x00000032
+        unsigned int ae_max_diff;				//0 ~ 255			0x0000000f
+
+        unsigned int reserve[16];
         unsigned int 	       aet_fmt_gain;         //0db for each fmt
+
 } xml_algorithm_ae_t;
 
-#define AWB_PARM_NUM			57
+#define AWB_PARM_NUM			58
 typedef struct xml_algorithm_awb_s {
         unsigned int           awb_algorithm;       //0:basic;    1:enhanced
         unsigned int           ratio_winl;            //0 ~ 1024
@@ -421,39 +431,34 @@ typedef struct xml_algorithm_awb_s {
         unsigned int           bw_limitl;       // 0 ~ 4095
         unsigned int           thr_u[20];       // 0 ~ 255
         unsigned int           thr_v[20];       // 0 ~ 255
+        unsigned int           reserve[16];
 } xml_algorithm_awb_t;
 
-#define AF_PARM_NUM			19
+#define AF_PARM_NUM			13
 
 #define FOCUS_GRIDS 16
 
 typedef struct xml_algorithm_af_s {
 	/*for lose focus*/
-	unsigned int	       enter_move_ratio;//10bit/1024
 	unsigned int	       enter_static_ratio;//10bit/1024
 	unsigned int	       detect_step_cnt;
 	unsigned int           ave_vdc_thr;//the threshold of enter move
-	unsigned int           delta_fv_ratio;//100
-	unsigned int	       af_duration_time;// 0.1s
-	unsigned int	       af_duration_cnt;// calc base on duration time
 	/*full scan & detect window ratio*/
 	unsigned int	       win_ratio;//cut 4 border in top bottom left right widht=1/ratio
     /*for climbing algorithm*/
 	unsigned int           step[FOCUS_GRIDS];
 	unsigned int	       valid_step_cnt;
-	unsigned int	       af_retry_max;
 	unsigned int 	       jump_offset;
 	unsigned int	       field_delay;
-	unsigned int           af_fail_ratio;//x/100
 	/*window for touch focus*/
 	unsigned int	       x;//x coord of touch focus win
 	unsigned int	       y;//y coord of touch focus win
 	unsigned int           radius_ratio;//radius of touch focus win
-	unsigned int           af_step_mid_thre;
-	unsigned int           af_step_max_thre;
+	unsigned int	       hillside_fall;
+	unsigned int	       reserve[15];
 } xml_algorithm_af_t;
 
-#define XML_LUT_LS 1024 // 32*32 32-bit
+#define XML_LUT_LS 1025 // 32*32 32-bit
 typedef struct xml_lut_ls_s {
         unsigned int reg_map[XML_LUT_LS];
 } xml_lut_ls_t;
@@ -595,15 +600,16 @@ typedef struct xml_effect_manual_s {
 } cam_format_t;
 */
 typedef struct cam_function_s {
-	bool (*set_af_new_step)(unsigned int af_debug_control);
-	unsigned int (*get_aet_current_step)(void);
-	short (*get_aet_current_gain)(void);
-	short (*get_aet_min_gain)(void);
-	short (*get_aet_max_gain)(void);
-	unsigned int (*get_aet_max_step)(void);
-	short (*get_aet_gain_by_step)(unsigned int new_step);
-	bool (*set_aet_new_step)(unsigned int new_step, bool exp_mode, bool ag_mode);
-	bool (*check_mains_freq)(void);
+	bool (*set_af_new_step)(void *priv, unsigned int af_debug_control);
+	unsigned int (*get_aet_current_step)(void *priv);
+	unsigned int (*get_aet_current_gain)(void *priv);
+	unsigned int (*get_aet_min_gain)(void *priv);
+	unsigned int (*get_aet_max_gain)(void *priv);
+	unsigned int (*get_aet_max_step)(void *priv);
+	unsigned int (*get_aet_gain_by_step)(void *priv, unsigned int new_step);
+	bool (*set_aet_new_step)(void *priv, unsigned int new_step, bool exp_mode, bool ag_mode);
+	bool (*check_mains_freq)(void *priv);
+	void *priv_data;
 } cam_function_t;
 
 
@@ -684,12 +690,15 @@ typedef enum vdin_format_convert_e {
 typedef enum vdin_cmd_e {
 	VDIN_CMD_NULL = 0,
 	VDIN_CMD_SET_CSC,
+	VDIN_CMD_SET_CM2,
+	VDIN_CMD_ISR,
 } vdin_cmd_t;
 
 typedef struct vdin_arg_s {
 	vdin_cmd_t cmd;
 	unsigned char matrix_id;
 	vdin_format_convert_t color_convert;
+	unsigned int *cm2;
 	unsigned int  private;
 } vdin_arg_t;
 

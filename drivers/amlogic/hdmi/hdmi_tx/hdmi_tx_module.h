@@ -109,6 +109,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned int  cec_init_ready;
     unsigned int  tv_cec_support;
     unsigned int  tv_no_edid;           // For some un-well-known TVs, no edid at all
+    unsigned int  hpd_lock;
 #ifdef CONFIG_AM_HDMI_REPEATER
     unsigned int  hdcp_repeater_mode;
     unsigned int  repeater_hdcp_cmd; /* 1, start; 2, stop */

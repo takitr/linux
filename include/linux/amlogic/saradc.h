@@ -1,6 +1,6 @@
 #ifndef __LINUX_SARADC_H
 #define __LINUX_SARADC_H
-
+#define  NOT_WRITE_EFUSE 0xffff0000
 enum {
 	CHAN_0 = 0,
 	CHAN_1,
@@ -46,5 +46,5 @@ enum {
 
 extern int get_adc_sample(int chan);
 extern int saradc_ts_service(int cmd);
-
+extern int  get_cpu_temp();
 #endif

@@ -16,7 +16,9 @@
 #include <mach/am_regs.h>
 #include "remote_main.h"
 extern char *remote_log_buf;
-static int repeat_count = 0;
+static int auto_repeat_count,repeat_count = 0;
+static void remote_rel_timer_sr(unsigned long data);
+static void remote_repeat_sr(unsigned long data);
 static int dbg_printk(const char *fmt, ...)
 {
 	char buf[100];
@@ -86,12 +88,17 @@ void config_sw_init_window(struct remote *remote_data){
 }
 void kdb_send_key(struct input_dev *dev, unsigned int scancode,
 		unsigned int type,int event);
+
 void set_remote_init(struct remote *remote_data)
 {
-	if(remote_data->work_mode <= DECODEMODE_MAX)
+	if(remote_data->work_mode <= DECODEMODE_MAX){
+		if(remote_data->work_mode > DECODEMODE_NEC){
+			setup_timer(&remote_data->repeat_timer, remote_repeat_sr, 0);
+			printk("enter in sw repeat mode \n");
+		}
 		return ;
+	}
 	config_sw_init_window(remote_data);
-	//remote_data->remote_send_key = kdb_send_key;
 }
 void changeduokandecodeorder(struct remote *remote_data){
 	unsigned int scancode = remote_data->cur_lsbkeycode;
@@ -302,6 +309,8 @@ unsigned int RC6_DOMAIN(struct remote *remote_data,int domain){
  Header          Custom code              Data Code      Parity Code Stop Bit  */
 
 unsigned int DUOKAN_DOMAIN(struct remote *remote_data,int domain){
+	if(remote_data->cur_lsbkeycode == 0x0003cccf)// power key
+			remote_data->cur_lsbkeycode =((remote_data->custom_code[0]&0xff)<<12)| 0xa0;
 	if(domain)
 		return ((remote_data->cur_lsbkeycode >>4) &0xff);
 	else 
@@ -341,11 +350,12 @@ unsigned int (*get_cur_key_domian[])(struct remote *remote_data,int domain)={
 
 int remote_hw_reprot_key(struct remote *remote_data)
 {
-	static int last_scan_code;
+	static int last_scan_code,scan_code;
 	int i;
-	// 1        get  scan code
 	get_cur_scancode(remote_data);
 	get_cur_scanstatus(remote_data);
+	if(remote_data->status)// repeat enable & come in S timer is open
+		return;
 	if (remote_data->cur_lsbkeycode) {	//key first press
 		if(remote_data->ig_custom_enable)
 		{
@@ -369,9 +379,26 @@ int remote_hw_reprot_key(struct remote *remote_data)
 		if (remote_data->timer.expires > jiffies) {
 			remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code , 0,0);
 		}
+
 		remote_data->remote_send_key(remote_data->input,get_cur_key_domian[remote_data->work_mode](remote_data,KEYDOMIAN), 1,0);
 		remote_data->repeat_release_code = get_cur_key_domian[remote_data->work_mode](remote_data,KEYDOMIAN);
 		remote_data->enable_repeat_falg = 1;
+		if((remote_data->work_mode > DECODEMODE_NEC) && remote_data->enable_repeat_falg){
+			if (remote_data->repeat_enable) {
+				remote_data->repeat_timer.data = (unsigned long)remote_data;
+				//here repeat  delay is time interval from the first frame end to first repeat end.
+				remote_data->repeat_tick = jiffies;
+				mod_timer(&remote_data->repeat_timer,  jiffies + msecs_to_jiffies(remote_data->repeat_delay));
+				remote_data->status = TIMER;
+			}
+			else{
+				setup_timer(&remote_data->rel_timer, remote_rel_timer_sr, 0);
+				mod_timer(&remote_data->timer,  jiffies );
+				remote_data->rel_timer.data = (unsigned long)remote_data;
+				mod_timer(&remote_data->rel_timer,  jiffies + msecs_to_jiffies(remote_data->relt_delay));
+				remote_data->status = TIMER;
+			}
+		}
 		for (i = 0; i < ARRAY_SIZE(remote_data->key_repeat_map[remote_data->map_num]); i++){
 			if (remote_data->key_repeat_map[remote_data->map_num][i] == remote_data->repeat_release_code) {
 				remote_data->want_repeat_enable = 1;
@@ -380,9 +407,14 @@ int remote_hw_reprot_key(struct remote *remote_data)
 				remote_data->want_repeat_enable = 0;
 			}
 		}
+
 		if (remote_data->repeat_enable && remote_data->want_repeat_enable) {
 			remote_data->repeat_tick = jiffies + msecs_to_jiffies(remote_data->input->rep[REP_DELAY]);
 		}
+		if(remote_data->repeat_enable)
+			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay+remote_data->repeat_delay));
+		else
+			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay+remote_data->repeat_delay));
 	}
 	else if((remote_data->frame_status & REPEARTFLAG) && remote_data->enable_repeat_falg){	//repeate key
 		if (remote_data->repeat_enable) {
@@ -398,12 +430,13 @@ int remote_hw_reprot_key(struct remote *remote_data)
 			}
 			return -1;
 		}
+		mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay));
 	}
 	last_scan_code = remote_data->cur_lsbkeycode;
 	remote_data->cur_keycode = last_scan_code;
+	remote_data->cur_lsbkeycode = 0;
 	remote_data->timer.data = (unsigned long)remote_data;
-	mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay));
-	return 0;
+	return 0;	
 }
 static inline void kbd_software_mode_remote_send_key(unsigned long data)
 {
@@ -452,7 +485,39 @@ static inline void kbd_software_mode_remote_send_key(unsigned long data)
 		}		
 	}
 }
+static void remote_repeat_sr(unsigned long data)
+{
+	struct remote *remote_data = (struct remote *)data;
+	if(remote_data->cur_keycode == remote_data->cur_lsbkeycode){
+			auto_repeat_count++;
+			if(auto_repeat_count > 1)
+				remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code, 2,0);
+			remote_data->cur_lsbkeycode = 0;
+			remote_data->repeat_timer.data = (unsigned long)remote_data;
+			remote_data->timer.data = (unsigned long)remote_data;
+			mod_timer(&remote_data->timer, jiffies + msecs_to_jiffies(remote_data->release_delay+remote_data->repeat_peroid));
+			mod_timer(&remote_data->repeat_timer,  jiffies + msecs_to_jiffies(remote_data->repeat_peroid));
+			remote_data->status = TIMER;
+	}else{
+			remote_data->status = NORMAL;
+			remote_data->timer.data = (unsigned long)remote_data;
+			mod_timer(&remote_data->timer, jiffies+msecs_to_jiffies(1));
+	}
+}
+static void remote_rel_timer_sr(unsigned long data)
+{
+	struct remote *remote_data = (struct remote *)data;
+		if(remote_data->cur_keycode == remote_data->cur_lsbkeycode){
+			remote_data->cur_lsbkeycode = 0;
+			remote_data->rel_timer.data = (unsigned long)remote_data;
+			mod_timer(&remote_data->rel_timer,  jiffies + msecs_to_jiffies(remote_data->relt_delay));
+			remote_data->status = TIMER;
+		}
+		else
+		remote_data->status = NORMAL;
 
+
+}
 static int get_pulse_width(struct remote *remote_data )
 {
 	unsigned int pulse_width;
@@ -626,6 +691,13 @@ void remote_nec_report_release_key(struct remote *remote_data){
 	if(remote_data->enable_repeat_falg){
 		remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code,0,0);
 		remote_data->enable_repeat_falg = 0;
+	}
+}
+void remote_duokan_report_release_key(struct remote *remote_data){
+	if(remote_data->enable_repeat_falg){
+		remote_data->remote_send_key(remote_data->input,remote_data->repeat_release_code,0,0);
+		remote_data->enable_repeat_falg = 0;
+		auto_repeat_count = 0;
 	}
 }
 void remote_sw_reprot_release_key(struct remote *remote_data){

@@ -37,6 +37,7 @@
 #define HDMI_EDID_BLOCK_TYPE_VENDER       3
 #define HDMI_EDID_BLOCK_TYPE_SPEAKER      4
 #define HDMI_EDID_BLOCK_TYPE_VESA         5
+#define HDMI_EDID_BLOCK_TYPE_RESERVED2    6
 #define HDMI_EDID_BLOCK_TYPE_EXTENDED_TAG 7
 
 #define EDID_DETAILED_TIMING_DES_BLOCK0_POS 0x36
@@ -978,7 +979,7 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
     unsigned char offset,End ;
     unsigned char count ;
     unsigned char tag ;
-    int i ;
+    int i, tmp, idx;
     rx_cap_t* pRXCap = &(hdmitx_device->RXCap);
 
     if( BlockBuf[0] != 0x02 )
@@ -988,7 +989,6 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
 
 	  pRXCap->VIC_count = 0 ;
     pRXCap->native_VIC = 0xff ;
-    
     for( offset = 4 ; offset < End ; ){
         tag = BlockBuf[offset] >> 5 ;
         count = BlockBuf[offset] & 0x1f ;
@@ -996,27 +996,29 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
             case HDMI_EDID_BLOCK_TYPE_AUDIO: 
                 pRXCap->AUD_count = count/3 ;
                 offset++ ;
-                for( i = 0 ; i < pRXCap->AUD_count ; i++, offset+=3 )
+                for( i = 0 ; i < pRXCap->AUD_count ; i++)
                 {
-                    pRXCap->RxAudioCap[i].audio_format_code = (BlockBuf[offset]>>3)&0xf;
-                    pRXCap->RxAudioCap[i].channel_num_max = BlockBuf[offset]&0x7;
-                    pRXCap->RxAudioCap[i].freq_cc = BlockBuf[offset+1]&0x7f;
-                    pRXCap->RxAudioCap[i].cc3 = BlockBuf[offset+2]&0x7;
+                    pRXCap->RxAudioCap[i].audio_format_code = (BlockBuf[offset + i * 3]>>3)&0xf;
+                    pRXCap->RxAudioCap[i].channel_num_max = BlockBuf[offset + i * 3]&0x7;
+                    pRXCap->RxAudioCap[i].freq_cc = BlockBuf[offset + i * 3 +1]&0x7f;
+                    pRXCap->RxAudioCap[i].cc3 = BlockBuf[offset + i * 3 + 2]&0x7;
                 }
+                offset += count;
                 break ;
             
-            case HDMI_EDID_BLOCK_TYPE_VIDEO: 
-                offset ++ ;
-                for( i = 0 ; i < count ; i++, offset++ )
+            case HDMI_EDID_BLOCK_TYPE_VIDEO:
+                offset ++;
+                for( i = 0 ; i < count ; i++)
                 {
                     unsigned char VIC ;
-                    VIC = BlockBuf[offset] & (~0x80) ;
+                    VIC = BlockBuf[offset + i] & (~0x80) ;
                     pRXCap->VIC[pRXCap->VIC_count] = VIC ;
-                    if( BlockBuf[offset] & 0x80 ){
+                    if( BlockBuf[offset + i] & 0x80 ){
                         pRXCap->native_VIC = VIC;
                     }
                     pRXCap->VIC_count++ ;
                 }
+                offset += count;
                 break ;
             
             case HDMI_EDID_BLOCK_TYPE_VENDER: 
@@ -1033,45 +1035,57 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
                 }
                 /**/
                 pRXCap->ColorDeepSupport = (unsigned long)BlockBuf[offset+5];
-                pRXCap->Max_TMDS_Clock = (unsigned long)BlockBuf[offset+6]; 
-                
-                if(count > 7)
-                    hdmitx_edid_3d_parse(pRXCap, &BlockBuf[offset+7], count - 7);
-
-                {   // parsing 4k2k mode
-                    unsigned int idx = offset + 7;
-                    unsigned int e4k2k_len = 0;
-                    if((BlockBuf[offset+7] & (1 << 5)) == 0x00) 
-                        break;
-                    if(BlockBuf[offset+7] & (1 << 7))
+                pRXCap->Max_TMDS_Clock = (unsigned long)BlockBuf[offset+6];
+                if(count > 7) {
+                    tmp = BlockBuf[offset+7];
+                    idx = offset + 8;
+                    if(tmp & (1<<6)) {
                         idx += 2;
-                    if(BlockBuf[offset+7] & (1 << 6))
+                    }
+                    if(tmp & (1<<7)) {
                         idx += 2;
-                    e4k2k_len = BlockBuf[idx + 2] >> 5;
-                    if(e4k2k_len) {
-                        hdmitx_edid_4k2k_parse(pRXCap, &BlockBuf[idx + 3], e4k2k_len);
+                    }
+                    if(tmp & (1<<5)) {
+                        idx += 1;
+                        if(BlockBuf[idx] & 0xe0) {   //valid 4k
+                            hdmitx_edid_4k2k_parse(pRXCap, &BlockBuf[idx + 1], BlockBuf[idx] >> 5);
+                        }
+                        if(BlockBuf[idx-1] & 0xe0) {  //valid 3D
+                            hdmitx_edid_3d_parse(pRXCap, &BlockBuf[offset+7], count - 7);
+                        }
                     }
                 }
-
                 offset += count ; // ignore the remaind.
                 break ;
             
             case HDMI_EDID_BLOCK_TYPE_SPEAKER: 
                 offset ++ ;
                 pRXCap->RxSpeakerAllocation = BlockBuf[offset] ;
-                offset += 3 ;
+                offset += count;
                 break ;
 
             case HDMI_EDID_BLOCK_TYPE_VESA: 
-                offset += count+1 ;
+                offset ++;
+                offset += count;
                 break ;
 
             case HDMI_EDID_BLOCK_TYPE_EXTENDED_TAG: 
-                offset += count+1 ; //ignore
+                offset ++;
+                offset += count;
                 break ;
 
+            case HDMI_EDID_BLOCK_TYPE_RESERVED:
+                offset ++;
+                offset += count;
+                break;
+
+            case HDMI_EDID_BLOCK_TYPE_RESERVED2:
+                offset ++;
+                offset += count;
+                break;
+
             default:
-                offset += count+1 ; // ignore
+                break;
         }
     }
     hdmitx_device->vic_count=pRXCap->VIC_count;

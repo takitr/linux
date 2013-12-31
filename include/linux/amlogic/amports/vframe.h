@@ -68,6 +68,7 @@ typedef enum pixel_aspect_ratio_e {
  */
 typedef struct vframe_hist_s
 {
+	    unsigned int   hist_pow;
         unsigned int   luma_sum;
         unsigned int   chroma_sum;
         unsigned int   pixel_sum;  // [31:30] POW [21:0] PIXEL_SUM
@@ -200,6 +201,8 @@ int get_curren_frame_para(int* top ,int* left , int* bottom, int* right);
 int VSYNC_WR_MPEG_REG(unsigned long adr, unsigned long val);
 int VSYNC_WR_MPEG_REG_BITS(unsigned long adr, unsigned long val, unsigned long start, unsigned long len);
 unsigned long VSYNC_RD_MPEG_REG(unsigned long adr);
+unsigned long RDMA_READ_REG(unsigned long adr);
+int RDMA_SET_READ(unsigned long adr);
 #elif MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #define VSYNC_WR_MPEG_REG(adr,val) WRITE_VCBUS_REG(adr, val)
 #define VSYNC_WR_MPEG_REG_BITS(adr, val, start, len)  WRITE_VCBUS_REG_BITS(adr, val, start, len)

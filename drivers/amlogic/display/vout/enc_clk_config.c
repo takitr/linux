@@ -35,15 +35,16 @@ static void set_hpll_clk_out(unsigned clk)
     printk("config HPLL\n");
     aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x69c88000);
     aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xca563823);
-    aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x00238100);
+    aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x40238100);
     aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012286);
+    aml_write_reg32(P_HHI_VID2_PLL_CNTL2, 0x430a800);       // internal LDO share with HPLL & VIID PLL
 #endif
     switch(clk){
 #ifdef CONFIG_ARCH_MESON8
         case 2970:
             aml_write_reg32(P_HHI_VID_PLL_CNTL2, 0x59c84e00);
-            aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce59c822);   // optimise HPLL VCO 2.97GHz performance
-            aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x0123b100);
+            aml_write_reg32(P_HHI_VID_PLL_CNTL3, 0xce49c822);
+            aml_write_reg32(P_HHI_VID_PLL_CNTL4, 0x4123b100);
             aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00012385);
             
             aml_write_reg32(P_HHI_VID_PLL_CNTL,  0x6000043d);
@@ -53,6 +54,8 @@ static void set_hpll_clk_out(unsigned clk)
                 ;
             }
             aml_write_reg32(P_HHI_HDMI_PHY_CNTL0, 0x08c34d0b);
+            h_delay();
+            aml_write_reg32(P_HHI_VID_PLL_CNTL5, 0x00016385);   // optimise HPLL VCO 2.97GHz performance
             break;
 #endif
         case 1488:
@@ -92,12 +95,16 @@ static void set_hpll_clk_out(unsigned clk)
             break;
     }
 #ifdef CONFIG_ARCH_MESON8
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 1);       // Soft Reset HDMI PHY
-    h_delay();
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 0);
-    h_delay();
-    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);       // Enable HDMI PHY
+    // P_HHI_HDMI_PHY_CNTL1     bit[1]: enable clock    bit[0]: soft reset
+#define RESET_HDMI_PHY()                        \
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 3);   \
+    h_delay();                                  \
+    aml_write_reg32(P_HHI_HDMI_PHY_CNTL1, 2);   \
+    h_delay()
+
+    RESET_HDMI_PHY();
+    RESET_HDMI_PHY();
+    RESET_HDMI_PHY();
 #endif
 }
 

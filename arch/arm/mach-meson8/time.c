@@ -351,11 +351,15 @@ static struct meson_clock *clockevent_to_clock(struct clock_event_device *evt)
 	//return container_of(evt, struct meson_clock, clockevent);
 	return (struct meson_clock*)evt->private;
 }
+
+static DEFINE_SPINLOCK(time_lock);
+
 static void meson_clkevt_set_mode(enum clock_event_mode mode,
                                   struct clock_event_device *dev)
 {
-
 	struct meson_clock * clk=clockevent_to_clock(dev);
+
+	spin_lock(&time_lock);
 	switch (mode) {
 		case CLOCK_EVT_MODE_RESUME:
 			printk(KERN_INFO"Resume timer%s\n", clk->name);
@@ -365,12 +369,13 @@ static void meson_clkevt_set_mode(enum clock_event_mode mode,
 		case CLOCK_EVT_MODE_PERIODIC:
 			aml_set_reg32_bits(clk->mux_reg, 1, clk->bit_mode, 1);
 			aml_set_reg32_bits(clk->mux_reg, 1, clk->bit_enable, 1);
-
+			//printk("Periodic timer %s!,mux_reg=%x\n", clk->name,aml_read_reg32(clk->mux_reg));
 		break;
 
 		case CLOCK_EVT_MODE_ONESHOT:
 			aml_set_reg32_bits(clk->mux_reg, 0, clk->bit_mode, 1);
 			aml_set_reg32_bits(clk->mux_reg, 1, clk->bit_enable, 1);
+			//printk("One shot timer %s!mux_reg=%x\n", clk->name,aml_read_reg32(clk->mux_reg));
 		break;
 		case CLOCK_EVT_MODE_SHUTDOWN:
 		case CLOCK_EVT_MODE_UNUSED:
@@ -378,6 +383,7 @@ static void meson_clkevt_set_mode(enum clock_event_mode mode,
 			aml_set_reg32_bits(clk->mux_reg, 0, clk->bit_enable, 1);
 		break;
 	}
+	spin_unlock(&time_lock);
 }
 static int meson_set_next_event(unsigned long evt,
                                 struct clock_event_device *dev)
@@ -468,8 +474,8 @@ int  __cpuinit meson_local_timer_setup(struct clock_event_device *evt)
 	aml_write_reg32(clk->reg, 9999);
 	
 	meson_timer_init_device(&(clk->clockevent));
-//	printk(KERN_ERR"Local timer: %s (%p) for CPU%d initialized\n",
-//		clk->clockevent.name,clk,cpu);
+	//printk(KERN_ERR"Local timer: %s (%p) for CPU%d initialized\n",
+	//	clk->clockevent.name,clk,cpu);
 
 	meson_evt = &clk->clockevent;
 	evt->name = meson_evt->name;

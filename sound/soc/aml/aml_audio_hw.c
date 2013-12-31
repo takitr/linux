@@ -245,6 +245,7 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
         }else{
           WRITE_MPEG_REG(AIU_MEM_IEC958_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 1);    // this is for RAW mode
         }
+        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, 0x303, 0, 16);
 
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
@@ -456,8 +457,8 @@ void audio_set_i2s_mode(u32 mode)
         //WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1);
 
         if (ENABLE_IEC958) {
-            WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, mask[mode], 0,
-                                16);
+       //     WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, mask[mode], 0,
+             //                   16);
             //WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
             //WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
         }
@@ -1172,7 +1173,6 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
         }
         printk("IEC958 16bit\n");
     }
-
     audio_hw_958_reset(0, 1);
 
     WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 1);
@@ -1180,7 +1180,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 void audio_out_i2s_enable(unsigned flag)
 {
     if (flag) {
-        WRITE_MPEG_REG(AIU_RST_SOFT, 0x05);
+        WRITE_MPEG_REG(AIU_RST_SOFT, 0x01);
         READ_MPEG_REG(AIU_I2S_SYNC);
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
         // Maybe cause POP noise
@@ -1198,6 +1198,7 @@ void audio_hw_958_enable(unsigned flag)
     if (ENABLE_IEC958)
     {
     		if(flag){
+        		WRITE_MPEG_REG(AIU_RST_SOFT, 0x04);
 	              WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 0);
 	              WRITE_MPEG_REG_BITS(AIU_958_DCU_FF_CTRL, 1, 0, 1);
 	              WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 3, 1, 2);

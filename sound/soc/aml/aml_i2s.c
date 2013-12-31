@@ -34,10 +34,10 @@
 #define HRTIMER_PERIOD (1000000000UL/1000)
 //#define DEBUG_ALSA_PLATFRORM
 
-#define ALSA_PRINT(fmt,args...)	printk(KERN_INFO "[aml-i2s]" fmt,##args)
+#define ALSA_PRINT(fmt,args...)	printk(KERN_INFO "[aml-platform]" fmt,##args)
 #ifdef DEBUG_ALSA_PLATFRORM
-#define ALSA_DEBUG(fmt,args...) 	printk(KERN_INFO "[aml-i2s]" fmt,##args)
-#define ALSA_TRACE()     			printk("[aml-i2s] enter func %s,line %d\n",__FUNCTION__,__LINE__);
+#define ALSA_DEBUG(fmt,args...) 	printk(KERN_INFO "[aml-platform]" fmt,##args)
+#define ALSA_TRACE()     			printk("[aml-platform] enter func %s,line %d\n",__FUNCTION__,__LINE__);
 #else
 #define ALSA_DEBUG(fmt,args...) 
 #define ALSA_TRACE()   

@@ -23,6 +23,18 @@ static unsigned int gamma_enable = 1;
 module_param(gamma_enable,uint,0664);
 MODULE_PARM_DESC(gamma_enable,"\n enable/disable for gamma.\n");
 
+static unsigned int af_filter0 = 7;
+module_param(af_filter0,uint,0664);
+MODULE_PARM_DESC(af_filter0,"\n filter for af hist.\n");
+
+static unsigned int af_filter1 = 2;
+module_param(af_filter1,uint,0664);
+MODULE_PARM_DESC(af_filter1,"\n filter for af hist.\n");
+
+static unsigned int af_limit = 0;
+module_param(af_limit,uint,0664);
+MODULE_PARM_DESC(af_filter0,"\n filter for af hist.\n");
+
 /*
 *reg 0x00~0x07
 *reg 0xaf
@@ -229,9 +241,7 @@ void isp_set_test_pattern(xml_tp_t *tp)
 	if(tp){
 		for(i=0;i<XML_TP;i++)
 			WR(ISP_PAT_GEN_CTRL+i,tp->reg_map[i]);
-	} else {
-
-	}
+	} 
 	return;
 }
 /*
@@ -293,9 +303,6 @@ void isp_set_demosaicing(xml_dm_t *dms)
 		for(i=0;i<XML_DM;i++)
 		        WR(ISP_DMS_CTRL0+i, dms->reg_map[i]);
 	}
-	//GBRG defaulty
-	WR_BITS(ISP_DMS_CTRL0,1,DMS_XPHASE_OFST_BIT,DMS_XPHASE_OFST_WID);
-	WR_BITS(ISP_DMS_CTRL0,0,DMS_YPHASE_OFST_BIT,DMS_YPHASE_OFST_WID);
 }
 /*
 *reg 0x42~0x4a
@@ -445,7 +452,12 @@ void isp_set_af_scan_stat(unsigned int x0,unsigned int y0,unsigned int x1,unsign
 {
 	WR(ISP_AFC_WIND0_LR,x1|x0<<16);
 	WR(ISP_AFC_WIND0_TB,y1|y0<<16);
-	WR(ISP_AFC_FILTER_SEL,0x000170f0);
+	//WR(ISP_AFC_FILTER_SEL,0x000170f0);
+	WR_BITS(ISP_AFC_FILTER_SEL,af_limit,AFC_F1_CORING_BIT,AFC_F1_CORING_WID);
+	WR_BITS(ISP_AFC_FILTER_SEL,af_limit,AFC_F0_CORING_BIT,AFC_F0_CORING_WID);
+	WR_BITS(ISP_AFC_FILTER_SEL,af_filter1,AFC_F1_SELECT_BIT,AFC_F1_SELECT_WID);
+	WR_BITS(ISP_AFC_FILTER_SEL,af_filter0,AFC_F0_SELECT_BIT,AFC_F0_SELECT_WID);
+	WR_BITS(ISP_AFC_FILTER_SEL,1,AFC_RO_UPDATE_BIT,AFC_RO_UPDATE_WID);
 }
 /*
 *reg 0xac~0xae
@@ -488,10 +500,16 @@ static void isp_set_lnsd(xml_lut_ls_t *lnsd)
 {
 	int i = 0;
 	if(lnsd){
-		for(i=0;i<XML_LUT_LS;i++){
-			WR(ISP_LNSD_LUT_ADDR,i);
+		pr_info("%s\n",__func__);
+		WRITE_VCBUS_REG(0x2d28, (READ_VCBUS_REG(0x2d28)&0xefffffff)); // disable lens shielding
+		WRITE_VCBUS_REG(0x2daf, 0x0000000c);         // lens shielding lut ram: v-bus write mode		
+		WRITE_VCBUS_REG(ISP_LNS_XYSCAL, lnsd->reg_map[i]);
+		for(i=1;i<XML_LUT_LS;i++){
+			WR(ISP_LNSD_LUT_ADDR,i-1);
 			WR(ISP_LNSD_LUT_DATA,lnsd->reg_map[i]);
 		}
+	    WRITE_VCBUS_REG(0x2daf, 0x00000000); // lens shielding lut ram: hardware read mode	
+	    WRITE_VCBUS_REG(0x2d28, (READ_VCBUS_REG(0x2d28)|0x10000000));		
 	}
 }
 
@@ -602,13 +620,22 @@ void isp_bypass_all()
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);	
 }
+static void isp_set_bayer_fmt(tvin_color_fmt_t bfmt)
+{
+	unsigned int tmp = bfmt - TVIN_BGGR;
+	WR_BITS(ISP_PAT_GEN_CTRL,tmp,PAT_BAYER_FMT_BIT,PAT_BAYER_FMT_WID);
+	WR_BITS(ISP_CLAMPGAIN_CTRL,tmp,CLP_BAYER_FMT_BIT,CLP_BAYER_FMT_WID);
+	WR_BITS(ISP_LNS_CTRL,tmp,LNS_BAYER_FMT_BIT,LNS_BAYER_FMT_WID);
+	WR_BITS(ISP_GMR0_CTRL,tmp,GMR_BAYER_FMT_BIT,GMR_BAYER_FMT_WID);
+	WR_BITS(ISP_DFT_CTRL,tmp,DFT_BAYER_FMT_BIT,DFT_BAYER_FMT_WID);
+	WR_BITS(ISP_DMS_CTRL0,tmp,DMS_BAYER_FMT_BIT,DMS_BAYER_FMT_BIT);
+}
 /*
-*
+*load isp config according to config file
 */
-void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned int w,unsigned int h)
+void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,tvin_color_fmt_t bfmt,unsigned int w,unsigned int h)
 {
 	unsigned int mux = 0;
-
 	
 	switch(fe_port){
 		case TVIN_PORT_CAMERA:
@@ -639,12 +666,15 @@ void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,unsigned in
 	isp_set_af_stat(&regs->af_reg,w,h);
 	//isp_set_dbg(&regs->dbg);
 	isp_set_lnsd(&regs->lnsd);
-	isp_set_lnsd_test(w,h);
+	//isp_set_lnsd_test(w,h);
 	isp_set_gamma_table(&regs->lut_gc);
+	/*config bayer fmt*/
+	if(TVIN_BGGR<=bfmt && bfmt<=TVIN_GRBG)
+		isp_set_bayer_fmt(bfmt);
 	//enable isp
 	WR_BITS(ISP_FRM_SOFT_RST,0,0,1);
 	WR_BITS(ISP_TIMING_MODE,0,5,1);
-	pr_info("[%s..]%s: init ok(w:%d,h:%d).\n",DEVICE_NAME,__func__,w,h);
+	pr_info("[%s..]%s: init ok(w:%d,h:%d) bayer fmt %s.\n",DEVICE_NAME,__func__,w,h,tvin_color_fmt_str(bfmt));
 }
 
 void isp_hw_enable(bool flag)
@@ -1007,15 +1037,15 @@ void isp_get_af_stat(isp_af_stat_t * af_stat)
 		pr_info("%s null pointer error.\n",__func__);
 	} else {
 	for(i=0;i<16;i++)
-		af_stat->luma_win[i]=isp_rd(0xbc + i);
+		af_stat->luma_win[i]=isp_rd(ISP_RO_AFC_WIND0_F0 + i);
 	}
 	return;
 }
 void isp_get_af_scan_stat(isp_blnr_stat_t *blnr_stat)
 {
-	int i = 0, af = isp_rd(ISP_RO_AFC_WIND0_F0);
-	for(i=0;i<4;i++){
-		blnr_stat->ac[i] = af;
+	int i = 0;
+	for(i=0;i<16;i++){
+		blnr_stat->af_ac[i] = isp_rd(ISP_RO_AFC_WIND0_F0 + i);
 	}
 }
 void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
@@ -1024,7 +1054,7 @@ void isp_get_blnr_stat(isp_blnr_stat_t *blnr_stat)
 
 	for(i=0;i<4;i++){
 		blnr_stat->dc[i] = isp_rd(ISP_RO_BLNR_GRBG_DCSUM0+i);
-		//blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);
+		blnr_stat->ac[i] = isp_rd(ISP_RO_BLNR_GRBG_ACSUM0+i);
 	}
 
 	return;

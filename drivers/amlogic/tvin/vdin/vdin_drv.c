@@ -34,6 +34,7 @@
 #include <asm/fiq.h>
 #include <asm/div64.h>
 #include <linux/of.h>
+#include <linux/of_fdt.h>
 /* Amlogic Headers */
 #include <linux/amlogic/amports/canvas.h>
 #include <mach/am_regs.h>
@@ -540,8 +541,6 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_set_decimation(devp);
 	vdin_set_cutwin(devp);
 	vdin_set_hvscale(devp);
-	if(devp->parm.port == TVIN_PORT_ISP)
-	        vdin_set_cm2(devp->addr_offset,0);
         /*reverse / disable reverse write buffer*/
         vdin_wr_reverse(devp->addr_offset,reverse_flag,reverse_flag);
 
@@ -565,7 +564,7 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	vdin_vf_init(devp);
 
 	devp->abnormal_cnt = 0;
-
+	devp->last_wr_vfe = NULL;
 	irq_max_count = 0;
 	//devp->stamp_valid = false;
 	devp->stamp = 0;
@@ -609,9 +608,10 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	udelay(start_provider_delay);
 	vf_reg_provider(&devp->vprov);
 	vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_START,NULL);
-
+if(devp->parm.port != TVIN_PORT_VIU){
         /*enable irq */
         enable_irq(devp->irq);
+}
         /*disable audio&video sync used for libplayer*/
         tsync_set_enable(0);
 	/* enable system_time */
@@ -665,9 +665,11 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		pr_err("%s: port 0x%x, decode started already.\n",__func__,para->port);
 		ret = -EBUSY;
 	}
+	if(para->port != TVIN_PORT_VIU){
 	ret = request_irq(devp->irq, vdin_v4l2_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
         /*disable vsync irq until vdin configured completely*/
         disable_irq_nosync(devp->irq);
+	}
         /*config the vdin use default value*/
         vdin_set_default_regmap(devp->addr_offset);
 
@@ -713,9 +715,9 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 		return -1;
 	}
 	//disable cut window?
-	devp->parm.cutwin.ve = v_cut_offset;
-	devp->parm.cutwin.vs = v_cut_offset;
-		
+	if(para->port == TVIN_PORT_VIU) {
+		devp->parm.cutwin.vs = v_cut_offset;
+	} 
         /*add for scaler down*/
 	if(!(devp->flags & VDIN_FLAG_MANUAL_CONVERTION)) {
 		devp->scaler4w = para->dest_hactive;
@@ -727,6 +729,7 @@ int start_tvin_service(int no ,vdin_parm_t *para)
 	vdin_start_dec(devp);
 	devp->flags |= VDIN_FLAG_DEC_OPENED;
 	devp->flags |= VDIN_FLAG_DEC_STARTED;
+	irq_cnt = 0;
 	return 0;
 }
 
@@ -757,8 +760,10 @@ int stop_tvin_service(int no)
 #endif
 	devp->flags &= (~VDIN_FLAG_DEC_OPENED);
 	devp->flags &= (~VDIN_FLAG_DEC_STARTED);
+	if(devp->parm.port!= TVIN_PORT_VIU){
 	/* free irq */
 	free_irq(devp->irq,(void *)devp);
+	}
 	end_time = jiffies_to_msecs(jiffies);
 	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
 	return 0;
@@ -789,21 +794,36 @@ static int vdin_ioctl_fe(int no, fe_arg_t *parm)
 	}
 	return ret;
 }
-
+static void vdin_rdma_isr(struct vdin_dev_s *devp)
+{
+	if(devp->parm.port==TVIN_PORT_VIU)
+		vdin_v4l2_isr(devp->irq,devp);
+}
 static int vdin_func(int no, vdin_arg_t *arg)
 {
 	struct vdin_dev_s *devp = vdin_devp[no];
 	int ret = 0;
 	struct vdin_arg_s *parm = NULL;
-        if(IS_ERR(devp)){
-                pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
+        if(IS_ERR_OR_NULL(devp)){
+		if(vdin_dbg_en)
+		        pr_err("[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
                 return -1;
-        }
+        }else if(!(devp->flags&VDIN_FLAG_DEC_STARTED)){
+        	if(vdin_dbg_en)
+			pr_err("[vdin..]%s vdin%d has't started.\n",__func__,no);
+		return -1;
+	}
 	parm = arg;
 	switch(parm->cmd){
                 /*ajust vdin1 matrix1 & matrix2 for isp to get histogram information*/
 		case VDIN_CMD_SET_CSC:
 			vdin_set_matrixs(devp,parm->matrix_id,parm->color_convert);
+			break;
+		case VDIN_CMD_SET_CM2:
+			vdin_set_cm2(devp->addr_offset,devp->h_active,devp->v_active,parm->cm2);
+			break;
+		case VDIN_CMD_ISR:
+			vdin_rdma_isr(devp);
 			break;
 		default:
 			break;
@@ -990,7 +1010,7 @@ static irqreturn_t vdin_isr_simple(int irq, void *dev_id)
 static void vdin_backup_histgram(struct vframe_s *vf, struct vdin_dev_s *devp)
 {
 	unsigned int i = 0;
-
+    devp->parm.hist_pow = vf->prop.hist.hist_pow;
 	for (i = 0; i < 64; i++)
 		devp->parm.histgram[i] = vf->prop.hist.gamma[i];
 }
@@ -1285,6 +1305,23 @@ irq_handled:
 * there are too much logic in vdin_isr which is useless in camera&viu
 *so vdin_v4l2_isr use to the sample v4l2 application such as camera,viu
 */
+static unsigned char skip_ratio = 1;
+module_param(skip_ratio,uint,0664);
+MODULE_PARM_DESC(skip_ratio,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_enter_line_max = 0;
+module_param(vsync_enter_line_max,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_exit_line_max = 0;
+module_param(vsync_exit_line_max,uint,0664);
+MODULE_PARM_DESC(vsync_exit_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+
+static unsigned int vsync_enter_line_curr = 0;
+module_param(vsync_enter_line_curr,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+static unsigned int vsync_exit_line_curr = 0;
+module_param(vsync_exit_line_curr,uint,0664);
+MODULE_PARM_DESC(vsync_exit_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
+
 static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 {
 	ulong flags;
@@ -1298,16 +1335,45 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	int ret = 0;
 	if (!devp)
                 return IRQ_HANDLED;
+	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
+                case 0:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 1:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 2:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
+                        break;
+                case 3:
+                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
+                        break;
+        }
+        if(vsync_enter_line_curr > vsync_enter_line_max)
+                vsync_enter_line_max = vsync_enter_line_curr;
+
+	isr_log(devp->vfp);
                 irq_cnt++;
 	spin_lock_irqsave(&devp->isr_lock, flags);
-                if(devp)
-	/* avoid null pointer oops */
-	stamp  = vdin_get_meas_vstamp(devp->addr_offset);
+        if(devp)
+	        /* avoid null pointer oops */
+	        stamp  = vdin_get_meas_vstamp(devp->addr_offset);
 	if (!devp->curr_wr_vfe) {
 		devp->curr_wr_vfe = provider_vf_get(devp->vfp);
 		/*save the first field stamp*/
 		devp->stamp = stamp;
 		goto irq_handled;
+	}
+	
+        if(!vdin_write_done_check(devp->addr_offset, devp)){
+                goto irq_handled;
+        }   
+
+
+	if(devp->last_wr_vfe){
+		provider_vf_put(devp->last_wr_vfe, devp->vfp);
+	        devp->last_wr_vfe = NULL;
+		vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 	}
 	/*check vs is valid base on the time during continuous vs*/
         vdin_check_cycle(devp);
@@ -1360,7 +1426,6 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
             	        goto irq_handled;
                 }
         }
-
         next_wr_vfe = provider_vf_peek(devp->vfp);
 
 	if (!next_wr_vfe) {
@@ -1378,22 +1443,46 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	}
 	if(curr_wr_vfe){
 		curr_wr_vfe->flag |= VF_FLAG_NORMAL_FRAME;
-		provider_vf_put(curr_wr_vfe, devp->vfp);
+		//provider_vf_put(curr_wr_vfe, devp->vfp);
+		devp->last_wr_vfe = curr_wr_vfe;
 	}
 
 	/* prepare for next input data */
 	next_wr_vfe = provider_vf_get(devp->vfp);
-	vdin_set_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff));
-        /* prepare for chroma canvas*/
-        if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
-                vdin_set_chma_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff);
-
+	if(devp->parm.port == TVIN_PORT_VIU){
+	        VSYNC_WR_MPEG_REG_BITS(VDIN_WR_CTRL+devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff), WR_CANVAS_BIT, WR_CANVAS_WID);
+                /* prepare for chroma canvas*/
+                if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
+			VSYNC_WR_MPEG_REG_BITS(VDIN_WR_CTRL2+devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff, WRITE_CHROMA_CANVAS_ADDR_BIT,WRITE_CHROMA_CANVAS_ADDR_WID);
+	}else{	
+		vdin_set_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr&0xff));
+                if((devp->prop.dest_cfmt == TVIN_NV12)||(devp->prop.dest_cfmt == TVIN_NV21))
+                        vdin_set_chma_canvas_id(devp->addr_offset, (next_wr_vfe->vf.canvas0Addr>>8)&0xff);
+	}
         devp->curr_wr_vfe = next_wr_vfe;
 	vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
 
 irq_handled:
+	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
+		case 0:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
+			break;
+		case 1:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
+			break;
+		case 2:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
+			break;
+		case 3:
+			vsync_exit_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
+			break;
+	}
+	if(vsync_exit_line_curr > vsync_exit_line_max)
+		vsync_exit_line_max = vsync_exit_line_curr;
+
 	spin_unlock_irqrestore(&devp->isr_lock, flags);
+	isr_log(devp->vfp);
 	return IRQ_HANDLED;
 }
 
@@ -1451,7 +1540,7 @@ static int vdin_release(struct inode *inode, struct file *file)
 	file->private_data = NULL;
 
 	/* reset the hardware limit to vertical [0-1079]  */
-    WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000437);
+        WRITE_VCBUS_REG(VPP_PREBLEND_VD1_V_START_END, 0x00000437);
 	pr_info("close device %s ok\n", dev_name(devp->dev));
 	return 0;
 }
@@ -2591,10 +2680,7 @@ static ssize_t vdin_cm2_store(struct device *dev,
 		data[4] = aml_read_reg32(VCBUS_REG_ADDR(data_port));
 
 		pr_info("rm:[0x%x]-->[0x%x][0x%x][0x%x][0x%x][0x%x] \n",addr, data[0],data[1],data[2],data[3],data[4]);
-	}else if(!strcmp(parm[0],"config")){
-		val = simple_strtol(parm[1],NULL,10);
-		vdin_set_cm2(devp->addr_offset,val);
-	} else if (!strcmp(parm[0],"enable")){
+	}else if (!strcmp(parm[0],"enable")){
 		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,1,CM_TOP_EN_BIT,CM_TOP_EN_WID);
 	}else if (!strcmp(parm[0],"disable")){
 		WRITE_VCBUS_REG_BITS(VDIN_CM_BRI_CON_CTRL+devp->addr_offset,0,CM_TOP_EN_BIT,CM_TOP_EN_WID);
@@ -2634,6 +2720,7 @@ static void vdin_delete_device(int minor)
 	device_destroy(vdin_clsp, devno);
 }
 
+static struct resource memobj;
 static int vdin_drv_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -2689,7 +2776,18 @@ static int vdin_drv_probe(struct platform_device *pdev)
 		goto fail_create_dev_file;
 	}
 	/* get memory address from resource */
+#if 0	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+#else
+    res = &memobj;
+    ret = find_reserve_block(pdev->dev.of_node->name,0);
+    if(ret < 0){
+        pr_err("\nvdin memory resource undefined.\n");
+        return -EFAULT;
+    }
+    res->start = (phys_addr_t)get_reserve_block_addr(ret);
+    res->end = res->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
+#endif
 	if (!res) {
 		pr_err("%s: can't get mem resource\n", __func__);
 		ret = -ENXIO;
@@ -2744,9 +2842,6 @@ static int vdin_drv_probe(struct platform_device *pdev)
 	/* @todo provider name */
 	sprintf(vdevp->name, "%s%d", PROVIDER_NAME, vdevp->index);
 	vf_provider_init(&vdevp->vprov, vdevp->name, &vdin_vf_ops, vdevp->vfp);
-        /*register vdin for v4l2 interface*/
-        if(vdin_reg_v4l2(&vdin_4v4l2_ops))
-                pr_err("[vdin..] %s: register vdin v4l2 error.\n",__func__);
 	/* @todo canvas_config_mode */
 	if (canvas_config_mode == 0 || canvas_config_mode == 1) {
 		vdin_canvas_init(vdevp);
@@ -2778,7 +2873,7 @@ static int vdin_drv_remove(struct platform_device *pdev)
 
 	mutex_destroy(&vdevp->mm_lock);
 	mutex_destroy(&vdevp->fe_lock);
-
+	
 	vf_pool_free(vdevp->vfp);
 
         #ifdef VF_LOG_EN
@@ -2793,8 +2888,9 @@ static int vdin_drv_remove(struct platform_device *pdev)
 
 	vdin_delete_device(vdevp->index);
 	cdev_del(&vdevp->cdev);
+	vdin_devp[vdevp->index] = NULL;
 	kfree(vdevp);
-
+	
 	/* free drvdata */
 	dev_set_drvdata(vdevp->dev, NULL);
 	platform_set_drvdata(pdev, NULL);
@@ -2843,6 +2939,9 @@ static struct platform_driver vdin_driver = {
 }
 };
 
+extern int vdin_reg_v4l2(vdin_v4l2_ops_t *v4l2_ops);
+extern void vdin_unreg_v4l2(void);
+
 static int __init vdin_drv_init(void)
 {
 	int ret = 0;
@@ -2867,10 +2966,14 @@ static int __init vdin_drv_init(void)
 	ret = class_create_file(vdin_clsp, &class_attr_memp);
 
 	ret = platform_driver_register(&vdin_driver);
+	
 	if (ret != 0) {
 		pr_err("%s: failed to register driver\n", __func__);
 		goto fail_pdrv_register;
 	}
+	/*register vdin for v4l2 interface*/
+        if(vdin_reg_v4l2(&vdin_4v4l2_ops))
+                pr_err("[vdin..] %s: register vdin v4l2 error.\n",__func__);
 #ifdef CONFIG_ARCH_MESON6TV
 #ifndef CONFIG_MESON_M6C_ENHANCEMENT
 	aml_write_reg32(P_MMC_CHAN5_CTRL, 0xc01f); // adjust vdin weight and age limit
@@ -2888,6 +2991,7 @@ fail_alloc_cdev_region:
 
 static void __exit vdin_drv_exit(void)
 {
+	vdin_unreg_v4l2();
 	//device_remove_file(vdin_clsp, &dev_attr_test);
 	class_remove_file(vdin_clsp, &class_attr_memp);
 	class_destroy(vdin_clsp);

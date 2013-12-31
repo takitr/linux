@@ -118,6 +118,9 @@ static void vreal_local_init(void);
 static const char vreal_dec_id[] = "vreal-dev";
 
 #define PROVIDER_NAME   "decoder.real"
+
+extern int query_video_status(int type, int *value);
+
 static const struct vframe_operations_s vreal_vf_provider = {
     .peek = vreal_vf_peek,
     .get = vreal_vf_get,
@@ -694,15 +697,18 @@ static void load_block_data(unsigned int dest, unsigned int count)
 
 s32 vreal_init(void)
 {
+    int trickmode_fffb = 0;
     int r;
     dma_addr_t buf_start_map;
 
     printk("vreal_init\n");
 
-    memset(phys_to_virt(buf_start), 0, buf_size);
+    if (!trickmode_fffb) {
+        memset(phys_to_virt(buf_start), 0, buf_size);
 
-    buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
-    
+        buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
+    }
+
     init_timer(&recycle_timer);
 
     stat |= STAT_TIMER_INIT;
@@ -747,8 +753,11 @@ s32 vreal_init(void)
         printk("unsurpported real format\n");
     }
 
-    dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
     stat |= STAT_MC_LOAD;
+
+    if (!trickmode_fffb) {
+        dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
+    }
 
     /* enable AMRISC side protocol */
     vreal_prot_init();
@@ -850,10 +859,6 @@ static int amvdec_real_remove(struct platform_device *pdev)
     }
 
     amvdec_disable();
-
-#if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
-    vdec_dos_top_reg_fix();
-#endif
 
     printk("frame duration %d, frames %d\n", frame_dur, frame_count);
     return 0;

@@ -74,7 +74,7 @@ struct ionvideo_buffer {
     /* common v4l buffer stuff -- must be first */
     struct vb2_buffer vb;
     struct list_head list;
-    struct ionvideo_fmt *fmt;
+    const struct ionvideo_fmt *fmt;
 };
 
 struct ionvideo_dmaqueue {
@@ -95,7 +95,6 @@ struct ppmgr2_device {
     int canvas_id[PPMGR2_MAX_CANVAS];
     void* phy_addr[PPMGR2_MAX_CANVAS];
     int phy_size;
-    int inited_canvas;
 
     ge2d_context_t* context;
     config_para_ex_t ge2d_config;
@@ -108,29 +107,7 @@ struct ppmgr2_device {
 struct ionvideo_dev {
     struct list_head ionvideo_devlist;
     struct v4l2_device v4l2_dev;
-    struct v4l2_ctrl_handler ctrl_handler;
     struct video_device vdev;
-
-    /* controls */
-    struct v4l2_ctrl *brightness;
-    struct v4l2_ctrl *contrast;
-    struct v4l2_ctrl *saturation;
-    struct v4l2_ctrl *hue;
-    struct {
-        /* autogain/gain cluster */
-        struct v4l2_ctrl *autogain;
-        struct v4l2_ctrl *gain;
-    };
-    struct v4l2_ctrl *volume;
-    struct v4l2_ctrl *alpha;
-    struct v4l2_ctrl *button;
-    struct v4l2_ctrl *boolean;
-    struct v4l2_ctrl *int32;
-    struct v4l2_ctrl *int64;
-    struct v4l2_ctrl *menu;
-    struct v4l2_ctrl *string;
-    struct v4l2_ctrl *bitmask;
-    struct v4l2_ctrl *int_menu;
 
     spinlock_t slock;
     struct mutex mutex;
@@ -140,27 +117,20 @@ struct ionvideo_dev {
     /* Several counters */
     unsigned ms;
     unsigned long jiffies;
-    unsigned button_pressed;
-
-    int mv_count; /* Controls bars movement */
 
     /* Input Number */
     int input;
 
     /* video capture */
-    struct ionvideo_fmt *fmt;
+    const struct ionvideo_fmt *fmt;
     unsigned int width, height;
     struct vb2_queue vb_vidq;
     unsigned int field_count;
 
-    u8 bars[9][3];
-    u8 line[MAX_WIDTH * 8];
     unsigned int pixelsize;
-    u8 alpha_component;
 
     struct ppmgr2_device ppmgr2_dev;
     struct vframe_receiver_s video_vf_receiver;
-    u8 clear_list;
     u64 pts;
     u8 receiver_register;
 };

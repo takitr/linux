@@ -44,6 +44,9 @@ typedef struct amcsi_dev_s{
         unsigned int            reset_count;
         unsigned int            irq_num;
         struct tvin_frontend_s  frontend; 
+        unsigned int            period;
+        unsigned int            min_frmrate;
         struct timer_list       t;
 }amcsi_dev_t;
+//unsigned long msecs_to_jiffies(const unsigned int m);
 #endif

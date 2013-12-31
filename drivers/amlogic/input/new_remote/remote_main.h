@@ -23,6 +23,10 @@ typedef struct reg_s {
 	int reg;
 	unsigned int val;
 } remotereg_t;
+typedef enum{
+	NORMAL = 0,
+	TIMER = 1 ,
+}repeat_status;
 
 /*
    Decode_mode.(format selection) 
@@ -82,16 +86,16 @@ static const remotereg_t RDECODEMODE_NEC[] = {
 };
 /****************************************************************/
 static const remotereg_t RDECODEMODE_DUOKAN[] = {
-	{LDR_ACTIVE,52<<16 | 49<<0},
-	{LDR_IDLE, 30<<16 | 26<<0},
+	{LDR_ACTIVE,53<<16 | 50<<0},
+	{LDR_IDLE, 31<<16 | 25<<0},
 	{LDR_REPEAT,30<<16 | 26<<0},
-	{DURATION_REG0,60<<16 | 56<<0 },          
+	{DURATION_REG0,61<<16 | 55<<0 }, 
 	{OPERATION_CTRL_REG0,3<<28 |(0x5DC<<12)| 0x13}, //body frame 30ms         
-	{DURATION_REG1_AND_STATUS,(75<<20) | 70<<10},        
-	{OPERATION_CTRL_REG1,0xbe40},
-	{OPERATION_CTRL_REG2,0xb},
-	{DURATION_REG2,90<<16 | 80<<0},
-	{DURATION_REG3,110<<16 | 100<<0},  
+	{DURATION_REG1_AND_STATUS,(76<<20) | 69<<10},
+	{OPERATION_CTRL_REG1,0x9300},
+	{OPERATION_CTRL_REG2,0x10b},
+	{DURATION_REG2,91<<16 | 79<<0},
+	{DURATION_REG3,111<<16 | 99<<0},
 	{CONFIG_END,            0      }
 };
 /****************************************************************/
@@ -379,6 +383,7 @@ static unsigned int OK_KEY_SCANCODE = 0x3ff;
 #define   REMOTE_IOC_SET_OK_KEY_SCANCODE     _IOW_BAD('I', 136, sizeof(short))
 #define   REMOTE_IOC_SET_PAGEUP_KEY_SCANCODE _IOW_BAD('I', 137, sizeof(short))
 #define   REMOTE_IOC_SET_PAGEDOWN_KEY_SCANCODE _IOW_BAD('I', 138, sizeof(short))
+#define   REMOTE_IOC_SET_RELT_DELAY	    _IOW_BAD('I',140,sizeof(short))
 
 #define	REMOTE_HW_DECODER_STATUS_MASK		(0xf<<4)
 #define	REMOTE_HW_DECODER_STATUS_OK			(0<<4)
@@ -408,6 +413,7 @@ struct remote {
 	struct input_dev *input;
 	struct timer_list timer;  //release timer
 	struct timer_list repeat_timer;  //repeat timer
+	struct timer_list rel_timer;  //repeat timer
 	unsigned long repeat_tick;
 	int irq;
 	int save_mode;
@@ -423,6 +429,7 @@ struct remote {
 	unsigned int repeate_flag;
 	unsigned int repeat_enable;
 	unsigned int debounce;
+	unsigned int status;
 	// we can only support 20 maptable
 	int map_num;
 	int ig_custom_enable;
@@ -453,6 +460,7 @@ struct remote {
 	struct class *config_class;
 	struct device *config_dev;
 	unsigned int repeat_delay;
+	unsigned int relt_delay;
 	unsigned int repeat_peroid;
 	//
 	int (*remote_reprot_press_key)(struct remote *);
@@ -472,6 +480,7 @@ extern irqreturn_t remote_bridge_isr(int irq, void *dev_id);
 extern int remote_hw_reprot_key(struct remote *remote_data);
 extern int remote_sw_reprot_key(struct remote *remote_data);
 extern void remote_nec_report_release_key(struct remote *remote_data);
+extern void remote_duokan_report_release_key(struct remote *remote_data);
 extern void remote_sw_reprot_release_key(struct remote *remote_data);
 
 
@@ -502,7 +511,7 @@ static  irqreturn_t (*remote_bridge_sw_isr[])(int irq, void *dev_id)={
 
 static  int (*remote_report_key[])(struct remote *remote_data)={
 	remote_hw_reprot_key,
-	NULL,
+	remote_hw_reprot_key,
 	NULL,
 	NULL,
 	NULL,
@@ -522,7 +531,7 @@ static  int (*remote_report_key[])(struct remote *remote_data)={
 
 static  void (*remote_report_release_key[])(struct remote *remote_data)={
 	remote_nec_report_release_key,
-	NULL,
+	remote_duokan_report_release_key,
 	NULL,
 	NULL,
 	NULL,

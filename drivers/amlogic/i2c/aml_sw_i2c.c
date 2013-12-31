@@ -229,7 +229,7 @@ static ssize_t show_i2c_info(struct class *class, struct class_attribute *attr, 
 }
 
 static struct class_attribute i2c_class_attrs[] = {
-    __ATTR(info,       S_IRUGO | S_IWUSR, show_i2c_info,    NULL),
+    __ATTR(info, (S_IRUSR|S_IRGRP), show_i2c_info,    NULL),
     __ATTR_NULL
 };
 

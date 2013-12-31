@@ -61,6 +61,7 @@ struct touch_pdata {
 	int max_num;
   unsigned bus_type;
   unsigned reg;
+  unsigned auto_update_fw;
 	char *owner;
 	char *fw_file;
 	char *config_file;

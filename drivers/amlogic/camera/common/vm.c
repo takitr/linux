@@ -51,7 +51,8 @@
 
 #include <linux/sizes.h>
 #include <linux/dma-mapping.h>
-#include <linux/dma-contiguous.h>
+#include <linux/of_fdt.h>
+
 
 /*class property info.*/
 #include "vmcls.h"
@@ -95,7 +96,6 @@ static int test_zoom = 0;
 
 static void vm_cache_flush(unsigned buf_start , unsigned buf_size);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
-static struct platform_device vm_plat_dev;
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
 #endif
@@ -820,7 +820,6 @@ static void vm_dump_mem(char *path, void *phy_addr, vm_output_para_t* para)
         struct file *filp = NULL;
         loff_t pos = 0;
         void * buf = NULL;
-        int i = 0;
         unsigned int size = para->bytesperline * para->height;
 
         mm_segment_t old_fs = get_fs();
@@ -833,7 +832,7 @@ static void vm_dump_mem(char *path, void *phy_addr, vm_output_para_t* para)
         }
 
 
-        buf = phys_to_virt(phy_addr);
+        buf = phys_to_virt((unsigned long)phy_addr);
         vfs_write(filp,buf, size, &pos);
 
         vfs_fsync(filp, 0);
@@ -1311,10 +1310,11 @@ int vm_sw_post_process(int canvas , int addr)
 		buffer_v_start = io_mapping_map_atomic_wc( mapping_wc, offset );
 
 #ifndef GE2D_NV
-		if(output_para.v4l2_format == V4L2_PIX_FMT_YUV420){
+		if(output_para.v4l2_format == V4L2_PIX_FMT_YUV420)
 #else
-		if(output_para.v4l2_format == V4L2_PIX_FMT_YVU420){
+		if(output_para.v4l2_format == V4L2_PIX_FMT_YVU420)
 #endif
+		{
 			for(i=uv_height;i>0;i--) { /* copy y */
 				memcpy((void *)(addr+poss),(void *)(buffer_u_start+posd),uv_width);
 				poss+=uv_width;
@@ -1354,8 +1354,8 @@ static int vm_task(void *data) {
 	vframe_t *vf;
 	int src_canvas;
 	int timer_count = 0 ;
-    vm_device_t *devp = (vm_device_t*) data;
-struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
+	vm_device_t *devp = (vm_device_t*) data;
+	struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 	ge2d_context_t *context=create_ge2d_work_queue();
 	config_para_ex_t ge2d_config;
 
@@ -1367,23 +1367,23 @@ struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 
 	memset(&ge2d_config,0,sizeof(config_para_ex_t));
 	amlog_level(LOG_LEVEL_HIGH,"vm task is running\n ");
-    sched_setscheduler(current, SCHED_FIFO, &param);
-    allow_signal(SIGTERM);
+	sched_setscheduler(current, SCHED_FIFO, &param);
+	allow_signal(SIGTERM);
 	while(1) {
 		ret = down_interruptible(&vb_start_sema);
 		timer_count = 0;
-        if (kthread_should_stop()){
-            up(&vb_done_sema);
-            break;
-        }
+		if (kthread_should_stop()){
+			up(&vb_done_sema);
+			break;
+		}
 
 		/* wait for frame from 656 provider until 500ms runs out */
 		vf = local_vf_peek();
 		while((vf == NULL) && (timer_count < 200)) {
 			if(!task_running){
-	            up(&vb_done_sema);
-	            goto vm_exit;
-	            break;
+				up(&vb_done_sema);
+				goto vm_exit;
+				break;
 			}
 			vf = local_vf_peek();
 			timer_count++;
@@ -1401,10 +1401,10 @@ struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 			/* step1 convert 422 format to other format.*/
 			if (is_need_ge2d_pre_process())
 				src_canvas = vm_ge2d_pre_process(vf,context,&ge2d_config);
-                        if (devp->dump == 2) {
-                                vm_dump_mem(devp->dump_path, output_para.vaddr, &output_para);
-                                devp->dump = 0;
-                        }
+			if (devp->dump == 2) {
+				vm_dump_mem(devp->dump_path, (void *)output_para.vaddr, &output_para);
+				devp->dump = 0;
+			}
 			local_vf_put(vf);
 #ifdef CONFIG_AMLCAP_LOG_TIME_USEFORFRAMES
 			do_gettimeofday(&end);
@@ -1424,22 +1424,22 @@ struct sched_param param = {.sched_priority = MAX_RT_PRIO - 1 };
 			printk("step 2, memcpy use: %ldms\n", time_use);
 #endif
 		}
-        if (kthread_should_stop()){
-            up(&vb_done_sema);
-            break;
-        }
+		if (kthread_should_stop()){
+			up(&vb_done_sema);
+			break;
+		}
 		up(&vb_done_sema);
 	}
 vm_exit:
 	destroy_ge2d_work_queue(context);
-    while(!kthread_should_stop()){
+	while(!kthread_should_stop()){
 	/* 	   may not call stop, wait..
                    it is killed by SIGTERM,eixt on down_interruptible
 		   if not call stop,this thread may on do_exit and
 		   kthread_stop may not work good;
 	*/
-	    msleep(10);
-    }
+		msleep(10);
+	}
 	return ret;
 }
 
@@ -1610,7 +1610,7 @@ void set_vm_buf_info(resource_size_t start,unsigned int size) {
 }
 
 
-void unset_vm_buf_info()
+void unset_vm_buf_info(void)
 {
     if(vm_device.mapping)
     {
@@ -1711,7 +1711,6 @@ static ssize_t vm_attr_show(struct device *dev, struct device_attribute *attr, c
 {
         ssize_t len = 0;
         vm_device_t *devp;
-        int i;
 
         devp = dev_get_drvdata(dev);
         if (0 == devp->task_running){
@@ -1719,7 +1718,7 @@ static ssize_t vm_attr_show(struct device *dev, struct device_attribute *attr, c
                 return len;
         }
 
-        len += sprintf(buf+len, "vm parameters below\n");
+        len += sprintf((char *)buf+len, "vm parameters below\n");
 
         return len;
 }
@@ -1727,10 +1726,7 @@ static ssize_t vm_attr_show(struct device *dev, struct device_attribute *attr, c
 static ssize_t vm_attr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
 {
         vm_device_t *devp;
-
-        unsigned int n=0, fps=0;
-
-        unsigned char ret=0;
+        unsigned int n=0;
         char *buf_orig, *ps, *token;
         char *parm[6] = {NULL};
 
@@ -1741,7 +1737,7 @@ static ssize_t vm_attr_store(struct device *dev,struct device_attribute *attr,co
         //printk(KERN_INFO "input cmd : %s",buf_orig);
         devp = dev_get_drvdata(dev);
         if (0 == devp->task_running){
-                len += sprintf(buf+len, "vm does not start\n");
+                len += sprintf((char *)buf+len, "vm does not start\n");
                 return len;
         }
 
@@ -1800,12 +1796,12 @@ int init_vm_device(void)
 		goto unregister_dev;
 	}
 
-    //dump func
-    device_create_file( vm_device.dev, &dev_attr_dump);
-    vm_device.dump = 0;
+	//dump func
+	device_create_file( vm_device.dev, &dev_attr_dump);
+	vm_device.dump = 0;
 
-    dev_set_drvdata( vm_device.dev,  &vm_device);
-    platform_set_drvdata( vm_device.pdev,  &vm_device);
+	dev_set_drvdata( vm_device.dev,  &vm_device);
+	platform_set_drvdata( vm_device.pdev,  &vm_device);
 
 	if(vm_buffer_init()<0) goto unregister_dev;
 #ifndef CONFIG_AMLOGIC_VM_DISABLE_VIDEOLAYER
@@ -1837,74 +1833,6 @@ int uninit_vm_device(void)
 }
 
 
-#ifdef CONFIG_CMA
-
-void set_vm_buf_info(resource_size_t start,unsigned int size);
-void unset_vm_buf_info();
-
-static dma_addr_t vm_buf_phys = ~0;
-static void *vm_buf_virt;
-static size_t vm_buf_size;
-
-int vm_init_buf(size_t size)
-{
-
-    if(size ==0)
-        return;
-
-    if(vm_buf_phys != ~0)
-    {
-        pr_info("phys already in use phys %p, virt %p, size %d\n", vm_buf_phys, vm_buf_virt, size/1024);
-        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-    }
-
-    vm_buf_virt = dma_alloc_coherent(&vm_plat_dev.dev, size, &vm_buf_phys, GFP_KERNEL);
-
-    pr_info("%s: allocating virt %p, phys %p, size %dk\n", __func__, vm_buf_virt, vm_buf_phys, size/1024);
-    if(vm_buf_virt == 0)
-    {
-        pr_err("CMA failed to allocate dma buffer\n");
-        return -1;
-    }
-    else
-        set_vm_buf_info(vm_buf_phys, size);
-
-    vm_buf_size = size;
-    return 0;
-}
-
-EXPORT_SYMBOL(vm_init_buf);
-
-void vm_deinit_buf()
-{
-    if(0 == vm_buf_size)
-    {
-        pr_warn("vm buf size equals 0\n");
-        return;
-    }
-    unset_vm_buf_info();
-    if(vm_buf_phys != ~0)
-    {
-        dma_free_coherent(&vm_plat_dev.dev, vm_buf_size, vm_buf_virt, vm_buf_phys); 
-        vm_buf_phys = ~0;
-        vm_buf_virt = 0;
-        vm_buf_size = 0;
-    }
-    pr_info("%s\n", __func__);
-}
-
-EXPORT_SYMBOL(vm_deinit_buf);
-
-void __init vm_reserve_cma(void)
-{
-    int ret = dma_declare_contiguous(&vm_plat_dev.dev, 68 * SZ_1M, 0, 0);
-    if(ret)
-        pr_err("%s : dma_declare_contiguous failed\n", __func__);
-}
-#endif
-
-
-
 /*******************************************************************
  *
  * interface for Linux driver
@@ -1916,11 +1844,12 @@ MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0xff, LOG_LEVEL_DESC, LOG_MASK_DESC);
 /* for driver. */
 static int vm_driver_probe(struct platform_device *pdev)
 {
-#ifndef CONFIG_CMA
 	char* buf_start;
 	unsigned int buf_size;
 	struct resource *mem;
+    int idx;
 
+#if 0
 	if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)))
 	{
 		buf_start = 0;
@@ -1929,12 +1858,24 @@ static int vm_driver_probe(struct platform_device *pdev)
 		buf_start = (char *)mem->start;
 		buf_size = mem->end - mem->start + 1;
 	}
-	set_vm_buf_info(mem->start,buf_size);
-#endif
+#else
+     idx = find_reserve_block(pdev->dev.of_node->name,0);
+     if(idx < 0){
+         buf_start = 0;
+         buf_size = 0;
+         amlog_level(LOG_LEVEL_HIGH, "vm memory resource undefined.\n");
+     }
+     else
+     {
+         buf_start = (char *)get_reserve_block_addr(idx);
+         buf_size = (unsigned int)get_reserve_block_size(idx);
+     }
+#endif 
+    vm_device.pdev = pdev;
 
-	vm_device.pdev = pdev;
+	set_vm_buf_info(buf_start,buf_size);
+
 	init_vm_device();
-
 
 	return 0;
 }
@@ -1957,15 +1898,6 @@ static const struct of_device_id amlogic_vm_dt_match[]={
 #endif
 
 
-static struct platform_device vm_plat_dev = 
-{
-    .name = "vm",
-    .id = 0,
-    .dev = {
-        .coherent_dma_mask = ~0,
-    }
-};
-
 /* general interface for a linux driver .*/
 static struct platform_driver vm_drv = {
 	.probe  = vm_driver_probe,
@@ -1985,12 +1917,8 @@ vm_init_module(void)
 	amlog_level(LOG_LEVEL_HIGH,"vm_init\n");
 	if ((err = platform_driver_register(&vm_drv))) {
 		printk(KERN_ERR "Failed to register vm driver (error=%d\n", err);
-		return err;
 	}
 
-    err = platform_device_register(&vm_plat_dev);
-    if(err)
-        platform_driver_unregister(&vm_drv);
 	return err;
 }
 
@@ -1998,7 +1926,6 @@ static void __exit
 vm_remove_module(void)
 {
 	platform_driver_unregister(&vm_drv);
-    platform_device_unregister(&vm_plat_dev);
 	amlog_level(LOG_LEVEL_HIGH,"vm module removed.\n");
 }
 

@@ -6,10 +6,6 @@
 static struct file  *fp;
 mm_segment_t fs;
 
-configure *cf;
-sensor_aet_info_t *sensor_aet_info; // point to 1 of up to 16 aet information
-sensor_aet_t *sensor_aet_table;
-unsigned int sensor_aet_step; // current step of the current aet
 
 char *aet_key = "aet_start";
 char *hw_key = "hw_start";
@@ -18,10 +14,13 @@ char *capture_key = "capture_start";
 char *scenes_key = "scenes_start";
 char *wb_key = "wb_start";
 char *wave_key = "wave_start";
-char *lenc_key = "lenc_start";
+char *lens_key = "lens_start";
 char *gamma_key = "gamma_start";
 char *wb_sensor_key = "mwb_sensor_start";
 char *version_key = "version_start";
+char *cm_key = "cm_start";
+char *nr_key = "nr_start";
+char *peaking_key = "peaking_start";
 
 typedef struct{
 	char *buffer;
@@ -103,7 +102,7 @@ int camera_close_config(void)
 
 static int camera_read_buff(struct i2c_adapter *adapter,unsigned short i2c_addr,char *buf, int addr_len, int data_len)
 {
-  int  i2c_flag = -1;
+	int  i2c_flag = -1;
 	struct i2c_msg msgs[] = {
 		{
 			.addr	= i2c_addr,
@@ -136,8 +135,7 @@ static int  camera_write_buff(struct i2c_adapter *adapter,unsigned short i2c_add
 
 	};
 
-	if (i2c_transfer(adapter, msg, 1) < 0)
-	{
+	if(i2c_transfer(adapter, msg, 1) < 0){
 		return -1;
 	}
 	else
@@ -149,7 +147,7 @@ int my_i2c_put_byte(struct i2c_adapter *adapter,unsigned short i2c_addr,unsigned
     buff[0] = (unsigned char)((addr >> 8) & 0xff);
     buff[1] = (unsigned char)(addr & 0xff);
     buff[2] = data;
-    if (camera_write_buff(adapter,i2c_addr, buff, 3) <0)
+    if(camera_write_buff(adapter,i2c_addr, buff, 3) <0)
         return -1;
     return  0;	
 }
@@ -165,7 +163,7 @@ int my_i2c_get_byte(struct i2c_adapter *adapter,unsigned short i2c_addr,unsigned
     buff[0] = (unsigned char)((addr >> 8) & 0xff);
     buff[1] = (unsigned char)(addr & 0xff);
 
-    if (camera_read_buff(adapter, i2c_addr,buff, 2, 1) <0)
+    if(camera_read_buff(adapter, i2c_addr,buff, 2, 1) <0)
         return -1;
     return buff[0];
 }
@@ -173,16 +171,15 @@ int my_i2c_get_byte(struct i2c_adapter *adapter,unsigned short i2c_addr,unsigned
 int my_i2c_get_word(struct i2c_adapter *adapter,unsigned short i2c_addr){
 	unsigned char buff[4];
 	unsigned short data;
-  buff[0] = 0;
+  	buff[0] = 0;
        
 	if(camera_read_buff(adapter,i2c_addr, buff, 1, 2) <0)
 		return -1;
-  else
-  {
-      data = buff[0];
-      data = (data << 8) | buff[1];
-      return data;
-  }
+	else{
+		data = buff[0];
+		data = (data << 8) | buff[1];
+		return data;
+	}
 }
 
 char *search_string(buffer_para_t *buf_para,int *offset,int *remained,char *start,char *end){
@@ -227,7 +224,7 @@ char *search_string(buffer_para_t *buf_para,int *offset,int *remained,char *star
     	*(buffer + data_size) = '\0';
     	iter = buffer;
     	data_start = 0;
-    	}
+    }
     pter = strstr(iter + strlen(start),end);
     while(pter == NULL){
         if(pter == NULL && *remained < strlen(end)){
@@ -242,9 +239,7 @@ char *search_string(buffer_para_t *buf_para,int *offset,int *remained,char *star
                 camera_read_config(*offset, *remained, buffer + data_size);//check bounds
                 add = *remained;
                 *offset += *remained;
-                *remained = 0;
-                
-                
+                *remained = 0;               
             }else{
                 camera_read_config(*offset, BUFFER_SIZE, buffer + data_size);//check bounds
                 add = BUFFER_SIZE;
@@ -305,25 +300,25 @@ char *search_key(buffer_para_t *buf_para,int *offset,int *remained){
     data_start = iter - buffer;
     /*** check **/
     if(data_start + 20 > data_size){//ensure we have an complete key
-            if((buffer = (char*)realloc_mem(buffer,data_size + BUFFER_SIZE + 1,&buffer_len)) == NULL){
-                printk("realloc failed\n");
-                return NULL;
-            }
-            if(*remained < BUFFER_SIZE){
-                camera_read_config(*offset, *remained, buffer + data_size);//check bounds
-                add = *remained;
-                *offset += *remained;
-                *remained = 0;
-                
-                
-            }else{
-                camera_read_config(*offset, BUFFER_SIZE, buffer + data_size);//check bounds
-                add = BUFFER_SIZE;
-                *remained -= BUFFER_SIZE;
-                *offset += BUFFER_SIZE;
-            } 
-            *(buffer + data_size + add) = '\0';
-            data_size += add;           
+        if((buffer = (char*)realloc_mem(buffer,data_size + BUFFER_SIZE + 1,&buffer_len)) == NULL){
+            printk("realloc failed\n");
+            return NULL;
+        }
+        if(*remained < BUFFER_SIZE){
+            camera_read_config(*offset, *remained, buffer + data_size);//check bounds
+            add = *remained;
+            *offset += *remained;
+            *remained = 0;
+            
+            
+        }else{
+            camera_read_config(*offset, BUFFER_SIZE, buffer + data_size);//check bounds
+            add = BUFFER_SIZE;
+            *remained -= BUFFER_SIZE;
+            *offset += BUFFER_SIZE;
+        } 
+        *(buffer + data_size + add) = '\0';
+        data_size += add;           
         }
 
     
@@ -336,7 +331,7 @@ char *search_key(buffer_para_t *buf_para,int *offset,int *remained){
     return iter;	
 }
 
-int parser_head(char *buffer,int *sum){
+int parse_head(char *buffer,int *sum){
     char *iter;
     iter = strstr(buffer,"sum");
     if(iter == NULL){
@@ -352,24 +347,22 @@ int parse_body_head(char *buffer,int *no,int check,char *name){
     char *iter; 
     iter = strstr(buffer,"no");
     iter += 3;
+    if(iter == NULL)
+    	return -WRONG_FORMAT; 
     sscanf(iter,"%d",no);
-    #if 0
-    if(*no != check){
-        printk("wrong :%d\n",check);
-        return -CHECK_FAILED;
-    }
-    #endif
     iter = strstr(iter,"name");
     iter += 5;
+    if(iter == NULL)
+    	return -WRONG_FORMAT;
     sscanf(iter,"%s",name);	
     return 0;
 }
 int parse_aet_element_info(char **iter,sensor_aet_info_t *info){
     *iter = strstr(*iter,"export");
     *iter += 7;
-    sscanf(*iter,"%x",&(info->fmt_main_fr));
-    *iter = strstr(*iter,",");
-    *iter += 1;
+	sscanf(*iter,"%x",&(info->fmt_main_fr));
+	*iter = strstr(*iter,",");
+	*iter += 1;
     sscanf(*iter,"%x",&(info->fmt_capture)),
     *iter = strstr(*iter,",");
     *iter += 1;
@@ -440,25 +433,24 @@ int parse_last_aet_element_tbl(char **iter,sensor_aet_t *tbl){
     return 0;
 }
 
-
-int parse_effect(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_effect(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int ret,sum,check,i;
     char *iter;
         
-    iter = search_string(buf_para,offset,remained,"effect_start","effect");
+    iter = search_string(buf_para,offset,remained,"effect_start]","[effect]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(ret != 0){
         return -HEAD_FAILED;
     }
     cf->eff.sum = sum;
     /**parser body***/
     check = 0;
-    while(check < sum && iter != NULL){
-        iter = search_string(buf_para,offset,remained,"effect","effect");
+    while(check < sum){
+        iter = search_string(buf_para,offset,remained,"[effect]","[effect");
         if(iter == NULL){
             return -WRONG_FORMAT;
         }
@@ -468,32 +460,34 @@ int parse_effect(buffer_para_t *buf_para,int *remained,int *offset){
         }
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<18;i++){
+        i = 0;
+        while(i < EFFECT_MAX && iter != NULL){
             sscanf(iter,"%x",&(cf->eff.eff[check].export[i]));
+            i++;
             iter = strstr(iter,",");
             if(iter == NULL)
             	break;
             iter += 1;
         }
+        if(i != EFFECT_MAX)
+        	return -CHECK_LEN_FAILED; 
         check++;
-
     }
+    if(check != sum)
+    	return -CHECK_FAILED;
     return 0;
 }
 
-
-
-int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_aet(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int sum,ret,check,i;
     char *iter,*eter;
-    int manual;
 
-    iter = search_string(buf_para,offset,remained,"aet_start","aet");
+    iter = search_string(buf_para,offset,remained,"aet_start]","[aet]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(sum <= 0){
         return -HEAD_FAILED;
     }
@@ -509,7 +503,7 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
     } //alloc head
     check = 0;
     while(check < sum){
-        iter = search_string(buf_para,offset,remained,"aet","aet");
+        iter = search_string(buf_para,offset,remained,"[aet]","[aet");
         if(iter == NULL){
             printk("aet wrong config format\n");
             ret = -WRONG_FORMAT;
@@ -531,84 +525,50 @@ int parse_aet(buffer_para_t *buf_para,int *remained,int *offset){
             goto clean;
         }
         if((cf->aet.aet[check].aet_table = (sensor_aet_t *)kmalloc(sizeof(sensor_aet_t) * (cf->aet.aet[check].info->tbl_max_step + 1),0)) == NULL){
-            for(i = 0; i < check; i++){
-                kfree(cf->aet.aet[i].aet_table);	
-            }
-            ret = -NO_MEM;
+    		for(i = 0; i < check; i++){
+    			kfree(cf->aet.aet[i].aet_table);	
+    		}
+    		ret = -NO_MEM;
             goto clean;
         } 
         for(i = 0; i <= cf->aet.aet[check].info->tbl_max_step;i++){
-            if(i == cf->aet.aet[check].info->tbl_max_step){
-                ret = parse_last_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
-            }else
-                ret = parse_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
+    		if(i == cf->aet.aet[check].info->tbl_max_step){
+    			ret = parse_last_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
+    		}else
+        		ret = parse_aet_element_tbl(&iter,&(cf->aet.aet[check].aet_table[i]));
             if(ret != 0){          	
-                ret = -BODY_ELEMENT_FAILED;
-                goto clean_table;
+            	ret = -BODY_ELEMENT_FAILED;
+              	goto clean_table;
             }
-        }
-        iter = strstr(iter,"manual");
-        iter += 7;
-        sscanf(iter,"%x",&manual);
- 
-        if(manual < 0){
-            printk("wrong manual num\n");
-            ret = -BODY_ELEMENT_FAILED;
-            goto clean_table;
-      	}else if(manual == 0){
-      		cf->aet.aet[check].manual = NULL;
-      		check++;
-      		continue;	
-      	}
-        if((cf->aet.aet[check].manual = (int *)kmalloc(sizeof(int)*(manual + 1),0)) == NULL){
-            ret = -NO_MEM;
-            goto clean_all;
-        }
-        i = 0;
-      	eter = strstr(iter,";");
-        while(iter < eter){
-            sscanf(iter,"%x",&(cf->aet.aet[check].manual[i]));
-            //printk("manual:%x\n",cf->aet.aet[check].manual[i]);
-            iter = strstr(iter,",");
-            if(iter == NULL){
-                break;
-            }
-            iter += 1;
-            i++;
-        }       
+        }      
         check++;
     }
     return 0;
 
-clean_all:
-    for(i = 0; i < check; i++){
-        if(cf->aet.aet[i].manual != NULL)
-            kfree(cf->aet.aet[i].manual);	
-    }
 clean_table:
-    for(i = 0; i <= check; i++){
-        kfree(cf->aet.aet[i].aet_table);	
+	for(i = 0; i <= check; i++){
+    	kfree(cf->aet.aet[i].aet_table);	
     }
 clean:
     for(i = 0;i < sum; i++){
-        kfree(cf->aet.aet[i].info);
+    	kfree(cf->aet.aet[i].info);
     }
     return ret;
 }
 
 
 
-int parse_hw(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_hw(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int ret,sum,check,i;
     char *iter = NULL;
     char *eter = NULL;
 
-    iter = search_string(buf_para,offset,remained,"hw_start","hw");
+    iter = search_string(buf_para,offset,remained,"hw_start]","[hw]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(ret != 0){
         return -HEAD_FAILED;
     }
@@ -616,7 +576,7 @@ int parse_hw(buffer_para_t *buf_para,int *remained,int *offset){
     /**parser body***/
     check = 0;
     while(check < sum){
-        iter = search_string(buf_para,offset,remained,"hw","hw");
+        iter = search_string(buf_para,offset,remained,"[hw]","[hw");
         if(iter == NULL){
             return -WRONG_FORMAT;
         }
@@ -631,30 +591,32 @@ int parse_hw(buffer_para_t *buf_para,int *remained,int *offset){
             return -WRONG_FORMAT;
         }  	
         i = 0;
-        while(iter < eter){
+        while(iter != NULL && iter < eter){
             sscanf(iter,"%x",&(cf->hw.hw[check].export[i]));
+            i++;
             iter = strstr(iter,",");
             if(iter == NULL){
                 break;
             }
             iter += 1;
-            i++;
         }
         check++;
     }
+    if(check != sum)
+    	return -CHECK_FAILED;
     return 0;
 }
 
-int parse_wb(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_wb(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
    	int ret,sum,check,i;
-    char *iter;
-        
-    iter = search_string(buf_para,offset,remained,"wb_start","wb");
+    char *iter = NULL;
+    char *eter = NULL;    
+    iter = search_string(buf_para,offset,remained,"wb_start]","[wb]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(ret != 0){
         return -HEAD_FAILED;
     }
@@ -662,7 +624,7 @@ int parse_wb(buffer_para_t *buf_para,int *remained,int *offset){
     /**parser body***/
     check = 0;
     while(check < sum){
-        iter = search_string(buf_para,offset,remained,"wb","wb");
+        iter = search_string(buf_para,offset,remained,"[wb]","[wb");
         if(iter == NULL){
             return -WRONG_FORMAT;
         }
@@ -672,28 +634,41 @@ int parse_wb(buffer_para_t *buf_para,int *remained,int *offset){
         }
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<2;i++){
+        eter = strstr(iter,";");
+        if(eter == NULL){
+            return -WRONG_FORMAT;
+        }  	
+        i = 0;
+        while(iter != NULL && iter < eter){
             sscanf(iter,"%x",&(cf->wb.wb[check].export[i]));
+            i++;            
             iter = strstr(iter,",");
-            if(iter == NULL)
-            	break;
+            if(iter == NULL){
+                break;
+            }
             iter += 1;
+
         }
+        if(i != WB_MAX)
+        	return -CHECK_LEN_FAILED;
         check++;
-     }
-     return 0;
+    }
+    if(check != sum)
+    	return -CHECK_FAILED;
+    return 0;
 
 }
 
-int parse_capture(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_capture(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
    	int ret,sum,check,i;
-    char *iter; 
-    iter = search_string(buf_para,offset,remained,"capture_start","capture");
+    char *iter = NULL;
+    char *eter = NULL;
+    iter = search_string(buf_para,offset,remained,"capture_start]","[capture]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(ret != 0){
         return -HEAD_FAILED;
     }
@@ -702,9 +677,9 @@ int parse_capture(buffer_para_t *buf_para,int *remained,int *offset){
     /**parser body***/
     check = 0;
     while(check < sum){
-        iter = search_string(buf_para,offset,remained,"capture","capture");
+        iter = search_string(buf_para,offset,remained,"[capture]","[capture");
         if(iter == NULL){
-        		printk("search wrong\n");
+        	printk("search wrong\n");
             return -WRONG_FORMAT;
         }
         ret = parse_body_head(iter,&(cf->capture.capture[check].num),check,cf->capture.capture[check].name);
@@ -714,202 +689,274 @@ int parse_capture(buffer_para_t *buf_para,int *remained,int *offset){
         //printk("name:%s\n",cf->capture.capture[check].name);
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<CAPTURE_MAX;i++){
+        eter = strstr(iter,";");
+        if(eter == NULL){
+            return -WRONG_FORMAT;
+        }  	
+        i = 0;
+        while(iter != NULL && iter < eter){
             sscanf(iter,"%x",&(cf->capture.capture[check].export[i]));
-           // printk("capture:%x\n",cf->capture.capture[check].export[i]);
+            i++;
             iter = strstr(iter,",");
-            if(iter == NULL)
-            	break;
+            if(iter == NULL){
+                break;
+            }
             iter += 1;
-
         }
+        if(i != CAPTURE_MAX)
+        	return -CHECK_LEN_FAILED;
         check++;
-     }
-     return 0;
-
+    }
+    if(check != sum)
+    	return -CHECK_FAILED;
+    return 0;
+     
 }
 
-int parse_wave(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_wave(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
    	int i;
-    char *iter;
+    char *iter = NULL;
+    char *eter = NULL;
         
-    iter = search_string(buf_para,offset,remained,"wave_start","wave_end");
+    iter = search_string(buf_para,offset,remained,"wave_start]","[wave_end]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
-    /***parser head***/
     iter = strstr(iter,"export");
     iter += 7;
-    for(i=0;i<WAVE_MAX;i++){
+    eter = strstr(iter,";");
+    if(eter == NULL){
+        return -WRONG_FORMAT;
+    }  	
+    i = 0;
+    while(iter != NULL && iter < eter){
         sscanf(iter,"%x",&(cf->wave.export[i]));
         //printk("wave:%x\n",cf->wave.export[i]);
         iter = strstr(iter,",");
-        if(iter == NULL)
-        	break;
+        i++;
+        if(iter == NULL){
+            break;
+        }
         iter += 1;
     }
-     return 0;
+    if(i != WAVE_MAX)
+    	return -CHECK_LEN_FAILED;
+    return 0;
 }
 
-int parse_scene(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_scene(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int sum,ret,check,i;
     char *iter = NULL;
+    char *eter = NULL;
     
-    iter = search_string(buf_para,offset,remained,"scenes_start","scenes");
+    iter = search_string(buf_para,offset,remained,"scenes_start]","[scenes]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    ret = parser_head(iter,&sum);
+    ret = parse_head(iter,&sum);
     if(sum <= 0){
         return -HEAD_FAILED;
     }
     cf->scene.sum = sum;
 
     /**parser body***/
-    if((cf->scene.scene = (scene_type *)kmalloc(sizeof(scene_type)*sum,0)) == NULL){           
-         return -NO_MEM;
-    } //alloc mem
     check = 0;
     while(check < sum){
-        iter = search_string(buf_para,offset,remained,"scenes","scenes");
+        iter = search_string(buf_para,offset,remained,"[scenes]","[scenes");
         if(iter == NULL){
             printk("scene wrong config format\n");
-            ret = -WRONG_FORMAT;
-            goto clean;
+            return -WRONG_FORMAT;
         }
         ret = parse_body_head(iter,&((cf->scene.scene[check]).num),check,(cf->scene.scene[check].name));
         if(ret != 0){
-            ret = -BODY_HEAD_FAILED;
-            goto clean;
-        } 
-
+            return -BODY_HEAD_FAILED;
+        }
         iter = strstr(iter,"export");
         iter += 7;
-        for(i=0;i<SCENE_MAX;i++){
+        eter = strstr(iter,";");
+        if(eter == NULL){
+            return -WRONG_FORMAT;
+        }  	
+        i = 0;
+        while(iter != NULL && iter < eter){
             sscanf(iter,"%x",&(cf->scene.scene[check].export[i]));
             //printk("scene:%x\n",(cf->scene.scene[check].export[i]));
+            i++;
             iter = strstr(iter,",");
-            if(iter == NULL)
-            	break;
+            if(iter == NULL){
+                break;
+            }
             iter += 1;
-
         }
-        
-       check++;
-    }    
+        if(i != SCENE_MAX)
+        	return -CHECK_LEN_FAILED;
+        check++;
+    }
+	if(check != sum)
+    	return -CHECK_FAILED;
     return 0;
-
-clean:
-    kfree(cf->scene.scene);
-    return ret;
 }
 
-int parse_lenc(buffer_para_t *buf_para,int *remained,int *offset){
-   	int i;
-    char *iter;
+int parse_lens(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
+   	int sum,ret,check,i;
+    char *iter = NULL;
+    char *eter = NULL;
         
-    iter = search_string(buf_para,offset,remained,"lenc_start","lenc_end");
+    iter = search_string(buf_para,offset,remained,"lens_start]","[lens]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
-    iter = strstr(iter,"export");
-    iter += 7;
-    for(i=0;i<1024;i++){
-        sscanf(iter,"%x",&(cf->lenc.export[i]));
-        //printk("lenc:%x\n",cf->lenc.export[i]);
-        iter = strstr(iter,",");
-        if(iter == NULL)
-        	break;
-        iter += 1;
+    ret = parse_head(iter,&sum);
+    if(sum <= 0){
+        return -HEAD_FAILED;
     }
-     return 0;
+    cf->lens.sum = sum;
+    
+    /**parser body***/
+    check = 0;
+    while(check < sum){
+        iter = search_string(buf_para,offset,remained,"[lens]","[lens");
+        if(iter == NULL){
+            printk("lens wrong config format\n");
+            return -WRONG_FORMAT;
+        }
+        ret = parse_body_head(iter,&((cf->lens.lens[check]).num),check,(cf->lens.lens[check].name));
+        if(ret != 0){
+            return -BODY_HEAD_FAILED;
+        }
+        iter = strstr(iter,"export");
+        iter += 7;
+        eter = strstr(iter,";");
+        if(eter == NULL){
+            return -WRONG_FORMAT;
+        }  	
+        i = 0;
+        while(iter != NULL && iter < eter){
+            sscanf(iter,"%x",&(cf->lens.lens[check].export[i]));
+            //printk("scene:%x\n",(cf->lens.lens[check].export[i]));
+            i++;           
+            iter = strstr(iter,",");
+            if(iter == NULL){
+                break;
+            }
+            iter += 1;
+        }
+        if(i != LENS_MAX)
+        	return -CHECK_LEN_FAILED;
+        check++;
+    }
+    if(check != sum)
+    	return -CHECK_FAILED;
+    return 0;
 }
 
-int parse_gamma(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_gamma(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int i;
     char *iter;
 
-    iter = search_string(buf_para,offset,remained,"gamma_start","gamma_end");
+    iter = search_string(buf_para,offset,remained,"gamma_start]","[gamma_end]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
     iter = strstr(iter,"export");
     iter += 7;
-    for(i=0;i<GAMMA_MAX;i++){
+    for(i = 0; i < GAMMA_MAX && iter != NULL;){
         sscanf(iter,"%x",&(cf->gamma.gamma_r[i]));
+        i++;
         iter = strstr(iter,",");
         if(iter == NULL)
             break;
         iter += 1;
     }
-    for(i=0;i<GAMMA_MAX;i++){
+    if(i != GAMMA_MAX)
+    	return -CHECK_LEN_FAILED;
+    for(i = 0; i < GAMMA_MAX && iter != NULL;){
         sscanf(iter,"%x",&(cf->gamma.gamma_g[i]));
+        i++;
         iter = strstr(iter,",");
         if(iter == NULL)
             break;
         iter += 1;
     }
-    for(i=0;i<GAMMA_MAX;i++){
+    if(i != GAMMA_MAX)
+    	return -CHECK_LEN_FAILED;
+    for(i = 0; i < GAMMA_MAX && iter != NULL;){
         sscanf(iter,"%x",&(cf->gamma.gamma_b[i]));
+        i++;
         iter = strstr(iter,",");
         if(iter == NULL)
             break;
         iter += 1;
     }
+    if(i != GAMMA_MAX)
+    	return -CHECK_LEN_FAILED;
     return 0;
 }
 
 
-int parse_wb_sensor(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_wb_sensor(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int i;
     char *iter;
 
-    iter = search_string(buf_para,offset,remained,"mwb_sensor_start","mwb_sensor_end");
+    iter = search_string(buf_para,offset,remained,"mwb_sensor_start]","[mwb_sensor_end]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     /***parser head***/
     iter = strstr(iter,"export");
     iter += 7;
-    for(i=0;i<WB_SENSOR_MAX;i++){
+    i = 0;
+    while(i < WB_SENSOR_MAX&& iter != NULL){
         sscanf(iter,"%x",&(cf->wb_sensor_data.export[i]));
         //printk("wb sensor:%x\n",cf->wb_sensor_data.export[i]);
+        i++;
         iter = strstr(iter,",");
         if(iter == NULL)
             break;
         iter += 1;
     }
+    if(i != WB_SENSOR_MAX)
+    	return -CHECK_LEN_FAILED;
     return 0;
 }
 
 
-int parse_version(buffer_para_t *buf_para,int *remained,int *offset){
+int parse_version(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
     int i;
     char *iter,*end;
     int len = 0;
 
-    iter = search_string(buf_para,offset,remained,"version_start","version_end");
+    iter = search_string(buf_para,offset,remained,"version_start]","[version_end]");
     if(iter == NULL){
         return -WRONG_FORMAT;
     }
     iter = strstr(iter,"Date");
     iter += 5;
     end = strstr(iter,"Module");
+    if(end == NULL){
+    	return -WRONG_FORMAT;
+    }
     len = end - iter;
     memcpy(cf->version.date,iter,len);
     cf->version.date[len] = '\0';
     
     iter = end + 7;
     end = strstr(iter,"Version");
+    if(end == NULL){
+    	return -WRONG_FORMAT;
+    }
     len = end - iter;    
     memcpy(cf->version.module,iter,len);
     cf->version.module[len] = '\0';    
 
     iter = end + 8;
     end = strstr(iter,"[version");
+    if(end == NULL){
+    	return -WRONG_FORMAT;
+    }
     len = end - iter;
     memcpy(cf->version.version,iter,len);
     cf->version.version[len] = '\0';  
@@ -917,7 +964,127 @@ int parse_version(buffer_para_t *buf_para,int *remained,int *offset){
     return 0;
 }
 
-int parse_config(char *path){
+int parse_cm(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
+   	int i;
+    char *iter;
+        
+    iter = search_string(buf_para,offset,remained,"cm_start]","[cm_end]");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    /***parser body***/
+    iter = strstr(iter,"export");
+    iter += 7;
+    i = 0;
+    while(i < CM_MAX && iter != NULL){
+        sscanf(iter,"%x",&(cf->cm.export[i]));
+        //printk("cm:%x\n",cf->cm.export[i]);
+        i++;
+        iter = strstr(iter,",");
+        if(iter == NULL)
+        	break;
+        iter += 1;
+    }
+    if(i != CM_MAX)
+    	return -CHECK_LEN_FAILED;
+    return 0;
+}
+
+int parse_nr(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
+   	int ret,sum,check,i;
+    char *iter; 
+    iter = search_string(buf_para,offset,remained,"nr_start]","[nr]");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    /***parser head***/
+    ret = parse_head(iter,&sum);
+    if(ret != 0){
+        return -HEAD_FAILED;
+    }
+    cf->nr.sum = sum;
+    //printk("nr sum:%d\n",sum);
+    /**parser body***/
+    check = 0;
+    while(check < sum){
+        iter = search_string(buf_para,offset,remained,"[nr]","[nr");
+        if(iter == NULL){
+        	printk("search wrong\n");
+            return -WRONG_FORMAT;
+        }
+        ret = parse_body_head(iter,&(cf->nr.nr[check].num),check,cf->nr.nr[check].name);
+        if(ret != 0){
+            return -BODY_HEAD_FAILED;
+        }
+        iter = strstr(iter,"export");
+        iter += 7;
+        i = 0;
+        while(i < NR_MAX && iter != NULL){
+            sscanf(iter,"%x",&(cf->nr.nr[check].export[i]));
+            //printk("nr:%x\n",cf->nr.nr[check].export[i]);
+            i++;
+            iter = strstr(iter,",");
+            if(iter == NULL)
+            	break;
+            iter += 1;
+        }
+        if(i != NR_MAX)
+    		return -CHECK_LEN_FAILED;
+        check++;
+     }
+     if(check != sum)
+    	return -CHECK_FAILED;
+     return 0;
+}
+
+int parse_peaking(configure_t *cf,buffer_para_t *buf_para,int *remained,int *offset){
+   	int ret,sum,check,i;
+    char *iter; 
+    iter = search_string(buf_para,offset,remained,"peaking_start]","[peaking]");
+    if(iter == NULL){
+        return -WRONG_FORMAT;
+    }
+    /***parser head***/
+    ret = parse_head(iter,&sum);
+    if(ret != 0){
+        return -HEAD_FAILED;
+    }
+    cf->peaking.sum = sum;
+    //printk("peaking sum:%d\n",sum);
+    /**parser body***/
+    check = 0;
+    while(check < sum){
+        iter = search_string(buf_para,offset,remained,"[peaking]","[peaking");
+        if(iter == NULL){
+        	printk("search wrong\n");
+            return -WRONG_FORMAT;
+        }
+        ret = parse_body_head(iter,&(cf->peaking.peaking[check].num),check,cf->peaking.peaking[check].name);
+        if(ret != 0){
+            return -BODY_HEAD_FAILED;
+        }
+        iter = strstr(iter,"export");
+        iter += 7;
+        i = 0;
+        while(i < PEAKING_MAX && iter != NULL){
+            sscanf(iter,"%x",&(cf->peaking.peaking[check].export[i]));
+            //printk("peaking:%x\n",cf->peaking.peaking[check].export[i]);
+            i++;
+            iter = strstr(iter,",");
+            if(iter == NULL)
+            	break;
+            iter += 1;
+        }
+        if(i != PEAKING_MAX)
+        	return -CHECK_LEN_FAILED;
+        check++;
+     }
+     if(check != sum)
+    	return -CHECK_FAILED;
+     return 0;
+}
+
+int parse_config(char *path,configure_t *cf){
     char *buffer,*iter;
     int file_size;
     int remained_size;
@@ -931,7 +1098,7 @@ int parse_config(char *path){
     }
     buf_para.buffer = buffer;
 
-    memset(cf,0,sizeof(configure));
+    memset(cf,0,sizeof(configure_t));
     file_size = camera_open_config(path);
     if(file_size < 0){
         printk("open failed :%d\n",file_size);
@@ -969,9 +1136,10 @@ int parse_config(char *path){
             case 'a':
                 if(memcmp(iter,aet_key,strlen(aet_key)) == 0){
                     cf->aet_valid = 1;
-                    if((ret = parse_aet(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_aet(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->aet_valid = 0;	
-                        printk("aet invalid :%d\n",ret);								
+                        printk("aet invalid :%d\n",ret);
+                        goto clean_all; 								
                     }
                 }else{
                     buf_para.data_start += strlen(aet_key);
@@ -980,9 +1148,10 @@ int parse_config(char *path){
             case 'h':
                 if(memcmp(iter,hw_key,strlen(hw_key)) == 0){
                     cf->hw_valid = 1;
-                    if((ret = parse_hw(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_hw(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->hw_valid = 0;	
-                        printk("hw invalid :%d\n",ret);								
+                        printk("hw invalid :%d\n",ret);
+                        goto clean_all; 							
                     }
                 }else{
                     buf_para.data_start += strlen(hw_key);
@@ -991,9 +1160,10 @@ int parse_config(char *path){
             case 'e':
                 if(memcmp(iter,effect_key,strlen(effect_key)) == 0){
                     cf->effect_valid = 1;
-                    if((ret = parse_effect(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_effect(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->effect_valid = 0;
-                        printk("effect invalid :%d\n",ret);												
+                        printk("effect invalid :%d\n",ret);
+                        goto clean_all; 												
                     }
                 }else{
                     buf_para.data_start += strlen(effect_key);
@@ -1003,9 +1173,10 @@ int parse_config(char *path){
                 if(*(iter + 1) == 'b'){
                     if(memcmp(iter,wb_key,strlen(wb_key)) == 0){
                         cf->wb_valid = 1;
-                        if((ret = parse_wb(&buf_para,&remained_size,&read_offset)) != 0){
+                        if((ret = parse_wb(cf,&buf_para,&remained_size,&read_offset)) != 0){
                             cf->wb_valid = 0;
-                            printk("wb invalid :%d\n",ret);									
+                            printk("wb invalid :%d\n",ret);
+                            goto clean_all; 								
                         }
                     }else{
                         buf_para.data_start += strlen(wb_key);
@@ -1013,9 +1184,10 @@ int parse_config(char *path){
                 }else if(*(iter + 1) == 'a'){
                     if(memcmp(iter,wave_key,strlen(wave_key)) == 0){
                         cf->wave_valid = 1;
-                        if((ret = parse_wave(&buf_para,&remained_size,&read_offset)) != 0){
+                        if((ret = parse_wave(cf,&buf_para,&remained_size,&read_offset)) != 0){
                             cf->wave_valid = 0;
-                            printk("wave invalid :%d\n",ret);									
+                            printk("wave invalid :%d\n",ret);
+                            goto clean_all; 									
                         }
                     }else{
                         buf_para.data_start += strlen(wave_key);
@@ -1027,42 +1199,60 @@ int parse_config(char *path){
             case 's':
                 if(memcmp(iter,scenes_key,strlen(scenes_key)) == 0){
                     cf->scene_valid = 1;
-                    if((ret = parse_scene(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_scene(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->scene_valid = 0;
-                        printk("scene invalid :%d\n",ret);										
+                        printk("scene invalid :%d\n",ret);
+                        goto clean_all; 										
                     }
                 }else{
                     buf_para.data_start += strlen(scenes_key);
                 }
                 break;
             case 'c':
-                if(memcmp(iter,capture_key,strlen(capture_key)) == 0){
-                    cf->capture_valid = 1;
-                    if((ret = parse_capture(&buf_para,&remained_size,&read_offset)) != 0){
-                        cf->capture_valid = 0;
-                        printk("capture invalid :%d\n",ret);									
-                    }
-                }else{
-                    buf_para.data_start += strlen(capture_key);
-                }
+            	if(*(iter + 1) == 'a'){
+		            if(memcmp(iter,capture_key,strlen(capture_key)) == 0){
+		                cf->capture_valid = 1;
+		                if((ret = parse_capture(cf,&buf_para,&remained_size,&read_offset)) != 0){
+		                    cf->capture_valid = 0;
+		                    printk("capture invalid :%d\n",ret);
+		                    goto clean_all; 									
+		                }
+		            }else{
+		                buf_para.data_start += strlen(capture_key);
+		            }
+		        }else if(*(iter + 1) == 'm'){
+		        	if(memcmp(iter,cm_key,strlen(cm_key)) == 0){
+		                cf->cm_valid = 1;
+		                if((ret = parse_cm(cf,&buf_para,&remained_size,&read_offset)) != 0){
+		                    cf->cm_valid = 0;
+		                    printk("cm invalid :%d\n",ret);
+		                    goto clean_all; 									
+		                }
+		            }else{
+		                buf_para.data_start += strlen(cm_key);
+		            }	        	
+		        }else
+		        	buf_para.data_start += 1;
                 break;		
             case 'l':
-                if(memcmp(iter,lenc_key,strlen(lenc_key)) == 0){
-                    cf->lenc_valid = 1;
-                    if((ret = parse_lenc(&buf_para,&remained_size,&read_offset)) != 0){
-                        cf->lenc_valid = 0;
-                        printk("lenc invalid :%d\n",ret);									
+                if(memcmp(iter,lens_key,strlen(lens_key)) == 0){
+                    cf->lens_valid = 1;
+                    if((ret = parse_lens(cf,&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->lens_valid = 0;
+                        printk("lens invalid :%d\n",ret);
+                        goto clean_all; 									
                     }
                 }else{
-                    buf_para.data_start += strlen(lenc_key);
+                    buf_para.data_start += strlen(lens_key);
                 }
                 break;
             case 'g':
                 if(memcmp(iter,gamma_key,strlen(gamma_key)) == 0){
                     cf->gamma_valid = 1;
-                    if((ret = parse_gamma(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_gamma(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->gamma_valid = 0;
-                        printk("gamma invalid :%d\n",ret);									
+                        printk("gamma invalid :%d\n",ret);
+                        goto clean_all; 									
                     }
                 }else{
                     buf_para.data_start += strlen(gamma_key);
@@ -1071,9 +1261,10 @@ int parse_config(char *path){
             case 'm':
                 if(memcmp(iter,wb_sensor_key,strlen(wb_sensor_key)) == 0){
                     cf->wb_sensor_data_valid = 1;
-                    if((ret = parse_wb_sensor(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_wb_sensor(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->wb_sensor_data_valid = 0;
-                        printk("wb sensor data invalid :%d\n",ret);									
+                        printk("wb sensor data invalid :%d\n",ret);
+                        goto clean_all; 									
                     }
                 }else{
                     buf_para.data_start += strlen(wb_sensor_key);
@@ -1082,14 +1273,39 @@ int parse_config(char *path){
             case 'v':
                 if(memcmp(iter,version_key,strlen(version_key)) == 0){
                     cf->version_info_valid = 1;
-                    if((ret = parse_version(&buf_para,&remained_size,&read_offset)) != 0){
+                    if((ret = parse_version(cf,&buf_para,&remained_size,&read_offset)) != 0){
                         cf->version_info_valid = 0;
-                        printk("version info invalid :%d\n",ret);									
+                        printk("version info invalid :%d\n",ret);
+                        goto clean_all; 									
                     }
                 }else{
                     buf_para.data_start += strlen(version_key);
                 } 
-                 break;                      
+                 break;
+            case 'n':
+                if(memcmp(iter,nr_key,strlen(nr_key)) == 0){
+                    cf->nr_valid = 1;
+                    if((ret = parse_nr(cf,&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->nr_valid = 0;
+                        printk("nr invalid :%d\n",ret);
+                        goto clean_all; 									
+                    }
+                }else{
+                    buf_para.data_start += strlen(nr_key);
+                } 
+                 break;
+             case 'p':
+                if(memcmp(iter,peaking_key,strlen(peaking_key)) == 0){
+                    cf->peaking_valid = 1;
+                    if((ret = parse_peaking(cf,&buf_para,&remained_size,&read_offset)) != 0){
+                        cf->peaking_valid = 0;
+                        printk("peaking invalid :%d\n",ret);
+                        goto clean_all; 									
+                    }
+                }else{
+                    buf_para.data_start += strlen(peaking_key);
+                } 
+                 break;                                     
             default:
                 buf_para.data_start += 1;
                 break;		
@@ -1154,37 +1370,70 @@ void init_hw_para(xml_default_regs_t *reg){
 
 /* call back functions */
 
-unsigned int get_aet_max_step(void)
-{
-    return(sensor_aet_info->tbl_max_step);
+unsigned int get_aet_max_step(void *priv)
+{	
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	if(camera_priv_data == NULL || camera_priv_data->sensor_aet_info == NULL){
+		printk("get_aet_max_step null\n");
+		BUG();
+	}
+    return(camera_priv_data->sensor_aet_info->tbl_max_step);
 }
 
-short  get_aet_max_gain(void)
+unsigned int get_aet_max_gain(void *priv)
 {
-    return(sensor_aet_info->tbl_max_gain);
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	if(camera_priv_data == NULL || camera_priv_data->sensor_aet_info == NULL){
+		printk("get_aet_max_gain null\n");
+		BUG();
+	}
+    return(camera_priv_data->sensor_aet_info->tbl_max_gain);
 }
 
-short get_aet_min_gain(void)
+unsigned int get_aet_min_gain(void *priv)
 {
-    return(sensor_aet_info->tbl_min_gain);
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	if(camera_priv_data == NULL || camera_priv_data->sensor_aet_info == NULL){
+		printk("get_aet_min_gain null\n");
+		BUG();
+	}
+    return(camera_priv_data->sensor_aet_info->tbl_min_gain);
 }
 
-unsigned int get_aet_current_step(void)
-{
-    return(sensor_aet_step);
+unsigned int get_aet_current_step(void *priv)
+{	
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	if(camera_priv_data == NULL || camera_priv_data->sensor_aet_info == NULL){
+		printk("get_aet_current_step null\n");
+		BUG();
+	}
+    return(camera_priv_data->sensor_aet_step);
 }
 
-short  get_aet_current_gain(void)
+unsigned int get_aet_current_gain(void *priv)
 {
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	sensor_aet_t *sensor_aet_table = camera_priv_data->sensor_aet_table;
+	unsigned int sensor_aet_step = camera_priv_data->sensor_aet_step;
+	if(camera_priv_data == NULL || sensor_aet_table == NULL){
+		printk("get_aet_current_gain null\n");
+		BUG();
+	}
     return(sensor_aet_table[sensor_aet_step].gain);
 }
 
-short  get_aet_new_gain(unsigned int new_step)
+unsigned int get_aet_new_gain(void *priv,unsigned int new_step)
 {
+	camera_priv_data_t *camera_priv_data = (camera_priv_data_t *)priv;
+	sensor_aet_t *sensor_aet_table = camera_priv_data->sensor_aet_table;
+	if(camera_priv_data == NULL || sensor_aet_table == NULL){
+		printk("get_aet_current_gain null\n");
+		BUG();
+	}
     return(sensor_aet_table[new_step].gain);
 }
 
-int generate_para(cam_parameter_t *para,para_index_t pindex){
+int generate_para(cam_parameter_t *para,para_index_t pindex,configure_t *cf){
     int i = 0;
     int j = 0;
     xml_scenes_t *scene;
@@ -1212,9 +1461,9 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         scene = para->xml_scenes;
-        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,97*sizeof(unsigned int));
-        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + 97,104*sizeof(unsigned int));
-        // memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + 201,1*sizeof(unsigned int));
+        memcpy(&(scene->ae),cf->scene.scene[pindex.scenes_index].export,AE_LEN * sizeof(unsigned int));
+        memcpy(&(scene->awb),cf->scene.scene[pindex.scenes_index].export + AE_LEN,AWB_LEN * sizeof(unsigned int));
+        memcpy(&(scene->af),cf->scene.scene[pindex.scenes_index].export + (AE_LEN + AWB_LEN),AF_LEN * sizeof(unsigned int));
     }else{
         para->xml_scenes = NULL;
     }
@@ -1238,19 +1487,6 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
     }else{
         para->xml_regs_map = NULL;
     }
-    /** init lenc **/
-    if(cf->lenc_valid == 1){
-        if(para->xml_regs_map == NULL){
-            if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
-                printk("alloc mem failed\n");
-                return 	-ENOMEM;
-            }
-        }
-        reg = para->xml_regs_map;
-        memcpy(reg->lnsd.reg_map,cf->lenc.export,1024*sizeof(unsigned int));
-
-    }
-
     /** init gamma **/
     if(cf->gamma_valid == 1){
         if(para->xml_regs_map == NULL){
@@ -1271,7 +1507,7 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         effect = para->xml_effect_manual;
-        memcpy(effect->csc.reg_map,cf->eff.eff[pindex.effect_index].export,18*sizeof(unsigned int));
+        memcpy(effect->csc.reg_map,cf->eff.eff[pindex.effect_index].export,EFFECT_MAX*sizeof(unsigned int));
     }else{
         para->xml_effect_manual = NULL;
     }
@@ -1312,10 +1548,10 @@ int generate_para(cam_parameter_t *para,para_index_t pindex){
             return 	-ENOMEM;
         }
         wave = para->xml_wave;
-        memcpy(wave,cf->wave.export,12*sizeof(unsigned int));
+        memcpy(wave,cf->wave.export,WAVE_MAX*sizeof(unsigned int));
     }else{
         para->xml_wave = NULL;
-    }  
+    }
     return 0;
 }
 
@@ -1348,4 +1584,80 @@ void free_para(cam_parameter_t *para){
 		kfree(para->xml_wave);
 		para->xml_wave = NULL;	
 	}
+}
+
+int update_fmt_para(int width,int height,cam_parameter_t *para,para_index_t *pindex,configure_t *cf){
+	int i = 0;
+	xml_default_regs_t *reg;
+	if(cf->lens_valid == 1){
+		while(i < cf->lens.sum){
+			if(cf->lens.lens[i].export[0] == width && cf->lens.lens[i].export[1] == height)
+				break;
+			i++;
+		}
+		if(i < cf->lens.sum)
+			pindex->lens_index = i;
+		else{
+			printk("width:%x,height:%x no match lens param\n");
+			pindex->lens_index = 0;	
+		}
+		/** init lens **/
+        if(para->xml_regs_map == NULL){
+            if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+                printk("alloc mem failed\n");
+                return 	-ENOMEM;
+            }
+        }
+        reg = para->xml_regs_map;
+        memcpy(reg->lnsd.reg_map,cf->lens.lens[pindex->lens_index].export + 2,(LENS_MAX - 2)*sizeof(unsigned int));					
+	}
+	
+	i = 0;
+	if(cf->nr_valid == 1){
+		while(i < cf->nr.sum){
+			if(cf->nr.nr[i].export[0] == width && cf->nr.nr[i].export[1] == height)
+				break;
+			i++;
+		}
+		if(i < cf->nr.sum)
+			pindex->nr_index = i;
+		else{
+			printk("width:%x,height:%x no match nr param\n");
+			pindex->nr_index = 0;	
+		}
+			/** init nr **/
+		if(para->xml_regs_map == NULL){
+			if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+				printk("alloc mem failed\n");
+				return 	-ENOMEM;
+			}
+        }
+        reg = para->xml_regs_map;
+        memcpy(reg->nr.reg_map,cf->nr.nr[pindex->nr_index].export + 2,(NR_MAX - 2)*sizeof(unsigned int));					
+	}
+	
+	i = 0;
+	if(cf->peaking_valid == 1){
+		while(i < cf->peaking.sum){
+			if(cf->peaking.peaking[i].export[0] == width && cf->peaking.peaking[i].export[1] == height)
+				break;
+			i++;
+		}
+		if(i < cf->peaking.sum)
+			pindex->peaking_index = i;
+		else{
+			printk("width:%x,height:%x no match peaking param\n");
+			pindex->peaking_index = 0;	
+		}
+		    /** init sharp **/
+		if(para->xml_regs_map == NULL){
+			if((para->xml_regs_map = kmalloc(sizeof(xml_default_regs_t),0)) == NULL){
+				printk("alloc mem failed\n");
+				return 	-ENOMEM;
+			}
+        }
+        reg = para->xml_regs_map;
+        memcpy(reg->sharp.reg_map,cf->peaking.peaking[pindex->peaking_index].export + 2,(PEAKING_MAX - 2)*sizeof(unsigned int));						
+	}
+	return 0;	
 }

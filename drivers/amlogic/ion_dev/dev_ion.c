@@ -19,6 +19,8 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <ion_priv.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
 
 MODULE_DESCRIPTION("AMLOGIC ION driver");
 MODULE_LICENSE("GPL");
@@ -40,17 +42,69 @@ static int num_heaps;
 static struct ion_heap **heaps;
 static struct ion_platform_heap my_ion_heap[MAX_HEAP];
 
+static struct resource memobj;
 int dev_ion_probe(struct platform_device *pdev) {
     int err;
     int i;
     num_heaps = 1;
     
     struct resource *res;
+    struct device_node	*of_node = pdev->dev.of_node;
+    const void *name;
+    int offset,size;
 
     my_ion_heap[0].type = ION_HEAP_TYPE_SYSTEM;
     my_ion_heap[0].id = ION_HEAP_TYPE_SYSTEM;
     my_ion_heap[0].name = "vmalloc_ion";
+#if 0
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+#else
+    res = &memobj;
+    i = find_reserve_block(of_node->name,0);
+    if(i < 0){
+	 name = of_get_property(of_node, "share-memory-name", NULL);
+	 if(!name)
+	 {
+        	printk("\ndev_ion memory resource undefined1.\n");
+        	return -EFAULT;
+	 }
+	 else
+	 {
+		i= find_reserve_block_by_name(name);
+		if(i<0)
+		{
+			printk("\ndev_ion memory resource undefined2.\n");
+        		return -EFAULT;
+		}
+		name = of_get_property(of_node, "share-memory-offset", NULL);
+		if(name)
+			offset = of_read_ulong(name,1);
+		else
+		{
+			printk("\ndev_ion memory resource undefined3.\n");
+        		return -EFAULT;
+		}
+		name = of_get_property(of_node, "share-memory-size", NULL);
+		if(name)
+			size = of_read_ulong(name,1);
+		else
+		{
+			printk("\ndev_ion memory resource undefined4.\n");
+        		return -EFAULT;
+		}
+		
+		
+		res->start = (phys_addr_t)get_reserve_block_addr(i)+offset;
+    		res->end = res->start+ size-1;
+		
+	 }
+    }
+    else
+    {
+    	res->start = (phys_addr_t)get_reserve_block_addr(i);
+    	res->end = res->start+ (phys_addr_t)get_reserve_block_size(i)-1;
+    }
+#endif
     if (res) {
         num_heaps = 2;
         my_ion_heap[1].type = ION_HEAP_TYPE_CARVEOUT;//ION_HEAP_TYPE_CHUNK;//ION_HEAP_TYPE_CARVEOUT;

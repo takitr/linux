@@ -158,6 +158,25 @@ static int aml_nftl_calculate_sg(struct aml_nftl_blk *nftl_blk, size_t buflen, u
     return segments;
 }
 
+uint32 write_sync_flag(struct aml_nftl_blk *aml_nftl_blk)
+{    
+#if NFTL_CACHE_FLUSH_SYNC   	
+#ifdef CONFIG_SUPPORT_USB_BURNING
+        return 0;
+#endif
+	struct aml_nftl_dev *nftl_dev = aml_nftl_blk->nftl_dev;
+	struct ntd_info *ntd = aml_nftl_blk->nbd.ntd;
+    	nftl_dev->sync_flag = 0;
+	if(memcmp(ntd->name, "data", 4)==0)
+		return 0;
+	else {
+			if(aml_nftl_blk->req->cmd_flags & REQ_SYNC)
+				nftl_dev->sync_flag = 1;
+		}
+#else
+	return 0;
+#endif
+}
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -271,6 +290,7 @@ static int do_nftltrans_request(struct ntd_blktrans_ops *tr,struct ntd_blktrans_
             break;
 
         case WRITE:
+		write_sync_flag(nftl_blk);
             bio_flush_dcache_pages(nftl_blk->req->bio);
             for(i=0; i<(segments+1); i++) {
                 blk_addr = (block + (offset_addr[i] >> tr->blkshift));

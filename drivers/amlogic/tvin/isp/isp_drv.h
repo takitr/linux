@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2013.11.12a"
+#define ISP_VER					"2013.12.24a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -63,6 +63,7 @@ typedef enum bayer_fmt_e {
 } bayer_fmt_t;
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
+	tvin_color_fmt_t bayer_fmt;
 	tvin_color_fmt_t dfmt;
 	unsigned int h_active;
 	unsigned int v_active;
@@ -111,25 +112,24 @@ typedef struct af_debug_test_s {
 	struct isp_af_stat_s *af_win;
 	struct isp_blnr_stat_s *af_bl;
 	struct isp_ae_stat_s  *ae_win;
+	struct isp_awb_stat_s  *awb_stat;
 } af_debug_test_t;
+/*for af fine tune*/
+typedef struct isp_af_fine_tune_s {
+	unsigned int cur_step;
+	isp_blnr_stat_t af_data;
+} isp_af_fine_tune_t;
 
 typedef struct isp_af_info_s {
 	unsigned int cur_index;
 	/*for lose focus*/
-	unsigned int *fv;
 	unsigned int *v_dc;
-	unsigned int adj_duration_cnt;//fields count
         bool	     last_move;
 	isp_blnr_stat_t last_blnr;
 	/*for climbing algorithm*/
-	unsigned int flag_bk;
 	unsigned int great_step;
-	unsigned int last_great_step;
 	unsigned int cur_step;
 	unsigned int capture_step;
-	unsigned int af_retry_cnt;
-	unsigned long long fv_aft_af;
-	unsigned long long fv_bf_af;
 	isp_blnr_stat_t *af_detect;
 	isp_blnr_stat_t af_data[FOCUS_GRIDS];
 	//unsigned char af_delay;
@@ -143,6 +143,8 @@ typedef struct isp_af_info_s {
 	unsigned int radius;
 	/* blnr tmp for isr*/
 	isp_blnr_stat_t isr_af_data;
+	unsigned int valid_step_cnt;
+	isp_af_fine_tune_t af_fine_data[FOCUS_GRIDS];
 }isp_af_info_t;
 
 /*for debug cmd*/

@@ -243,6 +243,10 @@ struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 	of_scan_flat_dt(early_init_dt_scan_chosen, boot_command_line);
 	/* Initialize {size,address}-cells info */
 	of_scan_flat_dt(early_init_dt_scan_root, NULL);
+#if defined(CONFIG_PLAT_MESON)
+	init_reserve_mgr();
+	of_scan_flat_dt(early_init_dt_scan_reserve_memory, NULL);
+#endif
 	/* Setup memory, calling early_init_dt_add_memory_arch */
 	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
 

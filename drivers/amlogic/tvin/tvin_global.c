@@ -48,6 +48,18 @@ const char *tvin_color_fmt_str(enum tvin_color_fmt_e color_fmt)
                 case TVIN_NV21:
                         return "COLOR_FMT_TVIN_NV21";
                         break;
+		case TVIN_BGGR:
+			return "COLOR_FMT_TVIN_BGGR";
+			break;
+		case TVIN_RGGB:
+			return "COLOR_FMT_TVIN_RGGB";
+			break;
+		case TVIN_GBRG:
+			return "COLOR_FMT_TVIN_GBRG";
+			break;
+        	case TVIN_GRBG:
+			return "COLOR_FMT_TVIN_GRBG";
+			break;
                 default:
                         return "COLOR_FMT_NULL";
                         break;

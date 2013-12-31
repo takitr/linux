@@ -76,9 +76,9 @@ void root_func(){
 //$$ L2 PROP_U32 6 = "linux,usable-memory"
 	memory{
 		device_type = "memory";
-		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x173fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x17400000 0x28c00000>;//0x17400000+0x28c00000=0x40000000 1GB DDR
+		aml_reserved_start = <0x06000000>; /**reserved memory start */
+		aml_reserved_end = <0x05000000>;/**reserved memory end */
+		linux,total-memory = <0x40000000>;
 	};
 /// ***************************************************************************************
 ///	-	GIC
@@ -109,17 +109,6 @@ void root_func(){
 		    	6: 318.75M		7: 364.3M					 */
 	};
 	
-/// ***************************************************************************************
-///	-	ION
-//$$ MODULE="ION"
-//$$ DEVICE="ion_dev"
-//$$ L2 PROP_STR = "status"
-    ion_dev{
-        compatible = "amlogic,ion_dev";
-        dev_name = "ion_dev";
-        status = "ok";
-        reg = <0x0bd00000 0x01000000>;//same as following ppmgr
-    };
 /// **************************************************************************************	
 /// -   DISP&MM-FB
 //$$ MODULE = "DISP&MM-FB"	
@@ -133,9 +122,7 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reg = <0x05100000 0x01000000
-			0x06100000 0x00100000>;
-		rotation = <0>;
+	   	reserve-memory = <0x01000000  0x00100000>;
 		vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
 		display_size_default = <768 1024 768 2048 32>;//1024x768x8=0x600000<0x01000000
 	};
@@ -147,9 +134,8 @@ void root_func(){
 		compatible = "amlogic,mesonfb-ext";
 		dev_name = "mesonfb-ext";
 		status = "ok";
-		reg = <0x06200000 0x01000000
-	       	 0x07200000 0x00100000>;
-		display_size_default = <768 1024 768 2048 32>;//1024x768x8=0x600000<0x01000000
+	   	reserve-memory = <0x01000000  0x00100000>;
+		display_size_default = <768 1024 768 2048 32>;////1024x768x8=0x600000<0x01000000
 	 
 	};
 
@@ -163,8 +149,7 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reg = <0x07300000 0x04000000
-			   0x0b300000 0x00a00000>;
+		reserve-memory = <0x04000000 0x00a00000>;
 	};
 
 
@@ -178,7 +163,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reg = <0x0bd00000 0x01000000>;		
+		reserve-memory = <0x01000000>;
 	};
 
 /// ***************************************************************************************
@@ -191,7 +176,7 @@ void root_func(){
 		compatible = "amlogic,amvenc_avc";
 		dev_name = "amvenc_avc.0";
 		status = "okay";
-		reg = <0x0cd00000 0x00f00000>;
+		reserve-memory = <0x00f00000>;
 	};
 
 /// ***************************************************************************************
@@ -206,7 +191,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin0";
         status = "ok";
-        reg = <0x0dc00000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <115>;
         vdin_id = <0>;
 	};
@@ -220,7 +205,7 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin1";
         status = "ok";
-        reg = <0x11c00000 0x04000000>;
+	 reserve-memory = <0x04000000>;
         irq = <117>;
         vdin_id = <1>;
 	};
@@ -235,10 +220,32 @@ void root_func(){
 		compatible = "amlogic,amlvideo2";
 		dev_name = "amlvideo2.0";
 		status = "okay";
-		reg = <0x15c00000 0x01800000>;
+		reserve-memory = <0x01800000>;
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-Video Input Manager
+//$$ MODULE = "DISP&MM-Video Input Manager"
+//$$ DEVICE="vm"
+//$$ L2 PROP_STR = "status"
+    vm{
+		compatible = "amlogic,vm";
+		dev_name = "vm.0";
+		status = "okay";
+		reserve-memory = <0x01800000>;
+	};
 
+/// ***************************************************************************************
+///	-	ION
+//$$ MODULE="ION"
+//$$ DEVICE="ion_dev"
+//$$ L2 PROP_STR = "status"
+    ion_dev{
+        compatible = "amlogic,ion_dev";
+        dev_name = "ion_dev";
+        status = "ok";
+        reserve-memory = <0x01000000>;
+    };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
 //$$ MODULE = "DISP&MM-Vout"
@@ -767,29 +774,48 @@ sdio{
 //$$ DEVICE="backlight"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_CHOICE "Bl_pin_0_match" = "pinctrl-0"
-//$$ L2 PROP_U32 = "bl_level_default"
+//$$ L2 PROP_CHOICE "Bl_pin_1_match" = "pinctrl-1"
+//$$ L2 PROP_U32 2= "bl_level_default_uboot_kernel"
+//$$ L2 PROP_U32 2= "bl_level_middle_mapping"
+//$$ L2 PROP_U32 2= "bl_level_max_min"
 //$$ L2 PROP_U32 = "bl_ctrl_method"
 //$$ L2 PROP_STR = "bl_gpio_port"
 //$$ L2 PROP_U32 2 = "bl_gpio_dim_max_min"
 //$$ L2 PROP_STR 2 = "bl_pwm_port_gpio_used"
 //$$ L2 PROP_U32 = "bl_pwm_freq"
 //$$ L2 PROP_U32 2 = "bl_pwm_duty_max_min"
-     backlight{
+//$$ L2 PROP_U32 = "bl_pwm_combo_high_low_level_switch"
+//$$ L2 PROP_STR 2 = "bl_pwm_combo_high_port_method"
+//$$ L2 PROP_STR 2 = "bl_pwm_combo_low_port_method"
+//$$ L2 PROP_U32 3 = "bl_pwm_combo_high_freq_duty_max_min"
+//$$ L2 PROP_U32 3 = "bl_pwm_combo_low_freq_duty_max_min"
+    backlight{
 		compatible = "amlogic,backlight";
 		dev_name = "backlight";
 		status = "okay";
-		pinctrl-names = "default";
-		pinctrl-0 = <&lcd_backlight_pins>;	/** pwm pinmux */
-
-		bl_level_default=<102>;	/** default brightness level */
-
+		pinctrl-names = "default","pwm_combo";
+		pinctrl-0 = <&lcd_backlight_pins>;	/** pwm_default pinmux */
+		pinctrl-1 = <&lcd_backlight_combo_pins>;	/** pwm_combo pinmux */
+		
+		bl_level_default_uboot_kernel=<10 102>;	/** default brightness level for uboot & kernel */
+		bl_level_middle_mapping=<128 102>;	/** brightness middle level mapping to a new level*/
+		bl_level_max_min=<255 10>;	/** brightness level max & min, must match the rootfs setting*/
+		
 		/* backlight power ctrl */
-		bl_ctrl_method=<1>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive. decided by hardware design) */
+		bl_ctrl_method=<3>;	/** backlight control method(0=gpio, 1=pwm_negative, 2=pwm_positive, 3=pwm_combo. decided by hardware design) */
+		
 		bl_gpio_port="GPIODV_28";	/** backlight control gpio port */
 		bl_gpio_dim_max_min=<0x0 0xf>;	/** brightness diming level_max, level_min : (0x0~0xf, negative logic, only for gpio control method) */
 		bl_pwm_port_gpio_used="PWM_C","1";	/** pwm_port_name(for pwm control method), pwm_gpio_used(0=use pwm_port only, 1=use bl_gpio_port to control on/off) */
-		bl_pwm_freq=<1000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
-		bl_pwm_duty_max_min=<90 20>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
+		bl_pwm_freq=<300000>;	/** backlight control pwm frequency(unit: Hz, only for pwm control method) */
+		bl_pwm_duty_max_min=<90 30>;	/** brightness diminig duty_max, duty_min : (unit: %, positive logic, only for pwm control method) */
+		
+		/** backlight pwm_combo control: low_duty_max is always active for level_high, and high_duty_min is always active for level_low */
+		bl_pwm_combo_high_low_level_switch=<220>;	/** backlight pwm_combo control switch level */
+		bl_pwm_combo_high_port_method="PWM_C","1";	/** backlight pwm_combo high port name, pwm control method(1=pwm_negative, 2=pwm_positive) */
+		bl_pwm_combo_low_port_method="PWM_D","2";	/** backlight pwm_combo low port name, pwm control method(1=pwm_negative, 2=pwm_positive) */
+		bl_pwm_combo_high_freq_duty_max_min=<300000 96 89>;	/** backlight pwm_combo level_high port frequency(unit: Hz), duty_max, duty_min : (unit: %, positive logic) */
+		bl_pwm_combo_low_freq_duty_max_min=<10000 100 10>;	/** backlight pwm_combo level_low port frequency(unit: Hz), duty_max, duty_min : (unit: %, positive logic) */
 	};
 //$$ DEVICE="lcd"
 //$$ L2 PROP_STR = "status"
@@ -916,9 +942,9 @@ sdio{
 		power_on_uboot="n","n","n";	/** only for uboot, ahead of lcd_power_on, no need config delay */
 		power_on_step_1="pmu","GPIO0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_on_step_2="cpu","GPIODV_29","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_on_step_3="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_on_step_4="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
-		power_on_step_5="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
+		power_on_step_3="cpu","GPIODV_0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_4="cpu","GPIODV_0","1";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_on_step_5="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_on_step_6="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_7="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_8="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
@@ -929,11 +955,11 @@ sdio{
 		power_on_step_13="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_14="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_on_step_15="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
- 		power_on_delay=<20 14 5 0 0 0 0 0 0 0 0 0 0 0 0>;	/** power on delay after each step */
+ 		power_on_delay=<20 14 5 70 5 0 0 0 0 0 0 0 0 0 0>;	/** power on delay after each step */
 		power_off_step_1="signal";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
  		power_off_step_2="cpu","GPIODV_29","1";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
- 		power_off_step_3="pmu","GPIO0","2";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
-		power_off_step_4="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
+ 		power_off_step_3="cpu","GPIODV_0","0";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
+		power_off_step_4="pmu","GPIO0","2";	/** gpio_type(cpu, pmu, signal), gpio_name(valid when gpio_type is cpu or pmu), gpio_value(valid when gpio_type is cpu or pmu) */
 		power_off_step_5="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_6="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_7="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
@@ -945,7 +971,7 @@ sdio{
 		power_off_step_13="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_14="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
 		power_off_step_15="n","n","n";	/** gpio_type(support 3 types: cpu, pmu, signal), gpio_name(upper-case, valid when gpio_type is cpu or pmu), gpio_value(0=output_low, 1=output_high, 2=input. valid when gpio_type is cpu or pmu) */
-		power_off_delay=<5 14 20 0 0 0 0 0 0 0 0 0 0 0 0>;	/** power off delay after each step */
+		power_off_delay=<5 14 0 100 0 0 0 0 0 0 0 0 0 0 0>;	/** power off delay after each step */
 		power_off_uboot="n","n","n";	/** only for uboot, at the end of lcd_power_off, no need config delay */
 	};
 
@@ -1313,6 +1339,10 @@ sdio{
             "micbias1","MAIN MIC",
             "IN2P","micbias1";
         mute_gpio = "GPIOY_15";
+        I2S_MCLK = "GPIOAO_8";
+        I2S_SCLK = "GPIOAO_9";
+        I2S_LRCLK = "GPIOAO_10";
+        I2S_ODAT = "GPIOAO_11";
         //mute_inv;
         hp_paraments = <800 300 0 5 1>;
         pinctrl-names = "aml_snd_m8";
@@ -1558,6 +1588,25 @@ sdio{
 		plat-count = <58>;
 		usid-min = <8>; /*reserved*/
 		usid-max = <31>; /*reserved*/
+	};
+/// ***************************************************************************************
+///	-	Thermal
+//$$ MODULE="Thermal"
+//$$ DEVICE="thermal"
+//$$ L2 PROP_U32 3*3 = "trip_point"
+//$$ L2 PROP_U32 = "#thermal-cells"
+//$$ L2 PROP_U32 = "cpu_cali_a"
+//$$ L2 PROP_U32 = "idle_interval"
+	thermal{
+		compatible = "amlogic-thermal";
+		#thermal-cells=<3>;
+		dev_name = "aml_thermal";
+		trip_point=<50 1200000 1200000
+			    70  800000 800000
+			    110 0xffffffff 0xffffffff>;
+		cpu_cali_a=<0>;
+		idle_interval=<1000>;
+
 	};
 
 /// ***************************************************************************************
@@ -2044,6 +2093,16 @@ sdio{
 			amlogic,setmask=<3 0x1000000>;
 			amlogic,clrmask=<0 0x48 7 0x10000200>;
 			amlogic,pins = "GPIODV_9";
+		};
+		
+//$$ MATCH "Bl_pin_1_match" = "&lcd_backlight_combo_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 4 = "amlogic,clrmask"
+//$$ L2 PROP_STR 2 = "amlogic,pins"
+		lcd_backlight_combo_pins:lcd_backlight_combo{
+			amlogic,setmask=<3 0x5000000>;
+			amlogic,clrmask=<0 0x48 7 0x18000200>;
+			amlogic,pins = "GPIODV_9","GPIODV_28";
 		};
 		
 		lcd_ttl_hvsync_pins_on:lcd_ttl_hvsync_on{

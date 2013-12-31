@@ -40,6 +40,7 @@
 #include <linux/sysfs.h>
 #include <linux/file.h>
 #include <linux/fdtable.h>
+#include <linux/of_fdt.h>
 #include <linux/console.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
@@ -1348,6 +1349,7 @@ void osd_ext_resume_early(void)
 EXPORT_SYMBOL(osd_ext_resume_early);
 #endif
 
+static struct resource memobj;
 static int 
 osd_ext_probe(struct platform_device *pdev)
 {
@@ -1372,6 +1374,7 @@ osd_ext_probe(struct platform_device *pdev)
 	vinfo = get_current_vinfo2();
 	for (index = 0; index < OSD_COUNT; index++) {
 		//platform resource
+#if 0
 		if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, index))) {
 			amlog_level(LOG_LEVEL_HIGH, "No frame buffer memory define.\n");
 			r = -EFAULT;
@@ -1383,7 +1386,17 @@ osd_ext_probe(struct platform_device *pdev)
 		if (!mem || mem->start == 0 || mem->end == 0 || mem->start == mem->end) {
 			continue ;
 		}
-
+#else
+		mem = &memobj;
+		ret = find_reserve_block(pdev->dev.of_node->name,index);
+		if(ret < 0){
+			amlog_level(LOG_LEVEL_HIGH,"can not find %s%d reserve block\n",pdev->dev.of_node->name,index);
+			r = -EFAULT;
+			goto failed2;
+		}
+		mem->start = (phys_addr_t)get_reserve_block_addr(ret);
+		mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
+#endif
 		fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
 		if (!fbi) {
 			r = -ENOMEM;

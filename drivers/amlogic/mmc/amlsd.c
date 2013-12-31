@@ -714,6 +714,8 @@ void aml_devm_pinctrl_put (struct amlsd_host* host)
     if (host->pinctrl) {
         devm_pinctrl_put(host->pinctrl);
         host->pinctrl = NULL;
+
+        host->pinctrl_name[0]='\0'; // clear the pinctrl_name
         // sdio_err("Put Pinctrl\n");
     }
 }
@@ -756,6 +758,10 @@ void of_amlsd_xfer_pre(struct amlsd_platform* pdata)
     int i, size=0;
     struct pinctrl* ppin;
 
+    if (pdata->port == PORT_SDIO_C) { // to avoid emmc platform autoreboot issue
+        udelay(65);
+    }
+
     if (pdata->port > PORT_SDIO_C) { // so it should be PORT_SDHC_X
         strncpy(p, "sdhc_", sizeof(pinctrl));
         size = strlen(p);
@@ -763,7 +769,7 @@ void of_amlsd_xfer_pre(struct amlsd_platform* pdata)
     }
 
     if (pdata->mmc->ios.chip_select == MMC_CS_DONTCARE) {
-        if(pdata->mmc->caps & MMC_CAP_4_BIT_DATA){
+        if ((pdata->mmc->caps & MMC_CAP_4_BIT_DATA) || (pdata->port != MESON_SDIO_PORT_B)) {
             snprintf(p, sizeof(pinctrl)-size, "%s_all_pins", pdata->pinname);
         }else{
             snprintf(p, sizeof(pinctrl)-size, "%s_1bit_pins", pdata->pinname);
@@ -771,33 +777,43 @@ void of_amlsd_xfer_pre(struct amlsd_platform* pdata)
     } else { // MMC_CS_HIGH
         snprintf(p, sizeof(pinctrl)-size, "%s_clk_cmd_pins", pdata->pinname);
     }
+    
+    // if pinmux setting is changed (pinctrl_name is different)
+    if (strncmp(pdata->host->pinctrl_name, pinctrl, sizeof(pdata->host->pinctrl_name))) {
+        if (strlcpy(pdata->host->pinctrl_name, pinctrl, sizeof(pdata->host->pinctrl_name)) 
+                >= sizeof(pdata->host->pinctrl_name)) {
+            sdio_err("Pinctrl name is too long!\n");
+			return;
+		}
 
-    for (i = 0; i < 100; i++) {
-        ppin = devm_pinctrl_get_select(&pdata->host->pdev->dev, pinctrl);
-        if(!IS_ERR(ppin)) {
-            pdata->host->pinctrl = ppin;
-            break;
+        for (i = 0; i < 100; i++) {
+            // ppin = devm_pinctrl_get_select(&pdata->host->pdev->dev, p);
+            ppin = aml_devm_pinctrl_get_select(pdata->host, pinctrl);
+            if(!IS_ERR(ppin)) {
+                // pdata->host->pinctrl = ppin;
+                break;
+            }
+            /* else -> aml_irq_cdin_thread() should be using one of the GPIO of card,
+             * then we should wait here until the GPIO is free,
+             * otherwise something must be wrong.
+             */
+            mdelay(1);
         }
-        /* else -> aml_irq_cdin_thread() should be using one of the GPIO of card,
-         * then we should wait here until the GPIO is free,
-         * otherwise something must be wrong.
-         */
-        mdelay(1);
+        if (i == 100) {
+            sdhc_err("CMD%d: get pinctrl %s fail.\n", pdata->host->opcode, pinctrl);
+        }
+        //printk("pre pinctrl %x, %s, ppin %x\n", pdata->host->pinctrl, p, ppin);
     }
-    if (i == 100) {
-        sdhc_err("CMD%d: get pinctrl fail.\n", pdata->host->opcode);
-    }
-    //printk("pre pinctrl %x, %s, ppin %x\n", pdata->host->pinctrl, p, ppin);
 }
 
 void of_amlsd_xfer_post(struct amlsd_platform* pdata)
 {
-    if (pdata->host->pinctrl) {
-        devm_pinctrl_put(pdata->host->pinctrl);
-        pdata->host->pinctrl = NULL;
-    } else {
-        sdhc_err("CMD%d: pdata->host->pinctrl = NULL\n", pdata->host->opcode);
-    }
+    // if (pdata->host->pinctrl) {
+        // devm_pinctrl_put(pdata->host->pinctrl);
+        // pdata->host->pinctrl = NULL;
+    // } else {
+        // sdhc_err("CMD%d: pdata->host->pinctrl = NULL\n", pdata->host->opcode);
+    // }
     // printk(KERN_ERR "CMD%d: put pinctrl\n", pdata->host->opcode);
     // aml_dbg_print_pinmux(); // for debug
 }
@@ -851,7 +867,7 @@ void aml_cs_high (struct amlsd_platform * pdata) // chip select high
 	 */
     if ((pdata->mmc->ios.chip_select == MMC_CS_HIGH) && (pdata->gpio_dat3 != 0)
         && (pdata->jtag_pin == 0)) { // is NOT sd card
-
+        aml_devm_pinctrl_put(pdata->host);
         ret = amlogic_gpio_request_one(pdata->gpio_dat3, GPIOF_OUT_INIT_HIGH, MODULE_NAME);
         CHECK_RET(ret);
         if (ret == 0) {
@@ -915,30 +931,30 @@ static int aml_is_sdjtag(struct amlsd_platform * pdata)
 
 static int aml_is_sduart(struct amlsd_platform * pdata)
 {
-    int ret, dat3;
+    int dat3;
 
     if(pdata->is_sduart)
         return 1;
 
-    // dat3 = aml_get_reg32_bits(P_PREG_PAD_GPIO0_I,26,1);
-    // if(dat3 == 0){
-        // return 1;
-    // }
-
-    if (pdata->gpio_dat3 != 0){
-        ret = amlogic_gpio_request_one(pdata->gpio_dat3, GPIOF_IN, MODULE_NAME);
-        if(ret){
-            printk("DAT3 pinmux used, return no uart\n");
-            return 0;
-        }
-        CHECK_RET(ret);
-        dat3 = amlogic_get_value(pdata->gpio_dat3, MODULE_NAME);
-        // print_tmp("sd gpio_dat3=%d\n", amlogic_get_value(pdata->gpio_dat3, MODULE_NAME));
-        amlogic_gpio_free(pdata->gpio_dat3, MODULE_NAME);
-        if(dat3 == 0){
-            return 1;
-        }
+    dat3 = aml_get_reg32_bits(P_PREG_PAD_GPIO0_I,26,1);
+    if(dat3 == 0){
+        return 1;
     }
+
+    // if (pdata->gpio_dat3 != 0){
+        // ret = amlogic_gpio_request_one(pdata->gpio_dat3, GPIOF_IN, MODULE_NAME);
+        // if(ret){
+            // printk("DAT3 pinmux used, return no uart\n");
+            // return 0;
+        // }
+        // CHECK_RET(ret);
+        // dat3 = amlogic_get_value(pdata->gpio_dat3, MODULE_NAME);
+        // // print_tmp("sd gpio_dat3=%d\n", amlogic_get_value(pdata->gpio_dat3, MODULE_NAME));
+        // amlogic_gpio_free(pdata->gpio_dat3, MODULE_NAME);
+        // if(dat3 == 0){
+            // return 1;
+        // }
+    // }
     return 0;
 }
 

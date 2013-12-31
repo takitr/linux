@@ -176,19 +176,17 @@ static int set_prot_444(u32 x_start, u32 x_end, u32 y_start, u32 y_end, u32 y_st
     return 0;
 }
 
-void video_prot_reset(video_prot_t* video_prot) {
-    u32 data32;
+void video_prot_gate(u32 on) {
 
-    VSYNC_WR_MPEG_REG(VPU_PROT2_CLK_GATE, video_prot->status);
-    VSYNC_WR_MPEG_REG(VPU_PROT3_CLK_GATE, video_prot->status);
-    VSYNC_WR_MPEG_REG(VD1_IF0_PROT_CNTL, (video_prot->status) << 31 | 1080 << 16 | 1080);
-    VSYNC_WR_MPEG_REG_BITS(VPU_PROT2_MMC_CTRL, video_prot->status, 12, 3);
-    VSYNC_WR_MPEG_REG_BITS(VPU_PROT3_MMC_CTRL, video_prot->status, 12, 3);
+    VSYNC_WR_MPEG_REG(VPU_PROT2_CLK_GATE, on);
+    VSYNC_WR_MPEG_REG(VPU_PROT3_CLK_GATE, on);
+    VSYNC_WR_MPEG_REG(VD1_IF0_PROT_CNTL, on << 31 | 1080 << 16 | 1080);
+    VSYNC_WR_MPEG_REG_BITS(VPU_PROT2_MMC_CTRL, on, 12, 3);
+    VSYNC_WR_MPEG_REG_BITS(VPU_PROT3_MMC_CTRL, on, 12, 3);
 
 }
 
 void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
-    u32 tmp;
 
     if (vf->width > 1920 || vf->height > 1088) {
         video_prot->is_4k2k = 1;
@@ -208,17 +206,10 @@ void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
     video_prot->y_end = vf->height - 1;
     video_prot->viu_type = vf->type;
     video_prot->src_vframe_orientation = vf->orientation;
-    video_prot->power_on = 1;
 
 }
 
-void video_prot_set_angle(video_prot_t* video_prot, u32 angle) {
-
-    u32 data32;
-    u32 angle_orientation = (angle + video_prot->src_vframe_orientation) % 4;
-
-    video_prot->angle = angle;
-
+void video_prot_set_angle(video_prot_t* video_prot, u32 angle_orientation) {
     if (video_prot->viu_type & VIDTYPE_VIU_NV21) {
         set_prot_NV21(video_prot->x_start, video_prot->x_end, video_prot->y_start, video_prot->y_end, video_prot->y_step, angle_orientation, video_prot->pat_val);
     } else if (video_prot->viu_type & VIDTYPE_VIU_422) {
@@ -228,11 +219,12 @@ void video_prot_set_angle(video_prot_t* video_prot, u32 angle) {
     } else {
         set_prot_NV21(0, video_prot->x_end, 0, video_prot->y_end, video_prot->y_step, 0, video_prot->pat_val);
     }
+    video_prot->angle = angle_orientation;
     video_prot->status = angle_orientation % 2;
 }
 
 void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf) {
-    u32 angle_orientation = (video_prot->angle + video_prot->src_vframe_orientation) % 4;
+    u32 angle_orientation = video_prot->angle;
 
     if (video_prot->viu_type & (VIDTYPE_VIU_444 | VIDTYPE_VIU_422 | VIDTYPE_VIU_NV21)) {
         if (angle_orientation == 1 || angle_orientation == 3) {
@@ -256,7 +248,6 @@ void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf) {
             }
         }
     }
-
 }
 
 void video_prot_set_canvas(vframe_t *vf) {
@@ -265,30 +256,50 @@ void video_prot_set_canvas(vframe_t *vf) {
         VSYNC_WR_MPEG_REG_BITS(VPU_PROT3_DDR, (vf->canvas0Addr >> 8) & 0xff, 0, 8);
     }
 }
-void video_prot_axis (video_prot_t* video_prot, u32 video_angle, u32 hd_start, u32 hd_end, u32 vd_start, u32 vd_end) {
+void video_prot_axis (video_prot_t* video_prot, u32 hd_start, u32 hd_end, u32 vd_start, u32 vd_end) {
     u32 reset_axis = 0;
-    u32 angle_orientation = (video_angle + video_prot->src_vframe_orientation) % 4;
-    
+    u32 angle_orientation = video_prot->angle;
+
     if (vd_start > 0 || hd_start > 0) {
         if (angle_orientation == 1) {
-            video_prot->x_start = vd_start;
-            video_prot->x_end = vd_end;
-            video_prot->y_start = 0;
-            video_prot->y_end = hd_end - hd_start;
+            if (video_prot->is_4k2k) {
+                video_prot->x_start = vd_start << 1;
+                video_prot->x_end = video_prot->src_vframe_width - 1;
+                video_prot->y_start = 0;
+                video_prot->y_end = (video_prot->src_vframe_height - hd_start - 1) * (video_prot->y_step + 1);
+            } else {
+                video_prot->x_start = vd_start;
+                video_prot->x_end = video_prot->src_vframe_width - 1;
+                video_prot->y_start = 0;
+                video_prot->y_end = video_prot->src_vframe_height - hd_start - 1;
+            }
             reset_axis = 1;
         } else if (angle_orientation == 3) {
-            video_prot->x_start = 0;
-            video_prot->x_end = vd_end - vd_start;
-            video_prot->y_start = hd_start;
-            video_prot->y_end = hd_end;
-            reset_axis = 0x1;
+            if (video_prot->is_4k2k) {
+                video_prot->x_start = 0;
+                video_prot->x_end = (video_prot->src_vframe_width - vd_start) << 1;
+                video_prot->y_start = hd_start * (video_prot->y_step + 1);
+                video_prot->y_end = video_prot->src_vframe_height - 1;
+            } else {
+                video_prot->x_start = 0;
+                video_prot->x_end = video_prot->src_vframe_width - vd_start;
+                video_prot->y_start = hd_start;
+                video_prot->y_end = video_prot->src_vframe_height - 1;
+            }
+            reset_axis = 1;
+        }
+        if ((s32)video_prot->x_end < (s32)video_prot->x_start) {
+            video_prot->x_end = video_prot->x_start;
+        }
+        if ((s32)video_prot->y_end < (s32)video_prot->y_start) {
+            video_prot->y_end = video_prot->y_start;
         }
     } else {
         video_prot->x_start = 0;
         video_prot->y_start = 0;
         video_prot->x_end = video_prot->src_vframe_width - 1;
         video_prot->y_end = video_prot->src_vframe_height - 1;
-        reset_axis = 0x1;
+        reset_axis = 1;
     }
     //printk("x :%d :%d y :%d :%d\n", video_prot->x_start, video_prot->x_end, video_prot->y_start, video_prot->y_end);
     if (reset_axis) {
@@ -304,7 +315,7 @@ void video_prot_axis (video_prot_t* video_prot, u32 video_angle, u32 hd_start, u
         u32 y_start_uv = 0;
         u32 y_end_uv = 0;
         u32 y_len_uv = 0;
-        
+
         reset_axis = 0;
         y_end = y_start + (y_step + 1) * y_len;
         if (video_prot->viu_type & VIDTYPE_VIU_NV21) {

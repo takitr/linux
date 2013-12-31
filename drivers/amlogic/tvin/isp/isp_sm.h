@@ -16,16 +16,11 @@
 
 typedef enum isp_auto_exposure_step_e {
 	AE_START = 0,
-	AE_EXPOSURE_MAX_CHECK,
-	AE_EXPOSURE_DECREASE,
-	AE_EXPOSURE_INCREASE,
 	AE_CALCULATE_LUMA_AVG,
 	AE_CALCULATE_LUMA_TARG,
 	AE_LUMA_AVG_CHECK,
 	AE_EXPOSURE_ADJUST,
 	AE_SET_NEWSTEP,
-	AE_MAX_CHECK_STOP,
-	AE_EXPOSURE_MAX_CHECK2,
 	AE_SUCCESS,
 } isp_auto_exposure_step_t;
 
@@ -56,22 +51,6 @@ typedef enum isp_auto_exposure_state_e {
 	AE_LOW_GAIN,
 } isp_auto_exposure_state_t;
 
-typedef enum isp_auto_exposure_enh_state_e {
-	AE_ENH_IDLE,
-	AE_ENH_INIT,
-	AE_ENH_SET_RGB,
-	AE_ENH_RGB_WAIT,
-	AE_ENH_SET_GBR,
-	AE_ENH_GBR_WAIT,
-	AE_ENH_SET_BRG,
-	AE_ENH_BRG_WAIT,
-	AE_ENH_SHUTTER_ADJUST,
-	AE_ENH_GAIN_ADJUST,
-	AE_ENH_REST,
-	AE_ENH_ORI_SET,
-	AE_ENH_LOW_GAIN,
-} isp_auto_exposure_enh_state_t;
-
 typedef enum isp_auto_white_balance_state_e {
 	AWB_IDLE,
 	AWB_INIT,
@@ -83,9 +62,9 @@ typedef enum af_state_e {
 	AF_DETECT_INIT,
 	AF_GET_STEPS_INFO,
 	AF_GET_STATUS,
-	AF_INIT,
-	AF_GET_OLD_FV,
-	AF_GET_COARSE_INFO,
+	AF_SCAN_INIT,
+	AF_GET_COARSE_INFO_H,
+	AF_GET_COARSE_INFO_L,
 	AF_CALC_GREAT,
 	AF_GET_FINE_INFO,
 	AF_CLIMBING,
@@ -122,13 +101,13 @@ typedef struct isp_ae_sm_s {
 	unsigned int win_r;
 	unsigned int win_t;
 	unsigned int win_b;
-	unsigned int alert_r;   
-	unsigned int alert_g;   
-	unsigned int alert_b; 
-	unsigned short cur_gain;
-	unsigned short pre_gain;
-	unsigned short max_gain;
-	unsigned short min_gain;
+	unsigned int alert_r;
+	unsigned int alert_g;
+	unsigned int alert_b;
+	unsigned int cur_gain;
+	unsigned int pre_gain;
+	unsigned int max_gain;
+	unsigned int min_gain;
 	unsigned int max_step;
 	unsigned int cur_step;
 	unsigned int countlimit_r;	
@@ -141,8 +120,7 @@ typedef struct isp_ae_sm_s {
 	unsigned int max_lumasum3;
 	unsigned int max_lumasum4;	//high
 	int targ;
-	
-	isp_auto_exposure_enh_state_t  isp_ae_enh_state;
+
 	isp_auto_exposure_state_t isp_ae_state;
 }isp_ae_sm_t;
 
@@ -225,7 +203,7 @@ extern void capture_sm_init(isp_dev_t *devp);
 extern void isp_set_flash_mode(isp_dev_t *devp);
 extern void isp_ae_sm(isp_dev_t *devp);
 extern void isp_awb_sm(isp_dev_t *devp);
-extern void isp_af_sm(isp_dev_t *devp);
+extern void isp_af_fine_tune(isp_dev_t *devp);
 extern void isp_af_detect(isp_dev_t *devp);
 extern int isp_capture_sm(isp_dev_t *devp);
 extern unsigned long long div64(unsigned long long n, unsigned long long d);

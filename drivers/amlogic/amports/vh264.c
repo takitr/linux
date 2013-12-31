@@ -126,6 +126,8 @@ typedef struct {
      ((x)->u_canvas_index << 8)  | \
      ((x)->y_canvas_index << 0))
 
+extern int query_video_status(int type, int *value);
+
 static vframe_t *vh264_vf_peek(void*);
 static vframe_t *vh264_vf_get(void*);
 static void vh264_vf_put(vframe_t *, void*);
@@ -1427,6 +1429,7 @@ static void vh264_local_init(void)
 
 static s32 vh264_init(void)
 {
+    int trickmode_fffb = 0;
     void __iomem *p = ioremap_nocache(DEF_BUF_START_BASE, V_BUF_ADDR_START - DEF_BUF_START_ADDR);
     void __iomem *p1 = (void __iomem *)((ulong)(p) + MEM_HEADER_CPU_BASE - DEF_BUF_START_BASE);
 
@@ -1444,7 +1447,11 @@ static s32 vh264_init(void)
 
     vh264_local_init();
 
-    memset(p, 0, V_BUF_ADDR_START - DEF_BUF_START_ADDR);
+    query_video_status(0, &trickmode_fffb);
+
+    if (!trickmode_fffb) {
+        memset(p, 0, V_BUF_ADDR_START - DEF_BUF_START_ADDR);
+    }
 
     amvdec_enable();
 

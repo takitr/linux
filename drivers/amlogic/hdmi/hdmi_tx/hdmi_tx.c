@@ -1192,11 +1192,13 @@ static int hdmi_task_handle(void *data)
         if(hdmitx_device->HWOp.Cntl) {
             static int st = 0;
             st = hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_HWCMD_HPD_GPI_TEST, 0);
-            if((st == 0) && (hdmitx_device->hpd_state == 1)) {
-                hdmitx_device->hpd_event = 2;
-            }
-            if((st == 1) && (hdmitx_device->hpd_state == 0)) {
-                hdmitx_device->hpd_event = 1;
+            if(hdmitx_device->hpd_lock != 1) {
+                if((st == 0) && (hdmitx_device->hpd_state == 1)) {
+                    hdmitx_device->hpd_event = 2;
+                }
+                if((st == 1) && (hdmitx_device->hpd_state == 0)) {
+                    hdmitx_device->hpd_event = 1;
+                }
             }
         }
         
@@ -1545,13 +1547,13 @@ static void hdmitx_pwr_init(struct hdmi_pwr_ctl *ctl)
 {
     if(ctl) {
         if(ctl->pwr_5v_on.type == CPU_GPO) {
-            amlogic_set_value(ctl->pwr_5v_on.var.gpo.pin, ctl->pwr_5v_on.var.gpo.val, DEVICE_NAME);
+            amlogic_gpio_direction_output(ctl->pwr_5v_on.var.gpo.pin, ctl->pwr_5v_on.var.gpo.val, DEVICE_NAME);
         }
         if(ctl->pwr_3v3_on.type == CPU_GPO) {
-            amlogic_set_value(ctl->pwr_3v3_on.var.gpo.pin, ctl->pwr_3v3_on.var.gpo.val, DEVICE_NAME);
+            amlogic_gpio_direction_output(ctl->pwr_3v3_on.var.gpo.pin, ctl->pwr_3v3_on.var.gpo.val, DEVICE_NAME);
         }
         if(ctl->pwr_hpll_vdd_on.type == CPU_GPO) {
-            amlogic_set_value(ctl->pwr_hpll_vdd_on.var.gpo.pin, ctl->pwr_hpll_vdd_on.var.gpo.val, DEVICE_NAME);
+            amlogic_gpio_direction_output(ctl->pwr_hpll_vdd_on.var.gpo.pin, ctl->pwr_hpll_vdd_on.var.gpo.val, DEVICE_NAME);
         }
     }
 }
