@@ -110,6 +110,9 @@ const char *cam_cmd_to_str(cam_command_t cmd)
                 case CAM_COMMAND_TORCH:
 			return "CAM_COMMAND_TORCH";
 			break;
+		case CMD_ISP_BYPASS:
+			return "CMD_ISP_BYPASS";
+			break;
 		default:
 			break;
 	}

@@ -70,12 +70,29 @@ static int gamma_type = 2;
 module_param(gamma_type, int, 0664);
 MODULE_PARM_DESC(gamma_type, "adjust gamma type");
 
+static unsigned int vsync_enter_line_curr = 0;
+module_param(vsync_enter_line_curr,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_curr,"\n encoder process line num when enter isr.\n");
+
+static unsigned int vsync_enter_line_max = 0;
+module_param(vsync_enter_line_max,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_max,"\n max encoder process line num when enter isr.\n");
+
+static unsigned int vsync_enter_line_threshold = 23;
+module_param(vsync_enter_line_threshold,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_threshold,"\n max encoder process line num over threshold drop the frame.\n");
+
+static unsigned int vsync_enter_line_threshold_overflow_count = 0;
+module_param(vsync_enter_line_threshold_overflow_count,uint,0664);
+MODULE_PARM_DESC(vsync_enter_line_threshold_overflow_count,"\n count of overflow encoder process line num over threshold drop the frame.\n");
+
 typedef struct viuin_s{
         unsigned int flag;
         struct vframe_prop_s *prop;
         /*add for tvin frontend*/
         struct tvin_frontend_s frontend;
         struct vdin_parm_s parm;
+	unsigned int enc_info_addr;
 }viuin_t;
 
 #ifdef CONFIG_GAMMA_AUTO_TUNE
@@ -517,15 +534,19 @@ static int viuin_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
         switch(RD_BITS(VPU_VIU_VENC_MUX_CTRL,0,2)){
                 case 0:
                         WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x88,4,8);
+			devp->enc_info_addr = ENCL_INFO_READ;
                         break;
                 case 1:                        
                         WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x11,4,8);
+			devp->enc_info_addr = ENCI_INFO_READ;
                         break;
                 case 2:                        
                         WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x22,4,8);
+			devp->enc_info_addr = ENCP_INFO_READ;
                         break;
                 case 3:                        
                         WR_BITS(VPU_VIU_VENC_MUX_CTRL,0x44,4,8);
+			devp->enc_info_addr = ENCT_INFO_READ;
                         break;
                 default:
                         break;
@@ -549,6 +570,8 @@ static void viuin_start(struct tvin_frontend_s *fe, enum tvin_sig_fmt_e fmt)
 		        printk("[viuin..]%s viu_in is started already.\n",__func__);
 		return;
 	}
+	vsync_enter_line_max = 0;
+	vsync_enter_line_threshold_overflow_count = 0;
 	devp->flag = AMVIUIN_DEC_START;
 	
 	return;
@@ -563,11 +586,19 @@ static void viuin_stop(struct tvin_frontend_s *fe, enum tvin_port_e port)
                 printk("[viuin..]%s viu in dec isn't start.\n",__func__);
         
 }
+
 static int viuin_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 {	
-        viuin_t *devp = container_of(fe,viuin_t,frontend);
+	viuin_t *devp = container_of(fe,viuin_t,frontend);
+	vsync_enter_line_curr = (READ_VCBUS_REG(devp->enc_info_addr)>>16)&0x1fff;
+	if(vsync_enter_line_curr > vsync_enter_line_max)
+                vsync_enter_line_max = vsync_enter_line_curr;
+	if(vsync_enter_line_curr > vsync_enter_line_threshold){
+		vsync_enter_line_threshold_overflow_count++;
+		return TVIN_BUF_SKIP;
+	}
 #ifdef CONFIG_GAMMA_AUTO_TUNE
-        if (gamma_tune_en) {	
+	if (gamma_tune_en) {	
 		devp->prop = fe->private_data;
 		// calculate dnlp target data
 		ve_dnlp_calculate_tgt(devp->prop);

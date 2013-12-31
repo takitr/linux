@@ -325,22 +325,14 @@ void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 		for(i=0;i<XML_CSC;i++)
 		        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
 	} else {
-	    if(height==0)
-	    {
-			printk("isp_set_matrix2\n");
-			start = isp_matrix_lup[2];
+	        if(height==0) {
+	    	        start = isp_matrix_lup[2];
 			for(i=0;i<XML_CSC;i++)
-			{
-			        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
-					printk("xxx=%x,%x\n",RD(ISP_MATRIX_PRE_OFST0_1+i),*(start+i));
-			}
-			printk("xxx=%x\n",RD(ISP_MATRIX_COEF00_01));
-	    }
-		else
-		{
-		start = (height>720)?isp_matrix_lup[1]:isp_matrix_lup[0];
-		for(i=0;i<XML_CSC;i++)
-		        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
+			        WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));			
+	        }else{
+		        start = (height>720)?isp_matrix_lup[1]:isp_matrix_lup[0];
+		        for(i=0;i<XML_CSC;i++)
+		                WR(ISP_MATRIX_PRE_OFST0_1+i, *(start+i));
 		}
 	}
 }

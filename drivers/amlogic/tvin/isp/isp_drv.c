@@ -1052,6 +1052,9 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 		        devp->wave = param->xml_wave;
 		        torch_level(devp->flash.mode_pol_inv,devp->flash.led1_pol_inv,devp->flash.pin_mux_inv,devp->flash.torch_pol_inv,devp->wave,param->level);
 		        break;
+		case CMD_ISP_BYPASS:
+			isp_bypass_all();
+			break;
 	        default:
 		        break;
 	}

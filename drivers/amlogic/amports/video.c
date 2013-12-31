@@ -1803,11 +1803,13 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 	/* amvecm video latch function */
 	amvecm_video_latch();
 #endif
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     vdin_ops=get_vdin_v4l2_ops();
     if(vdin_ops){
 	arg.cmd = VDIN_CMD_ISR;
 	vdin_ops->tvin_vdin_func(1,&arg);
     }
+#endif
     vout_type = detect_vout_type();
     hold_line = calc_hold_line();
 

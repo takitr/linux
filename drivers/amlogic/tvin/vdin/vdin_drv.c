@@ -200,6 +200,21 @@ void vdin_timer_func(unsigned long arg)
 	devp->timer.expires = jiffies + VDIN_PUT_INTERVAL;
 	add_timer(&devp->timer);
 }
+static void parse_param(char *buf_orig,char **parm)
+{
+	char *ps, *token;
+	unsigned int n=0;
+	ps = buf_orig;
+        while(1) {
+                token = strsep(&ps, " \n");
+                if (token == NULL)
+                        break;
+                if (*token == '\0')
+                        continue;
+                parm[n++] = token;
+        }
+}
+
 static ssize_t sig_det_show(struct device *dev,struct device_attribute *attr,char *buf)
 {
 	return sprintf(buf,"%d\n",callmaster_status);
@@ -608,12 +623,12 @@ static void vdin_start_dec(struct vdin_dev_s *devp)
 	udelay(start_provider_delay);
 	vf_reg_provider(&devp->vprov);
 	vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_START,NULL);
-if(devp->parm.port != TVIN_PORT_VIU){
-        /*enable irq */
-        enable_irq(devp->irq);
-}
-        /*disable audio&video sync used for libplayer*/
-        tsync_set_enable(0);
+	if(devp->parm.port != TVIN_PORT_VIU){
+		/*enable irq */
+		enable_irq(devp->irq);
+	}
+	/*disable audio&video sync used for libplayer*/
+	tsync_set_enable(0);
 	/* enable system_time */
 	timestamp_pcrscr_enable(1);
 }
@@ -654,30 +669,36 @@ static void vdin_stop_dec(struct vdin_dev_s *devp)
 int start_tvin_service(int no ,vdin_parm_t *para)
 {
 	struct tvin_frontend_s *fe;
-        int ret = 0;
+	int ret = 0;
 	struct vdin_dev_s *devp = vdin_devp[no];
-        if(IS_ERR(devp)){
-                printk(KERN_ERR "[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
-                return -1;
-        }
+	if(IS_ERR(devp)){
+		printk(KERN_ERR "[vdin..]%s vdin%d has't registered,please register.\n",__func__,no);
+		return -1;
+	}
 	devp->start_time = jiffies_to_msecs(jiffies);
-        if (devp->flags & VDIN_FLAG_DEC_STARTED) {
-		pr_err("%s: port 0x%x, decode started already.\n",__func__,para->port);
+	if (devp->flags & VDIN_FLAG_DEC_STARTED) {
+	pr_err("%s: port 0x%x, decode started already.\n",__func__,para->port);
 		ret = -EBUSY;
 	}
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	if(para->port != TVIN_PORT_VIU){
-	ret = request_irq(devp->irq, vdin_v4l2_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
-        /*disable vsync irq until vdin configured completely*/
-        disable_irq_nosync(devp->irq);
+		ret = request_irq(devp->irq, vdin_v4l2_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
+		/*disable vsync irq until vdin configured completely*/
+		disable_irq_nosync(devp->irq);
 	}
-        /*config the vdin use default value*/
-        vdin_set_default_regmap(devp->addr_offset);
+#else
+	ret = request_irq(devp->irq, vdin_v4l2_isr, IRQF_SHARED, devp->irq_name, (void *)devp);
+	/*disable vsync irq until vdin configured completely*/
+	disable_irq_nosync(devp->irq);
+#endif
+	/*config the vdin use default value*/
+	vdin_set_default_regmap(devp->addr_offset);
 
-	devp->parm.port         = para->port;
-        #ifdef CONFIG_ARCH_MESON6
-        if(para->port == TVIN_PORT_ISP)
-                devp->parm.port = TVIN_PORT_CAMERA;
-        #endif
+	devp->parm.port = para->port;
+#ifdef CONFIG_ARCH_MESON6
+	if(para->port == TVIN_PORT_ISP)
+		devp->parm.port = TVIN_PORT_CAMERA;
+#endif
 	devp->parm.info.fmt     = para->fmt;
 	//add for camera random resolution
 	if(para->fmt >= TVIN_SIG_FMT_MAX){
@@ -761,8 +782,8 @@ int stop_tvin_service(int no)
 	devp->flags &= (~VDIN_FLAG_DEC_OPENED);
 	devp->flags &= (~VDIN_FLAG_DEC_STARTED);
 	if(devp->parm.port!= TVIN_PORT_VIU){
-	/* free irq */
-	free_irq(devp->irq,(void *)devp);
+		/* free irq */
+		free_irq(devp->irq,(void *)devp);
 	}
 	end_time = jiffies_to_msecs(jiffies);
 	pr_info("[vdin]:vdin start time:%ums,stop time:%ums,run time:%u.\n",devp->start_time,end_time,end_time-devp->start_time);
@@ -1308,19 +1329,6 @@ irq_handled:
 static unsigned char skip_ratio = 1;
 module_param(skip_ratio,uint,0664);
 MODULE_PARM_DESC(skip_ratio,"\n vdin skip frame ratio 1/ratio will reserved.\n");
-static unsigned int vsync_enter_line_max = 0;
-module_param(vsync_enter_line_max,uint,0664);
-MODULE_PARM_DESC(vsync_enter_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
-static unsigned int vsync_exit_line_max = 0;
-module_param(vsync_exit_line_max,uint,0664);
-MODULE_PARM_DESC(vsync_exit_line_max,"\n vdin skip frame ratio 1/ratio will reserved.\n");
-
-static unsigned int vsync_enter_line_curr = 0;
-module_param(vsync_enter_line_curr,uint,0664);
-MODULE_PARM_DESC(vsync_enter_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
-static unsigned int vsync_exit_line_curr = 0;
-module_param(vsync_exit_line_curr,uint,0664);
-MODULE_PARM_DESC(vsync_exit_line_curr,"\n vdin skip frame ratio 1/ratio will reserved.\n");
 
 static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 {
@@ -1335,25 +1343,8 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	int ret = 0;
 	if (!devp)
                 return IRQ_HANDLED;
-	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
-                case 0:
-                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
-                        break;
-                case 1:
-                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
-                        break;
-                case 2:
-                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
-                        break;
-                case 3:
-                        vsync_enter_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
-                        break;
-        }
-        if(vsync_enter_line_curr > vsync_enter_line_max)
-                vsync_enter_line_max = vsync_enter_line_curr;
-
 	isr_log(devp->vfp);
-                irq_cnt++;
+        irq_cnt++;
 	spin_lock_irqsave(&devp->isr_lock, flags);
         if(devp)
 	        /* avoid null pointer oops */
@@ -1366,6 +1357,8 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 	}
 	
         if(!vdin_write_done_check(devp->addr_offset, devp)){
+		if(vdin_dbg_en)
+			pr_info("[vdin.%u] write undone skiped.\n",devp->index);
                 goto irq_handled;
         }   
 
@@ -1464,23 +1457,6 @@ static irqreturn_t vdin_v4l2_isr(int irq, void *dev_id)
 
 
 irq_handled:
-	switch(READ_VCBUS_REG(VPU_VIU_VENC_MUX_CTRL)&0x3){
-		case 0:
-			vsync_exit_line_curr = (READ_VCBUS_REG(ENCL_INFO_READ)>>16)&0x1fff;
-			break;
-		case 1:
-			vsync_exit_line_curr = (READ_VCBUS_REG(ENCI_INFO_READ)>>16)&0x1fff;
-			break;
-		case 2:
-			vsync_exit_line_curr = (READ_VCBUS_REG(ENCP_INFO_READ)>>16)&0x1fff;
-			break;
-		case 3:
-			vsync_exit_line_curr = (READ_VCBUS_REG(ENCT_INFO_READ)>>16)&0x1fff;
-			break;
-	}
-	if(vsync_exit_line_curr > vsync_exit_line_max)
-		vsync_exit_line_max = vsync_exit_line_curr;
-
 	spin_unlock_irqrestore(&devp->isr_lock, flags);
 	isr_log(devp->vfp);
 	return IRQ_HANDLED;
@@ -2053,9 +2029,8 @@ static void vdin_dump_state(vdin_dev_t *devp)
 static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
 {
         unsigned int n=0, fps=0;
-        unsigned char ret=0;
-        char *buf_orig, *ps, *token;
-        char *parm[6] = {NULL};
+        char ret=0,*buf_orig,*parm[6] = {NULL};
+        cam_parameter_t tmp_isp;
         struct vdin_dev_s *devp;
 
         if(!buf)
@@ -2063,15 +2038,7 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
         buf_orig = kstrdup(buf, GFP_KERNEL);
         //printk(KERN_INFO "input cmd : %s",buf_orig);
         devp = dev_get_drvdata(dev);
-        ps = buf_orig;
-        while (1) {
-                token = strsep(&ps, " \n");
-                if (token == NULL)
-                        break;
-                if (*token == '\0')
-                        continue;
-                parm[n++] = token;
-        }
+        parse_param(buf_orig,&parm);
 
         if(!strcmp(parm[0],"cm2")){
 		set_chroma_regs(devp->addr_offset,devp->h_active,devp->v_active);
@@ -2080,8 +2047,13 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
 			fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
                 pr_info("%u f/s\n",fps);
         }else if(!strcmp(parm[0], "bypass_isp")){
-        vdin_bypass_isp(devp->addr_offset);
-        pr_info("vdin bypass isp.\n");
+                vdin_bypass_isp(devp->addr_offset);
+		if(devp->parm.port == TVIN_PORT_ISP){
+			tmp_isp.cam_command = CMD_ISP_BYPASS;
+			if(devp->frontend->dec_ops->ioctl)
+				devp->frontend->dec_ops->ioctl(devp->frontend,(void *)&tmp_isp);
+		}
+                pr_info("vdin bypass isp.\n");
         }
         else if(!strcmp(parm[0],"capture")){
 		if(parm[3] != NULL){
@@ -2349,20 +2321,6 @@ static ssize_t vdin_isr_log_store(struct device *dev,
 
 static DEVICE_ATTR(isr_log,  0664, vdin_isr_log_show, vdin_isr_log_store);
 #endif
-static void parse_param(char *buf_orig,char **parm)
-{
-	char *ps, *token;
-	unsigned int n=0;
-	ps = buf_orig;
-        while(1) {
-                token = strsep(&ps, " \n");
-                if (token == NULL)
-                        break;
-                if (*token == '\0')
-                        continue;
-                parm[n++] = token;
-        }
-}
 
 static ssize_t vdin_crop_show(struct device * dev,
 struct device_attribute *attr, char * buf)

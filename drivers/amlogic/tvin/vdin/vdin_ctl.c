@@ -473,12 +473,12 @@ static inline void vdin_set_top(unsigned int offset, enum tvin_port_e port, enum
 			break;
 		case 0x80: // dvin
 			vdin_mux = VDIN_MUX_DVIN;
-			WR_BITS(VDIN_ASFIFO_CTRL3, 0xe4, VDI6_ASFIFO_CTRL_BIT, VDI6_ASFIFO_CTRL_WID);
+			WR_BITS(VDIN_ASFIFO_CTRL3, 0xe2, VDI6_ASFIFO_CTRL_BIT, VDI6_ASFIFO_CTRL_WID);
 			break;
-                case 0xc0:
-                        vdin_mux = VDIN_MUX_VIU;
-			WR_BITS(VDIN_ASFIFO_CTRL3, 0xe2, VDI7_ASFIFO_CTRL_BIT, VDI7_ASFIFO_CTRL_WID);
-                        break;
+		case 0xc0: //viu
+			vdin_mux = VDIN_MUX_VIU;
+			WR_BITS(VDIN_ASFIFO_CTRL3, 0xf4, VDI6_ASFIFO_CTRL_BIT, VDI6_ASFIFO_CTRL_WID);
+			break;
 		case 0x100://mipi in mybe need modify base on truth
 			vdin_mux = VDIN_MUX_MIPI;
 			WR_BITS(VDIN_ASFIFO_CTRL3, 0xe0, VDI7_ASFIFO_CTRL_BIT, VDI7_ASFIFO_CTRL_WID);
@@ -1358,7 +1358,7 @@ inline void vdin_set_default_regmap(unsigned int offset)
 	// [    2]  asfifo_656.rst_on_vs        = 0
 	// [    1]  asfifo_656.clr_ov_flag      = 0
 	// [    0]  asfifo_656.rst              = 0
-	WR(VDIN_ASFIFO_CTRL0, 0x00e400e0);
+	//WR(VDIN_ASFIFO_CTRL0, 0x00000000);
 	// [   23] asfifo_hdmi.de_en            = 1
 	// [   22] asfifo_hdmi.vs_en            = 1
 	// [   21] asfifo_hdmi.hs_en            = 1
@@ -1375,7 +1375,7 @@ inline void vdin_set_default_regmap(unsigned int offset)
 	// [    2] asfifo_cvd2.rst_on_vs        = 1
 	// [    1] asfifo_cvd2.clr_ov_flag      = 0
 	// [    0] asfifo_cvd2.rst              = 0
-	WR(VDIN_ASFIFO_CTRL1, 0x00e400e4);
+	//WR(VDIN_ASFIFO_CTRL1, 0x00000000);
 	// [28:16]         top.input_width_m1   = 0
 	// [12: 0]         top.output_width_m1  = 0
 	WR(VDIN_WIDTHM1I_WIDTHM1O, 0x00000000);
@@ -1408,10 +1408,10 @@ inline void vdin_set_default_regmap(unsigned int offset)
 	// [    2] asfifo_dvin.rst_on_vs        = 1
 	// [    1] asfifo_dvin.clr_ov_flag      = 0
 	// [    0] asfifo_dvin.rst              = 0
-	WR(VDIN_ASFIFO_CTRL2, 0x000000e4);
+	//WR(VDIN_ASFIFO_CTRL2, 0x00000000);
         //Bit 15:8 vdi7 asfifo_ctrl
 	//Bit 7:0 vdi6 asfifo_ctrl
-	WR(VDIN_ASFIFO_CTRL3, 0x000000e2);
+	//WR(VDIN_ASFIFO_CTRL3, 0x00000000);
 
 
 	// [    0]      matrix.en               = 0 ***sub_module.enable***
@@ -2084,7 +2084,7 @@ void vdin_set_cm2(unsigned int offset,unsigned int w,unsigned int h,unsigned int
 		WR(VDIN_CHROMA_DATA_PORT,cm2[160+i]);
 	}
 	/*config cm2 frame size*/
-	WR(VDIN_CHROMA_ADDR_PORT,0x205);
+	WR(VDIN_CHROMA_ADDR_PORT,FRM_SIZE_REG);
 	WR(VDIN_CHROMA_DATA_PORT,h<<16|w);
 	
     WR_BITS(VDIN_CM_BRI_CON_CTRL, 1, CM_TOP_EN_BIT,CM_TOP_EN_WID);
