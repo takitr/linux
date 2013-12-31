@@ -8,7 +8,7 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
-#include <linux/amports/amstream.h>
+#include <linux/amlogic/amports/amstream.h>
 
 #include <linux/amlogic/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
