@@ -34,7 +34,7 @@
 #define AML_NFTL_BOUNCE_SIZE	 		0x40000
 
 #define NFTL_MAX_SCHEDULE_TIMEOUT		         1000
-#define NFTL_FLUSH_DATA_TIME			         8
+#define NFTL_FLUSH_DATA_TIME			         1
 #define NFTL_CACHE_FORCE_WRITE_LEN               16
 
 
