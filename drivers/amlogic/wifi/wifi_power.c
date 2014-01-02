@@ -97,6 +97,7 @@ static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long a
     		usb_wifi_power(1);
     		mdelay(500);
    	        usb_wifi_power(0);
+   	        mdelay(500);
     
     		printk(KERN_INFO "Set usb wifi power up!\n");
     		break;
