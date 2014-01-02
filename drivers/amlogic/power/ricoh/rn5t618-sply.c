@@ -194,6 +194,9 @@ EXPORT_SYMBOL_GPL(rn5t618_get_gpio);
 
 void rn5t618_power_off()
 {
+    rn5t618_set_gpio(0, 1);
+    rn5t618_set_gpio(1, 1);
+    msleep(100);
     RICOH_DBG("%s, send power off command\n", __func__);
     rn5t618_set_bits(0x000f, 0x00, 0x01);                       // do not re-power-on system
     rn5t618_set_bits(0x000E, 0x01, 0x01);                       // software power off PMU
