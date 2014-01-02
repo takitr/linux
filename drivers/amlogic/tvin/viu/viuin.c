@@ -78,7 +78,7 @@ static unsigned int vsync_enter_line_max = 0;
 module_param(vsync_enter_line_max,uint,0664);
 MODULE_PARM_DESC(vsync_enter_line_max,"\n max encoder process line num when enter isr.\n");
 
-static unsigned int vsync_enter_line_threshold = 23;
+static unsigned int vsync_enter_line_threshold = 10000;
 module_param(vsync_enter_line_threshold,uint,0664);
 MODULE_PARM_DESC(vsync_enter_line_threshold,"\n max encoder process line num over threshold drop the frame.\n");
 
