@@ -445,7 +445,7 @@ static inline void vdin_set_top(unsigned int offset, enum tvin_port_e port, enum
 			break;
 		case 0x02: // bt656
 			vdin_mux = VDIN_MUX_656;
-			WR_BITS(VDIN_ASFIFO_CTRL0, 0xe4, VDI2_ASFIFO_CTRL_BIT, VDI2_ASFIFO_CTRL_WID);			
+			WR_BITS(VDIN_ASFIFO_CTRL0, 0xe4, VDI1_ASFIFO_CTRL_BIT, VDI1_ASFIFO_CTRL_WID);			
 			break;
 		case 0x04: // VGA
 			vdin_mux = VDIN_MUX_TVFE;
