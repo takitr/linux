@@ -55,7 +55,6 @@ static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
 static unsigned int isr_debug = 0;
 static volatile unsigned int ae_flag = 0;
-static volatile unsigned int ae_new_step = 60;
 extern struct isp_ae_to_sensor_s ae_sens;
 static unsigned int def_config = 0;
 static void parse_param(char *buf_orig,char **parm)
@@ -603,9 +602,7 @@ static ssize_t gamma_store(struct class *cls,
 			 const char *buffer, size_t count)
 {
 
-	int n = 0;
-	char *buf_orig, *ps, *token;
-	char *parm[4];
+	char *buf_orig, *parm[4];
 	unsigned short *gammaR, *gammaG, *gammaB;
 	unsigned int gamma_count;
 	char gamma[4];
@@ -619,15 +616,7 @@ static ssize_t gamma_store(struct class *cls,
 	gammaB = kmalloc(257 * sizeof(unsigned short), GFP_KERNEL);
 
 	buf_orig = kstrdup(buffer, GFP_KERNEL);
-	ps = buf_orig;
-	while (1) {
-		token = strsep(&ps, " \n");
-		if (token == NULL)
-			break;
-		if (*token == '\0')
-			continue;
-		parm[n++] = token;
-	}
+	parse_param(buf_orig,(char **)&parm);
 
 	if ((parm[0][0] == 's') && (parm[0][1] == 'g')) {
 		memset(gammaR, 0, 257 * sizeof(unsigned short));
@@ -674,63 +663,53 @@ static DEVICE_ATTR(gamma, 0664, gamma_show, gamma_store);
 
 static ssize_t ls_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    ssize_t len = 0;
+        ssize_t len = 0;
 
-    len += sprintf(buf+len," command format:\n");
-    len += sprintf(buf+len," echo psize_v2h ocenter_c2l ocenter_c2t gain_0db curvature_gr curvature_r curvature_b curvature_gb force_enable > ... \n");
+        len += sprintf(buf+len," command format:\n");
+        len += sprintf(buf+len," echo psize_v2h ocenter_c2l ocenter_c2t gain_0db curvature_gr curvature_r curvature_b curvature_gb force_enable > ... \n");
 
-    len += sprintf(buf+len," Example:\n");
-    len += sprintf(buf+len," echo enable 100 50 50 0 120 120 120 120 1 > /sys/class/isp/isp0/lens \n");
+        len += sprintf(buf+len," Example:\n");
+        len += sprintf(buf+len," echo enable 100 50 50 0 120 120 120 120 1 > /sys/class/isp/isp0/lens \n");
 
-    return len;
+        return len;
 }
 
 static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
 {
-	int n = 0;
-	char *buf_orig, *ps, *token;
-	char *parm[10] = {NULL};
-    isp_dev_t *devp;
+	char *buf_orig, *parm[10]={NULL};
+        isp_dev_t *devp;
 	devp = dev_get_drvdata(dev);
 	isp_info_t *info = &devp->info;
-    unsigned int psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, curvature_gr,curvature_r;
-    unsigned int curvature_b,curvature_gb;
-    bool force_enable;
+        unsigned int psize_v2h,hactive,vactive,ocenter_c2l,ocenter_c2t,gain_0db, curvature_gr,curvature_r;
+        unsigned int curvature_b,curvature_gb;
+        bool force_enable;
 
 	/* to avoid the bellow warning message while compiling:
 	 * warning: the frame size of 1576 bytes is larger than 1024 bytes
 	 */
-    if(!buf)
-        return len;
+        if(!buf)
+                return len;
 
 	buf_orig = kstrdup(buf, GFP_KERNEL);
-	ps = buf_orig;
-	while (1) {
-		token = strsep(&ps, " \n");
-		if (token == NULL)
-			break;
-		if (*token == '\0')
-			continue;
-		parm[n++] = token;
-	}
+	parse_param(buf_orig,(char **)&parm);
 	if(!strcmp(parm[0],"enable")) {
-	    psize_v2h = simple_strtoul(     parm[1],NULL,10);
-	    ocenter_c2l = simple_strtoul(   parm[2],NULL,10);
-	    ocenter_c2t = simple_strtoul(   parm[3],NULL,10);
-	    gain_0db = simple_strtoul(      parm[4],NULL,10);
-	    curvature_gr = simple_strtoul(  parm[5],NULL,10);
-	    curvature_r = simple_strtoul(   parm[6],NULL,10);
-        curvature_b = simple_strtoul(   parm[7],NULL,10);
-        curvature_gb = simple_strtoul(  parm[8],NULL,10);
-        force_enable = simple_strtoul(  parm[9],NULL,10);
+	        psize_v2h = simple_strtoul(     parm[1],NULL,10);
+	        ocenter_c2l = simple_strtoul(   parm[2],NULL,10);
+	        ocenter_c2t = simple_strtoul(   parm[3],NULL,10);
+	        gain_0db = simple_strtoul(      parm[4],NULL,10);
+	        curvature_gr = simple_strtoul(  parm[5],NULL,10);
+	        curvature_r = simple_strtoul(   parm[6],NULL,10);
+                curvature_b = simple_strtoul(   parm[7],NULL,10);
+                curvature_gb = simple_strtoul(  parm[8],NULL,10);
+                force_enable = simple_strtoul(  parm[9],NULL,10);
 
-        pr_info("psize_v2h:%u hactive:%u vactive:%u ocenter_c2l:%u ocenter_c2t:%u gain_0db:%u curvature_gr:%u curvature_r:%u curvature_b:%u curvature_gb:%u force_enable:%u \n", \
-            psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
-            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
+                pr_info("psize_v2h:%u hactive:%u vactive:%u ocenter_c2l:%u ocenter_c2t:%u gain_0db:%u curvature_gr:%u curvature_r:%u curvature_b:%u curvature_gb:%u force_enable:%u \n", \
+                psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
+                curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
 
-        isp_ls_curve(psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
-            curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
-    }
+                isp_ls_curve(psize_v2h,info->h_active,info->v_active,ocenter_c2l,ocenter_c2t,gain_0db, \
+                curvature_gr,curvature_r, curvature_b,curvature_gb,force_enable);
+        }
 	kfree(buf_orig);
 
 	return len;
@@ -738,47 +717,91 @@ static ssize_t ls_store(struct device *dev,struct device_attribute *attr,const c
 
 static DEVICE_ATTR(lens, 0664, ls_show, ls_store);
 
+/*
+*get aet current state
+*cat /sys/class/isp/isp0/aet
+*set aet new step
+*echo x >/sys/class/isp/isp0/aet
+*/
+static ssize_t aet_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+        ssize_t len = 0;
+	struct cam_function_s *cam_func;
+	isp_dev_t *devp = dev_get_drvdata(dev);
+    
+        if(!buf)
+                return len;
+	if(devp->cam_param)
+		cam_func = &(devp->cam_param->cam_function);
+	else
+		return len;
+        len += sprintf(buf+len,"aet_current_step: %u.\n",cam_func->get_aet_current_step(cam_func->priv_data));
+        len += sprintf(buf+len,"aet_current_gain:%u.\n",cam_func->get_aet_current_gain(cam_func->priv_data));
+        len += sprintf(buf+len,"aet_min_gain:%u.\n",cam_func->get_aet_min_gain(cam_func->priv_data));
+        len += sprintf(buf+len,"aet_max_gain:%u.\n",cam_func->get_aet_max_gain(cam_func->priv_data));
+        len += sprintf(buf+len,"aet_max_step:%u.\n",cam_func->get_aet_max_step(cam_func->priv_data));
+
+        return len;
+}
+
+static ssize_t aet_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
+{
+	char *buf_orig,*parm[4]={NULL};
+	struct cam_function_s *cam_func;
+        isp_dev_t *devp=dev_get_drvdata(dev);
+    
+        if(!buf)
+                return len;	
+	buf_orig = kstrdup(buf, GFP_KERNEL);
+	parse_param(buf_orig,(char **)&parm);
+	if(devp->cam_param)
+		cam_func = &(devp->cam_param->cam_function);
+	else
+		return len;
+	
+	if(parm[0]){
+		unsigned int step = simple_strtol(parm[0],NULL,10);
+		cam_func->set_aet_new_step(cam_func->priv_data,step,1,1);
+	}
+	
+	kfree(buf_orig);
+
+	return len;
+}
+
+static DEVICE_ATTR(aet, 0664, aet_show, aet_store);
+
 #ifndef USE_WORK_QUEUE
 static int isp_thread(isp_dev_t *devp) {
 	unsigned newstep = 0;
 	struct cam_function_s *func = &devp->cam_param->cam_function;
 	printk("isp_thread is run! \n");
 	while (1) {
-		//printk("ae_flag = %d\n",ae_flag);
-	if(ae_flag&0x1)
-	{
-		ae_flag &= (~0x1);
-		printk("set new step %d \n",ae_new_step);
-		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(func->priv_data,ae_new_step,true,true);
-	}
-	if(ae_flag&0x2)
-	{
-		ae_flag &= (~0x2);
-		newstep = isp_tune_exposure(devp);
-		printk("set new step2 %d \n",newstep);
-		if(func&&func->set_aet_new_step)
-		func->set_aet_new_step(func->priv_data,newstep,true,true);
-	}
-	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
-	{
-		if(isp_debug)
-			printk("[isp] set new step:%d \n",ae_sens.new_step);
-		if(ae_adjust_enable)
-			func->set_aet_new_step(func->priv_data,ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
-		atomic_set(&devp->ae_info.writeable,0);
-	}
-	if(devp->flag&ISP_FLAG_AF_DBG){
-		af_stat(devp->af_dbg,func);
-	}
-	if(devp->flag & ISP_AF_SM_MASK) {
-		if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
-			func->set_af_new_step(func->priv_data,devp->af_info.cur_step);
-			atomic_set(&devp->af_info.writeable,0);
-		}
-	}
-        if(kthread_should_stop())
-                break;
+	        if(ae_flag&0x2) {
+		        ae_flag &= (~0x2);
+		        newstep = isp_tune_exposure(devp);
+		        printk("set new step2 %d \n",newstep);
+		        if(func&&func->set_aet_new_step)
+		                func->set_aet_new_step(func->priv_data,newstep,true,true);
+	        }
+	        if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step){
+		        if(isp_debug)
+			        printk("[isp] set new step:%d \n",ae_sens.new_step);
+		        if(ae_adjust_enable)
+			        func->set_aet_new_step(func->priv_data,ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
+		        atomic_set(&devp->ae_info.writeable,0);
+	        }
+	        if(devp->flag&ISP_FLAG_AF_DBG){
+		        af_stat(devp->af_dbg,func);
+	        }
+	        if(devp->flag & ISP_AF_SM_MASK) {
+		        if(atomic_read(&devp->af_info.writeable)&&func&&func->set_af_new_step){
+			        func->set_af_new_step(func->priv_data,devp->af_info.cur_step);
+			        atomic_set(&devp->af_info.writeable,0);
+		        }
+	        }
+                if(kthread_should_stop())
+                        break;
 	}
 }
 
@@ -1179,25 +1202,17 @@ static void  isp_do_work(struct work_struct *work)
 			isp_af_detect(devp);
 		}
 	}
-	if(ae_flag&0x1)
-	{
-		ae_flag &= (~0x1);
-		printk("set new step %d \n",ae_new_step);
-		if(func&&func->set_aet_new_step)
-			func->set_aet_new_step(func->priv_data,ae_new_step,true,true);
-	}
-	if(ae_flag&0x2)
-	{
+
+	if(ae_flag&0x2)	{
 		ae_flag &= (~0x2);
 		newstep = isp_tune_exposure(devp);
 		printk("wq:set new step2 %d \n",newstep);
 		if(func&&func->set_aet_new_step)
 			func->set_aet_new_step(func->priv_data,newstep,true,true);
 	}
-	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)
-	{
+	if(atomic_read(&devp->ae_info.writeable)&&func&&func->set_aet_new_step)	{
 		if(isp_debug)
-		printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
+		        printk("[isp] wq:set new step:%d \n",ae_sens.new_step);
 		if(ae_adjust_enable)
 			func->set_aet_new_step(func->priv_data,ae_sens.new_step,ae_sens.shutter,ae_sens.gain);
 		atomic_set(&devp->ae_info.writeable,0);
@@ -1317,6 +1332,7 @@ static int isp_probe(struct platform_device *pdev)
 	ret = device_create_file(devp->dev,&dev_attr_gamma_debug);
 	ret = device_create_file(devp->dev,&dev_attr_gamma);
 	ret = device_create_file(devp->dev,&dev_attr_lens);
+	ret = device_create_file(devp->dev,&dev_attr_aet);
 	if(ret < 0)
 		goto err;
 
@@ -1431,9 +1447,6 @@ MODULE_PARM_DESC(ae_flag,"\n debug flag for ae_flag.\n");
 
 module_param(af_pr,uint,0664);
 MODULE_PARM_DESC(af_pr,"\n debug flag for af print.\n");
-
-module_param(ae_new_step,uint,0664);
-MODULE_PARM_DESC(ae_new_step,"\n debug flag for ae_new_step.\n");
 
 module_param(ioctl_debug,uint,0664);
 MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
