@@ -41,30 +41,15 @@ static unsigned int ae_step = 1;
 module_param(ae_step,uint,0664);
 MODULE_PARM_DESC(ae_step,"\n debug flag for ae.\n");
 
-static unsigned int awb_debug = 0;
+#define AWB_RGB_BLEND_DG		0x00000001
+#define AWB_TEMP_CHECK_DG		0x00000002
+#define AWB_TEMP_ADJUST_DG		0x00000004
+#define AWB_GAIN_SET_DG			0x00000008
+#define AWB_RGB_COUNT_CHECK_DG		0x00000010
 
-module_param(awb_debug,uint,0664);
-MODULE_PARM_DESC(awb_debug,"\n debug flag for awb.\n");
-
-static unsigned int awb_debug1 = 0;
-
-module_param(awb_debug1,uint,0664);
-MODULE_PARM_DESC(awb_debug1,"\n debug flag for awb.\n");
-
-static unsigned int awb_debug2 = 0;
-
-module_param(awb_debug2,uint,0664);
-MODULE_PARM_DESC(awb_debug2,"\n debug flag for awb.\n");
-
-static unsigned int awb_debug3 = 1;
-
-module_param(awb_debug3,uint,0664);
-MODULE_PARM_DESC(awb_debug3,"\n debug flag for awb.\n");
-
-static unsigned int awb_debug4 = 0;
-
-module_param(awb_debug4,uint,0664);
-MODULE_PARM_DESC(awb_debug4,"\n debug flag for awb.\n");
+static unsigned int awb_sm_dg = AWB_GAIN_SET_DG;
+module_param(awb_sm_dg,uint,0664);
+MODULE_PARM_DESC(awb_sm_dg,"\n debug flag for awb.\n");
 
 static unsigned int exposure_extra = 1024;
 module_param(exposure_extra,uint,0664);
@@ -434,7 +419,7 @@ void isp_ae_sm(isp_dev_t *devp)
 							//targ = aep->targetlow;
 							if((sum > aepa->max_lumasum4)||((sum > aepa->max_lumasum3)&&(temp==2))){
 								temp = 2;
-								aepa->targ--;
+								aepa->targ-=2;
 								if(aepa->targ<(aep->targetmid-aep->ae_min_diff))
 									aepa->targ = aep->targetmid-aep->ae_min_diff;
 							}
@@ -696,8 +681,8 @@ void isp_awb_sm(isp_dev_t *devp)
 						//printk("step1 = %d\n",step);
 						break;
 					case AWB_RGB_COUNT_CHECK:
-						if(awb_debug4)
-							printk("awb->rgb.rgb_count=%d\n",awb->rgb.rgb_count);
+						if(awb_sm_dg&AWB_RGB_COUNT_CHECK_DG)
+							pr_info("awb->rgb.rgb_count=%d\n",awb->rgb.rgb_count);
 						if(awb->rgb.rgb_count >= awba->countlimitrgb)
 							step = AWB_CALCULATE_RGB;
 						else
@@ -829,8 +814,8 @@ void isp_awb_sm(isp_dev_t *devp)
 						r[4] = (r[0]*awbp->coef_r[0]+r[1]*awbp->coef_r[1]+r[2]*awbp->coef_r[2]+r[3]*awbp->coef_r[3])>>8;
 						g[4] = (g[0]*awbp->coef_g[0]+g[1]*awbp->coef_g[1]+g[2]*awbp->coef_g[2]+g[3]*awbp->coef_g[3])>>8;
 						b[4] = (b[0]*awbp->coef_b[0]+b[1]*awbp->coef_b[1]+b[2]*awbp->coef_b[2]+b[3]*awbp->coef_b[3])>>8;
-						if(awb_debug)
-							printk("r=%d,%d,%d,%d,%d,g=%d,%d,%d,%d,%d,b=%d,%d,%d,%d,%d\n",r[0],r[1],r[2],r[3],r[4],g[0],g[1],g[2],g[3],g[4],b[0],b[1],b[2],b[3],b[4]);
+						if(awb_sm_dg&AWB_RGB_BLEND_DG)
+							pr_info("r=%d,%d,%d,%d,%d,g=%d,%d,%d,%d,%d,b=%d,%d,%d,%d,%d\n",r[0],r[1],r[2],r[3],r[4],g[0],g[1],g[2],g[3],g[4],b[0],b[1],b[2],b[3],b[4]);
 						if(sm_state.env == ENV_HIGH)
 						{
 							isp_set_awb_yuv_thr(awbp->thr_yh_h, awbp->thr_yl_h, awbp->thr_du_h, awbp->thr_dv_h);
@@ -856,8 +841,8 @@ void isp_awb_sm(isp_dev_t *devp)
 						}
 						rg = (r[4] << 10)/g[4];
 						bg = (b[4] << 10)/g[4];
-						if(awb_debug1)
-							printk("rg=%d,bg=%d\n",rg,bg);
+						if(awb_sm_dg&AWB_TEMP_CHECK_DG)
+							pr_info("rg=%d,bg=%d\n",rg,bg);
 						if(((awba->status == ISP_AWB_STATUS_UNSTABLE) && ((rg > 1024 + awbp->inner_rg)||(rg < 1024 - awbp->inner_rg)))
 							||((rg > 1024 + awbp->outer_rg)||(rg < 1024 - awbp->outer_rg))
 							||((awba->status == ISP_AWB_STATUS_UNSTABLE) && ((bg > 1024 + awbp->inner_bg)||(bg < 1024 - awbp->inner_bg)))
@@ -873,8 +858,8 @@ void isp_awb_sm(isp_dev_t *devp)
 					case AWB_TEMP_ADJUST:
 						awba->status = ISP_AWB_STATUS_UNSTABLE;
 						isp_awb_get_gain(&awb_gain);
-						if(awb_debug2)
-							printk("r_val=%d,b_val=%d\n",awb_gain.r_val,awb_gain.b_val);
+						if(awb_sm_dg&AWB_TEMP_ADJUST_DG)
+							pr_info("r_val=%d,b_val=%d\n",awb_gain.r_val,awb_gain.b_val);
 						target_r = (awb_gain.r_val<<10)/rg;
 						target_b = (awb_gain.b_val<<10)/bg;
 						//awbp->r_max = 282;
@@ -884,8 +869,8 @@ void isp_awb_sm(isp_dev_t *devp)
 						//awbp->g_min = 128;
 						//awbp->b_min = 200;
 
-						if(awb_debug2)
-							printk("target_r=%d,target_b=%d\n",target_r,target_b);
+						if(awb_sm_dg&AWB_TEMP_ADJUST_DG)
+							pr_info("target_r=%d,target_b=%d\n",target_r,target_b);
 						if(target_r > awbp->r_max)
 							target_r = awbp->r_max;
 						if(target_r < awbp->r_min)
@@ -894,7 +879,7 @@ void isp_awb_sm(isp_dev_t *devp)
 							target_b = awbp->b_max;
 						if(target_b < awbp->b_min)
 							target_b = awbp->b_min;
-						if(awb_debug3)
+						if(awb_sm_dg&AWB_GAIN_SET_DG)
 							isp_awb_set_gain(target_r,awb_gain.g_val,target_b);
 						//r_val = target_r;
 						//b_val = target_b;
