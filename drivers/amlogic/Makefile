@@ -106,6 +106,7 @@ obj-$(CONFIG_RTL8192CU) += ../../../hardware/wifi/realtek/drivers/8192cu/rtl8xxx
 obj-$(CONFIG_RTL8192DU) += ../../../hardware/wifi/realtek/drivers/8192du/rtl8xxx_DU/
 obj-$(CONFIG_RTL8192EU) += ../../../hardware/wifi/realtek/drivers/8192eu/rtl8192EU/
 obj-y += bluetooth/
+obj-$(CONFIG_MESON_NFC) += nfc/
 #obj-y += camera/
 #obj-$(CONFIG_AMLOGIC_MODEM) += modem/
 #obj-$(CONFIG_AM_DEBUG) += debug/

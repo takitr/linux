@@ -60,7 +60,8 @@ isource "../hardware/wifi/realtek/drivers/8192eu/rtl8192EU/Kconfig"
 source "drivers/amlogic/bluetooth/Kconfig"
 #3G module power manager
 #source "drivers/amlogic/modem/Kconfig"
-
+#nfc
+source "drivers/amlogic/nfc/Kconfig"
 #
 #  Audio
 #
