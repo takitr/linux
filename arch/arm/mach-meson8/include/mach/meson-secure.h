@@ -63,6 +63,10 @@
 #define TRUSTZONE_HAL_API_STORAGE               0x200
 #define TRUSTZONE_HAL_API_MEMCONFIG             0x300
 
+#define MESON_TRUSTZONE_MEM_START               0x3c000000
+#define MESON_TRUSTZONE_MEM_SIZE                0x04000000
+
+
 #ifndef __ASSEMBLER__
 extern void meson_smc1(u32 fn, u32 arg);
 extern int meson_smc_hal_api(u32 cmdidx, u32 arg);
@@ -78,6 +82,8 @@ extern uint32_t meson_secure_reg_read(uint32_t addr);
 extern uint32_t meson_secure_reg_write(uint32_t addr, uint32_t val);
 extern u32 meson_read_socrev1(void);
 extern u32 meson_read_socrev2(void);
+extern uint32_t meson_secure_mem_size(vold);
+extern uint32_t meson_secure_mem_end(vold);
 
 // efuse HAL_API arg
 struct efuse_hal_api_arg{

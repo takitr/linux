@@ -176,3 +176,13 @@ uint32_t meson_secure_reg_write(uint32_t addr, uint32_t val)
 
 	return ret;
 }
+
+uint32_t meson_secure_mem_size(vold)
+{
+	return MESON_TRUSTZONE_MEM_SIZE;
+}
+
+uint32_t meson_secure_mem_end(vold)
+{
+	return (MESON_TRUSTZONE_MEM_START + MESON_TRUSTZONE_MEM_SIZE);
+}

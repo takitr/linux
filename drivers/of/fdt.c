@@ -25,6 +25,10 @@
 
 #include <asm/page.h>
 
+#ifdef CONFIG_MESON_TRUSTZONE
+#include <mach/meson-secure.h>
+#endif
+
 char *of_fdt_get_string(struct boot_param_header *blob, u32 offset)
 {
 	return ((char *)blob) +
@@ -784,7 +788,17 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	else
 		total =  of_read_number(reg,1);
 
+#ifndef CONFIG_MESON_TRUSTZONE
 	early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+total-aml_reserved_end-1);
+#else
+	if (total > meson_secure_mem_end()) {
+		early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+meson_secure_mem_end()-aml_reserved_end-meson_secure_mem_size()-1);
+		early_init_dt_add_memory_arch(meson_secure_mem_end(),MEM_BLOCK1_START+total-meson_secure_mem_end());
+	} else {
+		early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+total-aml_reserved_end-meson_secure_mem_size()-1);
+	}
+#endif
+
 	pr_info("total is %llx \n ",total);
 #else
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
