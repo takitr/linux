@@ -376,7 +376,7 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 	int old_tsync_mode=tsync_mode;
 	int old_tsync_av_mode=tsync_av_mode;
 	char VA[]="VA--";
-       unsigned int olddur=tsync_av_dynamic_duration_ms;
+       unsigned int oldtimeout=tsync_av_dynamic_timeout_ms;
 	
 	printk("%c-discontinue,pcr=%d,vpts=%d,apts=%d,diff_pts=%lu,jump_Pts=%d\n",mode,timestamp_pcrscr_get(),timestamp_vpts_get(),timestamp_apts_get(),diff_pts,jump_pts);
 	if (!tsync_enable) {
@@ -452,7 +452,7 @@ static int tsync_mode_switch(int mode,unsigned long diff_pts,int jump_pts)
 
 
 	
-	if(olddur!=tsync_av_dynamic_duration_ms){/*duration changed,update new timeout.*/
+	if(oldtimeout!=tsync_av_latest_switch_time_ms+tsync_av_dynamic_duration_ms){/*duration changed,update new timeout.*/
 			tsync_av_dynamic_timeout_ms=tsync_av_latest_switch_time_ms+tsync_av_dynamic_duration_ms;
 	}
 	printk("discontinue-tsync_mode:%c->%c,state:%c->%c,debugcnt=0x%x,diff_pts=%lu,tsync_mode=%d\n",
