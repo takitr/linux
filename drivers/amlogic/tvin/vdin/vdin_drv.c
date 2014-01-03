@@ -2024,7 +2024,7 @@ static void vdin_dump_state(vdin_dev_t *devp)
 * echo output2nr >/sys/class/vdin/vdin0/attr
 * echo output2mem >/sys/class/vdin/vdin0/attr
 * 6.modify for vdin fmt & color fmt convertion
-* echo w h cfmt >/sys/class/isp/isp0/attr
+* echo convertion w h cfmt >/sys/class/vdin/vdin0/attr
 */
 static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,const char *buf, size_t len)
 {
@@ -2046,14 +2046,6 @@ static ssize_t vdin_attr_store(struct device *dev,struct device_attribute *attr,
 		if(devp->cycle)
 			fps = (VDIN_CRYSTAL + (devp->cycle>>3))/devp->cycle;
                 pr_info("%u f/s\n",fps);
-        }else if(!strcmp(parm[0], "bypass_isp")){
-                vdin_bypass_isp(devp->addr_offset);
-		if(devp->parm.port == TVIN_PORT_ISP){
-			tmp_isp.cam_command = CMD_ISP_BYPASS;
-			if(devp->frontend->dec_ops->ioctl)
-				devp->frontend->dec_ops->ioctl(devp->frontend,(void *)&tmp_isp);
-		}
-                pr_info("vdin bypass isp.\n");
         }
         else if(!strcmp(parm[0],"capture")){
 		if(parm[3] != NULL){
@@ -2266,28 +2258,42 @@ static ssize_t vdin_vf_log_store(struct device * dev,
    echo print > /sys/class/vdin/vdin1/vf_log
  */
 static DEVICE_ATTR(vf_log, 0664, vdin_vf_log_show, vdin_vf_log_store);
-/*
-   static ssize_t vdin_isr_time_show(struct device * dev,
-   struct device_attribute *attr, char * buf)
-   {
-   int len = 0;
-   struct vdin_dev_s *devp = dev_get_drvdata(dev);
+#endif //VF_LOG_EN
 
-   len += sprintf(buf + len, "interval:%lu, min:%lu, max:%lu, average:%lu less5ms:%lu of %llu\n", devp->v.isr_interval,
-   devp->v.min_isr_time, devp->v.max_isr_time, devp->v.avg_isr_time,
-   devp->v.less_5ms_cnt, devp->v.isr_count);
+static ssize_t vdin_debug_for_isp_show(struct device * dev,
+   struct device_attribute *attr, char * buf)
+{
+   int len = 0;
+   
    return len;
    }
 
-   static ssize_t vdin_isr_time_store(struct device * dev,
+static ssize_t vdin_debug_for_isp_store(struct device * dev,
    struct device_attribute *attr, const char * buf, size_t count)
-   {
-   return count;
-   }
+{
+        char ret=0,*buf_orig,*parm[6] = {NULL};
+        cam_parameter_t tmp_isp;
+        struct vdin_dev_s *devp;
 
-   static DEVICE_ATTR(isr_time, 0664, vdin_isr_time_show, vdin_isr_time_store);
- */
-#endif //VF_LOG_EN
+        if(!buf)
+		return count;
+        buf_orig = kstrdup(buf, GFP_KERNEL);
+        devp = dev_get_drvdata(dev);
+        parse_param(buf_orig,&parm);
+
+	if(!strcmp(parm[0], "bypass_isp")){
+                vdin_bypass_isp(devp->addr_offset);
+		tmp_isp.cam_command = CMD_ISP_BYPASS;
+		if(devp->frontend->dec_ops->ioctl)
+			devp->frontend->dec_ops->ioctl(devp->frontend,(void *)&tmp_isp);
+		pr_info("vdin bypass isp for raw data.\n");              
+        }
+        return count;
+}
+
+static DEVICE_ATTR(debug_for_isp, 0664, vdin_debug_for_isp_show, vdin_debug_for_isp_store);
+ 
+
 
 #ifdef ISR_LOG_EN
 static ssize_t vdin_isr_log_show(struct device *dev,
@@ -2728,7 +2734,7 @@ static int vdin_drv_probe(struct platform_device *pdev)
         ret = device_create_file(vdevp->dev,&dev_attr_attr);
         ret = device_create_file(vdevp->dev,&dev_attr_cm2);
 	ret = device_create_file(vdevp->dev,&dev_attr_crop);
-
+	ret = device_create_file(vdevp->dev,&dev_attr_debug_for_isp);
 	if(ret < 0) {
 		pr_err("%s: fail to create vdin attribute files.\n", __func__);
 		goto fail_create_dev_file;

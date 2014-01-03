@@ -28,7 +28,7 @@
 #include "isp_hw.h"
 #include "../tvin_frontend.h"
 
-#define ISP_VER					"2014.01.02a"
+#define ISP_VER					"2014.01.03a"
 #define ISP_NUM					1
 #define DEVICE_NAME 			        "isp"
 
@@ -64,6 +64,7 @@ typedef enum bayer_fmt_e {
 typedef struct isp_info_s {
 	tvin_port_t fe_port;
 	tvin_color_fmt_t bayer_fmt;
+	tvin_color_fmt_t cfmt;
 	tvin_color_fmt_t dfmt;
 	unsigned int h_active;
 	unsigned int v_active;

@@ -95,7 +95,7 @@ extern void isp_set_dbg(xml_dbg_t *dbg);
 extern void isp_set_lnsd_mode(unsigned int mode);
 extern void isp_set_def_config(xml_default_regs_t *regs,tvin_port_t fe_port,tvin_color_fmt_t bfmt,unsigned int w,unsigned int h);
 extern void isp_load_def_setting(unsigned int hsize,unsigned int vsize,unsigned char bayer_fmt);
-extern void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal);
+extern void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal,unsigned char bayer_fmt);
 extern void isp_set_manual_wb(xml_wb_manual_t *wb);
 extern void isp_get_awb_stat(isp_awb_stat_t *awb_stat);
 extern void isp_get_ae_stat(isp_ae_stat_t *ae_stat);
@@ -112,6 +112,7 @@ extern void torch_level(bool mode_pol_inv,bool led1_pol_inv,bool pin_mux_inv,boo
 extern void wave_power_manage(bool enable);
 extern void isp_hw_reset(void);
 extern void isp_bypass_all(void);
+extern void isp_bypass_for_rgb(void);
 extern void isp_hw_enable(bool enable);
 extern void isp_awb_set_gain(unsigned int r, unsigned int g, unsigned int b);
 extern void isp_awb_get_gain(isp_awb_gain_t *awb_gain);

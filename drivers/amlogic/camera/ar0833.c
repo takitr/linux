@@ -4541,7 +4541,7 @@ static void ar0833_fillbuff(struct ar0833_fh *fh, struct ar0833_buffer *buf)
 	para.vaddr = (unsigned)vbuf;
 	para.ext_canvas = buf->canvas_id;
 	para.width = buf->vb.width;
-	para.height = buf->vb.height;
+	para.height = (buf->vb.height==1080)?1088:buf->vb.height;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }

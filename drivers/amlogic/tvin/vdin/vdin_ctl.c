@@ -337,18 +337,20 @@ inline void vdin_get_format_convert(struct vdin_dev_s *devp)
 		if ((devp->parm.port >= TVIN_PORT_VGA0) &&
 				(devp->parm.port <= TVIN_PORT_VGA7) &&
 				!vga_yuv422_enable
-		   )
+		   ) {
 			devp->format_convert = VDIN_FORMAT_CONVERT_RGB_YUV444;
-		else if(devp->parm.port == TVIN_PORT_VIU) {
+		} else if(devp->parm.port == TVIN_PORT_VIU) {
 			if(devp->prop.dest_cfmt == TVIN_NV12)
 				devp->format_convert = VDIN_FORMAT_CONVERT_RGB_NV12;
 			else if(devp->prop.dest_cfmt == TVIN_NV21)
 				devp->format_convert = VDIN_FORMAT_CONVERT_RGB_NV21;
 			else
 				devp->format_convert = VDIN_FORMAT_CONVERT_RGB_YUV422;
-		}
-		else
+		} else if(devp->prop.dest_cfmt == TVIN_RGB444) {
+			devp->format_convert = VDIN_FORMAT_CONVERT_RGB_RGB;
+		} else {
 			devp->format_convert = VDIN_FORMAT_CONVERT_RGB_YUV422;
+		}
 	}    
 	else if(devp->prop.color_format >= TVIN_YUV422 && devp->prop.color_format <= TVIN_VYUY422)
 	{

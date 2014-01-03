@@ -54,7 +54,9 @@ static unsigned int af_enable = 1;
 static unsigned int af_pr = 0;
 static unsigned int ioctl_debug = 0;
 static unsigned int isr_debug = 0;
-static volatile unsigned int ae_flag = 0;
+static unsigned int ae_flag = 0;
+static bool rgb_mode = false;
+
 extern struct isp_ae_to_sensor_s ae_sens;
 static unsigned int def_config = 0;
 static void parse_param(char *buf_orig,char **parm)
@@ -109,7 +111,7 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		unsigned int width,height;
 		width = simple_strtol(parm[1],NULL,10);
 		height = simple_strtol(parm[2],NULL,10);
-		isp_test_pattern(width,height,width+26,height+16);
+		isp_test_pattern(width,height,width+26,height+16,0);
 	} else if(!strcmp(parm[0],"rgb")){
         unsigned int b,r,g;
         b = RD_BITS(ISP_GAIN_GRBG23, GAIN_GRBG2_BIT, GAIN_GRBG2_WID);
@@ -159,7 +161,7 @@ static ssize_t debug_store(struct device *dev,struct device_attribute *attr, con
 		}
 	}else if(!strcmp(parm[0],"bypass_all")){
 		isp_bypass_all();
-		pr_info("isp bypass all.\n");
+		pr_info("isp bypass all for raw data.\n");
 	}
 	return len;
 }
@@ -842,6 +844,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 
 	info->fe_port = parm->isp_fe_port;
 	info->bayer_fmt = parm->cfmt;
+	info->cfmt = TVIN_YUV422;
 	info->dfmt = parm->dfmt;
 	info->h_active = parm->h_active;
 	info->v_active = parm->v_active;
@@ -861,7 +864,7 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 	if(IS_ERR_OR_NULL(devp->cam_param)){
 		pr_err("[%s..] camera parameter error use default config.\n",__func__);
 		isp_load_def_setting(info->h_active,info->v_active,0);
-	} else {
+	}  else {
 		devp->isp_ae_parm = &devp->cam_param->xml_scenes->ae;
 		devp->isp_awb_parm = &devp->cam_param->xml_scenes->awb;
 		unsigned int i;
@@ -875,6 +878,10 @@ static int isp_fe_open(struct tvin_frontend_s *fe, enum tvin_port_e port)
 		isp_hw_enable(false);
 		isp_set_def_config(devp->cam_param->xml_regs_map,info->fe_port,info->bayer_fmt,info->h_active,info->v_active);
 		isp_set_manual_wb(devp->cam_param->xml_wb_manual);
+		if (rgb_mode){
+			isp_bypass_for_rgb();
+			info->cfmt = TVIN_RGB444;
+		}
 		/*test for wb test disable gamma & lens*/
 		if(devp->flag & ISP_FLAG_TEST_WB)
 			disable_gc_lns_pk(false);
@@ -966,8 +973,9 @@ static int isp_fe_ioctl(struct tvin_frontend_s *fe, void *arg)
 	cam_parameter_t *param = (cam_parameter_t *)arg;
 	enum cam_command_e cmd;
 	cam_cmd_state_t ret = CAM_STATE_SUCCESS;
-	if(IS_ERR_OR_NULL(param)) {
-                pr_err("[%s..]camera parameter can't be null.\n",DEVICE_NAME);
+	if(IS_ERR_OR_NULL(param)||rgb_mode) {
+		if(ioctl_debug)
+                        pr_err("[%s..]camera parameter can't be null.\n",DEVICE_NAME);
                 return -1;
         }
 	cmd = param->cam_command;
@@ -1157,6 +1165,8 @@ static int isp_fe_isr(struct tvin_frontend_s *fe, unsigned int hcnt64)
 		ret = max(isp_capture_sm(devp),ret);
 	if(isr_debug&&ret)
 		pr_info("%s isp %d buf.\n",__func__,ret);
+	
+	
 #ifndef USE_WORK_QUEUE
 	if(!(devp->flag & ISP_FLAG_TEST_WB))
 	    tasklet_schedule(&devp->isp_task);
@@ -1242,7 +1252,7 @@ static struct tvin_decoder_ops_s isp_dec_ops ={
 static void isp_sig_propery(struct tvin_frontend_s *fe, struct tvin_sig_property_s *prop)
 {
 	isp_dev_t *devp = container_of(fe,isp_dev_t,frontend);
-        prop->color_format = TVIN_YUV422;
+        prop->color_format = devp->info.cfmt;
 	prop->dest_cfmt = devp->info.dfmt;
         prop->pixel_repeat = 0;
 }
@@ -1453,6 +1463,9 @@ MODULE_PARM_DESC(ioctl_debug,"\n debug ioctl function.\n");
 
 module_param(isr_debug,uint,0664);
 MODULE_PARM_DESC(isr_debug,"\n debug isr function.\n");
+
+module_param(rgb_mode,bool,0664);
+MODULE_PARM_DESC(rgb_mode,"\n debug for rgb output.\n");
 
 MODULE_VERSION(ISP_VER);
 module_init(isp_init_module);

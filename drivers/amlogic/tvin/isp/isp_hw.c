@@ -315,7 +315,7 @@ void isp_set_matrix(xml_csc_t *csc, unsigned int height)
 		//rgb->601
 		{0x0,0x10000,0x5e013a,0x2003cc,0x35300e1,0xe10334,0x3ec,0x400200,0x200},
 		//rgb->709
-		{0x0,0x00000,0x1000100,0x1000100,0x1000100,0x1000100,0x100,0x0,0x0},
+		{0x0,0x0000,0x01000000,0x00000,0x01000000,0x00000,0x100,0x000000,0x000},
 	};
 	unsigned int i=0, *start;
 	if(csc){
@@ -597,6 +597,12 @@ void disable_gc_lns_pk(bool flag)
 
 void isp_bypass_all()
 {
+	isp_bypass_for_rgb();
+	WR_BITS(ISP_DMS_CTRL0,7,ISP_DMS_BYPASS_BIT,ISP_DMS_BYPASS_WID);
+}
+
+void isp_bypass_for_rgb()
+{
 	WR_BITS(ISP_PAT_GEN_CTRL,0,ISP_PAT_ENABLE_BIT,ISP_PAT_ENABLE_WID);
 	WR_BITS(ISP_CLAMP_GRBG01,0,CLAMP_GRBG0_BIT,CLAMP_GRBG0_WID);
 	WR_BITS(ISP_CLAMP_GRBG01,0,CLAMP_GRBG1_BIT,CLAMP_GRBG1_WID);
@@ -609,10 +615,10 @@ void isp_bypass_all()
 	WR_BITS(ISP_LNS_CTRL,0,LNS_CMOP_ENABLE_BIT,LNS_CMOP_ENABLE_WID);
 	WR_BITS(ISP_GMR0_CTRL,0,GMR_CORRECT_ENABLE_BIT,GMR_CORRECT_ENABLE_WID);
 	WR_BITS(ISP_DFT_CTRL,0,ISP_DFT_ENABLE_BIT,ISP_DFT_ENABLE_WID);
-	WR_BITS(ISP_DMS_CTRL0,7,ISP_DMS_BYPASS_BIT,ISP_DMS_BYPASS_WID);
 	isp_set_matrix(NULL,0);
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_NR_EN_BIT,ISP_NR_EN_WID);
 	WR_BITS(ISP_PKNR_ENABLE,0,ISP_PK_EN_BIT,ISP_PK_EN_WID);	
+	
 }
 static void isp_set_bayer_fmt(tvin_color_fmt_t bfmt)
 {
@@ -685,7 +691,7 @@ void isp_hw_enable(bool flag)
 /*
 *just enable test pattern
 */
-void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal)
+void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,unsigned int vtotal,unsigned char bayer_fmt)
 {
         // pat gen
         WRITE_VCBUS_REG(ISP_PAT_GEN_CTRL, 0x0);
@@ -708,7 +714,7 @@ void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,
 
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,  0 ,20,3); // xmode: raster/bar16/burst enable
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,  2 ,16,3); // ymode: 1023
-
+	WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,bayer_fmt,PAT_BAYER_FMT_BIT,PAT_BAYER_FMT_WID);
         // pat dft
         WRITE_VCBUS_REG(ISP_PAT_DFT_XYIDX,0x006400c8 ); //reg_isp_pat_dft_xidx='h64,reg_isp_pat_dft_yidx='hc8
         WRITE_VCBUS_REG(ISP_PAT_DFT_XYWID,0x00010004 ); //default reg_isp_pat_dft_ywid=64,default is wrong?
@@ -718,17 +724,9 @@ void isp_test_pattern(unsigned int hsize,unsigned int vsize,unsigned int htotal,
         // demosaicing
         WRITE_VCBUS_REG(ISP_DMS_CTRL0, 0x00030000);
         WRITE_VCBUS_REG(ISP_DMS_CTRL1, 0x00120510);
-
+	WRITE_VCBUS_REG_BITS(ISP_DMS_CTRL0,bayer_fmt,DMS_BAYER_FMT_BIT,DMS_BAYER_FMT_WID);
         // color matrix
-        WRITE_VCBUS_REG(ISP_MATRIX_PRE_OFST0_1,0x0);
-        WRITE_VCBUS_REG(ISP_MATRIX_PRE_OFST2,  0x0);
-        WRITE_VCBUS_REG(ISP_MATRIX_COEF00_01, 0x004d0096);
-        WRITE_VCBUS_REG(ISP_MATRIX_COEF02_10, 0x001d03d5);
-        WRITE_VCBUS_REG(ISP_MATRIX_COEF11_12, 0x03ab0080);
-        WRITE_VCBUS_REG(ISP_MATRIX_COEF20_21, 0x00800395);
-        WRITE_VCBUS_REG(ISP_MATRIX_COEF22,    0x000003eb);
-        WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST0_1, 0x00000200);
-        WRITE_VCBUS_REG(ISP_MATRIX_POS_OFST2,   0x00000200);
+        isp_set_matrix(NULL,0);
 
         WRITE_VCBUS_REG(ISP_RST_DLY_NUM,htotal*6);
         WRITE_VCBUS_REG_BITS(ISP_PAT_GEN_CTRL,1,28,1);
