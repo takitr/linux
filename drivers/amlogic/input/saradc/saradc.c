@@ -420,7 +420,7 @@ static struct class saradc_class = {
     .name = "saradc",
     .class_attrs = saradc_class_attrs,
 };
-
+#ifdef CONFIG_ARCH_MESON8
 int get_cpu_temp()
 {
 	int ret=-1,tempa;
@@ -436,6 +436,13 @@ int get_cpu_temp()
 	}
 	return ret;
 }
+#else
+int get_cpu_temp()
+{
+
+	return NOT_WRITE_EFUSE;
+}
+#endif
 static int saradc_probe(struct platform_device *pdev)
 {
 	int err;
