@@ -1520,6 +1520,13 @@ osd_probe(struct platform_device *pdev)
 	}
 #endif
 
+	{
+		prop = of_get_property(pdev->dev.of_node, "scale_mode", NULL);
+		if(prop){
+			prop_idx = of_read_ulong(prop, 1);
+		}
+		osddev_free_scale_mode(OSD0, prop_idx);
+	}
    	if (NULL==init_logo_obj )
     	{
     		prop = of_get_property(pdev->dev.of_node, "vmode", NULL);

@@ -25,7 +25,7 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
-
+#include <linux/utils.h>
 #include <mach/am_regs.h>
 
 #include <linux/amlogic/vout/vinfo.h>
@@ -245,9 +245,40 @@ static void set_tvmode_misc(tvmode_t mode)
     set_vmode_clk(mode);
 }
 
+/*
+ * uboot_display_already() uses to judge whether display has already
+ * be set in uboot.
+ * Here, first read the value of reg P_ENCP_VIDEO_MAX_PXCNT and
+ * P_ENCP_VIDEO_MAX_LNCNT, then compare with value of tvregsTab[mode]
+ */
+static int uboot_display_already(tvmode_t mode)
+{
+    const  reg_t *s = tvregsTab[mode];
+    unsigned int pxcnt_tab = 0;
+    unsigned int lncnt_tab = 0;
+
+    while(s->reg != MREG_END_MARKER) {
+        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT) {
+            pxcnt_tab = s->val;
+        }
+        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT) {
+            lncnt_tab = s->val;
+        }
+        s++;
+    }
+
+    if((pxcnt_tab == aml_read_reg32(P_ENCP_VIDEO_MAX_PXCNT)) &&
+       (lncnt_tab == aml_read_reg32(P_ENCP_VIDEO_MAX_LNCNT))) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 int tvoutc_setmode(tvmode_t mode)
 {
     const  reg_t *s;
+    static int uboot_display_flag = 1;
 
     if (mode >= TVMODE_MAX) {
         printk(KERN_ERR "Invalid video output modes.\n");
@@ -262,7 +293,14 @@ int tvoutc_setmode(tvmode_t mode)
     printk("TV mode %s selected.\n", tvinfoTab[mode].id);
    
     s = tvregsTab[mode];
-			
+
+    if(uboot_display_flag) {
+        uboot_display_flag = 0;
+        if(uboot_display_already(mode)) {
+            printk("already display in uboot\n");
+            return 0;
+        }
+    }
     while (MREG_END_MARKER != s->reg)
         setreg(s++);
     printk("%s[%d]\n", __func__, __LINE__);
@@ -272,7 +310,9 @@ int tvoutc_setmode(tvmode_t mode)
     }else{
 	aml_write_reg32(P_PERIPHS_PIN_MUX_0,aml_read_reg32(P_PERIPHS_PIN_MUX_0)&(~(3<<20)));
     }
+#if 0       //todo
     set_tvmode_misc(mode);
+#endif
 #ifdef CONFIG_ARCH_MESON1
 	tvoutc_setclk(mode);
     printk("%s[%d]\n", __func__, __LINE__);

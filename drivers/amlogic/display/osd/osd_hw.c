@@ -700,6 +700,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 #endif
 
 		amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
+		enable = (enable&0xffff?1:0);
 		osd_hw.free_scale_enable[index]=enable;
 		if (index==OSD1)
 		{
@@ -2046,7 +2047,9 @@ static void osd1_update_disp_geometry(void)
 			data32 = ((osd_hw.rotation_pandata[OSD1].y_start + osd_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_hw.rotation_pandata[OSD1].y_end  + osd_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,data32);
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END,data32);
+#endif
 		}else if (osd_hw.rotate[OSD1].on_off
 				&& osd_hw.rotate[OSD1].angle > 0){
 			/* enable osd rotation */
