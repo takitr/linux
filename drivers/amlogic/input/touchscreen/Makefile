@@ -18,7 +18,7 @@ TOP_KBUILD_SRC := $(KBUILD_SRC)/
 endif
 
 $(obj)/gsl_point_id.o:
-	@cp $(TOP_KBUILD_SRC)/drivers/amlogic/input/touchscreen/gsl_point_id.z \
+	@cp $(TOP_KBUILD_SRC)drivers/amlogic/input/touchscreen/gsl_point_id.z \
 		drivers/amlogic/input/touchscreen/gsl_point_id.o
 	
 obj-y += gsl_point_id.o
