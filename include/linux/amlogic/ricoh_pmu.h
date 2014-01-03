@@ -64,6 +64,7 @@ struct ricoh_pmu_init_data {
     int   temp_to_stop_charger;                     // stop charger when temperature is higher than this value
     int   temp_to_power_off;                        // power off system when temperature is higher than this value
     int   vbus_dcin_short_connect;
+    int   reset_to_system;                          // flag to indicate if need reset to system
     struct battery_parameter *board_battery;        // battery parameter
 };
 

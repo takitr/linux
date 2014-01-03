@@ -86,10 +86,15 @@ static void scan_node_tree(struct device_node *top_node, int off)
 
 static int setup_supply_data(struct device_node *node, struct ricoh_pmu_init_data *s_data)
 {
+    int err;
     struct device_node *b_node;
     struct battery_parameter *battery;
     phandle fhandle;
 
+    err = of_property_read_bool(node, "reset-to-system");
+    if (err) {
+        s_data->reset_to_system = 1;    
+    }
     PARSE_UINT32_PROPERTY(node, "soft_limit_to99", s_data->soft_limit_to99, parse_failed);
     PARSE_UINT32_PROPERTY(node, "board_battery",   fhandle,                 parse_failed);
     PARSE_UINT32_PROPERTY(node, "vbus_dcin_short_connect", s_data->vbus_dcin_short_connect, parse_failed);

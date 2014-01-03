@@ -30,6 +30,8 @@
 #include <linux/amlogic/aml_rtc.h>
 #include <linux/amlogic/ricoh_pmu.h>
 #include <mach/usbclock.h>
+#include <linux/reboot.h>
+#include <linux/notifier.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -194,6 +196,9 @@ EXPORT_SYMBOL_GPL(rn5t618_get_gpio);
 
 void rn5t618_power_off()
 {
+    if (g_rn5t618_init->reset_to_system) {
+        rn5t618_set_bits(0x0007, 0x00, 0x01);    
+    }
     rn5t618_set_gpio(0, 1);
     rn5t618_set_gpio(1, 1);
     msleep(100);
@@ -1348,6 +1353,14 @@ static void rn5t618_irq_work_func(struct work_struct *work)
     enable_irq(supply->irq);
 }
 
+static struct notifier_block rn5t618_reboot_nb;
+static int rn5t618_reboot_work(struct notifier_block *nb, unsigned long state, void *cmd)
+{
+    RICOH_DBG("%s, clear flags\n", __func__);
+    rn5t618_set_bits(0x0007, 0x00, 0x01);
+    return NOTIFY_DONE;
+}
+
 struct aml_pmu_driver rn5t618_pmu_driver = {
     .name                           = "rn5t618",
     .pmu_get_coulomb                = rn5t618_get_coulomber, 
@@ -1461,6 +1474,10 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     dwc_otg_power_register_notifier(&supply->otg_nb);
     dwc_otg_charger_detect_register_notifier(&supply->usb_nb);
 #endif
+    if (g_rn5t618_init->reset_to_system) {
+        rn5t618_reboot_nb.notifier_call = rn5t618_reboot_work;
+        register_reboot_notifier(&rn5t618_reboot_nb);
+    }
     if (supply->irq == RN5T618_IRQ_NUM) {
         INIT_WORK(&supply->irq_work, rn5t618_irq_work_func); 
         ret = request_irq(supply->irq, 
