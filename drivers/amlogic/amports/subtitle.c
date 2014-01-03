@@ -13,6 +13,8 @@
 #include <linux/amlogic/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
 #define DEVICE_NAME "amsubtitle"	/* Dev name as it appears in /proc/devices   */
+#define DEVICE_CLASS_NAME "subtitle"
+
 static int subdevice_open = 0;
 
 #define MAX_SUBTITLE_PACKET 10
@@ -644,7 +646,7 @@ static int __init subtitle_init(void)
         return ret;
     }
 
-    amsub_clsp = class_create(THIS_MODULE, DEVICE_NAME);
+    amsub_clsp = class_create(THIS_MODULE, DEVICE_CLASS_NAME);
     if(IS_ERR(amsub_clsp)){
         ret = PTR_ERR(amsub_clsp);
         goto err1;
