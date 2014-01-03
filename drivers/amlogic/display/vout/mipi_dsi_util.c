@@ -1,8 +1,8 @@
 #include <linux/types.h>
 #include <mach/cpu.h>
 #include <plat/cpu.h>
-#include <linux/amlogic/vout/lcdoutc.h>
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
+#include <linux/amlogic/vout/lcdoutc.h>
 #include <linux/kernel.h>
 #include "mipi_dsi_util.h"
 #include "mipi_dsi_phy_reg.h"
@@ -12,6 +12,13 @@
 #include <mach/io.h>
 #include <plat/io.h>
 #include <linux/delay.h>
+
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define DPRINT(...)		printk(__VA_ARGS__)
+#else
+#define DPRINT(...)
+#endif
 
 #ifndef VPP_OUT_SATURATE
 #define VPP_OUT_SATURATE            (1 << 0)
@@ -1413,18 +1420,5 @@ U_BOOT_CMD(
 	  );
 //****************************************
 #endif
-#else
-void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status){}
 
-void set_pll_mipi(Lcd_Config_t *p){}
-
-void set_control_mipi(Lcd_Config_t *p){}
-
-void set_venc_mipi(Lcd_Config_t *pConf){}
-
-void set_tcon_mipi(Lcd_Config_t *p){}
-
-void init_phy_mipi(Lcd_Config_t *pConf){}
-
-void dsi_probe( Lcd_Config_t *pConf){}
 #endif

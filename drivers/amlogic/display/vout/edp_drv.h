@@ -174,7 +174,7 @@
 #define VAL_EDP_TX_OPERATION_FAILED				0x00FF
 #define VAL_EDP_TX_OPERATION_SUCCESS			0x0000
 //********************************************************//
-
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 typedef enum {
 	EDP_HPD_STATE_DISCONNECTED = 0,
 	EDP_HPD_STATE_CONNECTED,
@@ -245,7 +245,6 @@ typedef struct {
 #define EDP_TX_LINK_CAPACITY_270	2160	//Mbps
 #define EDP_TX_LINK_CAPACITY_540	4320	//Mbps
 
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 extern int dplpm_link_policy_maker(EDP_Link_Config_t *mlconfig, EDP_Video_Mode_t *vm);
 extern int dplpm_link_off(void);
 extern void edp_probe(void);
