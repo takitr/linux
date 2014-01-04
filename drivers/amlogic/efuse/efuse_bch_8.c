@@ -148,7 +148,7 @@ int efuse_bch_enc(const char *ibuf, int isize, char *obuf, int reverse)
 		printk("malloc buffer error for efuse\n");
 		return -1;
 	}
-	memset(c,sizeof(int) * 255,0);
+	memset(c, 0, sizeof(int) * 255);
 	
 
 	for (i = 0; i < isize; ++i) {
@@ -201,7 +201,7 @@ int efuse_bch_dec(const char *ibuf, int isize, char *obuf, int reverse)
 		printk("malloc buffer error for efuse\n");
 		return -1;
 	}
-	memset(c,sizeof(int) * 255,0);
+	memset(c, 0, sizeof(int) * 255);
 
 	for (i = 0; i < isize; ++i) {
 		info = ibuf[i];
