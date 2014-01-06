@@ -330,7 +330,7 @@
 //$$ L2 PROP_U32 2 = "hsync_width_backporch"
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
-lcd_HE050NA01F:lcd_HE050NA01F{	//800*480
+lcd_HE050NA01F:lcd_HE050NA01F{
 		model_name="HE050NA01F";	/** lcd model name */
 		interface="ttl";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<108 65>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
@@ -342,6 +342,58 @@ lcd_HE050NA01F:lcd_HE050NA01F{	//800*480
 		clock_hz_pol=<33300000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
 		hsync_width_backporch=<10 46>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<5 23>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
+	};
+	
+//$$ MATCH "lcd_model_config_match" = <&lcd_HSD043I9W1>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"		
+	lcd_HSD043I9W1:lcd_HSD043I9W1{
+		model_name="HSD043I9W1";	/** lcd model name */
+		interface="ttl";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<95 54>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<8 1>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
+		
+		resolution=<480 272>;	/** horizontal resolution, vertical resolution */
+		period=<620 310>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<11500000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<5 40>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<2 8>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
+	};
+	
+//$$ MATCH "lcd_model_config_match" = <&lcd_TM080XSZ00>
+//$$ L2 PROP_STR = "model_name"
+//$$ L2 PROP_STR = "interface"
+//$$ L2 PROP_U32 2 = "active_area"
+//$$ L2 PROP_U32 2 = "lcd_bits_option"
+//$$ L2 PROP_U32 2 = "resolution"
+//$$ L2 PROP_U32 2 = "period"
+//$$ L2 PROP_U32 2 = "clock_hz_pol"
+//$$ L2 PROP_U32 2 = "hsync_width_backporch"
+//$$ L2 PROP_U32 2 = "vsync_width_backporch"
+//$$ L2 PROP_U32 2 = "pol_hsync_vsync"
+lcd_TM080XSZ00:lcd_TM080XSZ00{
+		model_name="TM080XSZ00";	/** lcd model name */
+		interface="ttl";		/** lcd_interface(mipi, lvds, edp, ttl) */
+		active_area=<174 104>;	/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
+		lcd_bits_option=<6 0>;	/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
+		
+		resolution=<1280 768>;	/** horizontal resolution, vertical resolution */
+		period=<1440 810>;		/** horizontal period(htotal), vertical period(vtotal) */
+		
+		clock_hz_pol=<70000000 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
+		hsync_width_backporch=<10 70>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<2 20>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 

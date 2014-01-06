@@ -55,6 +55,9 @@
 #include "../backlight/aml_lcd_bl.h"
 #include "edp_drv.h"
 #include "mipi_dsi_util.h"
+#ifdef CONFIG_AML_LCD_EXTERN
+#include <linux/amlogic/vout/aml_lcd_extern.h>
+#endif
 #ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU
 #include <linux/amlogic/aml_pmu_common.h>
 #endif
@@ -71,7 +74,7 @@ extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 #endif
 
 #define PANEL_NAME		"panel"
-#define DRIVER_DATE		"20131203"
+#define DRIVER_DATE		"20131230"
 #define DRIVER_VER		"310"
 
 //#define LCD_DEBUG_INFO
@@ -394,6 +397,9 @@ static void lcd_power_ctrl(Bool_t status)
 #ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU
 	struct aml_pmu_driver *pmu_driver;
 #endif
+#ifdef CONFIG_AML_LCD_EXTERN
+	struct aml_lcd_extern_driver_t *lcd_extern_driver;
+#endif
 
 	DBG_PRINT("%s(): %s\n", __FUNCTION__, (status ? "ON" : "OFF"));
 	if (status) {
@@ -431,7 +437,17 @@ static void lcd_power_ctrl(Bool_t status)
 					lcd_ports_ctrl(ON);
 					break;
 				case LCD_POWER_TYPE_INITIAL:
-					printk("lcd power ctrl ON step %d lcd_init function is to be done.\n", i+1);
+#ifdef CONFIG_AML_LCD_EXTERN
+					lcd_extern_driver = aml_lcd_extern_get_driver();
+					if (lcd_extern_driver == NULL) {
+						printk("no lcd_extern driver\n");
+					}
+					else {
+						if (lcd_extern_driver->power_on)
+							lcd_extern_driver->power_on();
+						DBG_PRINT("%s power on\n", lcd_extern_driver->name);
+					}
+#endif
 					break;
 				default:
 					printk("lcd power ctrl ON step %d is null.\n", i+1);
@@ -477,7 +493,17 @@ static void lcd_power_ctrl(Bool_t status)
 					lcd_ports_ctrl(OFF);
 					break;
 				case LCD_POWER_TYPE_INITIAL:
-					printk("lcd power ctrl OFF step %d lcd_init function is to do.\n", i+1);
+#ifdef CONFIG_AML_LCD_EXTERN
+					lcd_extern_driver = aml_lcd_extern_get_driver();
+					if (lcd_extern_driver == NULL) {
+						printk("no lcd_extern driver\n");
+					}
+					else {
+						if (lcd_extern_driver->power_off)
+							lcd_extern_driver->power_off();
+						DBG_PRINT("%s power on\n", lcd_extern_driver->name);
+					}
+#endif
 					break;
 				default:
 					printk("lcd power ctrl OFF step %d is null.\n", i+1);
@@ -4628,7 +4654,6 @@ static int lcd_probe(struct platform_device *pdev)
 #endif
 
     pDev = (lcd_dev_t *)kmalloc(sizeof(lcd_dev_t), GFP_KERNEL);
-
     if (!pDev) {
         printk("[lcd probe]: Not enough memory.\n");
         return -ENOMEM;

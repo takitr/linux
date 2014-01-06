@@ -258,6 +258,8 @@ sub_file /drivers/amlogic/usb/aml.dtd
 sub_file /drivers/amlogic/display/backlight/aml.dtd
 #device lcd
 sub_file /drivers/amlogic/display/vout/aml_lcd.dtd
+#device lcd_extern
+sub_file /drivers/amlogic/display/vout/lcd_extern/aml.dtd
 
 /// ***************************************************************************************
 ///     -       Sensors
