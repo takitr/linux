@@ -394,13 +394,14 @@ int hm5065_v4l2_probe(struct i2c_adapter *adapter)
 {
 	int ret = 0;
 	unsigned char reg[2];   
-	reg[0] = aml_i2c_get_byte(adapter, 0x16, 0x0000);
-	reg[1] = aml_i2c_get_byte(adapter, 0x16, 0x0001);
+	reg[0] = aml_i2c_get_byte(adapter, 0x1F, 0x0000);
+	reg[1] = aml_i2c_get_byte(adapter, 0x1F, 0x0001);
 	if (reg[0] == 0x03 && reg[1] == 0x9e)
 		ret = 1;
 	return ret;
 }
 #endif
+
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI2056
 int hi2056_v4l2_probe(struct i2c_adapter *adapter)
@@ -455,6 +456,18 @@ int ar0833_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP1628
+int __init sp1628_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte_add8(adapter, 0x3c, 0x02);
+	reg[1] = aml_i2c_get_byte_add8(adapter, 0x3c, 0xa0);
+	if (reg[0] == 0x16 && reg[1] == 0x28)
+		ret = 1;
+    return ret;
+}
+#endif
 
 typedef struct {
 	unsigned char addr;
@@ -633,7 +646,7 @@ static aml_cam_dev_info_t cam_devs[] = {
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM5065
 	{
-		.addr = 0x16,
+		.addr = 0x1f,
 		.name = "hm5065",
 		.pwdn = 0,
 		.max_cap_size = SIZE_2592X1944,
@@ -667,6 +680,16 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = ar0833_v4l2_probe,
 	},
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP1628
+	{
+		.addr = 0x3c,
+		.name = "sp1628",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1280X960,
+		.probe_func = sp1628_v4l2_probe,
+	},
+#endif
+
 };
 
 static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)

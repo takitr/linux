@@ -1487,6 +1487,50 @@ lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{	//k101
 			bt_path = "gpio";
 			status = "okay";
 		};
+///	-	hm5065
+//$$ DEVICE="hm5065"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"
+		cam_5{
+			cam_name = "hm5065";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_5";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
+			bt_path = "gpio";
+			status = "okay";
+		};
+
+///	-    sp1628
+//$$ DEVICE="sp1628"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"
+		cam_6{
+			cam_name = "sp1628";
+			front_back = <1>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_6";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
+			bt_path = "gpio";
+			status = "okay";
+		};
+
 	};	
 
 /// ***************************************************************************************
