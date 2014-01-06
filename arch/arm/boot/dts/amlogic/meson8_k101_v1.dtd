@@ -705,7 +705,6 @@ sdio{
             vddao_voltage = <1200000>;                          /** default voltage for AO, optional     */
             board_battery = <&battery_parameter>;               /** battery parameter used, must have    */
             vbus_dcin_short_connect = <0>;
-            reset-to-system;
             status = "okay";                                    /** status of pmu, only one should be OK */
         };
     };
