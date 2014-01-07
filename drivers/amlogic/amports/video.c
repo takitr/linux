@@ -1944,12 +1944,12 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     if ((!vf) && cur_dispbuf && (video_property_changed)) {
         vsync_toggle_frame(cur_dispbuf);
     }
+
     if (!vf) {
         underflow++;
     }
 
     while (vf) {
-		//timer_count = 0 ;
         if (vpts_expire(cur_dispbuf, vf)
 #ifdef INTERLACE_FIELD_MATCH_PROCESS
             || interlace_field_type_match(vout_type, vf)
@@ -1963,16 +1963,14 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                        timestamp_pcrscr_get());
 
             amlog_mask_if(toggle_cnt > 0, LOG_MASK_FRAMESKIP, "skipped\n");
+
 #if defined(CONFIG_AM_VECM)
-			ve_on_vs(vf);
+            ve_on_vs(vf);
 #endif
-#if 0 //def CONFIG_VSYNC_RDMA
-            if(dispbuf_to_put) {
-                video_vf_put(dispbuf_to_put);
-                dispbuf_to_put = NULL;
-            }
-#endif
+
             vf = video_vf_get();
+            if (!vf) break;
+
             use_prot = get_use_prot();
             if (use_prot && (video_prot.video_started || video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
                 video_prot_init(&video_prot, vf);
@@ -2011,13 +2009,13 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             frame_repeat_count = 0;
 #endif
             vf = video_vf_peek();
-		if (!vf) {
-			next_peek_underflow++;
-		}
+            if (!vf) {
+                next_peek_underflow++;
+            }
 
-		        if(debug_flag & DEBUG_FLAG_TOGGLE_FRAME_PER_VSYNC){
-		            break;
-		        }
+           if (debug_flag & DEBUG_FLAG_TOGGLE_FRAME_PER_VSYNC) {
+               break;
+           }
         } else {
 #ifdef SLOW_SYNC_REPEAT
             /* check if current frame's duration has expired, in this example
@@ -2040,6 +2038,8 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                 }
 #endif
                 vf = video_vf_get();
+                if (!vf) break;
+
                 use_prot = get_use_prot();
                 if (use_prot && (video_prot.video_started || video_prot.src_vframe_width != vf->width || video_prot.src_vframe_height != vf->height)) {
                     video_prot_init(&video_prot, vf);
