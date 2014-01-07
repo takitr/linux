@@ -510,7 +510,7 @@ wait_next_event:
 		set_current_state(TASK_RUNNING);
 	}
 }
-static void cpu_hotplug_thread(int *hotplug_flag)
+static void __cpuinit cpu_hotplug_thread(int *hotplug_flag)
 {
 	int i, j,target_cpu = 1;
 	unsigned long flags, cpu_down_num;
