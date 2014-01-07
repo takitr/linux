@@ -51,6 +51,7 @@ struct kp {
 	struct input_dev *input;
 	struct timer_list timer;
 	unsigned int cur_keycode;
+    unsigned int report_code;
 	unsigned int tmp_code;
 	int count;	
 	int config_major;
@@ -109,26 +110,29 @@ static void kp_work(struct kp *kp)
 	}
 	else if(++kp->count == 2) {
 		if (kp->cur_keycode != code) {
-			if (code) {
+			if (!code) {
+				printk("key %d up\n", kp->report_code);
+				input_report_key(kp->input, kp->report_code, 0);
+				input_sync(kp->input);
+			}
+			else if (!kp->cur_keycode) {
 				printk("key %d down\n", code);
 				input_report_key(kp->input, code, 1);
+				kp->report_code = code;
 				input_sync(kp->input);
-//				if (kp->led_control && (code!=KEY_PAGEUP) && (code!=KEY_PAGEDOWN)){
-//					kp->led_control_param[0] = 1;
-//					kp->led_control_param[1] = code;
-//		    			timer_count = kp->led_control(kp->led_control_param);
-//				}
-			}
-			else {
-				printk("key %d up\n", kp->cur_keycode);
-				input_report_key(kp->input, kp->cur_keycode, 0);
-				input_sync(kp->input);
-//				if (kp->led_control){
-//					kp->led_control_param[0] = 2;
-//					kp->led_control_param[1] = code;
-//		    			timer_count = kp->led_control(kp->led_control_param);
-//				}
-			}
+	//				if (kp->led_control && (code!=KEY_PAGEUP) && (code!=KEY_PAGEDOWN)){
+	//					kp->led_control_param[0] = 1;
+	//					kp->led_control_param[1] = code;
+	//		    			timer_count = kp->led_control(kp->led_control_param);
+	//				}
+				}
+				else {
+	//				if (kp->led_control){
+	//					kp->led_control_param[0] = 2;
+	//					kp->led_control_param[1] = code;
+	//		    			timer_count = kp->led_control(kp->led_control_param);
+	//				}
+				}
 			kp->cur_keycode = code;
 		}
 	}
