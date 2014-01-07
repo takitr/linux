@@ -1139,7 +1139,11 @@ int  init_ppmgr_device(void)
     if(ppmgr_buffer_init(0) < 0) goto unregister_dev;
     //if(start_vpp_task()<0) return -1;
     ppmgr_device.use_prot = 1;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     ppmgr_device.disable_prot = 0;
+#else
+    ppmgr_device.disable_prot = 1;
+#endif
     ppmgr_device.global_angle = 0;
     ppmgr_device.started = 0;
     return 0;

@@ -239,6 +239,7 @@ void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf) {
                 vf->ratio_control &= ~DISP_RATIO_ASPECT_RATIO_MASK;
                 vf->ratio_control |= (0x10000 / video_prot->src_vframe_ratio) << DISP_RATIO_ASPECT_RATIO_BIT;
             }
+            vf->ratio_control |= DISP_RATIO_PORTRAIT_MODE;
         } else if (angle_orientation == 0 || angle_orientation == 2) {
             vf->width = video_prot->src_vframe_width;
             vf->height = video_prot->src_vframe_height;
@@ -246,6 +247,7 @@ void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf) {
                 vf->ratio_control &= ~DISP_RATIO_ASPECT_RATIO_MASK;
                 vf->ratio_control |= video_prot->src_vframe_ratio << DISP_RATIO_ASPECT_RATIO_BIT;
             }
+            vf->ratio_control &= ~DISP_RATIO_PORTRAIT_MODE;
         }
     }
 }
