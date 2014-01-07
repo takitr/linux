@@ -63,7 +63,7 @@
 #define TRUSTZONE_HAL_API_STORAGE               0x200
 #define TRUSTZONE_HAL_API_MEMCONFIG             0x300
 
-#define MESON_TRUSTZONE_MEM_START               0x3c000000
+#define MESON_TRUSTZONE_MEM_START               0x06100000
 #define MESON_TRUSTZONE_MEM_SIZE                0x04000000
 
 

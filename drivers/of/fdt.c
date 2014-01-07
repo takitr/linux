@@ -620,12 +620,19 @@ u64 __init dt_mem_next_cell(int s, __be32 **cellp)
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 
-#define MAX_RESERVE_BLOCK  32			
+#define MAX_RESERVE_BLOCK  32
 //limit: reserve block < 32
 #define DSP_MEM_SIZE	0x100000
+
 #ifdef CONFIG_ARCH_MESON8
+#ifdef CONFIG_MESON_TRUSTZONE
+#define EARLY_RESERVED_MEM_SIZE	(DSP_MEM_SIZE+MESON_TRUSTZONE_MEM_SIZE)
+#else
+#define EARLY_RESERVED_MEM_SIZE	(DSP_MEM_SIZE)
+#endif
 #define MEM_BLOCK1_START	0
 #else
+#define EARLY_RESERVED_MEM_SIZE	(DSP_MEM_SIZE)
 #define MEM_BLOCK1_START    0x80000000
 #endif
 #define MEM_BLOCK1_SIZE	0x4000000
@@ -655,7 +662,7 @@ int init_reserve_mgr(void)
 
 unsigned long long get_reserve_end(void)
 {
-	return pReserve_Manager->current_addr+aml_reserved_start+DSP_MEM_SIZE-1;
+	return pReserve_Manager->current_addr+aml_reserved_start+EARLY_RESERVED_MEM_SIZE-1;
 }
 
 int find_reserve_block(char * name,int idx)
@@ -688,7 +695,7 @@ unsigned long long get_reserve_block_addr(int blockid)
 {
 	if(blockid >= MAX_RESERVE_BLOCK)
 		printk("error: reserve block count is larger than MAX_RESERVE_BLOCK,please reset the code\n");
-	return pReserve_Manager->reserve[blockid].startaddr+aml_reserved_start+DSP_MEM_SIZE;
+	return pReserve_Manager->reserve[blockid].startaddr+aml_reserved_start+EARLY_RESERVED_MEM_SIZE;
 }
 
 unsigned long long get_reserve_block_size(int blockid)
@@ -788,16 +795,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	else
 		total =  of_read_number(reg,1);
 
-#ifndef CONFIG_MESON_TRUSTZONE
 	early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+total-aml_reserved_end-1);
-#else
-	if (total > meson_secure_mem_end()) {
-		early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+meson_secure_mem_end()-aml_reserved_end-meson_secure_mem_size()-1);
-		early_init_dt_add_memory_arch(meson_secure_mem_end(),MEM_BLOCK1_START+total-meson_secure_mem_end());
-	} else {
-		early_init_dt_add_memory_arch(aml_reserved_end+1,MEM_BLOCK1_START+total-aml_reserved_end-meson_secure_mem_size()-1);
-	}
-#endif
 
 	pr_info("total is %llx \n ",total);
 #else
