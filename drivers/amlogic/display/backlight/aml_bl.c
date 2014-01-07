@@ -37,6 +37,7 @@
 #endif /* CONFIG_ARCH_MESON6 */
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/delay.h>
 
 //#define MESON_BACKLIGHT_DEBUG
 #ifdef MESON_BACKLIGHT_DEBUG
@@ -141,6 +142,7 @@ void bl_power_on(int bl_flag)
 	
 	if (bl_config.method == BL_CTL_GPIO) {
 		aml_set_reg32_bits(P_LED_PWM_REG0, 1, 12, 2);
+		mdelay(20);
 		bl_gpio_direction_output(bl_config.gpio, 1);
 	}
 	else if ((bl_config.method == BL_CTL_PWM_NEGATIVE) || (bl_config.method == BL_CTL_PWM_POSITIVE)) {
@@ -190,6 +192,7 @@ void bl_power_on(int bl_flag)
 			devm_pinctrl_put(bl_config.p);
 			goto exit_bl_power_on;
 		}
+		mdelay(20);
 		if (bl_config.pwm_gpio_used) {
 			if (bl_config.gpio)
 				bl_gpio_direction_output(bl_config.gpio, 1);
