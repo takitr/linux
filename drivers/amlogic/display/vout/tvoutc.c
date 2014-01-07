@@ -310,9 +310,7 @@ int tvoutc_setmode(tvmode_t mode)
     }else{
 	aml_write_reg32(P_PERIPHS_PIN_MUX_0,aml_read_reg32(P_PERIPHS_PIN_MUX_0)&(~(3<<20)));
     }
-#if 0       //todo
     set_tvmode_misc(mode);
-#endif
 #ifdef CONFIG_ARCH_MESON1
 	tvoutc_setclk(mode);
     printk("%s[%d]\n", __func__, __LINE__);
