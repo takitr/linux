@@ -74,7 +74,7 @@ obj-y += power/
 #obj-$(CONFIG_AM_GPIO) +=gpio/
 
 obj-y += tvin_v4l2/
-obj-y += tvin/
+obj-$(CONFIG_TVIN) += ../../../hardware/tvin/
 
 obj-y += thermal/
 
