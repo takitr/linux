@@ -36,7 +36,7 @@
 #define aml_gpio_direction_output(gpio, val) amlogic_gpio_direction_output(gpio, val, ts_com->owner)
 #define aml_get_value(gpio) amlogic_get_value(gpio, ts_com->owner)
 #define aml_set_value(gpio,val) amlogic_set_value(gpio, val, ts_com->owner)
-#define aml_gpio_to_irq(gpio, irq, irq_edge) 	amlogic_gpio_to_irq(gpio, ts_com->owner, AML_GPIO_IRQ(irq,FILTER_NUM7,irq_edge))
+#define aml_gpio_to_irq(gpio, irq, irq_edge) 	amlogic_gpio_to_irq(gpio, ts_com->owner, AML_GPIO_IRQ((irq),FILTER_NUM7,irq_edge))
 
 #define touch_dbg(fmt, args...)  { if(ts_com->printk_enable_flag) \
 					printk("[%s]: " fmt, ts_com->owner, ## args); }
@@ -63,8 +63,8 @@ struct touch_pdata {
   unsigned reg;
   unsigned auto_update_fw;
 	char *owner;
-	char *fw_file;
-	char *config_file;
+	char fw_file[255];
+	char config_file[255];
 	
 	int printk_enable_flag;
 	void(*hardware_reset)(struct touch_pdata *);

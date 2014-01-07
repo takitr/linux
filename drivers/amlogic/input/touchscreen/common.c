@@ -219,9 +219,9 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 												"GPIO_IRQ_FALLING",
 											};
 	if (!pdata->fw_file)
-		pdata->fw_file = "/system/etc/touch/touch.fw";
+		strcpy(pdata->fw_file, "/system/etc/touch/touch.fw");
 	if (!pdata->config_file)
-		pdata->config_file = "/system/etc/touch/touch.cfg";
+		strcpy(pdata->config_file, "/system/etc/touch/touch.cfg");
 	if (!of_node) {
 		printk("%s: dev.of_node == NULL!\n", pdata->owner);
 		return ERR_NO_NODE;
@@ -357,19 +357,23 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
   	pdata->gpio_power = 0;
   }
 
-  err = of_property_read_string(of_node,"fw_file",&pdata->fw_file);
+  err = of_property_read_string(of_node,"fw_file",&str);
 	if (err) {
 	  printk("%s warnning: faild to get fw_file, set firmware %s!\n",pdata->owner, pdata->fw_file);
   }
-  else
+  else {
+	strcpy(pdata->fw_file, str);
   	printk("%s get fw_file, set firmware %s!\n",pdata->owner, pdata->fw_file);
+  }
 
-  err = of_property_read_string(of_node,"config_file",&pdata->config_file);
+  err = of_property_read_string(of_node,"config_file", &str);
 	if (err) {
 	  printk("%s warnning: faild to get config_file, set config_file %s!\n", pdata->owner, pdata->config_file);
   }
-  else
+  else {
+	strcpy(pdata->config_file, str);
   	printk("%s get config_file, set config_file %s!\n", pdata->owner, pdata->config_file);
+  }
   
   return ERR_NO;
 }
@@ -480,7 +484,7 @@ static ssize_t touch_class_read(struct class *cla, struct class_attribute *attr,
 		}
     return 0;
 }
-static ssize_t touch_class_write(struct class *cla, struct class_attribute *attr, const char *buf, ssize_t count)
+static ssize_t touch_class_write(struct class *cla, struct class_attribute *attr, const char *buf, size_t count)
 {
 	printk("buf[0]=%d, buf[1]=%d\n", buf[0], buf[1]);
 	if (!strcmp(attr->attr.name, "PrintkFlag")) {

@@ -1187,7 +1187,7 @@ static void ft5x0x_read_version(char* ver)
 		printk("[FST] Firmware version = 0x%x\n", uc_reg_value);
 }
 
-static void ft5x0x_late_upgrade(void)
+static int ft5x0x_late_upgrade(void *data)
 {
 	int file_size;
 //	static int count;
@@ -1203,7 +1203,8 @@ static void ft5x0x_late_upgrade(void)
 	fts_ctpm_fw_upgrade_with_i_file();
 	enable_irq(ts_com->irq);
 	printk("%s :first load firmware\n", ts_com->owner);
-	do_exit(0);
+	//do_exit(0);
+	return 0;
 }
 
 /***********************************************************************************************
@@ -1342,7 +1343,7 @@ ft5x0x_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
   if (ts_com->auto_update_fw)
   {
     disable_irq(ts_com->irq);
-    ts_com->upgrade_task = kthread_run(ft5x0x_late_upgrade, NULL, "ft5x0x_late_upgrade");
+    ts_com->upgrade_task = kthread_run(ft5x0x_late_upgrade, (void *)NULL, "ft5x0x_late_upgrade");
     if (!ts_com->upgrade_task)
       printk("%s creat upgrade process failed\n", __func__);
     else
