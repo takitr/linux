@@ -3845,6 +3845,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     OV5647_set_param_wb(fh->dev,ov5647_qctrl[4].default_value);
     OV5647_set_param_exposure(fh->dev,ov5647_qctrl[5].default_value);
     OV5647_set_param_effect(fh->dev,ov5647_qctrl[6].default_value);
+    OV5647_AutoFocus(fh->dev, ov5647_qctrl[8].default_value);
     return ret;
 }
 
