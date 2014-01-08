@@ -534,6 +534,10 @@ int osd_ext_notify_callback(struct notifier_block *block, unsigned long cmd , vo
 	vinfo = get_current_vinfo2();
 	amlog_mask_level(LOG_MASK_PARA, LOG_LEVEL_LOW, "tv_server:vmode=%s\r\n", vinfo->name);
 
+	if(vinfo->mode == VMODE_INIT_NULL){
+		return 1;
+	}
+
 	switch (cmd) {
 	case  VOUT_EVENT_MODE_CHANGE:
 		amlog_mask_level(LOG_MASK_PARA, LOG_LEVEL_LOW, "recevie change mode  message \r\n");
