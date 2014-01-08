@@ -703,12 +703,6 @@ s32 vreal_init(void)
 
     printk("vreal_init\n");
 
-    if (!trickmode_fffb) {
-        memset(phys_to_virt(buf_start), 0, buf_size);
-
-        buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
-    }
-
     init_timer(&recycle_timer);
 
     stat |= STAT_TIMER_INIT;
@@ -754,10 +748,6 @@ s32 vreal_init(void)
     }
 
     stat |= STAT_MC_LOAD;
-
-    if (!trickmode_fffb) {
-        dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
-    }
 
     /* enable AMRISC side protocol */
     vreal_prot_init();
