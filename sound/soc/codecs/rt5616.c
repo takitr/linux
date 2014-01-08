@@ -40,8 +40,8 @@
 
 #define POWER_ON_MICBIAS1
 
-extern int spk_gpio_mute;
-static unsigned int spk_mute_num = 0;
+//extern int spk_gpio_mute;
+//static unsigned int spk_mute_num = 0;
 
 struct rt5616_init_reg {
     u8 reg;
@@ -821,11 +821,13 @@ static int rt5616_lout_event(struct snd_soc_dapm_widget *w,
         /*snd_soc_update_bits(codec, RT5616_LOUT_CTRL1,
             RT5616_L_MUTE | RT5616_R_MUTE, 0);
             */
+#if 0
         if(!spk_mute_num){
             spk_mute_num = 1;
             amlogic_set_value(spk_gpio_mute, 1, "mute_spk");
             msleep(100);
         }
+#endif
         break;
 
     case SND_SOC_DAPM_PRE_PMD:
@@ -1160,7 +1162,6 @@ static const struct snd_soc_dapm_route rt5616_dapm_routes[] = {
 static int rt5616_codec_digital_mute(struct snd_soc_dai *dai, int mute)
 {
     int ret;
-    printk(KERN_INFO"rt5616_codec_digital_mute : mute=%d\n",mute);
     unsigned int reg_value;
     struct snd_soc_codec *codec = dai->codec;
     
@@ -1516,7 +1517,6 @@ static DEVICE_ATTR(index_reg, 0444, rt5616_index_show, NULL);
 static int rt5616_set_bias_level(struct snd_soc_codec *codec,
             enum snd_soc_bias_level level)
 {
-   printk(KERN_INFO"rt5616_set_bias_level : level=%d\n",level);
     switch (level) {
     case SND_SOC_BIAS_ON:
         snd_soc_update_bits(codec, RT5616_HP_VOL,
@@ -1622,8 +1622,8 @@ static int rt5616_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5616_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
-    amlogic_set_value(spk_gpio_mute, 0, "mute_spk");
-    spk_mute_num = 0;
+    //amlogic_set_value(spk_gpio_mute, 0, "mute_spk");
+    //spk_mute_num = 0;
     rt5616_set_bias_level(codec, SND_SOC_BIAS_OFF);
     return 0;
 }
@@ -1732,8 +1732,8 @@ static int rt5616_i2c_shutdown(struct i2c_client *client)
 {
     struct rt5616_priv *rt5616 = i2c_get_clientdata(client);
     struct snd_soc_codec *codec = rt5616->codec;
-    amlogic_set_value(spk_gpio_mute, 0, "mute_spk");
-    spk_mute_num = 0;
+    //amlogic_set_value(spk_gpio_mute, 0, "mute_spk");
+    //spk_mute_num = 0;
     if (codec != NULL)
     {
         snd_soc_write(codec, RT5616_HP_VOL, 0xc8c8);

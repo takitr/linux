@@ -28,7 +28,7 @@
 
 static aml_dai_info_t dai_info[3] = {{0}};
 static int i2s_pos_sync = 0;
-#define AML_DAI_DEBUG
+//#define AML_DAI_DEBUG
 //#define AML_DAI_PCM_SUPPORT 
 
 

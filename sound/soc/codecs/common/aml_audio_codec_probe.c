@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 #include <linux/of.h>
 #include <linux/slab.h>
+#include <linux/regmap.h>
 #include <linux/pinctrl/consumer.h>
 #include <mach/am_regs.h>
 #include <linux/delay.h>
@@ -22,145 +23,206 @@
 #include <linux/amlogic/aml_audio_codec_probe.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 
+codec_info_t codec_info;
 
+static const struct regmap_config codec_regmaps[] = {
+	{
+		.name = "rt5616",
+		.reg_bits =		8,
+		.val_bits =		16,
+		.max_register =		0xff,
+	},
+	{
+		.name = "rt5631",
+		.reg_bits = 	8,
+		.val_bits = 	16,
+		.max_register = 	0x7e,
+	},
+	{
+		.name = "wm8960",
+		.reg_bits = 	7,
+		.val_bits = 	9,
+		.max_register = 	0x37,
+	},
+};
 
-extern struct i2c_client * i2c_new_device(struct i2c_adapter *adap,
-            struct i2c_board_info const *info);
-
-
-static struct platform_device* audio_codec_pdev = NULL;
-
-bool is_rt5631;
-bool is_wm8960;
-bool is_rt5616;
-
-static int regist_codec_info(struct device_node* p_node, aml_audio_codec_info_t* audio_codec_dev)
+static int test_codec_of_node(struct device_node* p_node, aml_audio_codec_info_t* audio_codec_dev)
 {
-    int ret = 0;
-    ret = of_property_read_string(p_node, "codec_name", &audio_codec_dev->name);
-    if (ret) {
-        printk("get audio codec name failed!\n");
+	int ret = 0, val = 0;
+	const char* str;
+	struct i2c_board_info board_info;
+	struct i2c_adapter *adapter;
+	struct i2c_client *client;
+	struct regmap *regmap;
+	
+	memset(&board_info, 0, sizeof(board_info));
+
+	ret = of_property_read_string(p_node, "codec_name", &audio_codec_dev->name);
+	if (ret) {
+        printk("no of property codec_name!\n");
+		goto exit;
     }
-    ret = of_property_read_string(p_node, "status", &audio_codec_dev->status);
-    if(ret){
-        printk("%s:this audio codec is disabled!\n",audio_codec_dev->name);
-    }
-    if(!strcmp(audio_codec_dev->name, "rt5631") && !strcmp(audio_codec_dev->status,"okay")){
-        is_rt5631 = true;
-    }else if(strcmp(audio_codec_dev->name, "wm8960") && strcmp(audio_codec_dev->status,"okay")){
-        is_wm8960 = true;
-    }else if(strcmp(audio_codec_dev->name, "rt5616") && strcmp(audio_codec_dev->status,"okay")){
-        is_rt5616 = true;
-    }
+	printk("test codec %s\n", audio_codec_dev->name);
+	ret = of_property_read_string(p_node, "status", &audio_codec_dev->status);
+	if(ret){
+		printk("%s:can't get status info!\n",audio_codec_dev->name);
+		goto exit;
+	}
 
-    printk("*********is_rt5631=%d,is_wm8960=%d,is_rt5616=%d*\n",is_rt5631,is_wm8960,is_rt5616);
-    return 0;
-}
+	if (strcmp(audio_codec_dev->status, "okay") && strcmp(audio_codec_dev->status, "ok")){
+		printk("test_codec_of_node, node %s disable\n", audio_codec_dev->name);
+		ret = -ENODEV;
+		goto exit;
+	}
+	
+	ret = of_property_read_u32(p_node,"i2c_addr", &audio_codec_dev->i2c_addr);
+	if(ret){
+		printk("%s fail to get i2c_addr\n", __func__);
+		goto exit;
+	}
 
+	ret = of_property_read_u32(p_node,"id_reg", &audio_codec_dev->id_reg);
+	if(ret){
+		printk("%s fail to get id_reg\n", __func__);
+		goto exit;
+	}
 
-static int get_audio_codec_i2c_info(struct device_node* p_node, aml_audio_codec_info_t* audio_codec_dev)
-{
-    const char* str;
-    int ret = 0;
-    unsigned i2c_addr;
-    struct i2c_adapter *adapter;
+	ret = of_property_read_u32(p_node,"id_val", &audio_codec_dev->id_val);
+	if(ret){
+		printk("%s fail to get id_val\n", __func__);
+		goto exit;
+	}
 
-    ret = of_property_read_string(p_node, "codec_name", &audio_codec_dev->name);
-    if (ret) {
-        printk("get audio codec name failed!\n");
-        goto err_out;
-    }
-
-    ret = of_property_match_string(p_node,"status","okay");
-    if(ret){
-        printk("%s:this audio codec is disabled!\n",audio_codec_dev->name);
-        goto err_out;
-    }
-    printk("use audio codec %s\n",audio_codec_dev->name);
-
-    ret = of_property_read_u32(p_node,"capless",&audio_codec_dev->capless);
-    if(ret){
-        printk("don't find audio codec capless mode!\n");
-    }
-
-    ret = of_property_read_string(p_node, "i2c_bus", &str);
-    if (ret) {
-        printk("%s: faild to get i2c_bus str,use default i2c bus!\n", audio_codec_dev->name);
+	ret = of_property_read_string(p_node, "i2c_bus", &str);
+	if(ret){
+		printk("%s fail to get i2c_bus\n", __func__);
+		goto exit;
+	}
+	
+	if (!strncmp(str, "i2c_bus_ao", 10))
+        audio_codec_dev->i2c_bus_type = AML_I2C_BUS_AO;
+	else if (!strncmp(str, "i2c_bus_a", 9))
+        audio_codec_dev->i2c_bus_type = AML_I2C_BUS_A;
+    else if (!strncmp(str, "i2c_bus_b", 9))
+        audio_codec_dev->i2c_bus_type = AML_I2C_BUS_B;
+    else if (!strncmp(str, "i2c_bus_c", 9))
+        audio_codec_dev->i2c_bus_type = AML_I2C_BUS_C;
+    else if (!strncmp(str, "i2c_bus_d", 9))
         audio_codec_dev->i2c_bus_type = AML_I2C_BUS_D;
-    } else {
-        if (!strncmp(str, "i2c_bus_a", 9))
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_A;
-        else if (!strncmp(str, "i2c_bus_b", 9))
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_B;
-        else if (!strncmp(str, "i2c_bus_c", 9))
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_C;
-        else if (!strncmp(str, "i2c_bus_d", 9))
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_D;
-        else if (!strncmp(str, "i2c_bus_ao", 10))
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_AO;
-        else
-            audio_codec_dev->i2c_bus_type = AML_I2C_BUS_D;
-    }
+    else
+		printk("ERR, unsupported i2c bus addr: %s \n", str);
+	
+	adapter = i2c_get_adapter(audio_codec_dev->i2c_bus_type);
+	if (!adapter){
+		ret = -ENODEV;
+		goto exit;
+	}
+	
+	strncpy(board_info.type, "codec_i2c", I2C_NAME_SIZE);
+	board_info.addr = audio_codec_dev->i2c_addr;
+	client = i2c_new_device(adapter, &board_info);
+	if (!client) {
+		/* I2C device registration failed, continue with the next */
+		printk("Unable to add I2C device for 0x%x\n",
+			 board_info.addr);
+		ret = -ENODEV;
+		goto err2;
+	}
 
-    ret = of_property_read_u32(p_node,"i2c_addr",&i2c_addr);
-    if(ret){
-        printk("don't find i2c adress capless,use default!\n");
-        audio_codec_dev->i2c_addr = 0x1B;
-    }else{
-        audio_codec_dev->i2c_addr = i2c_addr;
-    }
-    printk("audio codec addr: 0x%x\n", audio_codec_dev->i2c_addr);
-    printk("audio codec i2c bus: %d\n", audio_codec_dev->i2c_bus_type);
+	regmap = devm_regmap_init_i2c(client, &codec_regmaps[codec_info.codec_index]);
+	if (IS_ERR(regmap)){
+		ret = PTR_ERR(regmap);
+		goto err1;
+	}
+	
+	ret = regmap_read(regmap, audio_codec_dev->id_reg, &val);
+	if (ret){
+		printk("try regmap_read err, so %s disabled\n", audio_codec_dev->name);
+		ret = -ENODEV;
+		goto err1;
+	}
 
-    /* test if the camera is exist */
-    adapter = i2c_get_adapter(audio_codec_dev->i2c_bus_type);
-    if (!adapter) {
-        printk("can not do probe function\n");
-        ret = -1;
-        goto err_out;
-    }
-    ret = 0;
-
-err_out:
-    return ret;
+	if (val != audio_codec_dev->id_val){
+		printk("ID value mismatch, so %s disabled!\n", audio_codec_dev->name);
+		ret = -ENODEV;
+	}
+	
+err1:
+	i2c_unregister_device(client);
+err2:
+	i2c_put_adapter(adapter);
+exit:
+	return ret;
 }
 
+static int register_i2c_codec_device(aml_audio_codec_info_t* audio_codec_dev)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_client *client;
+	struct i2c_board_info board_info;
+	char tmp[NAME_SIZE];
+
+	strncpy(board_info.type, audio_codec_dev->name, I2C_NAME_SIZE);
+	board_info.addr = audio_codec_dev->i2c_addr;
+	
+	adapter = i2c_get_adapter(audio_codec_dev->i2c_bus_type);
+	client = i2c_new_device(adapter, &board_info);
+	snprintf(tmp, NAME_SIZE, "%s", audio_codec_dev->name);
+	strlcpy(codec_info.name, tmp, NAME_SIZE);
+	snprintf(tmp, NAME_SIZE, "%s.%s", audio_codec_dev->name, dev_name(&client->dev));
+	strlcpy(codec_info.name_bus, tmp, NAME_SIZE);
+
+	return 0;
+}
 
 static int aml_audio_codec_probe(struct platform_device *pdev)
 {
-    struct device_node* audio_codec_node = pdev->dev.of_node;
+	int ret = 0, ext_codec = 0;
+	struct device_node* audio_codec_node = pdev->dev.of_node;
     struct device_node* child;
-    struct i2c_board_info board_info;
-    struct i2c_adapter *adapter;
-    aml_audio_codec_info_t temp_audio_codec;
-    audio_codec_pdev = pdev;
-    is_rt5631 = false;
-    is_wm8960 = false;
-    is_rt5616 = false;
-    for_each_child_of_node(audio_codec_node, child) {
+    aml_audio_codec_info_t *audio_codec_dev;
 
-        memset(&temp_audio_codec, 0, sizeof(aml_audio_codec_info_t));
-        regist_codec_info(child,&temp_audio_codec);
-        if (get_audio_codec_i2c_info(child, &temp_audio_codec)) {
-            continue;
-        }
-        memset(&board_info, 0, sizeof(board_info));
-        strncpy(board_info.type, temp_audio_codec.name, I2C_NAME_SIZE);
-        adapter = i2c_get_adapter(temp_audio_codec.i2c_bus_type);
-        board_info.addr = temp_audio_codec.i2c_addr;
-        board_info.platform_data = &temp_audio_codec;
-        i2c_new_device(adapter, &board_info);
+	audio_codec_dev = kzalloc(sizeof(aml_audio_codec_info_t), GFP_KERNEL);
+	if (!audio_codec_dev) {
+		printk("ERROR, temp_audio_codec device create fail.\n");
+		ret = -ENOMEM;
+		goto exit;
     }
-    return 0;
-}
+	
+	memset(&codec_info, 0, sizeof(codec_info));
 
+    for_each_child_of_node(audio_codec_node, child) {
+        memset(audio_codec_dev, 0, sizeof(aml_audio_codec_info_t));
+		ret = test_codec_of_node(child, audio_codec_dev);
+		codec_info.codec_index++;
+		
+		if (ret == 0){
+			ext_codec = 1;
+			printk("using external codec, index = %d\n", codec_info.codec_index);
+			break;
+		}
+    }
+	
+	if (!ext_codec){
+		printk("no external codec, using aml default codec\n");
+		strlcpy(codec_info.name_bus, "aml_m8_codec.0", NAME_SIZE);
+		strlcpy(codec_info.name, "amlm8", NAME_SIZE);
+		codec_info.codec_index = aml_codec;
+		ret = 0;
+		goto exit;
+	}
+
+	ret = register_i2c_codec_device(audio_codec_dev);
+	if (ret)
+        dev_err(&pdev->dev, "register_codec_device failed (%d)\n", ret);
+
+exit:
+	kfree(audio_codec_dev);
+    return ret;
+}
 
 static int aml_audio_codec_remove(struct platform_device *pdev)
 {
-    is_rt5631 = false;
-    is_wm8960 = false;
-    is_rt5616 = false;
-
     return 0;
 }
 
