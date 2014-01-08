@@ -16,6 +16,7 @@
 #define __TVIN_H
 
 #include <plat/io.h>
+#include <linux/amlogic/amports/cm.h>
 
 #define R_CBUS_REG(reg) aml_read_reg32(CBUS_REG_ADDR(reg))
 #define W_CBUS_REG(reg, val) aml_write_reg32(CBUS_REG_ADDR(reg), val)
@@ -227,7 +228,7 @@ typedef enum tvin_sig_fmt_e {
         TVIN_SIG_FMT_VGA_1920X1200P_59HZ_D988            = 0x078,
         TVIN_SIG_FMT_VGA_1400X900P_60HZ_D000             = 0x079,
         TVIN_SIG_FMT_VGA_1680X1050P_60HZ_D000            = 0x07a,
-        TVIN_SIG_FMT_VGA_RESERVE6                       = 0x07b,
+        TVIN_SIG_FMT_VGA_800X600P_85HZ_D062              = 0x07b,
         TVIN_SIG_FMT_VGA_RESERVE7                       = 0x07c,
         TVIN_SIG_FMT_VGA_RESERVE8                       = 0x07d,
         TVIN_SIG_FMT_VGA_RESERVE9                       = 0x07e,
@@ -534,6 +535,11 @@ typedef struct tvafe_adc_cal_s {
         unsigned int   reserved;          // bit[ 0]: TVAFE_ADC_CAL_VALID
 } tvafe_adc_cal_t;
 
+typedef struct tvafe_adc_cal_clamp_s {
+	    short a_analog_clamp_diff;
+		short b_analog_clamp_diff;
+		short c_analog_clamp_diff;
+} tvafe_adc_cal_clamp_t;
 typedef struct tvafe_adc_comp_cal_s {
     struct tvafe_adc_cal_s comp_cal_val[3];
 } tvafe_adc_comp_cal_t;
@@ -548,54 +554,54 @@ typedef enum tvafe_cvbs_video_e {
 // for pin selection
 typedef enum tvafe_adc_pin_e {
         TVAFE_ADC_PIN_NULL = 0,
-        TVAFE_ADC_PIN_A_PGA_0,
-        TVAFE_ADC_PIN_A_PGA_1,
-        TVAFE_ADC_PIN_A_PGA_2,
-        TVAFE_ADC_PIN_A_PGA_3,
-        TVAFE_ADC_PIN_A_PGA_4,
-        TVAFE_ADC_PIN_A_PGA_5,
-        TVAFE_ADC_PIN_A_PGA_6,
-        TVAFE_ADC_PIN_A_PGA_7,
-        TVAFE_ADC_PIN_A_0,
-        TVAFE_ADC_PIN_A_1,
-        TVAFE_ADC_PIN_A_2,
-        TVAFE_ADC_PIN_A_3,
-        TVAFE_ADC_PIN_A_4,
-        TVAFE_ADC_PIN_A_5,
-        TVAFE_ADC_PIN_A_6,
-        TVAFE_ADC_PIN_A_7,
-        TVAFE_ADC_PIN_B_0,
-        TVAFE_ADC_PIN_B_1,
-        TVAFE_ADC_PIN_B_2,
-        TVAFE_ADC_PIN_B_3,
-        TVAFE_ADC_PIN_B_4,
-        TVAFE_ADC_PIN_B_5,
-        TVAFE_ADC_PIN_B_6,
-        TVAFE_ADC_PIN_B_7,
-        TVAFE_ADC_PIN_C_0,
-        TVAFE_ADC_PIN_C_1,
-        TVAFE_ADC_PIN_C_2,
-        TVAFE_ADC_PIN_C_3,
-        TVAFE_ADC_PIN_C_4,
-        TVAFE_ADC_PIN_C_5,
-        TVAFE_ADC_PIN_C_6,
-        TVAFE_ADC_PIN_C_7,
-        TVAFE_ADC_PIN_D_0,
-        TVAFE_ADC_PIN_D_1,
-        TVAFE_ADC_PIN_D_2,
-        TVAFE_ADC_PIN_D_3,
-        TVAFE_ADC_PIN_D_4,
-        TVAFE_ADC_PIN_D_5,
-        TVAFE_ADC_PIN_D_6,
-        TVAFE_ADC_PIN_D_7,
-        TVAFE_ADC_PIN_SOG_0,
-        TVAFE_ADC_PIN_SOG_1,
-        TVAFE_ADC_PIN_SOG_2,
-        TVAFE_ADC_PIN_SOG_3,
-        TVAFE_ADC_PIN_SOG_4,
-        TVAFE_ADC_PIN_SOG_5,
-        TVAFE_ADC_PIN_SOG_6,
-        TVAFE_ADC_PIN_SOG_7,
+	TVAFE_ADC_PIN_A_PGA_0	= 1,
+	TVAFE_ADC_PIN_A_PGA_1	= 2,
+	TVAFE_ADC_PIN_A_PGA_2	= 3,
+	TVAFE_ADC_PIN_A_PGA_3	= 4,
+	TVAFE_ADC_PIN_A_PGA_4	= 5,
+	TVAFE_ADC_PIN_A_PGA_5	= 6,
+	TVAFE_ADC_PIN_A_PGA_6	= 7,
+	TVAFE_ADC_PIN_A_PGA_7	= 8,
+	TVAFE_ADC_PIN_A_0	= 9,
+	TVAFE_ADC_PIN_A_1	= 10,
+	TVAFE_ADC_PIN_A_2	= 11,
+	TVAFE_ADC_PIN_A_3	= 12,
+	TVAFE_ADC_PIN_A_4	= 13,
+	TVAFE_ADC_PIN_A_5	= 14,
+	TVAFE_ADC_PIN_A_6	= 15,
+	TVAFE_ADC_PIN_A_7	= 16,
+	TVAFE_ADC_PIN_B_0	= 17,
+	TVAFE_ADC_PIN_B_1	= 18,
+	TVAFE_ADC_PIN_B_2	= 19,
+	TVAFE_ADC_PIN_B_3	= 20,
+	TVAFE_ADC_PIN_B_4	= 21,
+	TVAFE_ADC_PIN_B_5	= 22,
+	TVAFE_ADC_PIN_B_6	= 23,
+	TVAFE_ADC_PIN_B_7	= 24,
+	TVAFE_ADC_PIN_C_0	= 25,
+	TVAFE_ADC_PIN_C_1	= 26,
+	TVAFE_ADC_PIN_C_2	= 27,
+	TVAFE_ADC_PIN_C_3	= 28,
+	TVAFE_ADC_PIN_C_4	= 29,
+	TVAFE_ADC_PIN_C_5	= 30,
+	TVAFE_ADC_PIN_C_6	= 31,
+	TVAFE_ADC_PIN_C_7	= 32,
+	TVAFE_ADC_PIN_D_0	= 33,
+	TVAFE_ADC_PIN_D_1	= 34,
+	TVAFE_ADC_PIN_D_2	= 35,
+	TVAFE_ADC_PIN_D_3	= 36,
+	TVAFE_ADC_PIN_D_4	= 37,
+	TVAFE_ADC_PIN_D_5	= 38,
+	TVAFE_ADC_PIN_D_6	= 39,
+	TVAFE_ADC_PIN_D_7	= 40,
+	TVAFE_ADC_PIN_SOG_0	= 41,
+	TVAFE_ADC_PIN_SOG_1	= 42,
+	TVAFE_ADC_PIN_SOG_2	= 43,
+	TVAFE_ADC_PIN_SOG_3	= 44,
+	TVAFE_ADC_PIN_SOG_4	= 45,
+	TVAFE_ADC_PIN_SOG_5	= 46,
+	TVAFE_ADC_PIN_SOG_6	= 47,
+	TVAFE_ADC_PIN_SOG_7	= 48,
         TVAFE_ADC_PIN_MAX,
 } tvafe_adc_pin_t;
 
@@ -784,4 +790,6 @@ typedef struct tvafe_pin_mux_s {
 #define TVIN_IOC_CALLMASTER_GET	    _IO( TVIN_IOC_MAGIC, 0x1d)
 #define TVIN_IOC_S_AFE_ADC_COMP_CAL  _IOW(TVIN_IOC_MAGIC, 0x1e, struct tvafe_adc_comp_cal_s)
 #define TVIN_IOC_G_AFE_ADC_COMP_CAL  _IOR(TVIN_IOC_MAGIC, 0x1f, struct tvafe_adc_comp_cal_s)
+#define TVIN_IOC_LOAD_REG           _IOW(TVIN_IOC_MAGIC, 0x20, struct am_regs_s)
+#define TVIN_IOC_S_AFE_ADC_DIFF     _IOW(TVIN_IOC_MAGIC, 0x21, struct tvafe_adc_cal_clamp_s)
 #endif
