@@ -172,7 +172,7 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 		i2s_mode = AIU_I2S_MODE_PCM16;
 		break;
 	}	
-	printk("DEBUG-->call audio_set_i2s_mode()\n");
+	
 	//audio_set_i2s_mode(i2s_mode);
 	/* case 1,raw mode enabled */
 	if(IEC958_mode_codec){

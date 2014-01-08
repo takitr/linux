@@ -35,6 +35,7 @@
 
 #include "aml_i2s_dai.h"
 #include "aml_i2s.h"
+#include "aml_m8.h"
 #include "aml_audio_hw.h"
 #include "../../codecs/aml_m8_codec.h"
 #include <mach/register.h>
@@ -51,35 +52,6 @@
 #define USE_EXTERNAL_DAC 1
 #define DRV_NAME "aml_snd_m8"
 #define HP_DET                  1
-struct aml_audio_private_data {
-    int bias_level;
-    int clock_en;
-	int gpio_hp_det;
-	bool det_pol_inv;
-	int gpio_mute;
-	bool mute_inv;
-	struct pinctrl *pin_ctl;
-    int hp_last_state;
-    unsigned int hp_val_h;
-    unsigned int hp_val_l;
-    unsigned int mic_val;
-    unsigned int hp_detal;
-    unsigned int hp_adc_ch;
-
-    bool mic_det;
-    
-
-    int timer_en;
-    int detect_flag;
-    struct timer_list timer;
-    struct work_struct work;
-    struct mutex lock;
-    struct snd_soc_jack jack;
-    void* data;
-
-	struct switch_dev sdev; // for android
-	struct switch_dev mic_sdev; // for android
-};
 
 static void aml_set_clock(int enable)
 {
@@ -552,7 +524,8 @@ static void aml_m8_pinmux_init(struct snd_soc_card *card)
     
     p_audio = p_aml_audio;
  #if USE_EXTERNAL_DAC
-    aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+    //aml_write_reg32(P_AO_SECURE_REG1,0x00000000);
+    aml_clr_reg32_mask(P_AO_SECURE_REG1, ((1<<8) | (1<<1)));
  #endif
 	ret = of_property_read_string(card->dev->of_node, "mute_gpio", &str);
 	if (ret < 0) {

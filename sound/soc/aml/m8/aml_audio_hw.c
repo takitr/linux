@@ -245,6 +245,7 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
         }else{
           WRITE_MPEG_REG(AIU_MEM_IEC958_END_PTR, (addr & 0xffffffc0) + (size & 0xffffffc0) - 1);    // this is for RAW mode
         }
+        WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, 0x303, 0, 16);
 
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
         WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
@@ -256,9 +257,12 @@ void audio_set_958outbuf(u32 addr, u32 size,int flag)
 /*
 i2s mode 0: master 1: slave
 */
-static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
+static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode,u32 i2s_sync)
 {
 	unsigned char  mode = 0;
+    unsigned int sync_mode = 0;
+    if(i2s_sync)
+        sync_mode = i2s_sync;
 	if(i2s_mode &I2SIN_SLAVE_MODE)
 		mode = 1;
 	WRITE_MPEG_REG(AUDIN_FIFO0_START, addr & 0xffffffc0);
@@ -289,7 +293,7 @@ static void i2sin_fifo0_set_buf(u32 addr, u32 size,u32 i2s_mode)
 									 (3<<I2SIN_SIZE)
 									|(1<<I2SIN_CHAN_EN)		/*bit10~13*/ //2 channel
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6TV
-									|(0<<I2SIN_POS_SYNC)
+									|(sync_mode<<I2SIN_POS_SYNC)
 #else
 									|(1<<I2SIN_POS_SYNC)
 #endif
@@ -323,10 +327,10 @@ static void spdifin_fifo1_set_buf(u32 addr, u32 size)
 				  );
 	WRITE_MPEG_REG(AUDIN_FIFO1_CTRL1,0xc);
 }
-void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode)
+void audio_in_i2s_set_buf(u32 addr, u32 size,u32 i2s_mode, u32 i2s_sync)
 {
 	printk("i2sin_fifo0_set_buf \n");		
-	i2sin_fifo0_set_buf(addr,size,i2s_mode);
+	i2sin_fifo0_set_buf(addr,size,i2s_mode,i2s_sync);
 	audio_in_buf_ready = 1;
 }
 void audio_in_spdif_set_buf(u32 addr, u32 size)
@@ -453,8 +457,8 @@ void audio_set_i2s_mode(u32 mode)
         //WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 0, 0, 1);
 
         if (ENABLE_IEC958) {
-            WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, mask[mode], 0,
-                                16);
+       //     WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_MASKS, mask[mode], 0,
+             //                   16);
             //WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 1, 0, 1);
             //WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 0, 0, 1);
         }
@@ -1177,7 +1181,7 @@ void audio_set_958_mode(unsigned mode, _aiu_958_raw_setting_t * set)
 void audio_out_i2s_enable(unsigned flag)
 {
     if (flag) {
-        WRITE_MPEG_REG(AIU_RST_SOFT, 0x05);
+        WRITE_MPEG_REG(AIU_RST_SOFT, 0x01);
         READ_MPEG_REG(AIU_I2S_SYNC);
         WRITE_MPEG_REG_BITS(AIU_MEM_I2S_CONTROL, 3, 1, 2);
         // Maybe cause POP noise
@@ -1195,6 +1199,7 @@ void audio_hw_958_enable(unsigned flag)
     if (ENABLE_IEC958)
     {
     		if(flag){
+        		WRITE_MPEG_REG(AIU_RST_SOFT, 0x04);
 	              WRITE_MPEG_REG(AIU_958_FORCE_LEFT, 0);
 	              WRITE_MPEG_REG_BITS(AIU_958_DCU_FF_CTRL, 1, 0, 1);
 	              WRITE_MPEG_REG_BITS(AIU_MEM_IEC958_CONTROL, 3, 1, 2);
@@ -1225,9 +1230,6 @@ unsigned int audio_hdmi_init_ready()
 {
 	return 	READ_MPEG_REG_BITS(AIU_HDMI_CLK_DATA_CTRL, 0, 2);
 }
-
-#ifdef CONFIG_ARCH_MESON8
-
 /* power gate control for iec958 audio out */
 unsigned audio_spdifout_pg_enable(unsigned char enable)
 {
@@ -1280,4 +1282,3 @@ unsigned audio_aiu_pg_enable(unsigned char enable)
         AUDIO_CLK_GATE_OFF(AIU_TOP_LEVEL);
 	}
 }
-#endif

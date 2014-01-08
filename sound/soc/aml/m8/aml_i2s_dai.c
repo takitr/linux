@@ -27,6 +27,7 @@
 #include <linux/of.h>
 
 static aml_dai_info_t dai_info[3] = {{0}};
+static int i2s_pos_sync = 0;
 #define AML_DAI_DEBUG
 //#define AML_DAI_PCM_SUPPORT 
 
@@ -160,30 +161,31 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 			sample_rate	=	AUDIO_CLK_FREQ_441;
 			break;
 	};
-	if(substream->stream == SNDRV_PCM_STREAM_CAPTURE)
-	{
-		s->i2s_mode = dai_info[dai->id].i2s_mode;
-		audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2,0);
-		memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
-		{
-			int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
-			ppp[0] = 0x78787878;
-			ppp[1] = 0x78787878;
-		}
-		s->device_type = AML_AUDIO_I2SIN;		
-	}
-	else{
-        printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
-        if(set_clock != sample_rate ){
-            set_clock = sample_rate;
-            audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
+
+    printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
+    if(set_clock != sample_rate ){
+        set_clock = sample_rate;
+        audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
+    }
+    audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP); 
+    
+    if(substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+    {
+        s->i2s_mode = dai_info[dai->id].i2s_mode;
+        audio_in_i2s_set_buf(runtime->dma_addr, runtime->dma_bytes*2,0,i2s_pos_sync);
+        memset((void*)runtime->dma_area,0,runtime->dma_bytes*2);
+        {
+            int * ppp = (int*)(runtime->dma_area+runtime->dma_bytes*2-8);
+            ppp[0] = 0x78787878;
+            ppp[1] = 0x78787878;
         }
-		audio_util_set_dac_i2s_format(AUDIO_ALGOUT_DAC_FORMAT_DSP);	
-		
-		s->device_type = AML_AUDIO_I2SOUT;
-		aml_hw_i2s_init(runtime);
-	}
-	return 0;
+        s->device_type = AML_AUDIO_I2SIN;       
+    }
+    else{       
+        s->device_type = AML_AUDIO_I2SOUT;
+        aml_hw_i2s_init(runtime);
+    }
+    return 0;
 }
 static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 				struct snd_soc_dai *dai)
@@ -243,6 +245,17 @@ static int aml_dai_set_i2s_fmt(struct snd_soc_dai *dai,
 #endif
 	if(fmt&SND_SOC_DAIFMT_CBS_CFS)//slave mode 
 		dai_info[dai->id].i2s_mode = I2S_SLAVE_MODE;
+    
+    switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+    case SND_SOC_DAIFMT_NB_NF:
+         i2s_pos_sync = 0;
+        break;
+    case SND_SOC_DAIFMT_IB_NF:
+         i2s_pos_sync = 1;
+        break;
+    default:
+        return -EINVAL;
+    }
 	return 0;
 }
 
