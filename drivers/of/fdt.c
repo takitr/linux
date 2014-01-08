@@ -619,7 +619,7 @@ extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
 unsigned long long phys_offset=0;
 
-#define MAX_RESERVE_BLOCK  32			
+#define MAX_RESERVE_BLOCK  32
 //limit: reserve block < 32
 #define DSP_MEM_SIZE	0x100000
 
@@ -741,11 +741,11 @@ int __init early_init_dt_scan_reserve_memory(unsigned long node, const char *una
 	unsigned long l;
 	int idx=0;
 	struct reserve_mem * prm;
-	
+
 	mem = of_get_flat_dt_prop(node, "reserve-memory", &l);
 	if (mem == NULL)
 		return 0;
-	
+
 	endp = mem + (l / sizeof(__be32));
 	while ((endp - mem) >= dt_root_size_cells) {
 		u64 size;
@@ -844,6 +844,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 		phys_offset = of_read_number(reg,1);
 		printk("physical memory start address is 0x%llx\n",phys_offset);
 	}
+
 	early_init_dt_add_memory_arch(phys_offset,MEM_BLOCK1_SIZE);
 	early_init_dt_add_memory_arch(aml_reserved_end,aml_reserved_start-aml_reserved_end);
 
