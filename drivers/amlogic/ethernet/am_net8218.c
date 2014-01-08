@@ -75,6 +75,7 @@ static unsigned int g_rx_cnt = 0;
 static int g_mdcclk = 2;
 static unsigned int ethbaseaddr = ETHBASE;
 static int interruptnum = ETH_INTERRUPT;
+static int savepowermode = 0;
 static unsigned int MDCCLK = ETH_MAC_4_GMII_Addr_CR_100_150;
 
 module_param_named(amlog_level, g_debug, int, 0664);
@@ -1016,7 +1017,7 @@ static int aml_phy_init(struct net_device *dev)
         snprintf(phy_id, MII_BUS_ID_SIZE + 3, PHY_ID_FMT, bus_id,
                  priv->phy_addr);
         printk("aml_phy_init:  trying to attach to %s\n", phy_id);
-	if(priv->phydev)
+	if(priv->phydev && savepowermode)
 		 priv->phydev->drv->resume(priv->phydev);
         phydev = phy_connect(dev, phy_id, &aml_adjust_link, priv->phy_interface);
 
@@ -1154,8 +1155,9 @@ static int netdev_close(struct net_device *dev)
 		return 0;
 	}
 
-	if (np->phydev) {
+	if (np->phydev && savepowermode) 
 		np->phydev->drv->suspend(np->phydev);
+	if (np->phydev) {
 		phy_stop(np->phydev);
 		phy_disconnect(np->phydev);
 	}
@@ -2374,6 +2376,10 @@ static int ethernet_probe(struct platform_device *pdev)
 		printk("Please config interruptnum.\n");
 		return -1;
 	}
+	ret = of_property_read_u32(pdev->dev.of_node,"savepowermode",&savepowermode);
+	if (ret) {
+		printk("Please config savepowermode.\n");
+	}
 #endif
 	printk(DRV_NAME "init(dbg[%p]=%d)\n", (&g_debug), g_debug);
 	switch_mod_gate_by_name("ethernet",1);
@@ -2396,7 +2402,7 @@ static int ethernet_probe(struct platform_device *pdev)
 
 	eth_pdata = (struct aml_eth_platdata *)pdev->dev.platform_data;
 	struct am_net_private *np = netdev_priv(my_ndev);
-	if(np->phydev)
+	if(np->phydev && savepowermode)
 		np->phydev->drv->suspend(np->phydev);
 	switch_mod_gate_by_name("ethernet",0);
 	if (!eth_pdata) {

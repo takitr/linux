@@ -7,5 +7,6 @@
 		status = "okay";
 		ethbaseaddr = <0xfe0c0000>;
 		interruptnum = <40>;
+		savepowermode = <0>;
 	};
 #endif
