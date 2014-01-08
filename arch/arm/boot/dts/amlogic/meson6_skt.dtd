@@ -54,6 +54,7 @@
 		device_type = "memory";
 		aml_reserved_start = <0x85000000>;
 		aml_reserved_end = <0x84000000>;
+		phys_offset = <0x80000000>;
 		linux,total-memory = <0x40000000>;
 	};
     gic:interrupt-controller{

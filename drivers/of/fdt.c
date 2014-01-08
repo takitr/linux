@@ -617,16 +617,14 @@ u64 __init dt_mem_next_cell(int s, __be32 **cellp)
 #if defined(CONFIG_PLAT_MESON)
 extern unsigned long long aml_reserved_start;
 extern unsigned long long aml_reserved_end;
+unsigned long long phys_offset=0;
 
 #define MAX_RESERVE_BLOCK  32			
 //limit: reserve block < 32
 #define DSP_MEM_SIZE	0x100000
-#if MESON_CPU_TYPE > MESON_CPU_TYPE_MESON6
-#define MEM_BLOCK1_START	0
-#else
-#define MEM_BLOCK1_START    0x80000000
+
 #define FIRMWARE_ADDR 0x9ff00000
-#endif
+
 #define MEM_BLOCK1_SIZE	0x4000000
 
 struct reserve_mem{
@@ -807,15 +805,11 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	unsigned long l;
 	struct reserve_mem * prm;
 #if defined(CONFIG_PLAT_MESON)
-<<<<<<< HEAD
 	unsigned long long high_reserve_size;
 	struct reserve_mem * prm;
 	int i;
 	u64 total;
 	unsigned long long phys_offset=0;
-=======
-	u64 total = 0;
->>>>>>> 196279f... change reserved memory print
 #else
 	__be32 * endp;
 #endif
@@ -842,7 +836,6 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 		printk("error: can not get reserved mem end for AML\n");
 	else
 		aml_reserved_end = of_read_number(reg,1);
-
 	reg = of_get_flat_dt_prop(node, "phys_offset", &l);
 	if (reg == NULL)
 		printk("error: can not get phys_offset for AML\n");
@@ -851,7 +844,6 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 		phys_offset = of_read_number(reg,1);
 		printk("physical memory start address is 0x%llx\n",phys_offset);
 	}
-
 	early_init_dt_add_memory_arch(phys_offset,MEM_BLOCK1_SIZE);
 	early_init_dt_add_memory_arch(aml_reserved_end,aml_reserved_start-aml_reserved_end);
 
@@ -896,27 +888,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 				pReserve_Manager->start_memory_addr+pReserve_Manager->total_memory-prm->startaddr,
 				(unsigned long)(prm->size >> 20));
 		}
-	}
-<<<<<<< HEAD
 
-=======
-#endif
-	pr_info("Total memory is %4d MiB\n",((unsigned int)total >> 20));
-	pr_info("Reserved memory from 0x%llx to 0x%llx, size: %3d MiB \n",
-		aml_reserved_start,aml_reserved_end,
-		((unsigned int)(aml_reserved_end - aml_reserved_start + 1)) >> 20);
-	int i;
-	for(i = 0; i < MAX_RESERVE_BLOCK; i++){
-		prm = &pReserve_Manager->reserve[i];
-		if(!prm->size)
-			break;
-		pr_info("\t%s   \t: 0x%08llx - 0x%08llx (%3ld MiB)\n",
-			prm->name,
-			prm->startaddr + aml_reserved_start ,
-			prm->startaddr + prm->size + aml_reserved_start,
-			prm->size >> 20);
-	}
->>>>>>> 196279f... change reserved memory print
 #else
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)

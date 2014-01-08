@@ -38,6 +38,7 @@
 		device_type = "memory";
 		aml_reserved_start = <0x84000000>;
 		aml_reserved_end = <0x90cfffff>;
+		phys_offset = <0x80000000>;
 		linux,usable-memory = <0x80000000 0x04000000 0x90d00000 0x0f200000 0xa0000000 0x20000000>; 
 	};
 	
