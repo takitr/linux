@@ -41,12 +41,21 @@
 #include <linux/amlogic/vout/enc_clk_config.h>
 #include <mach/io.h>
 #include <mach/register.h>
+<<<<<<< HEAD:arch/arm/mach-meson8/hdmi_tx_hw/hdmi_tx_hw.c
 
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
 
 #if 0   //todo
+=======
+#ifdef CONFIG_PANEL_IT6681
+#include <linux/it6681.h>
+#endif
+#include "../hdmi_info_global.h"
+#include "../hdmi_tx_module.h"
+#include "../hdmi_tx_cec.h"
+>>>>>>> a96fca5... pd#85093: add MHL it6681 driver:drivers/amlogic/hdmi/hdmi_tx/hw/hdmi_tx_hw.c
 #include "../hdmi_tx_hdcp.h"
 #include "../hdmi_tx_compliance.h"
 #endif
@@ -1719,6 +1728,51 @@ static void enable_audio_i2s(void)
 /************************************
 *    hdmitx hardware level interface
 *************************************/
+<<<<<<< HEAD:arch/arm/mach-meson8/hdmi_tx_hw/hdmi_tx_hw.c
+=======
+static unsigned char hdmitx_getediddata(hdmitx_dev_t* hdmitx_device)
+{
+    if(hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<4)){
+        if((hdmitx_device->cur_edid_block+2)<=EDID_MAX_BLOCK){
+            int ii, jj;
+            for(jj=0;jj<2;jj++){
+#ifdef LOG_EDID
+                int edid_log_pos=0;
+                edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "EDID Interrupt cur block %d:",hdmitx_device->cur_edid_block);
+#endif
+                for(ii=0;ii<128;ii++){
+                    hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]
+                        =hdmi_rd_reg(0x600+hdmitx_device->cur_phy_block_ptr*128+ii);
+
+#ifdef LOG_EDID
+                    if((ii&0xf)==0)
+                        edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "\n");
+                    edid_log_pos+=snprintf((char*)hdmitx_device->tmp_buf+edid_log_pos, HDMI_TMP_BUF_SIZE-edid_log_pos, "%02x ",hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]);
+#endif                    
+                }
+#ifdef LOG_EDID
+                hdmitx_device->tmp_buf[edid_log_pos]=0;
+                hdmi_print_buf((char*)hdmitx_device->tmp_buf, strlen((char*)hdmitx_device->tmp_buf));
+                hdmi_print(0,"\n");
+#endif
+                hdmitx_device->cur_edid_block++;
+                hdmitx_device->cur_phy_block_ptr++;
+                hdmitx_device->cur_phy_block_ptr=hdmitx_device->cur_phy_block_ptr&0x3;
+            }
+        }        
+        return 1;
+    }
+    else{
+#ifdef CONFIG_PANEL_IT6681
+        it6681_read_edid(0, &hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128], 256);
+        hdmitx_device->cur_edid_block += 2;
+        printk("%s: get edid from MHL buffer(cur_edid_block=%d)\n", __func__, hdmitx_device->cur_edid_block);
+        return 1;
+#endif
+        return 0;
+    }    
+}    
+>>>>>>> a96fca5... pd#85093: add MHL it6681 driver:drivers/amlogic/hdmi/hdmi_tx/hw/hdmi_tx_hw.c
 
 static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag) 
 {

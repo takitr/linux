@@ -1137,6 +1137,31 @@ sdio{
         };
 	};
 
+  mhl {
+		compatible = "amlogic,it6681";
+		dev_name = "it6681";
+		status = "disabled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		it6681hdmirx {
+			dev_name = "it6681_hdmi_rx";
+			i2c_bus = <4>; /* "i2c_bus_d" */
+			dev_addr = <0x48>;
+		};
+		
+		it6681hdmitx{
+			dev_name = "it6681_hdmi_tx";
+			i2c_bus = <4>; /* "i2c_bus_d" */
+			dev_addr = <0x4c>;
+		};
+
+		it6681mhl{
+			dev_name = "it6681_mhl";
+			i2c_bus = <4>; /* "i2c_bus_d" */
+			dev_addr = <0x64>;
+		};
+  };
+
 /// ***************************************************************************************
 ///	-	PowerManager
 //$$ MODULE="PowerManager"

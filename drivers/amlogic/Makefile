@@ -84,7 +84,7 @@ obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/
 #obj-$(CONFIG_AML_WATCHDOG) += aml_watchdog/
 #####Sound system is later init in kernel default..######################
 obj-$(CONFIG_AMAUDIO) += amaudio/
-
+obj-y += mhl/
 obj-y += hdmi/
 
 ifeq ($(CONFIG_AM_NEW_TV_ARCH),y)
