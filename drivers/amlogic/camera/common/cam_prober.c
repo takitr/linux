@@ -354,7 +354,7 @@ int ov7675_v4l2_probe(struct i2c_adapter *adapter)
 #endif
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0A19
-int __init sp0a19_v4l2_probe(struct i2c_adapter *adapter)
+int sp0a19_v4l2_probe(struct i2c_adapter *adapter)
 {
     int ret = 0;
     unsigned char reg;
