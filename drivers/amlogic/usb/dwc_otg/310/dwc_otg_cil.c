@@ -1662,7 +1662,7 @@ void dwc_otg_core_dev_init(dwc_otg_core_if_t * core_if)
 	/* Stop the Phy Clock, for power save */
 	pcgcctl_data_t pcgcctl = {.d32 = 0 };
 	pcgcctl.b.stoppclk = 1;
-	DWC_MODIFY_REG32(core_if->pcgcctl, 0, pcgcctl.d32);
+	DWC_MODIFY_REG32(core_if->pcgcctl, pcgcctl.d32,0);
 	dwc_udelay(10);
 
 	/* Device configuration register */
