@@ -3541,10 +3541,12 @@ static const char * lcd_usage_str =
 "\n"
 "    echo swap <rb_swap> <bit_swap> > debug ; write ttl RGB swap config\n"
 "    echo lvds <vswing_level> <lvds_repack> <pn_swap> > debug ; write lvds config\n"
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 "    echo edp <link_rate> <lane_count> > debug ; write edp config\n"
 "    echo mreg register > debug ; read mipi register\n"
 "    echo mfactor denominator numerator  > debug ; write factor to config hline hsa hbp\n"
 "    echo mdsi dsi_clk_min dsi_clk_max > debug ; write dsi_clk to config dsi_clk_min dsi_clk_max\n"
+#endif
 "\n"
 //"    echo phy <phy_ctrl> > debug ; write lvds phy config\n"
 "data format:\n"
@@ -3552,7 +3554,9 @@ static const char * lcd_usage_str =
 "    <vswing_level> : support 5 levels such as 0,1,2,3,4. Default is 1\n"
 "    <lvds_repack>  : 0=JEIDA mode, 1=VESA mode\n"
 "    <pn_swap>      : 0=normal, 1=swap lvds p/n channels\n"
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 "    <link_rate>    : 0=1.62G, 1=2.7G\n"
+#endif
 //"    <phy_ctrl>   : lvds phy control in Hex\n"
 "\n"
 "    echo offset <h_sign> <h_offset> <v_sign> <v_offset> > debug ; write ttl display offset\n"
@@ -3788,6 +3792,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 {
 	unsigned int ret;
 	unsigned t[6];
+	unsigned venc_video_mode, venc_test_base;
 	
 	switch (buf[0])	{
 		case 'b':	//write basic config
@@ -3814,29 +3819,42 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			else if (buf[1] == 'e') {
 				t[0] = 0;
 				ret = sscanf(buf, "test %d", &t[0]);
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)				
+				if (pDev->pConf->lcd_basic.lcd_type == LCD_DIGITAL_TTL) {
+					venc_video_mode = ENCT_VIDEO_MODE_ADV;
+					venc_test_base = ENCT_TST_EN;
+				}
+				else {
+					venc_video_mode = ENCL_VIDEO_MODE_ADV;
+					venc_test_base = ENCL_TST_EN;
+				}
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+				venc_video_mode = ENCL_VIDEO_MODE_ADV;
+				venc_test_base = ENCL_TST_EN;
+#endif				
 				switch (t[0]) {
 					case 0:
-						WRITE_LCD_REG(ENCL_VIDEO_MODE_ADV, 0x8);
+						WRITE_LCD_REG(venc_video_mode, 0x8);
 						printk("disable bist pattern\n");
 						break;
 					case 1:
-						WRITE_LCD_REG(ENCL_VIDEO_MODE_ADV, 0);
-						WRITE_LCD_REG(ENCL_TST_MDSEL, 1);
-						WRITE_LCD_REG(ENCL_TST_CLRBAR_STRT, 274);
-						WRITE_LCD_REG(ENCL_TST_CLRBAR_WIDTH, 180);
-						WRITE_LCD_REG(ENCL_TST_EN, 1);
+						WRITE_LCD_REG(venc_video_mode, 0);
+						WRITE_LCD_REG(venc_test_base+1, 1);
+						WRITE_LCD_REG(venc_test_base+5, pDev->pConf->lcd_basic.h_active / 8);
+						WRITE_LCD_REG(venc_test_base+6, pDev->pConf->lcd_basic.h_active / 8);
+						WRITE_LCD_REG(venc_test_base, 1);
 						printk("show bist pattern 1\n");
 						break;
 					case 2:
-						WRITE_LCD_REG(ENCL_VIDEO_MODE_ADV, 0);
-						WRITE_LCD_REG(ENCL_TST_MDSEL, 2);
-						WRITE_LCD_REG(ENCL_TST_EN, 1);
+						WRITE_LCD_REG(venc_video_mode, 0);
+						WRITE_LCD_REG(venc_test_base+1, 2);
+						WRITE_LCD_REG(venc_test_base, 1);
 						printk("show bist pattern 2\n");
 						break;
 					case 3:
-						WRITE_LCD_REG(ENCL_VIDEO_MODE_ADV, 0);
-						WRITE_LCD_REG(ENCL_TST_MDSEL, 3);
-						WRITE_LCD_REG(ENCL_TST_EN, 1);
+						WRITE_LCD_REG(venc_video_mode, 0);
+						WRITE_LCD_REG(venc_test_base+1, 3);
+						WRITE_LCD_REG(venc_test_base, 1);
 						printk("show bist pattern 3\n");
 						break;
 					default:
@@ -3931,6 +3949,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 			pDev->pConf->lcd_control.lvds_config->pn_swap = t[2];
 			printk("vswing_level: %u, lvds_repack: %s, rb_swap: %s\n", t[0], ((t[1] == 1) ? "VESA mode" : "JEIDA mode"), ((t[2] == 0) ? "disable" : "enable"));
 			break;
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 		case 'm':	//write mlvds config
 			if (buf[1] == 'r'){
   			ret = sscanf(buf, "mreg %d ", &t[0]);
@@ -3950,6 +3969,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
   			printk("dsi_clk_min_max_div=%d,%d",pDev->pConf->lcd_control.mipi_config->dsi_clk_min,pDev->pConf->lcd_control.mipi_config->dsi_clk_max);    	
        }
 			break;
+#endif
 		// case 'p':
 			// t[0] = 0xaf40;
 			// ret = sscanf(buf, "phy %d", &t[0]);
@@ -4000,6 +4020,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				lcd_power_ctrl(ON);
 				_enable_backlight();
 			}
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 			else if (buf[1] == 'd') {
 				t[0] = 1;
 				t[1] = 4;
@@ -4019,6 +4040,7 @@ static ssize_t lcd_debug(struct class *class, struct class_attribute *attr, cons
 				}
 				printk("set edp link_rate = %sGbps, lane_count = %u\n", ((pDev->pConf->lcd_control.edp_config->link_rate == 0) ? "1.62" : "2.70"), pDev->pConf->lcd_control.edp_config->lane_count);
 			}
+#endif
 			break;
 		default:
 			printk("wrong format of lcd debug command.\n");
