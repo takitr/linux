@@ -803,7 +803,6 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 	char *type = of_get_flat_dt_prop(node, "device_type", NULL);
 	__be32 *reg;
 	unsigned long l;
-	struct reserve_mem * prm;
 #if defined(CONFIG_PLAT_MESON)
 	unsigned long long high_reserve_size;
 	struct reserve_mem * prm;
@@ -862,7 +861,20 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 
 	set_memory_start_addr(phys_offset);
 	set_memory_total_size(total);
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	early_init_dt_add_memory_arch(aml_reserved_end+1,phys_offset+total-aml_reserved_end-1-high_reserve_size);
+#else
+	if(aml_reserved_end+1 > FIRMWARE_ADDR)
+	{
+		printk("error: firmware memory has been used\n");
+		return -1;
+	}
+	else{
+		early_init_dt_add_memory_arch(aml_reserved_end+1,FIRMWARE_ADDR-aml_reserved_end-1);  //511M-512M reserved for firmware
+		early_init_dt_add_memory_arch(FIRMWARE_ADDR+0x100000, phys_offset+total-(FIRMWARE_ADDR+0x100000)-high_reserve_size);
+		printk("reserved 511M-512M 1M memory for firmware\n");
+	}
+#endif
 
 	pr_info("Total memory is %4d MiB\n",((unsigned int)total >> 20));
 	pr_info("Reserved low memory from 0x%llx to 0x%llx, size: %3d MiB \n",
@@ -889,7 +901,7 @@ int __init early_init_dt_scan_memory(unsigned long node, const char *uname,
 				pReserve_Manager->start_memory_addr+pReserve_Manager->total_memory-prm->startaddr,
 				(unsigned long)(prm->size >> 20));
 		}
-
+	}
 #else
 	reg = of_get_flat_dt_prop(node, "linux,usable-memory", &l);
 	if (reg == NULL)
