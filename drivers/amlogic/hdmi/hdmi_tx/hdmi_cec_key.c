@@ -32,7 +32,8 @@
 
 #include <mach/gpio.h>
 
-#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include "hw/hdmi_tx_reg.h"
+#include "hdmi_tx_module.h"
 #include "hdmi_tx_cec.h"
 
 hdmitx_dev_t *hdmitx_device = NULL;

@@ -20,14 +20,11 @@
 #define M6_VID_PLL_CNTL_3 (M6_PLL_CNTL_CST3)
 #define M6_VID_PLL_CNTL_4 (M6_PLL_CNTL_CST4)
 #endif
-unsigned int hdmi_rd_reg(unsigned int addr);
+unsigned long hdmi_rd_reg(unsigned long addr);
 
 #define hdmi_wr_only_reg(addr, data)   hdmi_wr_reg(addr, data)
 
-void hdmi_wr_reg(unsigned int addr, unsigned int data);
-
-#define hdmi_set_reg_bits(reg, val, start, len) \
-  hdmi_wr_reg(reg, (hdmi_rd_reg(reg) & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start)))
+void hdmi_wr_reg(unsigned long addr, unsigned long data);
 
 typedef struct {
     unsigned short cbus_addr;
@@ -65,9 +62,7 @@ typedef struct {
 
 //********** TX related **********//
 #define TX_RX_EDID_OFFSET               TX_BASE_ADDR+0x600 
-#define TX_HDCP_SHADOW_OFFSET           TX_BASE_ADDR+0x100
-#define TX_HDCP_BKSV_SHADOW             TX_HDCP_SHADOW_OFFSET
-#define TX_HDCP_AKSV_SHADOW             TX_HDCP_SHADOW_OFFSET + 0x10
+#define TX_HDCP_SHADOW_OFFSET           TX_BASE_ADDR+0x100 
 
 #define TX_IEC60958_SUB1_OFFSET         TX_BASE_ADDR+0x0B0 
 #define TX_IEC60958_SUB2_OFFSET         TX_BASE_ADDR+0x0C8 
@@ -92,7 +87,32 @@ typedef struct {
 #define TX_SYS0_BIST_DATA_7       TX_BASE_ADDR+0x00D 
 #define TX_SYS0_BIST_DATA_8       TX_BASE_ADDR+0x00E 
 #define TX_SYS0_BIST_DATA_9       TX_BASE_ADDR+0x00F 
-
+// system config 1
+#define TX_HDMI_PHY_CONFIG0       TX_BASE_ADDR+0x010
+    #define HDMI_COMMON_b7_b0       0
+#define TX_HDMI_PHY_CONFIG1       TX_BASE_ADDR+0x011
+    #define HDMI_CTL_REG_b3_b0      4
+    #define HDMI_COMMON_b11_b8      0
+#define TX_HDMI_PHY_CONFIG2        TX_BASE_ADDR+0x012 
+    #define HDMI_CTL_REG_b11_b4     0
+#define TX_HDMI_PHY_CONFIG3        TX_BASE_ADDR+0x013 
+    #define HDMI_MDR_PU             4
+    #define HDMI_L2H_CTL            0
+#define TX_HDMI_PHY_CONFIG4        TX_BASE_ADDR+0x014 
+    #define HDMI_PREM_CTL           4
+    #define HDMI_MODE               2   //0:narmal mode  1:clk chan(ch3) equals ch0  2:alternate high/low  3:alternate low/high
+    #define HDMI_PHY_CLK_EN         1   //1:enable serialzer clock
+    #define HDMI_LF_PD              0
+#define TX_HDMI_PHY_CONFIG5        TX_BASE_ADDR+0x015 
+    #define HDMI_VCM_CTL            5
+    #define HDMI_PREFCTL            0
+#define TX_HDMI_PHY_CONFIG6         TX_BASE_ADDR+0x016 
+    #define HDMI_SWING_CTL          4
+    #define HDMI_RTERM_CTL          0
+//#define TX_SYS1_AFE_TEST          TX_BASE_ADDR+0x017 
+//#define TX_SYS1_PLL               TX_BASE_ADDR+0x018 
+//#define TX_SYS1_TUNE              TX_BASE_ADDR+0x019 
+//#define TX_SYS1_AFE_CONNECT       TX_BASE_ADDR+0x01A 
 #define TX_SYS1_ACR_N_0           TX_BASE_ADDR+0x01C 
 #define TX_SYS1_ACR_N_1           TX_BASE_ADDR+0x01D 
 #define TX_SYS1_ACR_N_2           TX_BASE_ADDR+0x01E 

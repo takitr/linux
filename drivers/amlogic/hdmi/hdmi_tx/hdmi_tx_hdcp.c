@@ -14,9 +14,10 @@
 //#include <linux/amports/canvas.h>
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
-#include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
-#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
-#include <mach/hdmi_tx_reg.h>
+
+#include "hdmi_info_global.h"
+#include "hdmi_tx_module.h"
+#include "hw/hdmi_tx_reg.h"
 #include "hdmi_tx_hdcp.h"
 /*
     hdmi_tx_hdcp.c
@@ -26,6 +27,38 @@
 // Notic: the HDCP key setting has been moved to uboot
 // On MBX project, it is too late for HDCP get from 
 // other devices
+
+// buf: store buffer
+// endian: 0: little endian  1: big endian
+void hdmi_hdcp_get_aksv(char* buf, int endian)
+{
+    int i;
+    if(endian ==1) {
+        for(i = 0;i < 5; i++) {
+            buf[i] = hdmi_rd_reg(TX_HDCP_SHW_AKSV_0 + i);
+        }
+    }
+    else {
+        for(i = 0;i < 5; i++) {
+            buf[i] = hdmi_rd_reg(TX_HDCP_SHW_AKSV_0 + 4 - i);
+        }
+    }
+}
+
+void hdmi_hdcp_get_bksv(char* buf, int endian)
+{
+    int i;
+    if(endian ==1){
+        for(i = 0;i < 5; i++) {
+            buf[i] = hdmi_rd_reg(TX_HDCP_SHW_BKSV_0 + i);
+        }
+    }
+    else {
+        for(i = 0;i < 5; i++) {
+            buf[i] = hdmi_rd_reg(TX_HDCP_SHW_BKSV_0 + 4 - i);
+        }
+    }
+}
 
 /* verify ksv, 20 ones and 20 zeroes*/
 int hdcp_ksv_valid(unsigned char * dat)
@@ -39,7 +72,7 @@ int hdcp_ksv_valid(unsigned char * dat)
         }
     }
     if(one_num == 0)
-        hdmi_print(INF, HDCP "no HDCP key available\n");
+        printk("HDMITX: no HDCP key available\n");
     return (one_num == 20);
 }
 

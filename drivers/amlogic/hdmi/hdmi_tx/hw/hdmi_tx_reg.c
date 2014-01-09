@@ -30,7 +30,7 @@
 #include <asm/uaccess.h>
 #include <mach/am_regs.h>
 
-#include <mach/hdmi_tx_reg.h>
+#include "hdmi_tx_reg.h"
 static DEFINE_SPINLOCK(reg_lock);
 // if the following bits are 0, then access HDMI IP Port will cause system hungup
 #define GATE_NUM    2
@@ -50,36 +50,53 @@ static void check_cts_hdmi_sys_clk_status(void)
     }
 }
 
-unsigned int hdmi_rd_reg(unsigned int addr)
+unsigned long hdmi_rd_reg(unsigned long addr)
 {
-    unsigned int data;
+    unsigned long data;
+#ifdef CONFIG_ARCH_MESON6
     unsigned long flags, fiq_flag;
 
     spin_lock_irqsave(&reg_lock, flags);
     raw_local_save_flags(fiq_flag);
     local_fiq_disable();
-
+#endif
+#ifdef CONFIG_ARCH_MESON8
+    spin_lock(&reg_lock);
+#endif
     check_cts_hdmi_sys_clk_status();
     aml_write_reg32(P_HDMI_ADDR_PORT, addr);
     aml_write_reg32(P_HDMI_ADDR_PORT, addr);
     data = aml_read_reg32(P_HDMI_DATA_PORT);
-
+#ifdef CONFIG_ARCH_MESON6
     raw_local_irq_restore(fiq_flag);
     spin_unlock_irqrestore(&reg_lock, flags);
+#endif
+#ifdef CONFIG_ARCH_MESON8
+    spin_unlock(&reg_lock);
+#endif
     return (data);
 }
 
-void hdmi_wr_reg(unsigned int addr, unsigned int data)
+void hdmi_wr_reg(unsigned long addr, unsigned long data)
 {
+#ifdef CONFIG_ARCH_MESON6
     unsigned long flags, fiq_flag;
     spin_lock_irqsave(&reg_lock, flags);
     raw_local_save_flags(fiq_flag);
     local_fiq_disable();
-
+#endif
+#ifdef CONFIG_ARCH_MESON8
+    spin_lock(&reg_lock);
+#endif
     check_cts_hdmi_sys_clk_status();
     aml_write_reg32(P_HDMI_ADDR_PORT, addr);
     aml_write_reg32(P_HDMI_ADDR_PORT, addr);
     aml_write_reg32(P_HDMI_DATA_PORT, data);
+#ifdef CONFIG_ARCH_MESON6
     raw_local_irq_restore(fiq_flag);
     spin_unlock_irqrestore(&reg_lock, flags);
+#endif
+#ifdef CONFIG_ARCH_MESON8
+    spin_unlock(&reg_lock);
+#endif
 }
