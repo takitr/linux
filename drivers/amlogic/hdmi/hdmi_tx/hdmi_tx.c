@@ -148,7 +148,7 @@ static int hdmi_hdcp_process = 1;   // default hdcp is on, if aksv is 0, then di
 static int hdmi_hdcp_status = 1;
 static int hdmi_hdcp_reset = 0;
 
-static int debug_level = INF;     // 1: error  2: important  3: normal  4: detailed
+static int debug_level = 2;     // 0: error  1: important  2: normal  3: detailed
 
 /*****************************
 *    hdmitx attr management :
@@ -591,7 +591,7 @@ static ssize_t store_config(struct device * dev, struct device_attribute *attr, 
 }
 
 
-static ssize_t store_debug(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
+static ssize_t store_dbg(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     hdmitx_device.HWOp.DebugFun(&hdmitx_device, buf);
     return 16;
@@ -762,7 +762,7 @@ static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO, show_disp_mode, store_disp_mode
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
 static DEVICE_ATTR(config, S_IWUSR | S_IRUGO, show_config, store_config);
-static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_debug);
+static DEVICE_ATTR(debug, S_IWUSR | S_IRUGO, NULL, store_dbg);
 static DEVICE_ATTR(disp_cap, S_IWUSR | S_IRUGO, show_disp_cap, NULL);
 static DEVICE_ATTR(aud_cap, S_IWUSR | S_IRUGO, show_aud_cap, NULL);
 static DEVICE_ATTR(aud_ch, S_IWUSR | S_IRUGO, show_aud_ch, store_aud_ch);
