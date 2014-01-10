@@ -824,7 +824,7 @@ static long sync_fence_ioctl(struct file *file, unsigned int cmd,
 	}
 }
 
-#ifdef CONFIG_DEBUG_FS
+#if 0//def CONFIG_DEBUG_FS
 static const char *sync_status_str(int status)
 {
 	if (status > 0)
@@ -995,5 +995,6 @@ void sync_dump(void)
 #else
 static void sync_dump(void)
 {
+    printk("sync dump skipped");
 }
 #endif
