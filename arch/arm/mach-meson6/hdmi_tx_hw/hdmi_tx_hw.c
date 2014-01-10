@@ -2824,8 +2824,10 @@ static int hdmitx_cntl_misc(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigned 
         if(argv == TMDS_PHY_DISABLE) {
             hdmi_phy_suspend();
         }
+	break;
     default:
         hdmi_print(ERR, "misc: " "hdmitx: unknown cmd: 0x%x\n", cmd);
+	break;
     }
     return 1;
 }
@@ -2862,6 +2864,7 @@ static int hdmitx_get_state(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigned 
         }
         break;
     case STAT_VIDEO_CLK:
+        break;
     default:
         break;
     }
