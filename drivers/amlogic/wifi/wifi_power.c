@@ -5,6 +5,8 @@
 #include <plat/wifi_power.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
+#include <plat/cpu.h>
+#include <mach/cpu.h>
 #ifdef CONFIG_OF
 #include <linux/slab.h>
 #include <linux/of.h>
@@ -94,12 +96,17 @@ static int wifi_power_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 	switch (cmd) 
 	{
     	case POWER_UP:
-    		usb_wifi_power(1);
+    		#if ( MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8 )
+     		usb_wifi_power(1);
+     		mdelay(500);
+    	  usb_wifi_power(0);   
+     		printk(KERN_INFO "Meson8 set usb wifi power up!\n");
+   		  #elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
+    		usb_wifi_power(0);
     		mdelay(500);
-   	        usb_wifi_power(0);
-   	        mdelay(500);
-    
-    		printk(KERN_INFO "Set usb wifi power up!\n");
+   	    usb_wifi_power(1);
+    		printk(KERN_INFO "Meson6 set usb wifi power up!\n");
+    		#endif
     		break;
     		
     	case POWER_DOWN:
@@ -308,7 +315,7 @@ static int wifi_power_probe(struct platform_device *pdev)
 	        printk("wifi_power power_gpio is %d\n",pdata->power_gpio);
 	        //ret = amlogic_gpio_request(pdata->power_gpio,WIFI_POWER_MODULE_NAME);
 	        //mcli pdata->usb_set_power(0);    //power on   
-	        pdata->usb_set_power(1);    //power on   
+	        //pdata->usb_set_power(1);    //power on   
 	     }
 	}
     pdev->dev.platform_data = pdata;
