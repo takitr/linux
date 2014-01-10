@@ -1638,7 +1638,7 @@ static void hdmi_audio_init(unsigned char spdif_flag)
     unsigned char tx_i2s_spdif;
     unsigned char tx_i2s_8_channel;
     
-    hdmi_print(IMP, AUD "%s", spdif_flag ? "SPDIF" : "I2S");
+    hdmi_print(IMP, AUD "%s\n", spdif_flag ? "SPDIF" : "I2S");
     
     if(spdif_flag){
         tx_i2s_spdif=0;
@@ -2938,6 +2938,9 @@ static int hdmitx_cntl_misc(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigned 
         if(argv == TMDS_PHY_DISABLE) {
             hdmi_phy_suspend();
         }
+        break;
+    case MISC_VIID_IS_USING:
+        return !!(aml_read_reg32(P_HHI_VID2_PLL_CNTL) & (1 << 30));     // bit30: enable
         break;
     default:
         hdmi_print(ERR, "misc: " "hdmitx: unknown cmd: 0x%x\n", cmd);

@@ -1099,14 +1099,15 @@ static int hdmi_task_handle(void *data)
             if(hdmi_hdcp_status == 1){
                 hdmi_hdcp_reset = 1;
             }
-            hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_HPLL_OP, HPLL_DISABLE);
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_CLR_AVI_PACKET, 0);
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_CLR_VSDB_PACKET, 0);
-            if(hdmitx_device->HWOp.Cntl){
-                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
-                hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
-                hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
+            // if VIID PLL is using, then disable HPLL
+            if(hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_VIID_IS_USING, 0)) {
+                hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_HPLL_OP, HPLL_DISABLE);
             }
+            hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
+            hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
+            hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
             hdmitx_edid_clear(hdmitx_device);
             //When unplug hdmi, clear the hdmitx module edid ram and edid buffer.
             hdmitx_edid_ram_buffer_clear(hdmitx_device);
@@ -1677,8 +1678,8 @@ static void __exit amhdmitx_exit(void)
     return ;
 }
 
-//module_init(amhdmitx_init);
-arch_initcall(amhdmitx_init);
+module_init(amhdmitx_init);
+//arch_initcall(amhdmitx_init);
 module_exit(amhdmitx_exit);
 
 MODULE_DESCRIPTION("AMLOGIC HDMI TX driver");

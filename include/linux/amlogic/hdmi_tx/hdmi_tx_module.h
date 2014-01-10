@@ -174,6 +174,7 @@ typedef struct hdmi_tx_dev_s {
 #define MISC_TMDS_PHY_OP        (CMD_MISC_OFFSET + 0x04)
     #define TMDS_PHY_ENABLE     0x1
     #define TMDS_PHY_DISABLE    0x2
+#define MISC_VIID_IS_USING      (CMD_MISC_OFFSET + 0x05)
 
 /***********************************************************************
  *                          Get State //GetState
