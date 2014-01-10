@@ -2363,7 +2363,6 @@ static void hdmitx_uninit(hdmitx_dev_t* hdmitx_device)
 static char hdcp_log_buf[HDMITX_HDCP_MONITOR_BUF_SIZE] = { 0 };
 const static hdcp_sub_t hdcp_monitor_array[] = {
     {"Aksv_shw", TX_HDCP_SHW_AKSV_0, 5},
-    {"Aksv_ram", 0x540, 5},
     {"Bksv    ", TX_HDCP_SHW_BKSV_0, 5},
     {"Ainfo   ", TX_HDCP_SHW_AINFO , 1},
     {"An      ", TX_HDCP_SHW_AN_0 ,  8},

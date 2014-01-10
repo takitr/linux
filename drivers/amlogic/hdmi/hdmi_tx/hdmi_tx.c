@@ -59,7 +59,6 @@ static dev_t hdmitx_id;
 static struct class *hdmitx_class;
 static struct device *hdmitx_dev;
 
-void hdmi_pre_set_change_mode(void);
 static int set_disp_mode_auto(void);
 const vinfo_t * hdmi_get_current_vinfo(void);
 
@@ -82,7 +81,6 @@ static void hdmitx_early_suspend(struct early_suspend *h)
     if (info && (strncmp(info->name, "panel", 5) == 0 || strncmp(info->name, "null", 4) == 0))
         return;
     phdmi->HWOp.Cntl((hdmitx_dev_t *)h->param, HDMITX_EARLY_SUSPEND_RESUME_CNTL, HDMITX_EARLY_SUSPEND);
-    hdmi_pre_set_change_mode();
     hdmi_print(IMP, SYS "HDMITX: early suspend\n");
 }
 
@@ -291,45 +289,70 @@ static  int  set_disp_mode(const char *mode)
     return ret;
 }
 
+static void hdmitx_pre_display_init(void)
+{
+    hdmitx_device.cur_VIC = HDMI_Unkown;
+    hdmitx_device.auth_process_timer = AUTH_PROCESS_TIME;
+    hdmitx_device.internal_mode_change = 1;
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_BLANK);
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_AUDIO_MUTE_OP, AUDIO_MUTE);
+    hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
+    hdmi_authenticated = 0;
+    //msleep(10);
+    hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_ENABLE);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_CBUS_RST, 0);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
+    //msleep(50);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_DISABLE);
+//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_CLEAR);
+//    msleep(20);
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_AVI_PACKET, 0);
+    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_VSDB_PACKET, 0);
+    hdmi_print(DET);
+    hdmitx_device.internal_mode_change = 0;
+}
+
 static int set_disp_mode_auto(void)
 {
     int ret=-1;
-    const vinfo_t *info = hdmi_get_current_vinfo();
-    unsigned char mode[10];
-    HDMI_Video_Codes_t vic;     //Prevent warning
-    if(info == NULL) {
-        hdmi_print(ERR, VID "cann't get valid mode\n");
-//        hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
-        return -1;
-    }
-    else
-        hdmi_print(IMP, VID "get current mode: %s\n", info->name);
+    const vinfo_t *info = NULL;
+    unsigned char mode[16];
+    HDMI_Video_Codes_t vic = HDMI_Unkown;
+    // vic_ready got from IP
+    HDMI_Video_Codes_t vic_ready = hdmitx_device.HWOp.GetState(&hdmitx_device, STAT_VIDEO_VIC, 0);
+
+    memset(mode, 0, 10);
+
+    // if HDMI plug-out, directly return
     if(!(hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_HPD_GPI_ST, 0))) {
         hdmi_print(ERR, HPD "HPD deassert!\n");
         hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
         return -1;
     }
 
+    // get current vinfo
+    info = hdmi_get_current_vinfo();
+    if(info == NULL) {
+        hdmi_print(ERR, VID "cann't get valid mode\n");
+        return -1;
+    }
+    else {
+        hdmi_print(IMP, VID "get current mode: %s\n", info->name);
+    }
+
 // If info->name equals to cvbs, then set mode to I mode to hdmi
-    memset(mode, 0, 10);
-    if((strncmp(info->name, "480cvbs", 7) == 0) || (strncmp(info->name, "576cvbs", 7) == 0)) {
+    if((strncmp(info->name, "480cvbs", 7) == 0) || (strncmp(info->name, "576cvbs", 7) == 0) ||
+       (strncmp(info->name, "panel", 5) == 0) || (strncmp(info->name, "null", 4) == 0)) {
         hdmi_print(ERR, VID "%s not valid hdmi mode\n", info->name);
         hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
+        hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
         return -1;
     }
     else {
         memcpy(mode, info->name, strlen(info->name));
     }
 
-    if (info && (strncmp(info->name, "panel", 5) == 0 || strncmp(info->name, "null", 4) == 0)) {
-        hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
-    } else {
-        hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_BLANK);
-    }
-#if 0
-    hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP,TMDS_PHY_DISABLE);
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_AUDIO_MUTE_OP, AUDIO_MUTE);
-#endif
     //msleep(500);
     if(hdmitx_device.tv_no_edid){
         vic = hdmitx_get_VIC(&hdmitx_device, mode);
@@ -353,6 +376,16 @@ static int set_disp_mode_auto(void)
     else {
         //nothing
     }
+
+    if((vic_ready != HDMI_Unkown) && (vic_ready == vic)) {
+        hdmi_print(IMP, SYS "[%s] ALREADY init VIC = %d\n", __func__, vic);
+        hdmitx_device.cur_VIC = vic;
+        return 1;
+    }
+    else {
+        hdmitx_pre_display_init();
+    }
+
     hdmitx_device.cur_VIC = HDMI_Unkown;
     ret = hdmitx_set_display(&hdmitx_device, vic); //if vic is HDMI_Unkown, hdmitx_set_display will disable HDMI
     if(ret>=0){
@@ -976,7 +1009,6 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
     return 0;
 }
 
-
 /******************************
 *  hdmitx kernel task
 *******************************/
@@ -1186,39 +1218,6 @@ next:
     }
     return 0;
 }
-
-void hdmi_pre_set_change_mode(void)
-{
-    HDMI_Video_Codes_t vic;
-    vic = hdmitx_device.HWOp.GetState(&hdmitx_device, STAT_VIDEO_VIC, 0);
-    if(vic != HDMI_Unkown) {
-        hdmi_print(IMP, SYS "[%s]ALREADY init VIC = %d\n", __func__, vic);
-        hdmitx_device.cur_VIC = vic;
-        return;
-    }
-    hdmitx_device.cur_VIC = HDMI_Unkown;
-    hdmitx_device.auth_process_timer = AUTH_PROCESS_TIME;
-    hdmitx_device.internal_mode_change = 1;
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_BLANK);
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_AUDIO_MUTE_OP, AUDIO_MUTE);
-    hdmitx_device.HWOp.CntlDDC(&hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
-    hdmi_authenticated = 0;
-    //msleep(10);
-    hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
-    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_AVMUTE_CNTL, AVMUTE_SET);
-//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_ENABLE);
-//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_CBUS_RST, 0);
-//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
-    //msleep(50);
-//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_MASKN_DISABLE);
-//    hdmitx_device.HWOp.Cntl(&hdmitx_device, HDMITX_INTR_MASKN_CNTL, INTR_CLEAR);
-//    msleep(20);
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_AVI_PACKET, 0);
-    hdmitx_device.HWOp.CntlConfig(&hdmitx_device, CONF_CLR_VSDB_PACKET, 0);
-    hdmi_print(DET);
-    hdmitx_device.internal_mode_change = 0;
-}
-EXPORT_SYMBOL(hdmi_pre_set_change_mode);
 
 /* Linux */
 /*****************************
@@ -1592,7 +1591,7 @@ static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 {
 #if 0
     pr_info("amhdmitx: hdmirx_suspend\n");
-    hdmi_pre_set_change_mode();
+    hdmitx_pre_display_init();
     if(hdmi_pdata){
         hdmi_pdata->hdmi_5v_ctrl ? hdmi_pdata->hdmi_5v_ctrl(0) : 0;
         hdmi_pdata->hdmi_3v3_ctrl ? hdmi_pdata->hdmi_3v3_ctrl(1) : 0;   // prevent Voff leak current
