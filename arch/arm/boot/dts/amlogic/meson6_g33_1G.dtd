@@ -1038,7 +1038,7 @@ void root_func(){
             status = "okay";
             address = <0x3d>;
             i2c_bus = "i2c_bus_b";
-            acc_dir = <0x1111>;
+            acc_dir = <0x1100>;
         };
 
 //$$ DEVICE="sensor_mma7660"
