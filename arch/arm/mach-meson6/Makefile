@@ -39,3 +39,6 @@ obj-$(CONFIG_MESON_SUSPEND) += power_suspend.o
 #endif
 
 obj-$(CONFIG_CPU_IDLE) += cpuidle.o
+
+obj-$(CONFIG_AML_HDMI_TX) +=  hdmi_tx_hw/
+

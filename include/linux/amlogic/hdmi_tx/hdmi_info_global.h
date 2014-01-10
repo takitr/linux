@@ -24,10 +24,14 @@ typedef enum HDMI_Video_Type_ {
     HDMI_1080p24,
     HDMI_1080p25,
     HDMI_1080p30,
-    HDMI_4k2k_30 = 68,  //tmp VIC
+    HDMI_4k2k_24 = 93,      // CEA-861-F
     HDMI_4k2k_25,
-    HDMI_4k2k_24,
-    HDMI_4k2k_smpte,
+    HDMI_4k2k_30,
+    HDMI_4k2k_50,
+    HDMI_4k2k_60,
+    HDMI_4k2k_smpte_24 = 98,   //24 Hz
+    HDMI_4k2k_smpte_50 = 101,
+    HDMI_4k2k_smpte_60,
 } HDMI_Video_Codes_t ;
 
 

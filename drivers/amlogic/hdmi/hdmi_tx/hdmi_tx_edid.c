@@ -14,14 +14,14 @@
 #include <asm/uaccess.h>
 //#include <mach/register.h>
 #include <plat/io.h>
-#include "hw/hdmi_tx_reg.h"
+//#include "hw/hdmi_tx_reg.h"
 #include <crypto/hash.h>
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 #include <mach/am_regs.h>
 
-#include "hdmi_tx_module.h"
-#include "hdmi_info_global.h"
+#include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 
 #define CEA_DATA_BLOCK_COLLECTION_ADDR_1StP 0x04
 #define VIDEO_TAG 0x40
@@ -55,17 +55,17 @@ static int Edid_DecodeHeader(HDMI_TX_INFO_t *info, unsigned char *buff)
     {
         for(i = 1; i < 7; i++){
            if(buff[i]!= 0xFF)
-           	{
-			    info->output_state = CABLE_PLUGIN_DVI_OUT;
+               {
+                info->output_state = CABLE_PLUGIN_DVI_OUT;
                 ret = -1;
-           	}
+               }
         }
     }
     else
-    	{
-		    info->output_state = CABLE_PLUGIN_DVI_OUT;
+        {
+            info->output_state = CABLE_PLUGIN_DVI_OUT;
             ret = -1;
-    	}
+        }
     return ret;
 }
 
@@ -126,70 +126,70 @@ void Edid_DecodeStandardTiming(HDMI_TX_INFO_t * info, unsigned char * Data, unsi
              frame_rate = (int)((Data[i*2 + 1])& 0x3F) + 60;
 
              if((hor_pixel == 720) && (frame_rate == 30))
-             	{
-             	  info->hdmi_sup_480i  = 1;
-             	}
+                 {
+                   info->hdmi_sup_480i  = 1;
+                 }
 
              else if((hor_pixel == 720) && (frame_rate == 25))
-        	    {
-             	  info->hdmi_sup_576i  = 1;
-             	}
+                {
+                   info->hdmi_sup_576i  = 1;
+                 }
 
              else if((hor_pixel == 720) && (frame_rate == 60))
-        	    {
-             	  info->hdmi_sup_480p  = 1;
-//             	  if(TmpVal==0x40)
-//             	  	info->video_480p.support_4_3  = 1;
-//             	  else if(TmpVal==0xc0)
-//             	  	info->video_480p.support_16_9  = 1;
-             	}
+                {
+                   info->hdmi_sup_480p  = 1;
+//                   if(TmpVal==0x40)
+//                       info->video_480p.support_4_3  = 1;
+//                   else if(TmpVal==0xc0)
+//                       info->video_480p.support_16_9  = 1;
+                 }
 
              else if((hor_pixel == 720) && (frame_rate == 50))
-        	   {
-             	  info->hdmi_sup_576p  = 1;
-             	}
+               {
+                   info->hdmi_sup_576p  = 1;
+                 }
 
              else if((hor_pixel == 1280) && (frame_rate == 60))
              {
-             	  info->hdmi_sup_720p_60hz  = 1;
-             	}
+                   info->hdmi_sup_720p_60hz  = 1;
+                 }
 
              else if((hor_pixel == 1280) && (frame_rate == 50))
              {
-             	  info->hdmi_sup_720p_50hz  = 1;
-             	}
+                   info->hdmi_sup_720p_50hz  = 1;
+                 }
 
              else if((hor_pixel == 1920) && (frame_rate == 30))
              {
-             	  info->hdmi_sup_1080i_60hz  = 1;
-             	}
+                   info->hdmi_sup_1080i_60hz  = 1;
+                 }
 
              else if((hor_pixel == 1920) && (frame_rate == 25))
              {
-             	  info->hdmi_sup_1080i_50hz  = 1;
-             	}
+                   info->hdmi_sup_1080i_50hz  = 1;
+                 }
 
              else if((hor_pixel == 1920) && (frame_rate == 60))
              {
-             	  info->hdmi_sup_1080p_60hz  = 1;
-             	}
+                   info->hdmi_sup_1080p_60hz  = 1;
+                 }
 
              else if((hor_pixel == 1920) && (frame_rate == 50))
              {
-             	  info->hdmi_sup_1080p_50hz  = 1;
-             	}
+                   info->hdmi_sup_1080p_50hz  = 1;
+                 }
              else if((hor_pixel == 1920) && (frame_rate == 24))
              {
-             	  info->hdmi_sup_1080p_24hz  = 1;
-             	}
+                   info->hdmi_sup_1080p_24hz  = 1;
+                 }
              else if((hor_pixel == 1920) && (frame_rate == 25))
              {
-             	  info->hdmi_sup_1080p_25hz  = 1;
-             	}
+                   info->hdmi_sup_1080p_25hz  = 1;
+                 }
              else if((hor_pixel == 1920) && (frame_rate == 30))
              {
-             	  info->hdmi_sup_1080p_30hz  = 1;
-             	}
+                   info->hdmi_sup_1080p_30hz  = 1;
+                 }
 
           }
      }
@@ -223,7 +223,7 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
 {
    int index1,index2;
 
-	for(index1=0;index1<17;index1++)
+    for(index1=0;index1<17;index1++)
     {
         for(index2=0;index2<12;index2++)
         {
@@ -241,12 +241,12 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
 
                 case 2:
                 case 3:
-             	    info->hdmi_sup_576i  = 1;
+                     info->hdmi_sup_576i  = 1;
                    break;
 
                 case 4:
                 case 5:
-             	    info->hdmi_sup_480p  = 1;
+                     info->hdmi_sup_480p  = 1;
 //                  if((Data[12]==Edid_TimingDescriptors[4*14 + 12]) && (Data[13]==Edid_TimingDescriptors[4*14 + 13]))
 //                     info->video_480p.support_4_3  = 1;
 //                  else if((Data[12]==Edid_TimingDescriptors[5*14 + 12]) && (Data[13]==Edid_TimingDescriptors[5*14 + 13]))
@@ -255,48 +255,48 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
 
                 case 6:
                 case 7:
-             	    info->hdmi_sup_576p  = 1;
+                     info->hdmi_sup_576p  = 1;
                     break;
 
                 case 8:
-             	    info->hdmi_sup_720p_60hz  = 1;
-             	  	break;
+                     info->hdmi_sup_720p_60hz  = 1;
+                       break;
 
-	            case 9:
-             	    info->hdmi_sup_720p_50hz  = 1;
-             	  	break;
+                case 9:
+                     info->hdmi_sup_720p_50hz  = 1;
+                       break;
 
                 case 10:
-             	    info->hdmi_sup_1080i_60hz  = 1;
-             	  	break;
+                     info->hdmi_sup_1080i_60hz  = 1;
+                       break;
 
                 case 11:
-             	    info->hdmi_sup_1080i_50hz  = 1;
+                     info->hdmi_sup_1080i_50hz  = 1;
                     break;
 
                 case 12:
-             	    info->hdmi_sup_1080p_60hz  = 1;
-					break;
+                     info->hdmi_sup_1080p_60hz  = 1;
+                    break;
 
                 case 13:
-             	    info->hdmi_sup_1080p_50hz  = 1;
-					break;
+                     info->hdmi_sup_1080p_50hz  = 1;
+                    break;
 
                 case 14:
-             	    info->hdmi_sup_1080p_24hz  = 1;
+                     info->hdmi_sup_1080p_24hz  = 1;
                     break;
 
                 case 15:
-             	    info->hdmi_sup_1080p_25hz  = 1;
+                     info->hdmi_sup_1080p_25hz  = 1;
                     break;
 
                 case 16:
-             	    info->hdmi_sup_1080p_30hz  = 1;
+                     info->hdmi_sup_1080p_30hz  = 1;
                     break;
                 default:
                     break;
             }
-			break;
+            break;
         }
     }
 }
@@ -305,14 +305,14 @@ void Edid_CompareTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char *Data)
 //-----------------------------------------------------------
 void Edid_ParseCEADetailedTimingDescriptors(HDMI_TX_INFO_t * info, unsigned char blk_mun, unsigned char BaseAddr, unsigned char *buff)
 {
-	unsigned char index_edid;
+    unsigned char index_edid;
 
-	for( index_edid = 0; index_edid < blk_mun; index_edid++)
+    for( index_edid = 0; index_edid < blk_mun; index_edid++)
     {
         Edid_CompareTimingDescriptors(info, &buff[BaseAddr]);
         BaseAddr += 18;
        if((BaseAddr + 18) > 0x7d)   //there is not the TimingDescriptors
-				break;
+                break;
       }
 
 }
@@ -325,70 +325,63 @@ int get_vsdb_phy_addr(vsdb_phy_addr_t * vsdb)
 
 void set_vsdb_phy_addr(vsdb_phy_addr_t * vsdb, unsigned char *edid_offset)
 {
-	vsdb->a = (edid_offset[4] >> 4 ) & 0xf;
-	vsdb->b = (edid_offset[4] >> 0 ) & 0xf;
-	vsdb->c = (edid_offset[5] >> 4 ) & 0xf;
-	vsdb->d = (edid_offset[5] >> 0 ) & 0xf;
-	vsdb_local = *vsdb;
-	vsdb->valid = 1;
+    vsdb->a = (edid_offset[4] >> 4 ) & 0xf;
+    vsdb->b = (edid_offset[4] >> 0 ) & 0xf;
+    vsdb->c = (edid_offset[5] >> 4 ) & 0xf;
+    vsdb->d = (edid_offset[5] >> 0 ) & 0xf;
+    vsdb_local = *vsdb;
+    vsdb->valid = 1;
 }
 
 int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
 {
-	unsigned char  VSpecificBoundary, BlockAddr,  len;
-	int temp_addr=0;
-	VSpecificBoundary = buff[2] ;
-	if(VSpecificBoundary < 4)
-	{
-		info->output_state = CABLE_PLUGIN_DVI_OUT;
-		return -1;
-	}
-	BlockAddr = CEA_DATA_BLOCK_COLLECTION_ADDR_1StP;
-	while( BlockAddr < VSpecificBoundary) {
-		len = buff[BlockAddr] & 0x1F;
-             if((buff[BlockAddr] & 0xE0)== VENDOR_TAG){		//find the HDMI Vendor Specific Data Block
-                	break;
-		}
-		temp_addr = 	BlockAddr + len + 1;
-		if(temp_addr >= VSpecificBoundary)
-			break;
-		BlockAddr = BlockAddr + len + 1;
-	}
+    unsigned char  VSpecificBoundary, BlockAddr,  len;
+    int temp_addr=0;
+    VSpecificBoundary = buff[2] ;
+    if(VSpecificBoundary < 4)
+    {
+        info->output_state = CABLE_PLUGIN_DVI_OUT;
+        return -1;
+    }
+    BlockAddr = CEA_DATA_BLOCK_COLLECTION_ADDR_1StP;
+    while( BlockAddr < VSpecificBoundary) {
+        len = buff[BlockAddr] & 0x1F;
+             if((buff[BlockAddr] & 0xE0)== VENDOR_TAG){        //find the HDMI Vendor Specific Data Block
+                    break;
+        }
+        temp_addr =     BlockAddr + len + 1;
+        if(temp_addr >= VSpecificBoundary)
+            break;
+        BlockAddr = BlockAddr + len + 1;
+    }
 
     set_vsdb_phy_addr(&info->vsdb_phy_addr, &buff[BlockAddr]);
-	if(info->vsdb_phy_addr.a == 0) {
-		printk("CEC: not a valid physical address\n");
-	}
+    if(info->vsdb_phy_addr.a == 0) {
+        hdmi_print(IMP, EDID "not a valid CEC physical address\n");
+    }
     else {
         vsdb_phy_addr_t *tmp = &info->vsdb_phy_addr;
         if(tmp->valid){
             aml_write_reg32(P_AO_DEBUG_REG1, (((tmp->a) & 0xf) << 12) | (((tmp->b) & 0xf) << 8) | (((tmp->c) & 0xf) << 4) | ((tmp->d) & 0xf));
-            printk("CEC: Physical address: 0x%x\n",aml_read_reg32(P_AO_DEBUG_REG1));
-            printk("CEC: Physical address: %1x.%1x.%1x.%1x\n", tmp->a, tmp->b, tmp->c, tmp->d);
+            hdmi_print(IMP, EDID "CEC Physical address: 0x%x\n",aml_read_reg32(P_AO_DEBUG_REG1));
+            hdmi_print(IMP, EDID "CEC Physical address: %1x.%1x.%1x.%1x\n", tmp->a, tmp->b, tmp->c, tmp->d);
         }
     }
 
-	//For test only.
-	hdmi_print(0,"HDMI DEBUG [%s]\n", __FUNCTION__);
-    hdmi_print(0,"max_tmds_clk_7:%d\n",buff[BlockAddr + 7]);
-    hdmi_print(0,"Field 8:%d\n",buff[BlockAddr + 8]);
-    hdmi_print(0,"video_latency_9:%d\n",buff[BlockAddr + 9]);
-    hdmi_print(0,"audio_latency_10:%d\n",buff[BlockAddr + 10]);
-
-	if(temp_addr >= VSpecificBoundary)
-	{
-		info->output_state = CABLE_PLUGIN_DVI_OUT;
-		return -1;
-	}
-	else
-	{
-		if((buff[BlockAddr + 1]!= 0x03)||(buff[BlockAddr + 2]!= 0x0C)||(buff[BlockAddr + 3]!= 0x0))
-		{
-			info->output_state = CABLE_PLUGIN_DVI_OUT;
-			return -1;
-		}
-	}
-	return 0;
+    if(temp_addr >= VSpecificBoundary)
+    {
+        info->output_state = CABLE_PLUGIN_DVI_OUT;
+        return -1;
+    }
+    else
+    {
+        if((buff[BlockAddr + 1]!= 0x03)||(buff[BlockAddr + 2]!= 0x0C)||(buff[BlockAddr + 3]!= 0x0))
+        {
+            info->output_state = CABLE_PLUGIN_DVI_OUT;
+            return -1;
+        }
+    }
+    return 0;
 }
 
 //-----------------------------------------------------------
@@ -399,15 +392,15 @@ void Edid_MonitorCapable861(HDMI_TX_INFO_t * info, unsigned char edid_flag)
      if(edid_flag & 0x40)
         info->support_basic_audio_flag =1;
      if(edid_flag & 0x20)
-     	{
-        	info->support_ycbcr444_flag =1;
-//        	info->videopath_outindex = 1;    // Video Output Color Space Conversion : 0 - RGB out; 1 - YCbr (4:4:4) out; 2 - YCbr (4:2:2) out;
+         {
+            info->support_ycbcr444_flag =1;
+//            info->videopath_outindex = 1;    // Video Output Color Space Conversion : 0 - RGB out; 1 - YCbr (4:4:4) out; 2 - YCbr (4:2:2) out;
       }
      if(edid_flag & 0x10)
-     	{
-        	info->support_ycbcr422_flag =1 ;
-//       	 if(!(edid_flag & 0x20))
-//        		info->videopath_outindex = 2;    // Video Output Color Space Conversion : 0 - RGB out; 1 - YCbr (4:4:4) out; 2 - YCbr (4:2:2) out;
+         {
+            info->support_ycbcr422_flag =1 ;
+//            if(!(edid_flag & 0x20))
+//                info->videopath_outindex = 2;    // Video Output Color Space Conversion : 0 - RGB out; 1 - YCbr (4:4:4) out; 2 - YCbr (4:2:2) out;
       }
 }
 
@@ -419,8 +412,8 @@ static void Edid_ParsingVideoDATABlock(HDMI_TX_INFO_t * info, unsigned char *buf
     NBytes &= 0x1F;
     for(i = 0; i < NBytes; i++)
       {
-		switch(buff[i + BaseAddr]&0x7F)
-		{
+        switch(buff[i + BaseAddr]&0x7F)
+        {
             case 6:
             case 7:
                 info->hdmi_sup_480i  = 1;
@@ -429,12 +422,12 @@ static void Edid_ParsingVideoDATABlock(HDMI_TX_INFO_t * info, unsigned char *buf
             case 21:
             case 22:
                 info->hdmi_sup_576i  = 1;
-			  	break;
+                  break;
 
             case 2:
             case 3:
                 info->hdmi_sup_480p  = 1;
-				break;
+                break;
 
             case 17:
             case 18:
@@ -484,301 +477,301 @@ static void Edid_ParsingVideoDATABlock(HDMI_TX_INFO_t * info, unsigned char *buf
 //-----------------------------------------------------------
 static void Edid_ParsingAudioDATABlock(HDMI_TX_INFO_t * info, unsigned char *Data, unsigned char BaseAddr, unsigned char NBytes)
 {
-	 unsigned char AudioFormatCode;
-	 int i = BaseAddr ;
+     unsigned char AudioFormatCode;
+     int i = BaseAddr ;
    NBytes&=0x1F;
    do{
         AudioFormatCode = (Data[i]&0xF8)>>3;
         switch(AudioFormatCode)
           {
                 case 1:
-       	              info->tv_audio_info._60958_PCM.support_flag = 1;
-       	              info->tv_audio_info._60958_PCM.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._60958_PCM._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._60958_PCM._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._60958_PCM._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._60958_PCM._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._60958_PCM._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._60958_PCM._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._60958_PCM._32k = 1;
-       	              if((Data[i+2]&0x04))
-       	              	info->tv_audio_info._60958_PCM._24bit = 1;
-       	              if((Data[i+2]&0x02))
-       	              	info->tv_audio_info._60958_PCM._20bit = 1;
-       	              if((Data[i+2]&0x01))
-       	              	info->tv_audio_info._60958_PCM._16bit = 1;
-                     	break;
+                         info->tv_audio_info._60958_PCM.support_flag = 1;
+                         info->tv_audio_info._60958_PCM.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._60958_PCM._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._60958_PCM._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._60958_PCM._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._60958_PCM._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._60958_PCM._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._60958_PCM._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._60958_PCM._32k = 1;
+                         if((Data[i+2]&0x04))
+                             info->tv_audio_info._60958_PCM._24bit = 1;
+                         if((Data[i+2]&0x02))
+                             info->tv_audio_info._60958_PCM._20bit = 1;
+                         if((Data[i+2]&0x01))
+                             info->tv_audio_info._60958_PCM._16bit = 1;
+                         break;
 
                 case 2:
-       	              info->tv_audio_info._AC3.support_flag = 1;
-       	              info->tv_audio_info._AC3.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._AC3._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._AC3._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._AC3._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._AC3._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._AC3._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._AC3._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._AC3._32k = 1;
-       	              info->tv_audio_info._AC3._max_bit = Data[i+2];
-                     	break;
+                         info->tv_audio_info._AC3.support_flag = 1;
+                         info->tv_audio_info._AC3.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._AC3._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._AC3._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._AC3._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._AC3._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._AC3._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._AC3._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._AC3._32k = 1;
+                         info->tv_audio_info._AC3._max_bit = Data[i+2];
+                         break;
 
                 case 3:
-       	              info->tv_audio_info._MPEG1.support_flag = 1;
-       	              info->tv_audio_info._MPEG1.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._MPEG1._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._MPEG1._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._MPEG1._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._MPEG1._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._MPEG1._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._MPEG1._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._MPEG1._32k = 1;
-       	              info->tv_audio_info._MPEG1._max_bit = Data[i+2];
-                     	break;
+                         info->tv_audio_info._MPEG1.support_flag = 1;
+                         info->tv_audio_info._MPEG1.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._MPEG1._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._MPEG1._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._MPEG1._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._MPEG1._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._MPEG1._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._MPEG1._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._MPEG1._32k = 1;
+                         info->tv_audio_info._MPEG1._max_bit = Data[i+2];
+                         break;
 
                 case 4:
-       	              info->tv_audio_info._MP3.support_flag = 1;
-       	              info->tv_audio_info._MP3.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._MP3._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._MP3._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._MP3._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._MP3._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._MP3._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._MP3._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._MP3._32k = 1;
-       	              info->tv_audio_info._MP3._max_bit = Data[i+2];
-                     	break;
+                         info->tv_audio_info._MP3.support_flag = 1;
+                         info->tv_audio_info._MP3.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._MP3._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._MP3._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._MP3._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._MP3._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._MP3._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._MP3._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._MP3._32k = 1;
+                         info->tv_audio_info._MP3._max_bit = Data[i+2];
+                         break;
 
                 case 5:
-        	            info->tv_audio_info._MPEG2.support_flag = 1;
-       	              info->tv_audio_info._MPEG2.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._MPEG2._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._MPEG2._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._MPEG2._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._MPEG2._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._MPEG2._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._MPEG2._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._MPEG2._32k = 1;
-       	              info->tv_audio_info._MPEG2._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._MPEG2.support_flag = 1;
+                         info->tv_audio_info._MPEG2.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._MPEG2._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._MPEG2._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._MPEG2._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._MPEG2._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._MPEG2._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._MPEG2._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._MPEG2._32k = 1;
+                         info->tv_audio_info._MPEG2._max_bit = Data[i+2];
+                         break;
 
                 case 6:
-        	            info->tv_audio_info._AAC.support_flag = 1;
-       	              info->tv_audio_info._AAC.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._AAC._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._AAC._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._AAC._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._AAC._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._AAC._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._AAC._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._AAC._32k = 1;
-       	              info->tv_audio_info._AAC._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._AAC.support_flag = 1;
+                         info->tv_audio_info._AAC.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._AAC._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._AAC._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._AAC._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._AAC._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._AAC._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._AAC._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._AAC._32k = 1;
+                         info->tv_audio_info._AAC._max_bit = Data[i+2];
+                         break;
 
                 case 7:
-        	            info->tv_audio_info._DTS.support_flag = 1;
-       	              info->tv_audio_info._DTS.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._DTS._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._DTS._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._DTS._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._DTS._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._DTS._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._DTS._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._DTS._32k = 1;
-       	              info->tv_audio_info._DTS._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._DTS.support_flag = 1;
+                         info->tv_audio_info._DTS.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._DTS._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._DTS._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._DTS._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._DTS._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._DTS._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._DTS._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._DTS._32k = 1;
+                         info->tv_audio_info._DTS._max_bit = Data[i+2];
+                         break;
 
                 case 8:
-        	            info->tv_audio_info._ATRAC.support_flag = 1;
-       	              info->tv_audio_info._ATRAC.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._ATRAC._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._ATRAC._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._ATRAC._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._ATRAC._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._ATRAC._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._ATRAC._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._ATRAC._32k = 1;
-       	              info->tv_audio_info._ATRAC._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._ATRAC.support_flag = 1;
+                         info->tv_audio_info._ATRAC.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._ATRAC._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._ATRAC._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._ATRAC._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._ATRAC._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._ATRAC._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._ATRAC._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._ATRAC._32k = 1;
+                         info->tv_audio_info._ATRAC._max_bit = Data[i+2];
+                         break;
 
                 case 9:
-        	            info->tv_audio_info._One_Bit_Audio.support_flag = 1;
-       	              info->tv_audio_info._One_Bit_Audio.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._One_Bit_Audio._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._One_Bit_Audio._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._One_Bit_Audio._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._One_Bit_Audio._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._One_Bit_Audio._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._One_Bit_Audio._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._One_Bit_Audio._32k = 1;
-       	              info->tv_audio_info._One_Bit_Audio._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._One_Bit_Audio.support_flag = 1;
+                         info->tv_audio_info._One_Bit_Audio.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._One_Bit_Audio._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._One_Bit_Audio._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._One_Bit_Audio._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._One_Bit_Audio._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._One_Bit_Audio._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._One_Bit_Audio._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._One_Bit_Audio._32k = 1;
+                         info->tv_audio_info._One_Bit_Audio._max_bit = Data[i+2];
+                         break;
 
                 case 10:
-        	            info->tv_audio_info._Dolby.support_flag = 1;
-       	              info->tv_audio_info._Dolby.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._Dolby._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._Dolby._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._Dolby._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._Dolby._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._Dolby._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._Dolby._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._Dolby._32k = 1;
-       	              info->tv_audio_info._Dolby._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._Dolby.support_flag = 1;
+                         info->tv_audio_info._Dolby.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._Dolby._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._Dolby._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._Dolby._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._Dolby._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._Dolby._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._Dolby._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._Dolby._32k = 1;
+                         info->tv_audio_info._Dolby._max_bit = Data[i+2];
+                         break;
 
                 case 11:
-        	            info->tv_audio_info._DTS_HD.support_flag = 1;
-       	              info->tv_audio_info._DTS_HD.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._DTS_HD._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._DTS_HD._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._DTS_HD._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._DTS_HD._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._DTS_HD._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._DTS_HD._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._DTS_HD._32k = 1;
-       	              info->tv_audio_info._DTS_HD._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._DTS_HD.support_flag = 1;
+                         info->tv_audio_info._DTS_HD.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._DTS_HD._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._DTS_HD._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._DTS_HD._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._DTS_HD._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._DTS_HD._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._DTS_HD._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._DTS_HD._32k = 1;
+                         info->tv_audio_info._DTS_HD._max_bit = Data[i+2];
+                         break;
 
 
                 case 12:
-        	            info->tv_audio_info._MAT.support_flag = 1;
-       	              info->tv_audio_info._MAT.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._MAT._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._MAT._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._MAT._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._MAT._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._MAT._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._MAT._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._MAT._32k = 1;
-       	              info->tv_audio_info._MAT._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._MAT.support_flag = 1;
+                         info->tv_audio_info._MAT.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._MAT._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._MAT._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._MAT._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._MAT._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._MAT._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._MAT._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._MAT._32k = 1;
+                         info->tv_audio_info._MAT._max_bit = Data[i+2];
+                         break;
 
                 case 13:
-        	            info->tv_audio_info._ATRAC.support_flag = 1;
-       	              info->tv_audio_info._ATRAC.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._DST._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._DST._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._DST._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._DST._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._DST._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._DST._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._DST._32k = 1;
-       	              info->tv_audio_info._DST._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._ATRAC.support_flag = 1;
+                         info->tv_audio_info._ATRAC.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._DST._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._DST._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._DST._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._DST._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._DST._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._DST._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._DST._32k = 1;
+                         info->tv_audio_info._DST._max_bit = Data[i+2];
+                         break;
 
                 case 14:
-        	            info->tv_audio_info._WMA.support_flag = 1;
-       	              info->tv_audio_info._WMA.max_channel_num = (Data[i]&0x07);
-       	              if((Data[i+1]&0x40))
-       	              	info->tv_audio_info._WMA._192k = 1;
-       	              if((Data[i+1]&0x20))
-       	              	info->tv_audio_info._WMA._176k = 1;
-       	              if((Data[i+1]&0x10))
-       	              	info->tv_audio_info._WMA._96k = 1;
-       	              if((Data[i+1]&0x08))
-       	              	info->tv_audio_info._WMA._88k = 1;
-       	              if((Data[i+1]&0x04))
-       	              	info->tv_audio_info._WMA._48k = 1;
-       	              if((Data[i+1]&0x02))
-       	              	info->tv_audio_info._WMA._44k = 1;
-       	              if((Data[i+1]&0x01))
-       	              	info->tv_audio_info._WMA._32k = 1;
-       	              info->tv_audio_info._WMA._max_bit = Data[i+2];
-                     	break;
+                        info->tv_audio_info._WMA.support_flag = 1;
+                         info->tv_audio_info._WMA.max_channel_num = (Data[i]&0x07);
+                         if((Data[i+1]&0x40))
+                             info->tv_audio_info._WMA._192k = 1;
+                         if((Data[i+1]&0x20))
+                             info->tv_audio_info._WMA._176k = 1;
+                         if((Data[i+1]&0x10))
+                             info->tv_audio_info._WMA._96k = 1;
+                         if((Data[i+1]&0x08))
+                             info->tv_audio_info._WMA._88k = 1;
+                         if((Data[i+1]&0x04))
+                             info->tv_audio_info._WMA._48k = 1;
+                         if((Data[i+1]&0x02))
+                             info->tv_audio_info._WMA._44k = 1;
+                         if((Data[i+1]&0x01))
+                             info->tv_audio_info._WMA._32k = 1;
+                         info->tv_audio_info._WMA._max_bit = Data[i+2];
+                         break;
 
                 default:
-       	              break;
+                         break;
                  }
                 i+=3;
       }while (i < (NBytes + BaseAddr));
@@ -792,36 +785,36 @@ static void Edid_ParsingSpeakerDATABlock(HDMI_TX_INFO_t * info, unsigned char *b
    {
      switch(buff[BaseAddr] & ii)
       {
-        	case 0x40:
-        		info->tv_audio_info.speaker_allocation.rlc_rrc = 1;
-        		break;
+            case 0x40:
+                info->tv_audio_info.speaker_allocation.rlc_rrc = 1;
+                break;
 
-        	case 0x20:
-        		info->tv_audio_info.speaker_allocation.flc_frc = 1;
-        		break;
+            case 0x20:
+                info->tv_audio_info.speaker_allocation.flc_frc = 1;
+                break;
 
-        	case 0x10:
-        		info->tv_audio_info.speaker_allocation.rc = 1;
-        		break;
+            case 0x10:
+                info->tv_audio_info.speaker_allocation.rc = 1;
+                break;
 
-        	case 0x08:
-        		info->tv_audio_info.speaker_allocation.rl_rr = 1;
-        		break;
+            case 0x08:
+                info->tv_audio_info.speaker_allocation.rl_rr = 1;
+                break;
 
-        	case 0x04:
-        		info->tv_audio_info.speaker_allocation.fc = 1;
-        		break;
+            case 0x04:
+                info->tv_audio_info.speaker_allocation.fc = 1;
+                break;
 
-        	case 0x02:
-        		info->tv_audio_info.speaker_allocation.lfe = 1;
-        		break;
+            case 0x02:
+                info->tv_audio_info.speaker_allocation.lfe = 1;
+                break;
 
-        	case 0x01:
-        		info->tv_audio_info.speaker_allocation.fl_fr = 1;
-        		break;
+            case 0x01:
+                info->tv_audio_info.speaker_allocation.fl_fr = 1;
+                break;
 
           default :
-          	break;
+              break;
        }
        ii = ii << 1;
      }
@@ -845,34 +838,34 @@ int Edid_ParsingCEADataBlockCollection(HDMI_TX_INFO_t * info, unsigned char *buf
         {
             case VIDEO_TAG:
                 if((Addr + (Data&0x1f)) < D)
-              	    Edid_ParsingVideoDATABlock(info, buff, Addr + 1, (Data & 0x1F) );
+                      Edid_ParsingVideoDATABlock(info, buff, Addr + 1, (Data & 0x1F) );
                 break;
 
             case AUDIO_TAG:
                 if((Addr + (Data&0x1f)) < D)
-              	    Edid_ParsingAudioDATABlock(info, buff, Addr + 1, (Data & 0x1F) );
+                      Edid_ParsingAudioDATABlock(info, buff, Addr + 1, (Data & 0x1F) );
                 break;
 
             case SPEAKER_TAG:
                 if((Addr + (Data&0x1f)) < D)
-              	    Edid_ParsingSpeakerDATABlock(info, buff, Addr + 1 );
+                      Edid_ParsingSpeakerDATABlock(info, buff, Addr + 1 );
                 break;
 
             case VENDOR_TAG:
                 if((Addr + (Data&0x1f)) < D)
                 {
-           	  	    if((buff[Addr + 1] != 0x03) || (buff[Addr + 2] != 0x0c) || (buff[Addr + 3] != 0x00))
-           	  	    {
-           	  	 	    info->auth_state = HDCP_NO_AUTH ;
-           	  	 	    info->output_state = CABLE_PLUGIN_DVI_OUT;
-           	  	    }
-          		    if((Data&0x1f) > 5)
-          		    {
-            		 //A Source shall not transmit an ISRC1 or ISRC2 Packet to a Sink that does not have Supports_AI = 1
-            		 //International Standard Recording Code (ISRC)
-          			    if(buff[Addr + 6] & 0x80)
-          				    info->support_ai_flag = 1;
-          		    }
+                         if((buff[Addr + 1] != 0x03) || (buff[Addr + 2] != 0x0c) || (buff[Addr + 3] != 0x00))
+                         {
+                              info->auth_state = HDCP_NO_AUTH ;
+                              info->output_state = CABLE_PLUGIN_DVI_OUT;
+                         }
+                      if((Data&0x1f) > 5)
+                      {
+                     //A Source shall not transmit an ISRC1 or ISRC2 Packet to a Sink that does not have Supports_AI = 1
+                     //International Standard Recording Code (ISRC)
+                          if(buff[Addr + 6] & 0x80)
+                              info->support_ai_flag = 1;
+                      }
                 }
                 break;
 
@@ -881,9 +874,9 @@ int Edid_ParsingCEADataBlockCollection(HDMI_TX_INFO_t * info, unsigned char *buf
           }
           Addr += ( Data & 0x1F ) ;   // next Tag Address
           AddrTag = ++Addr;
-		temp_addr =   Addr + ( Data & 0x1F ) ;
-		if(temp_addr >= D)	//force to break;
-			break;
+        temp_addr =   Addr + ( Data & 0x1F ) ;
+        if(temp_addr >= D)    //force to break;
+            break;
      }while (Addr < D);
 
    return 0;
@@ -955,7 +948,7 @@ static int hdmitx_edid_3d_parse(rx_cap_t* pRXCap, unsigned char *dat, unsigned s
 static void hdmitx_edid_4k2k_parse(rx_cap_t* pRXCap, unsigned char *dat, unsigned size)
 {
     if((size > 4) || (size == 0)) {
-        printk("HDMI: 4k2k in edid out of range, SIZE = %d\n", size);
+        hdmi_print(ERR, EDID "HDMI: 4k2k in edid out of range, SIZE = %d\n", size);
         return;
     }
     while(size--) {
@@ -966,7 +959,7 @@ static void hdmitx_edid_4k2k_parse(rx_cap_t* pRXCap, unsigned char *dat, unsigne
         else if(*dat == 3)
             pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_24;
         else if(*dat == 4)
-            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_smpte;
+            pRXCap->VIC[pRXCap->VIC_count] = HDMI_4k2k_smpte_24;
         else {
         }
         dat ++;
@@ -987,7 +980,7 @@ static int hdmitx_edid_block_parse(hdmitx_dev_t* hdmitx_device, unsigned char *B
     End = BlockBuf[2]  ; // CEA description.
     pRXCap->native_Mode = BlockBuf[3] ;
 
-	  pRXCap->VIC_count = 0 ;
+      pRXCap->VIC_count = 0 ;
     pRXCap->native_VIC = 0xff ;
     for( offset = 4 ; offset < End ; ){
         tag = BlockBuf[offset] >> 5 ;
@@ -1102,7 +1095,7 @@ static void hdmitx_edid_set_default_vic(hdmitx_dev_t* hdmitx_device)
     pRXCap->VIC[2] = 16;
     pRXCap->native_VIC = 4;
     hdmitx_device->vic_count = pRXCap->VIC_count;
-    printk("HDMI: set default vic\n");
+    hdmi_print(IMP, EDID "HDMI: set default vic\n");
 }
 
 #if 0
@@ -1168,7 +1161,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
         hdmi_print(0, "PLUGIN_DVI_OUT\n");
 //        return -1 ;
     }
-	
+    
     Edid_ReceiverBrandNameParse(&hdmitx_device->RXCap, &EDID_buf[8]);
 
     idx[0] = EDID_DETAILED_TIMING_DES_BLOCK0_POS;
@@ -1197,7 +1190,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
             if(EDID_buf[i] == 0)
                 zero_numbers ++;
         }
-        printk("HDMI: edid blk0 checksum:%d ext_flag:%d\n",CheckSum, EDID_buf[0x7e]);
+        hdmi_print(INF, EDID "edid blk0 checksum:%d ext_flag:%d\n",CheckSum, EDID_buf[0x7e]);
         if((CheckSum & 0xff) == 0) {
             hdmitx_device->RXCap.IEEEOUI = 0;
         } else {
@@ -1218,7 +1211,7 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
     {
         BlockCount = EDID_MAX_BLOCK ;
     }
-        	
+
     for( i = 1 ; i <= BlockCount ; i++ )
     {
 
@@ -1247,7 +1240,6 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
                 Edid_ParseCEADetailedTimingDescriptors(&hdmitx_device->hdmi_info, 5, EDID_buf[i * 128 + 2], &EDID_buf[i * 128]);
                 if(hdmitx_device->hdmi_info.output_state != CABLE_PLUGIN_DVI_OUT)
                     hdmitx_device->hdmi_info.output_state = CABLE_PLUGIN_HDMI_OUT;
-
             }
 
         }
@@ -1269,7 +1261,6 @@ int hdmitx_edid_parse(hdmitx_dev_t* hdmitx_device)
 #if 1    
     i=hdmitx_edid_dump(hdmitx_device, (char*)(hdmitx_device->tmp_buf), HDMI_TMP_BUF_SIZE);
     hdmitx_device->tmp_buf[i]=0;
-    hdmi_print_buf((char*)(hdmitx_device->tmp_buf), strlen((char*)(hdmitx_device->tmp_buf)));
     hdmi_print(0,"\n");
 #endif    
     return 0;
@@ -1302,7 +1293,7 @@ static dispmode_vic_t dispmode_VIC_tab[]=
     {"4k2k30hz", HDMI_4k2k_30},
     {"4k2k25hz", HDMI_4k2k_25},
     {"4k2k24hz", HDMI_4k2k_24},
-    {"4k2ksmpte", HDMI_4k2k_smpte},
+    {"4k2ksmpte", HDMI_4k2k_smpte_24},
 };
 
 HDMI_Video_Codes_t hdmitx_get_VIC(hdmitx_dev_t* hdmitx_device, const char* disp_mode)
@@ -1328,7 +1319,7 @@ HDMI_Video_Codes_t hdmitx_edid_get_VIC(hdmitx_dev_t* hdmitx_device, const char* 
     int count=ARRAY_SIZE(dispmode_VIC_tab);
     HDMI_Video_Codes_t vic=HDMI_Unkown;
     int mode_name_len=0;
-    //printk("disp_mode is %s\n", disp_mode);
+
     for(i=0;i<count;i++)
     {
         if(strncmp(disp_mode, dispmode_VIC_tab[i].disp_mode, strlen(dispmode_VIC_tab[i].disp_mode))==0)
@@ -1369,17 +1360,14 @@ char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device)
     return disp_mode_ret;
 }    
 
-#define EDID_RAM_ADDR_SIZE      (4*128)
 //Clear HDMI Hardware Module EDID RAM and EDID Buffer
 void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t* hdmitx_device)
 {
     unsigned int i = 0;
     
     //Clear HDMI Hardware Module EDID RAM
-    for(i = 0; i < EDID_RAM_ADDR_SIZE; i++)
-    {
-        hdmi_wr_reg(TX_RX_EDID_OFFSET + i, 0);
-    }
+    hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_CLEAR_RAM, 0);
+    
     //Clear EDID Buffer
     for(i = 0; i < EDID_MAX_BLOCK*128; i++)
     {
@@ -1432,7 +1420,7 @@ int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
     pos+=snprintf(buffer+pos, buffer_len-pos, "EDID block number: 0x%x\r\n",hdmitx_device->EDID_buf[0x7e]);
 
     pos+=snprintf(buffer+pos, buffer_len-pos, "Source Physical Address[a.b.c.d]: %x.%x.%x.%x\r\n",
-    	hdmitx_device->hdmi_info.vsdb_phy_addr.a, hdmitx_device->hdmi_info.vsdb_phy_addr.b, hdmitx_device->hdmi_info.vsdb_phy_addr.c, hdmitx_device->hdmi_info.vsdb_phy_addr.d);
+        hdmitx_device->hdmi_info.vsdb_phy_addr.a, hdmitx_device->hdmi_info.vsdb_phy_addr.b, hdmitx_device->hdmi_info.vsdb_phy_addr.c, hdmitx_device->hdmi_info.vsdb_phy_addr.d);
 
     pos+=snprintf(buffer+pos, buffer_len-pos, "native Mode %x, VIC (native %d):\r\n",
         pRXCap->native_Mode, pRXCap->native_VIC);

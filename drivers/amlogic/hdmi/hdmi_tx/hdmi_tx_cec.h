@@ -17,7 +17,7 @@
 
 #ifndef _TV_CEC_H_
 #define _TV_CEC_H_
-#include "hdmi_tx_module.h"
+#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 
 //#define CEC0_LOG_ADDR 0 // TV logical address
 #define CEC0_LOG_ADDR 4 // MBX logical address
@@ -48,43 +48,43 @@ extern unsigned int cec_tx_irq_syn_flag;
 void fiq_gpio_test(unsigned int cmd);
 
 
-#define MSG_P0( init, follow, opcode )	{				\
-	gbl_msg[0] = (init)<<4 | (follow);					\
-	gbl_msg[1] = (opcode);								\
+#define MSG_P0( init, follow, opcode )    {                \
+    gbl_msg[0] = (init)<<4 | (follow);                    \
+    gbl_msg[1] = (opcode);                                \
 }
 
-#define MSG_P1( i, f, o, p1 )	{ \
-	gbl_msg[2]=(p1); MSG_P0((i),(f),(o)); }
-#define MSG_P2( i, f, o, p1, p2 )	{ \
-	gbl_msg[3]=(p2); MSG_P1((i),(f),(o),(p1)); }
-#define MSG_P3( i, f, o, p1, p2, p3 )	{ \
-	gbl_msg[4]=(p3); MSG_P2((i),(f),(o),(p1),(p2)); }
-#define MSG_P4( i, f, o, p1, p2, p3, p4 )	{ \
-	gbl_msg[5]=(p4); MSG_P3((i),(f),(o),(p1),(p2),(p3)); }
-#define MSG_P5( i, f, o, p1, p2, p3, p4, p5 )	{ \
-	gbl_msg[6]=(p5); MSG_P4((i),(f),(o),(p1),(p2),(p3),(p4)); }
-#define MSG_P6( i, f, o, p1, p2, p3, p4, p5, p6 )	{ \
-	gbl_msg[7]=(p6); MSG_P5((i),(f),(o),(p1),(p2),(p3),(p4),(p5)); }
-#define MSG_P7( i, f, o, p1, p2, p3, p4, p5, p6, p7 )	{ \
-	gbl_msg[8]=(p7); MSG_P6((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6)); }
-#define MSG_P8( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8 )	{ \
-	gbl_msg[9]=(p8); MSG_P7((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7)); }
-#define MSG_P9( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9 )	{ \
-	gbl_msg[10]=(p9); MSG_P8((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8)); }
-#define MSG_P10( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 )	{ \
-	gbl_msg[11]=(p10); MSG_P9((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9)); }
-#define MSG_P11( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11 )	{ \
-	gbl_msg[12]=(p11); MSG_P10((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10)); }
-#define MSG_P12( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12 )	{ \
-	gbl_msg[13]=(p12); MSG_P11((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11)); }
-#define MSG_P13( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13 )	{ \
-	gbl_msg[14]=(p13); MSG_P12((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11),(p12)); }
-#define MSG_P14( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14 )	{ \
-	gbl_msg[15]=(p14); MSG_P13((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11),(p12),(p13)); }
+#define MSG_P1( i, f, o, p1 )    { \
+    gbl_msg[2]=(p1); MSG_P0((i),(f),(o)); }
+#define MSG_P2( i, f, o, p1, p2 )    { \
+    gbl_msg[3]=(p2); MSG_P1((i),(f),(o),(p1)); }
+#define MSG_P3( i, f, o, p1, p2, p3 )    { \
+    gbl_msg[4]=(p3); MSG_P2((i),(f),(o),(p1),(p2)); }
+#define MSG_P4( i, f, o, p1, p2, p3, p4 )    { \
+    gbl_msg[5]=(p4); MSG_P3((i),(f),(o),(p1),(p2),(p3)); }
+#define MSG_P5( i, f, o, p1, p2, p3, p4, p5 )    { \
+    gbl_msg[6]=(p5); MSG_P4((i),(f),(o),(p1),(p2),(p3),(p4)); }
+#define MSG_P6( i, f, o, p1, p2, p3, p4, p5, p6 )    { \
+    gbl_msg[7]=(p6); MSG_P5((i),(f),(o),(p1),(p2),(p3),(p4),(p5)); }
+#define MSG_P7( i, f, o, p1, p2, p3, p4, p5, p6, p7 )    { \
+    gbl_msg[8]=(p7); MSG_P6((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6)); }
+#define MSG_P8( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8 )    { \
+    gbl_msg[9]=(p8); MSG_P7((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7)); }
+#define MSG_P9( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9 )    { \
+    gbl_msg[10]=(p9); MSG_P8((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8)); }
+#define MSG_P10( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 )    { \
+    gbl_msg[11]=(p10); MSG_P9((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9)); }
+#define MSG_P11( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11 )    { \
+    gbl_msg[12]=(p11); MSG_P10((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10)); }
+#define MSG_P12( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12 )    { \
+    gbl_msg[13]=(p12); MSG_P11((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11)); }
+#define MSG_P13( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13 )    { \
+    gbl_msg[14]=(p13); MSG_P12((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11),(p12)); }
+#define MSG_P14( i, f, o, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14 )    { \
+    gbl_msg[15]=(p14); MSG_P13((i),(f),(o),(p1),(p2),(p3),(p4),(p5),(p6),(p7),(p8),(p9),(p10),(p11),(p12),(p13)); }
 
 
-#define MAX_MSG		16
-#define MAX_NUM_OF_DEV	16
+#define MAX_MSG        16
+#define MAX_NUM_OF_DEV    16
 
 enum _cec_ping_e {
     CEC_PING_REPLY = 0,
@@ -92,7 +92,7 @@ enum _cec_ping_e {
 };
 
 enum _cec_log_dev_addr_e {
-    CEC_TV_ADDR					= 0x00,
+    CEC_TV_ADDR                    = 0x00,
     CEC_RECORDING_DEVICE_1_ADDR,
     CEC_RECORDING_DEVICE_2_ADDR,
     CEC_TUNER_1_ADDR,
@@ -112,28 +112,28 @@ enum _cec_log_dev_addr_e {
 
 #define CEC_BROADCAST_ADDR CEC_UNREGISTERED_ADDR
 
-#define CEC_TV						( 1 << CEC_TV_ADDR )
-#define CEC_RECORDING_DEVICE_1		( 1 << CEC_RECORDING_DEVICE_1_ADDR )
-#define CEC_RECORDING_DEVICE_2		( 1 << CEC_RECORDING_DEVICE_2_ADDR )
-#define CEC_TUNER_1					( 1 << CEC_TUNER_1_ADDR )
-#define CEC_PLAYBACK_DEVICE_1		( 1 << CEC_PLAYBACK_DEVICE_1_ADDR )
-#define CEC_AUDIO_SYSTEM			( 1 << CEC_AUDIO_SYSTEM_ADDR )
-#define CEC_TUNER_2					( 1 << CEC_TUNER_2_ADDR )
-#define CEC_TUNER_3					( 1 << CEC_TUNER_3_ADDR )
-#define CEC_PLAYBACK_DEVICE_2		( 1 << CEC_PLAYBACK_DEVICE_2_ADDR )
-#define CEC_RECORDING_DEVICE_3		( 1 << CEC_RECORDING_DEVICE_3_ADDR )
-#define CEC_TUNER_4					( 1 << CEC_TUNER_4_ADDR )
-#define CEC_PLAYBACK_DEVICE_3		( 1 << CEC_PLAYBACK_DEVICE_3_ADDR )
-#define CEC_RESERVED_1				( 1 << CEC_RESERVED_1_ADDR )
-#define CEC_RESERVED_2				( 1 << CEC_RESERVED_2_ADDR )
-#define CEC_FREE_USE				( 1 << CEC_FREE_USE_ADDR )
-#define CEC_UNREGISTERED			( 1 << CEC_UNREGISTERED_ADDR )
+#define CEC_TV                        ( 1 << CEC_TV_ADDR )
+#define CEC_RECORDING_DEVICE_1        ( 1 << CEC_RECORDING_DEVICE_1_ADDR )
+#define CEC_RECORDING_DEVICE_2        ( 1 << CEC_RECORDING_DEVICE_2_ADDR )
+#define CEC_TUNER_1                    ( 1 << CEC_TUNER_1_ADDR )
+#define CEC_PLAYBACK_DEVICE_1        ( 1 << CEC_PLAYBACK_DEVICE_1_ADDR )
+#define CEC_AUDIO_SYSTEM            ( 1 << CEC_AUDIO_SYSTEM_ADDR )
+#define CEC_TUNER_2                    ( 1 << CEC_TUNER_2_ADDR )
+#define CEC_TUNER_3                    ( 1 << CEC_TUNER_3_ADDR )
+#define CEC_PLAYBACK_DEVICE_2        ( 1 << CEC_PLAYBACK_DEVICE_2_ADDR )
+#define CEC_RECORDING_DEVICE_3        ( 1 << CEC_RECORDING_DEVICE_3_ADDR )
+#define CEC_TUNER_4                    ( 1 << CEC_TUNER_4_ADDR )
+#define CEC_PLAYBACK_DEVICE_3        ( 1 << CEC_PLAYBACK_DEVICE_3_ADDR )
+#define CEC_RESERVED_1                ( 1 << CEC_RESERVED_1_ADDR )
+#define CEC_RESERVED_2                ( 1 << CEC_RESERVED_2_ADDR )
+#define CEC_FREE_USE                ( 1 << CEC_FREE_USE_ADDR )
+#define CEC_UNREGISTERED            ( 1 << CEC_UNREGISTERED_ADDR )
 
-#define CEC_DISPLAY_DEVICE			( CEC_TV | CEC_FREE_USE )
-#define	CEC_RECORDING_DEVICE		( CEC_RECORDING_DEVICE_1 | CEC_RECORDING_DEVICE_2 | CEC_RECORDING_DEVICE_3 )
-#define	CEC_PLAYBACK_DEVICE			( CEC_PLAYBACK_DEVICE_1 | CEC_PLAYBACK_DEVICE_2 | CEC_PLAYBACK_DEVICE_3 )
-#define	CEC_TUNER_DEVICE			( CEC_TUNER_1 | CEC_TUNER_2 | CEC_TUNER_3 | CEC_TUNER_4 )
-#define	CEC_AUDIO_SYSTEM_DEVICE		( CEC_AUDIO_SYSTEM )
+#define CEC_DISPLAY_DEVICE            ( CEC_TV | CEC_FREE_USE )
+#define    CEC_RECORDING_DEVICE        ( CEC_RECORDING_DEVICE_1 | CEC_RECORDING_DEVICE_2 | CEC_RECORDING_DEVICE_3 )
+#define    CEC_PLAYBACK_DEVICE            ( CEC_PLAYBACK_DEVICE_1 | CEC_PLAYBACK_DEVICE_2 | CEC_PLAYBACK_DEVICE_3 )
+#define    CEC_TUNER_DEVICE            ( CEC_TUNER_1 | CEC_TUNER_2 | CEC_TUNER_3 | CEC_TUNER_4 )
+#define    CEC_AUDIO_SYSTEM_DEVICE        ( CEC_AUDIO_SYSTEM )
 
 enum cec_dev_type_addr {
     CEC_DISPLAY_DEVICE_TYPE = 0x0,
@@ -161,69 +161,69 @@ typedef enum  {
 /*
  * CEC OPCODES
  */
-#define	CEC_OC_ABORT_MESSAGE 					0xFF
-#define	CEC_OC_ACTIVE_SOURCE 					0x82
-#define	CEC_OC_CEC_VERSION 						0x9E
-#define	CEC_OC_CLEAR_ANALOGUE_TIMER 			0x33
-#define	CEC_OC_CLEAR_DIGITAL_TIMER 				0x99
-#define	CEC_OC_CLEAR_EXTERNAL_TIMER 			0xA1
-#define	CEC_OC_DECK_CONTROL 					0x42
-#define	CEC_OC_DECK_STATUS 						0x1B
-#define	CEC_OC_DEVICE_VENDOR_ID 				0x87
-#define	CEC_OC_FEATURE_ABORT 					0x00
-#define	CEC_OC_GET_CEC_VERSION 					0x9F
-#define	CEC_OC_GET_MENU_LANGUAGE 				0x91
-#define	CEC_OC_GIVE_AUDIO_STATUS 				0x71
-#define	CEC_OC_GIVE_DECK_STATUS 				0x1A
-#define	CEC_OC_GIVE_DEVICE_POWER_STATUS 		0x8F
-#define	CEC_OC_GIVE_DEVICE_VENDOR_ID 			0x8C
-#define	CEC_OC_GIVE_OSD_NAME 					0x46
-#define	CEC_OC_GIVE_PHYSICAL_ADDRESS 			0x83
-#define	CEC_OC_GIVE_SYSTEM_AUDIO_MODE_STATUS 	0x7D
-#define	CEC_OC_GIVE_TUNER_DEVICE_STATUS 		0x08
-#define	CEC_OC_IMAGE_VIEW_ON 					0x04
-#define	CEC_OC_INACTIVE_SOURCE 					0x9D
-#define	CEC_OC_MENU_REQUEST 					0x8D
-#define	CEC_OC_MENU_STATUS 						0x8E
-#define	CEC_OC_PLAY 							0x41
-#define	CEC_OC_POLLING_MESSAGE 					0xFC	/* Fake Code - <Poll Message> has no OP Code and requires only the header byte */
-#define	CEC_OC_RECORD_OFF 						0x0B
-#define	CEC_OC_RECORD_ON 						0x09
-#define	CEC_OC_RECORD_STATUS 					0x0A
-#define	CEC_OC_RECORD_TV_SCREEN 				0x0F
-#define	CEC_OC_REPORT_AUDIO_STATUS 				0x7A
-#define	CEC_OC_REPORT_PHYSICAL_ADDRESS 			0x84
-#define	CEC_OC_REPORT_POWER_STATUS 				0x90
-#define	CEC_OC_REQUEST_ACTIVE_SOURCE 			0x85
-#define	CEC_OC_ROUTING_CHANGE 					0x80
-#define	CEC_OC_ROUTING_INFORMATION 				0x81
-#define	CEC_OC_SELECT_ANALOGUE_SERVICE 			0x92
-#define	CEC_OC_SELECT_DIGITAL_SERVICE 			0x93
-#define	CEC_OC_SET_ANALOGUE_TIMER 				0x34
-#define	CEC_OC_SET_AUDIO_RATE 					0x9A
-#define	CEC_OC_SET_DIGITAL_TIMER 				0x97
-#define	CEC_OC_SET_EXTERNAL_TIMER 				0xA2
-#define	CEC_OC_SET_MENU_LANGUAGE 				0x32
-#define	CEC_OC_SET_OSD_NAME 					0x47
-#define	CEC_OC_SET_OSD_STRING 					0x64
-#define	CEC_OC_SET_STREAM_PATH 					0x86
-#define	CEC_OC_SET_SYSTEM_AUDIO_MODE 			0x72
-#define	CEC_OC_SET_TIMER_PROGRAM_TITLE 			0x67
-#define	CEC_OC_STANDBY 							0x36
-#define	CEC_OC_SYSTEM_AUDIO_MODE_REQUEST 		0x70
-#define	CEC_OC_SYSTEM_AUDIO_MODE_STATUS 		0x7E
-#define	CEC_OC_TEXT_VIEW_ON 					0x0D
-#define	CEC_OC_TIMER_CLEARED_STATUS 			0x43
-#define	CEC_OC_TIMER_STATUS 					0x35
-#define	CEC_OC_TUNER_DEVICE_STATUS 				0x07
-#define	CEC_OC_TUNER_STEP_DECREMENT 			0x06
-#define	CEC_OC_TUNER_STEP_INCREMENT 			0x05
-#define	CEC_OC_USER_CONTROL_PRESSED 			0x44
-#define	CEC_OC_USER_CONTROL_RELEASED 			0x45
-#define	CEC_OC_VENDOR_COMMAND 					0x89
-#define	CEC_OC_VENDOR_COMMAND_WITH_ID 			0xA0
-#define	CEC_OC_VENDOR_REMOTE_BUTTON_DOWN 		0x8A
-#define	CEC_OC_VENDOR_REMOTE_BUTTON_UP 			0x8B
+#define    CEC_OC_ABORT_MESSAGE                     0xFF
+#define    CEC_OC_ACTIVE_SOURCE                     0x82
+#define    CEC_OC_CEC_VERSION                         0x9E
+#define    CEC_OC_CLEAR_ANALOGUE_TIMER             0x33
+#define    CEC_OC_CLEAR_DIGITAL_TIMER                 0x99
+#define    CEC_OC_CLEAR_EXTERNAL_TIMER             0xA1
+#define    CEC_OC_DECK_CONTROL                     0x42
+#define    CEC_OC_DECK_STATUS                         0x1B
+#define    CEC_OC_DEVICE_VENDOR_ID                 0x87
+#define    CEC_OC_FEATURE_ABORT                     0x00
+#define    CEC_OC_GET_CEC_VERSION                     0x9F
+#define    CEC_OC_GET_MENU_LANGUAGE                 0x91
+#define    CEC_OC_GIVE_AUDIO_STATUS                 0x71
+#define    CEC_OC_GIVE_DECK_STATUS                 0x1A
+#define    CEC_OC_GIVE_DEVICE_POWER_STATUS         0x8F
+#define    CEC_OC_GIVE_DEVICE_VENDOR_ID             0x8C
+#define    CEC_OC_GIVE_OSD_NAME                     0x46
+#define    CEC_OC_GIVE_PHYSICAL_ADDRESS             0x83
+#define    CEC_OC_GIVE_SYSTEM_AUDIO_MODE_STATUS     0x7D
+#define    CEC_OC_GIVE_TUNER_DEVICE_STATUS         0x08
+#define    CEC_OC_IMAGE_VIEW_ON                     0x04
+#define    CEC_OC_INACTIVE_SOURCE                     0x9D
+#define    CEC_OC_MENU_REQUEST                     0x8D
+#define    CEC_OC_MENU_STATUS                         0x8E
+#define    CEC_OC_PLAY                             0x41
+#define    CEC_OC_POLLING_MESSAGE                     0xFC    /* Fake Code - <Poll Message> has no OP Code and requires only the header byte */
+#define    CEC_OC_RECORD_OFF                         0x0B
+#define    CEC_OC_RECORD_ON                         0x09
+#define    CEC_OC_RECORD_STATUS                     0x0A
+#define    CEC_OC_RECORD_TV_SCREEN                 0x0F
+#define    CEC_OC_REPORT_AUDIO_STATUS                 0x7A
+#define    CEC_OC_REPORT_PHYSICAL_ADDRESS             0x84
+#define    CEC_OC_REPORT_POWER_STATUS                 0x90
+#define    CEC_OC_REQUEST_ACTIVE_SOURCE             0x85
+#define    CEC_OC_ROUTING_CHANGE                     0x80
+#define    CEC_OC_ROUTING_INFORMATION                 0x81
+#define    CEC_OC_SELECT_ANALOGUE_SERVICE             0x92
+#define    CEC_OC_SELECT_DIGITAL_SERVICE             0x93
+#define    CEC_OC_SET_ANALOGUE_TIMER                 0x34
+#define    CEC_OC_SET_AUDIO_RATE                     0x9A
+#define    CEC_OC_SET_DIGITAL_TIMER                 0x97
+#define    CEC_OC_SET_EXTERNAL_TIMER                 0xA2
+#define    CEC_OC_SET_MENU_LANGUAGE                 0x32
+#define    CEC_OC_SET_OSD_NAME                     0x47
+#define    CEC_OC_SET_OSD_STRING                     0x64
+#define    CEC_OC_SET_STREAM_PATH                     0x86
+#define    CEC_OC_SET_SYSTEM_AUDIO_MODE             0x72
+#define    CEC_OC_SET_TIMER_PROGRAM_TITLE             0x67
+#define    CEC_OC_STANDBY                             0x36
+#define    CEC_OC_SYSTEM_AUDIO_MODE_REQUEST         0x70
+#define    CEC_OC_SYSTEM_AUDIO_MODE_STATUS         0x7E
+#define    CEC_OC_TEXT_VIEW_ON                     0x0D
+#define    CEC_OC_TIMER_CLEARED_STATUS             0x43
+#define    CEC_OC_TIMER_STATUS                     0x35
+#define    CEC_OC_TUNER_DEVICE_STATUS                 0x07
+#define    CEC_OC_TUNER_STEP_DECREMENT             0x06
+#define    CEC_OC_TUNER_STEP_INCREMENT             0x05
+#define    CEC_OC_USER_CONTROL_PRESSED             0x44
+#define    CEC_OC_USER_CONTROL_RELEASED             0x45
+#define    CEC_OC_VENDOR_COMMAND                     0x89
+#define    CEC_OC_VENDOR_COMMAND_WITH_ID             0xA0
+#define    CEC_OC_VENDOR_REMOTE_BUTTON_DOWN         0x8A
+#define    CEC_OC_VENDOR_REMOTE_BUTTON_UP             0x8B
 
 /* cec message structure */
 typedef struct {
@@ -432,7 +432,7 @@ typedef struct {
             struct {
                 unsigned char audio_mute_status : 1;
                 unsigned char audio_volume_status : 7;
-            } audio_status;      	
+            } audio_status;
         } audio;
     }specific_info;
 } cec_node_info_t;
