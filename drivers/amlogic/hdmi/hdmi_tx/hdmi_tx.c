@@ -571,6 +571,20 @@ static ssize_t store_edid(struct device * dev, struct device_attribute *attr, co
             printk("\n");
         }
     }
+    if(buf[0]=='e'){
+        int ii,jj;
+        int block_idx;
+        block_idx=simple_strtoul(buf+1,NULL,16);
+        if(block_idx<EDID_MAX_BLOCK){
+            for(ii=0;ii<8;ii++){
+                for(jj=0;jj<16;jj++){
+                    printk("%02x ",hdmitx_device.EDID_buf1[block_idx*128+ii*16+jj]);
+                }
+                printk("\n");
+            }
+            printk("\n");
+        }
+    }
     return 16;
 }
 
@@ -775,6 +789,8 @@ static ssize_t show_hdcp_ksv_info(struct device * dev, struct device_attribute *
 static ssize_t show_hpd_state(struct device * dev, struct device_attribute *attr, char * buf)
 {
     int pos=0;
+
+    hdmitx_device.hpd_state = hdmitx_device.HWOp.CntlMisc(&hdmitx_device, MISC_HPD_GPI_ST, 0);
     pos += snprintf(buf+pos, PAGE_SIZE,"%d", hdmitx_device.hpd_state);
     return pos;
 }
@@ -1042,10 +1058,8 @@ static int hdmi_task_handle(void *data)
 {
     extern void hdmitx_edid_ram_buffer_clear(hdmitx_dev_t*);
     hdmitx_dev_t* hdmitx_device = (hdmitx_dev_t*)data;
-    hdmitx_init_parameters(&hdmitx_device->hdmi_info);
 
-    HDMITX_Meson_Init(hdmitx_device);
-    sdev.state = !!(hdmitx_device->HWOp.GetState(hdmitx_device, STAT_VIDEO_VIC, 0));
+    sdev.state = !!(hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_HPD_GPI_ST, 0));
     hdmitx_device->hpd_state = sdev.state;
 
     //When init hdmi, clear the hdmitx module edid ram and edid buffer.
@@ -1104,23 +1118,50 @@ static int hdmi_task_handle(void *data)
         if (hdmitx_device->hpd_event == 1)
         {
             hdmitx_device->hpd_event = 0;
-            // todo READ EDID AT LEAST TWICE
-            msleep(500);
             hdmitx_device->hpd_state = 1;
+            hdmitx_edid_ram_buffer_clear(hdmitx_device);
             hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_PIN_MUX_OP, PIN_MUX);
             hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_RESET_EDID, 0);
-            hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_READ_DATA, 0);
+            hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_READ_DATA, 0);      // start reading edid frist time
+            msleep(200);    // wait 200ms to read edid
 
-            if(hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_GET_DATA, 0)){
+            if(!(hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_IS_EDID_DATA_READY, 0))) {   // hardware i2c read fail
+                hdmi_print(ERR, EDID "edid failed\n");
+                hdmitx_device->tv_no_edid = 1;
+                // read edid again
+                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_RESET_EDID, 0);
+                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_READ_DATA, 0);      // start reading edid second time
+                if(!(hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_IS_EDID_DATA_READY, 0))) {
+                    hdmi_print(ERR, EDID "edid failed\n");
+                    hdmitx_device->tv_no_edid = 1;
+                }
+                else {
+                    goto edid_op;
+                }
+            }
+            else {
+edid_op:
+                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_GET_DATA, 1);   // save edid raw data to EDID_buf1[]
                 hdmi_print(IMP, EDID "edid ready\n");
+                // read edid again
+                hdmitx_device->cur_edid_block=0;
+                hdmitx_device->cur_phy_block_ptr=0;
+                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_RESET_EDID, 0);
+                hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_READ_DATA, 0);      // start reading edid second time
+                msleep(200);
+                if(hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_IS_EDID_DATA_READY, 0)) {
+                    hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_EDID_GET_DATA, 0);   // save edid raw data to EDID_buf[]
+                    hdmi_print(IMP, EDID "edid ready\n");
+                }
+                else {
+                    hdmi_print(ERR, EDID "edid failed\n");
+                    hdmitx_device->tv_no_edid = 1;
+                }
+                // compare EDID_buf & EDID_buf1
+                hdmitx_edid_buf_compare_print(hdmitx_device);
                 hdmitx_edid_clear(hdmitx_device);
                 hdmitx_edid_parse(hdmitx_device);
                 hdmitx_device->tv_no_edid = 0;
-            }
-            else{
-                hdmi_print(ERR, EDID "edid bad\n");
-                hdmitx_device->tv_no_edid = 1;
-                hdmi_print(INF, CEC "test:aml_read_reg32(P_AO_DEBUG_REG0)%x\n", aml_read_reg32(P_AO_DEBUG_REG0));
             }
             set_disp_mode_auto();
             switch_set_state(&sdev, 1);
@@ -1534,6 +1575,8 @@ static int amhdmitx_probe(struct platform_device *pdev)
     switch_dev_register(&sdev);
     switch_dev_register(&lang_dev);
     switch_dev_register(&hdcp_dev);
+    hdmitx_init_parameters(&hdmitx_device.hdmi_info);
+    HDMITX_Meson_Init(&hdmitx_device);
     hdmitx_device.task = kthread_run(hdmi_task_handle, &hdmitx_device, "kthread_hdmi");
     hdmitx_device.task_monitor = kthread_run(hdmi_task_monitor_handle, &hdmitx_device, "kthread_hdmi_monitor");
 

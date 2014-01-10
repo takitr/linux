@@ -162,11 +162,9 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
         // If HPD asserts, then start DDC transaction
         if (hdmi_rd_reg(TX_HDCP_ST_EDID_STATUS) & (1<<1)) {
             // Start DDC transaction
-            hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) & (~(1<<6))); // Assert sys_trigger_config
             hdmitx_device->cur_edid_block=0;
             hdmitx_device->cur_phy_block_ptr=0;
             hdmitx_device->hpd_event = 1;
-            hdmi_wr_reg(TX_HDCP_EDID_CONFIG, hdmi_rd_reg(TX_HDCP_EDID_CONFIG) | (1<<6)); // Assert sys_trigger_config
         // Error if HPD deasserts
         } else {
             hdmi_print(ERR, HPD "HPD deasserts!\n");
@@ -1537,7 +1535,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     //tmp_add_data[1]   = 8'b0 ;  //forced_vsync_polarity 
     //tmp_add_data[0]   = 8'b0 ;  //forced_hsync_polarity
     tmp_add_data = 0x40;
-    hdmi_wr_reg(TX_HDCP_MODE, (hdmi_rd_reg(TX_HDCP_MODE) | tmp_add_data)&0xf0);
+    hdmi_wr_reg(TX_HDCP_MODE, tmp_add_data);
 
     if(param->cc == CC_ITU709){
         hdmi_wr_reg(TX_VIDEO_CSC_COEFF_B0, 0x7b);
@@ -1835,7 +1833,7 @@ static int hdmitx_set_dispmode(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t
         param->color_depth = COLOR_36BIT;
     else if(color_depth_f==48)
         param->color_depth = COLOR_48BIT;
-    hdmi_print(1,"set mode VIC %d (cd%d,cs%d,pm%d,vd%d,%x) \n",param->VIC, color_depth_f, color_space_f,power_mode,power_off_vdac_flag,serial_reg_val);
+    hdmi_print(INF, SYS "set mode VIC %d (cd%d,cs%d,pm%d,vd%d,%x) \n",param->VIC, color_depth_f, color_space_f,power_mode,power_off_vdac_flag,serial_reg_val);
     if(color_space_f != 0){
         param->color = color_space_f;
     }
@@ -2750,18 +2748,32 @@ static void hdmitx_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
     }
 }
 
-static void hdmitx_getediddata(hdmitx_dev_t* hdmitx_device)
+static void hdmitx_getediddata(hdmitx_dev_t* hdmitx_device, unsigned int blk_idx)
 {
     int ii, jj;
+
     if((hdmitx_device->cur_edid_block+2)<=EDID_MAX_BLOCK){
-        for(jj=0;jj<2;jj++){
-            for(ii=0;ii<128;ii++){
-                hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]
-                    =hdmi_rd_reg(TX_RX_EDID_OFFSET+hdmitx_device->cur_phy_block_ptr*128+ii);
+        if(blk_idx == 0) {
+            for(jj=0;jj<2;jj++){
+                for(ii=0;ii<128;ii++){
+                    hdmitx_device->EDID_buf[hdmitx_device->cur_edid_block*128+ii]
+                        =hdmi_rd_reg(TX_RX_EDID_OFFSET+hdmitx_device->cur_phy_block_ptr*128+ii);
+                }
+                hdmitx_device->cur_edid_block++;
+                hdmitx_device->cur_phy_block_ptr++;
+                hdmitx_device->cur_phy_block_ptr=hdmitx_device->cur_phy_block_ptr&0x3;
             }
-            hdmitx_device->cur_edid_block++;
-            hdmitx_device->cur_phy_block_ptr++;
-            hdmitx_device->cur_phy_block_ptr=hdmitx_device->cur_phy_block_ptr&0x3;
+        }
+        else {
+            for(jj=0;jj<2;jj++){
+                for(ii=0;ii<128;ii++){
+                    hdmitx_device->EDID_buf1[hdmitx_device->cur_edid_block*128+ii]
+                        =hdmi_rd_reg(TX_RX_EDID_OFFSET+hdmitx_device->cur_phy_block_ptr*128+ii);
+                }
+                hdmitx_device->cur_edid_block++;
+                hdmitx_device->cur_phy_block_ptr++;
+                hdmitx_device->cur_phy_block_ptr=hdmitx_device->cur_phy_block_ptr&0x3;
+            }
         }
     }
 }    
@@ -2778,6 +2790,7 @@ static int hdmitx_cntl_ddc(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigned a
 
     switch(cmd) {
     case DDC_RESET_EDID:
+        hdmi_set_reg_bits(TX_HDCP_EDID_CONFIG, 0, 6, 1);
         hdmi_set_reg_bits(TX_SYS5_TX_SOFT_RESET_2, 1, 1, 1);
         hdmi_set_reg_bits(TX_SYS5_TX_SOFT_RESET_2, 0, 1, 1);
         break;
@@ -2788,7 +2801,7 @@ static int hdmitx_cntl_ddc(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigned a
         hdmi_set_reg_bits(TX_HDCP_EDID_CONFIG, 1, 6, 1);     // Assert sys_trigger_config
         break;
     case DDC_EDID_GET_DATA:
-        hdmitx_getediddata(hdmitx_device);
+        hdmitx_getediddata(hdmitx_device, argv);
         break;
     case DDC_PIN_MUX_OP:
         if(argv == PIN_MUX) {
@@ -2882,10 +2895,14 @@ static int hdmitx_cntl_config(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigne
         break;
     case CONF_VIDEO_BLANK_OP:
         if(argv == VIDEO_BLANK) {
-//            aml_write_reg32(P_VPU_HDMI_DATA_OVR, (0x1 << 31));    // todo
+// todo later
+            return 0;
+            aml_write_reg32(P_VPU_HDMI_DATA_OVR, (0x200 << 20) | (0x0 << 10) | (0x200 << 0));   // set blank CrYCb as 0x200 0x0 0x200
+            aml_set_reg32_bits(P_VPU_HDMI_SETTING, 0, 5, 2);        // Output data map: CrYCb
+            aml_set_reg32_bits(P_VPU_HDMI_DATA_OVR, 1, 31, 1);      // Enable HDMI data override
         }
         if(argv == VIDEO_UNBLANK) {
-            aml_set_reg32_bits(P_VPU_HDMI_DATA_OVR, 0, 31, 1);    // 
+            aml_write_reg32(P_VPU_HDMI_DATA_OVR, 0);    // Disable HDMI data override
         }
         break;
     case CONF_CLR_AVI_PACKET:

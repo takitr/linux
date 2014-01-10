@@ -1409,6 +1409,94 @@ void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device)
     memset(&hdmitx_device->EDID_hash[0], 0, sizeof(hdmitx_device->EDID_hash));
 }
 
+/*
+ * print one block data of edid
+ */
+static void hdmitx_edid_blk_print(unsigned char *blk, unsigned int blk_idx)
+{
+    unsigned int i;
+    hdmi_print(INF, EDID "blk%d raw data\n", blk_idx);
+    for(i = 0; i < 128; i++) {
+        printk("%02x", blk[i]);
+        if(((i+1) & 0x1f) == 0)     // print 32bytes a line
+            printk("\n");
+    }
+    printk("\n");
+}
+
+/*
+ * check EDID buf contains valid block numbers
+ */
+static unsigned int hdmitx_edid_check_valid_blocks(unsigned char *buf)
+{
+    unsigned int valid_blk_no = 0;
+    unsigned int i = 0, j = 0;
+    unsigned int tmp_chksum = 0;
+    for(j = 0; j < EDID_MAX_BLOCK; j++) {
+        for(i = 0; i < 128; i++) {
+            tmp_chksum += buf[i + j*128];
+        }
+        if(tmp_chksum !=0) {
+            valid_blk_no ++;
+            if((tmp_chksum & 0xff) == 0) {
+                hdmi_print(INF, EDID "check sum valid\n");
+            }
+            else {
+                hdmi_print(INF, EDID "check sum invalid\n");
+            }
+        }
+        tmp_chksum = 0;
+    }
+    return valid_blk_no;
+}
+
+/*
+ * suppose DDC read EDID two times successfully,
+ * then compare EDID_buf and EDID_buf1.
+ * if same, just print out EDID_buf raw data, else print out 2 buffers
+ */
+void hdmitx_edid_buf_compare_print(hdmitx_dev_t* hdmitx_device)
+{
+    unsigned int i = 0;
+    unsigned int err_no = 0;
+    unsigned char *buf0 = hdmitx_device->EDID_buf;
+    unsigned char *buf1 = hdmitx_device->EDID_buf1;
+    unsigned int valid_blk_no = 0;
+    unsigned int blk_idx = 0;
+
+    for(i = 0; i < EDID_MAX_BLOCK*128; i++) {
+        if(buf0[i] != buf1[i]) {
+            err_no ++;
+        }
+    }
+
+    if(err_no == 0) {
+        // calculate valid edid block numbers
+        valid_blk_no = hdmitx_edid_check_valid_blocks(buf0);
+
+        if(valid_blk_no == 0) {
+            hdmi_print(ERR, EDID "raw data are all zeroes\n");
+        }
+        else {
+            for(blk_idx = 0; blk_idx < valid_blk_no; blk_idx++) {
+                hdmitx_edid_blk_print(&buf0[blk_idx*128], blk_idx);
+            }
+        }
+    }
+    else {
+        hdmi_print(ERR, EDID "%d errors between two reading\n", err_no);
+        valid_blk_no = hdmitx_edid_check_valid_blocks(buf0);
+        for(blk_idx = 0; blk_idx < valid_blk_no; blk_idx++) {
+            hdmitx_edid_blk_print(&buf0[blk_idx*128], blk_idx);
+        }
+
+        valid_blk_no = hdmitx_edid_check_valid_blocks(buf1);
+        for(blk_idx = 0; blk_idx < valid_blk_no; blk_idx++) {
+            hdmitx_edid_blk_print(&buf1[blk_idx*128], blk_idx);
+        }
+    }
+}
+
 int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len)
 {
     int i,pos=0;

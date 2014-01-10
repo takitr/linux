@@ -56,8 +56,8 @@ typedef struct rx_cap_
 }rx_cap_t;
 
 
-#define EDID_MAX_BLOCK  20       //4
-#define HDMI_TMP_BUF_SIZE            1024
+#define EDID_MAX_BLOCK              4
+#define HDMI_TMP_BUF_SIZE           1024
 typedef struct hdmi_tx_dev_s {
     struct cdev cdev;             /* The cdev structure */
     struct proc_dir_entry *proc_file;
@@ -87,6 +87,7 @@ typedef struct hdmi_tx_dev_s {
     unsigned cur_edid_block;
     unsigned cur_phy_block_ptr;
     unsigned char EDID_buf[EDID_MAX_BLOCK*128];
+    unsigned char EDID_buf1[EDID_MAX_BLOCK*128];    // for second read
     unsigned char EDID_hash[20];
     rx_cap_t RXCap;
     int vic_count;
@@ -215,6 +216,8 @@ HDMI_Video_Codes_t hdmitx_get_VIC(hdmitx_dev_t* hdmitx_device,const char* disp_m
 extern int hdmitx_edid_dump(hdmitx_dev_t* hdmitx_device, char* buffer, int buffer_len);
 
 extern void hdmitx_edid_clear(hdmitx_dev_t* hdmitx_device);
+
+extern void hdmitx_edid_buf_compare_print(hdmitx_dev_t* hdmitx_device);
 
 extern char* hdmitx_edid_get_native_VIC(hdmitx_dev_t* hdmitx_device);
 
