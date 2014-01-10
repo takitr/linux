@@ -53,7 +53,7 @@ static unsigned amlnand_slc_addr_trs(struct amlnand_phydev *phydev)
 	
 	page_num = ((devops->addr >> phydev->writesize_shift) -(blk_num_in_dev * page_per_blk ));
 
-	if((flash->new_type > 0) && (flash->new_type <= HYNIX_20NM_8GB)){
+	if((flash->new_type > 0) && (flash->new_type <10)){
 		page_addr = blk_num * real_page_per_blk + slc_info->pagelist[page_num];
 	}else if (flash->new_type == SANDISK_19NM) {
 		page_addr = blk_num * real_page_per_blk + (page_num << 1);
@@ -273,7 +273,7 @@ static int nand_write(struct amlnand_phydev *phydev)
 		
 		ret = operation->write_page(aml_chip);			
 		if(ret<0){			
-			aml_nand_msg("nand phy write failed at devops->addr : %llx", devops->addr); 		
+			aml_nand_msg("nand phy write failed at devops->addr : %llx, addr=%llx", devops->addr,addr); 		
 			break;
 		}
 					
