@@ -907,6 +907,7 @@ static int aml_is_card_insert (struct amlsd_platform * pdata)
 	return ret;
 }
 
+#ifdef CONFIG_ARCH_MESON8
 static int aml_is_sdjtag(struct amlsd_platform * pdata)
 {
     int card0;
@@ -1026,6 +1027,7 @@ static int aml_uart_switch(struct amlsd_platform* pdata, bool on)
     pdata->uart_ao_pinctrl);
 #endif
 }
+#endif
 
 // clear detect information
 void aml_sd_uart_detect_clr (struct amlsd_platform* pdata)
@@ -1036,6 +1038,7 @@ void aml_sd_uart_detect_clr (struct amlsd_platform* pdata)
 
 void aml_sd_uart_detect (struct amlsd_platform* pdata)
 {
+#ifdef CONFIG_ARCH_MESON8
     static bool is_jtag = false;
 
     if (aml_is_card_insert(pdata)){
@@ -1087,7 +1090,26 @@ void aml_sd_uart_detect (struct amlsd_platform* pdata)
         if(pdata->caps & MMC_CAP_4_BIT_DATA)
             pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
     }
+#else
+    if (aml_is_card_insert(pdata)){
+        if (!pdata->is_in) { // status change, last time is out, and now is in
+            // printk("\033[0;40;35m normal SD card in \033[0m\n");
+            printk("normal card in\n");
+        }/*  else { */
+        // printk("\033[0;40;35m normal SD card in again---------------- \033[0m\n");
+        /* } */
+        pdata->is_in = true;
+    } else {
+        if (pdata->is_in) { // status change, last time is in, and now is out
+            // printk("\033[0;40;31m card out \033[0m\n");
+            printk("card out\n");
+        } /* else { */
+            // printk("\033[0;40;31m card out again---------------- \033[0m\n");
+        /* } */
 
+        pdata->is_in = false;
+    }
+#endif
     return;
 }
 
@@ -1112,10 +1134,12 @@ irqreturn_t aml_sd_irq_cd(int irq, void *dev_id)
 void aml_sduart_pre (struct amlsd_platform* pdata)
 {
     if (((pdata->port == MESON_SDIO_PORT_B) || (pdata->port == MESON_SDIO_PORT_XC_B))) {
+#ifdef CONFIG_ARCH_MESON8
         // clear pinmux of CARD_0 and CARD_4 to make them used as gpio
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x00005040);
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x00000400);
         aml_jtag_gpioao();
+#endif
         aml_sd_uart_detect(pdata);
     }
 }
