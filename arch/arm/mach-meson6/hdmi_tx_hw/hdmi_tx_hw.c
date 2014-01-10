@@ -2769,7 +2769,7 @@ static int hdmitx_cntl_config(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigne
         break;
     case CONF_VIDEO_BLANK_OP:
         if(argv == VIDEO_BLANK) {
-            aml_write_reg32(P_VPP_BLEND_ONECOLOR_CTRL, (0x3 << 24) | 0x008080);    // one bit osd blank enable
+//            aml_write_reg32(P_VPP_BLEND_ONECOLOR_CTRL, (0x3 << 24) | 0x008080);    // one bit osd blank enable
         }
         if(argv == VIDEO_UNBLANK) {
             aml_set_reg32_bits(P_VPP_BLEND_ONECOLOR_CTRL, 0, 24, 2);    // one bit osd blank disable

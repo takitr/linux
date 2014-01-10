@@ -1130,7 +1130,7 @@ static int hdmi_task_handle(void *data)
             }
             switch_set_state(&hdcp_dev, 0);
         }
-
+#if 0
         /* authentication process */
         if((hdmitx_device->cur_VIC != HDMI_Unkown) && (hdmitx_device->hpd_state == 1)){
             if(hdmitx_device->auth_process_timer>0){
@@ -1178,6 +1178,7 @@ static int hdmi_task_handle(void *data)
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_VIDEO_BLANK_OP, VIDEO_UNBLANK);
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_AUDIO_MUTE_OP, AUDIO_UNMUTE);
         }
+#endif
         /**/
 next:
         msleep(100);

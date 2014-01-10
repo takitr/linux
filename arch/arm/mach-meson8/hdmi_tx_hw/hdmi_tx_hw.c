@@ -2883,7 +2883,7 @@ static int hdmitx_cntl_config(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigne
         break;
     case CONF_VIDEO_BLANK_OP:
         if(argv == VIDEO_BLANK) {
-            aml_write_reg32(P_VPU_HDMI_DATA_OVR, (0x1 << 31));    // todo
+//            aml_write_reg32(P_VPU_HDMI_DATA_OVR, (0x1 << 31));    // todo
         }
         if(argv == VIDEO_UNBLANK) {
             aml_set_reg32_bits(P_VPU_HDMI_DATA_OVR, 0, 31, 1);    // 
