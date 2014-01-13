@@ -12,6 +12,7 @@
 #define COULOMB_BOTH                0               // PMU has inspective coulomb counter for charge and discharge
 #define COULOMB_SINGLE_CHG_INC      1               // PMU has only one coulomb counter, value increase when charging
 #define COULOMB_SINGLE_CHG_DEC      2               // PMU has only one coulomb counter, value decrease when charging
+#define COULOMB_ALWAYS_DEC          3               // PMU has only one coulomb counter, value decrease always
 
 #define PMU_GPIO_OUTPUT_LOW         0
 #define PMU_GPIO_OUTPUT_HIGH        1
@@ -43,6 +44,8 @@ struct aml_charger {
     uint8_t  coulomb_type;                          // type of coulomb 
     uint8_t  bat_det;                               // battery detected 
     uint8_t  charge_timeout;                        // indicate charging timeout
+    uint8_t  serial_batteries;                      // indicate how many batteries serialed, 
+                                                    // 0 -> 1 battery, 1 -> 2 batteries
 };
 
 typedef int (*pmu_callback)(struct aml_charger *charger, void *pdata);
@@ -68,6 +71,8 @@ struct aml_pmu_driver {
 extern void *pmu_alloc_mutex(void);
 extern void pmu_mutex_lock(void *mutex);
 extern void pmu_mutex_unlock(void *mutex);
+extern int  pmu_rtc_device_init(void);
+extern int  pmu_rtc_set_alarm(unsigned long seconds);
    
 extern int    aml_pmu_register_callback(pmu_callback callback, void *pdata, char *name);
 extern int    aml_pmu_unregister_callback(char *name);

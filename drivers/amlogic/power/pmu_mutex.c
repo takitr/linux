@@ -5,6 +5,8 @@
 #include <linux/printk.h>
 #include <linux/module.h>
 #include <linux/gfp.h>
+#include <linux/rtc.h>
+#include <linux/err.h>
 
 /*
  * some data-struct is depend on kernel's menuconfig
@@ -13,6 +15,7 @@
  */
 static int mutex_cnt = 0;
 const  char mutex_name[20] = {};
+static struct rtc_device *rtc_dev = NULL;
 
 void *pmu_alloc_mutex(void)
 {
@@ -47,3 +50,41 @@ void pmu_mutex_unlock(void *mutex)
 }
 EXPORT_SYMBOL_GPL(pmu_mutex_unlock);
 
+int pmu_rtc_device_init(void)
+{
+    if (rtc_dev) {
+        return 0;    
+    }
+    rtc_dev = rtc_class_open("rtc0");
+    if (IS_ERR_OR_NULL(rtc_dev)) {
+        printk("%s, can't open aml_rtc class\n", __func__);
+        return -EINVAL;
+    }
+    return 0;
+}
+EXPORT_SYMBOL_GPL(pmu_rtc_device_init);
+
+int pmu_rtc_set_alarm(unsigned long seconds) 
+{
+    struct rtc_wkalrm tmp;
+    unsigned long time;
+    int ret;
+
+    if (!rtc_dev) {
+        printk("%s, NO rtc dev found\n", __func__);
+        return -ENODEV;    
+    }
+    ret = rtc_read_time(rtc_dev, &tmp.time);
+    if (ret < 0) {
+        printk("%s, read %s alarm failed, %d\n", __func__, rtc_dev->name, ret);
+        return ret;    
+    }
+    tmp.enabled = 1;
+    rtc_tm_to_time(&tmp.time, &time);
+    time += seconds;
+    rtc_time_to_tm(time, &tmp.time);
+    ret = rtc_set_alarm(rtc_dev, &tmp);
+    printk("%s, set wake up alarm in %d seconds, ret:%d\n", __func__, seconds, ret);
+    return ret;
+}
+EXPORT_SYMBOL_GPL(pmu_rtc_set_alarm);
