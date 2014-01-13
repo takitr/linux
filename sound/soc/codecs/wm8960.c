@@ -998,8 +998,6 @@ static struct snd_soc_dai_driver wm8960_dai = {
 
 static int wm8960_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
-    if(!is_wm8960)
-        return 0;
     struct wm8960_priv *wm8960 = snd_soc_codec_get_drvdata(codec);
 
     wm8960->set_bias_level(codec, SND_SOC_BIAS_OFF);
@@ -1008,8 +1006,6 @@ static int wm8960_suspend(struct snd_soc_codec *codec, pm_message_t state)
 
 static int wm8960_resume(struct snd_soc_codec *codec)
 {
-    if(!is_wm8960)
-        return 0;
     struct wm8960_priv *wm8960 = snd_soc_codec_get_drvdata(codec);
 
     //wm8960->set_bias_level(codec, SND_SOC_BIAS_STANDBY);
