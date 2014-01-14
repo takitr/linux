@@ -246,10 +246,23 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
     u32 picture_type;
     u32 buffer_index;
     unsigned int pts, pts_valid = 0, offset;
+    u32 v_width, v_height;
 
     reg = READ_VREG(VC1_BUFFEROUT);
 
     if (reg) {
+        v_width = READ_VREG(AV_SCRATCH_J);
+        v_height = READ_VREG(AV_SCRATCH_K);
+        
+        if (v_width != vvc1_amstream_dec_info.width) {
+            printk("frame width changed %d to %d\n", vvc1_amstream_dec_info.width, v_width);
+            vvc1_amstream_dec_info.width = v_width;
+        }
+        if (v_height != vvc1_amstream_dec_info.height) {
+            printk("frame height changed %d to %d\n", vvc1_amstream_dec_info.height, v_height);
+            vvc1_amstream_dec_info.height = v_height;
+        } 
+        
         if (pts_by_offset) {
             offset = READ_VREG(VC1_OFFSET_REG);
             if (pts_lookup_offset(PTS_TYPE_VIDEO, offset, &pts, 0) == 0) {
