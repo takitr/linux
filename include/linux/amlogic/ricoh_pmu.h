@@ -82,11 +82,17 @@ struct rn5t618_supply {
 	struct power_supply_info *battery_info;
 	struct delayed_work work;                                           // work struct
     struct work_struct  irq_work;                                       // work for IRQ 
-    struct notifier_block otg_nb;                                       // notifier_block for OTG issue
-    struct notifier_block usb_nb;                                       // notifier_block for USB charger issue
 
 	struct device *master;
 };
+
+/*
+ * functions for otg and usb charger detect
+ */
+#ifdef CONFIG_AMLOGIC_USB
+int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata);
+int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata);
+#endif
 
 /*
  * Global variable declaration

@@ -13,6 +13,15 @@
 #include <linux/amlogic/aml_dvfs.h>
 #endif
 
+#ifdef CONFIG_AMLOGIC_USB
+static struct notifier_block rn5t618_otg_nb;                            // notifier_block for OTG issue
+static struct notifier_block rn5t618_usb_nb;                            // notifier_block for USB charger issue
+extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
+extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
+extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
+extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+#endif
+
 struct i2c_client *g_rn5t618_client = NULL; 
 static const struct i2c_device_id ricoh_pmu_id_table[] = {
 #ifdef CONFIG_RN5T618
@@ -265,6 +274,12 @@ static int ricoh_pmu_probe(struct i2c_client *client,
         aml_dvfs_register_driver(&rn5t618_dvfs_driver);
     #endif
         aml_pmu_register_driver(&rn5t618_pmu_driver);
+    #ifdef CONFIG_AMLOGIC_USB
+        rn5t618_otg_nb.notifier_call = rn5t618_otg_change;
+        rn5t618_usb_nb.notifier_call = rn5t618_usb_charger;
+        dwc_otg_power_register_notifier(&rn5t618_otg_nb);
+        dwc_otg_charger_detect_register_notifier(&rn5t618_usb_nb);
+    #endif
     }
 #endif
     /*
@@ -301,7 +316,11 @@ static int ricoh_pmu_remove(struct i2c_client *client)
     aml_dvfs_unregister_driver(&rn5t618_dvfs_driver);
 #endif
     aml_pmu_clear_driver();
-#endif
+#ifdef CONFIG_AMLOGIC_USB
+    dwc_otg_power_unregister_notifier(&rn5t618_otg_nb);
+    dwc_otg_charger_detect_unregister_notifier(&rn5t618_usb_nb);
+#endif  /* CONFIG_AMLOGIC_USB */
+#endif  /* CONFIG_RN5T618     */
 
     platform_device_del(pdev);
 #ifdef CONFIG_OF

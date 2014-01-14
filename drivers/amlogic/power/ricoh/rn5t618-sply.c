@@ -64,10 +64,12 @@ static int over_discharge_cnt = 0;
 
 #ifdef CONFIG_AMLOGIC_USB
 struct work_struct          rn5t618_otg_work;
-extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
-extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
-extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
-extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+struct later_job {
+    int flag;
+    int value;
+};
+static struct later_job rn5t618_charger_job = {};
+static struct later_job rn5t618_otg_job = {};
 #endif
 
 static int rn5t618_update_state(struct aml_charger *charger);
@@ -802,16 +804,27 @@ static void rn5t618_otg_work_fun(struct work_struct *work)
     power_supply_changed(&g_rn5t618_supply->batt);
 }
 
-static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
+int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
 {
+    if (!g_rn5t618_supply) {
+        RICOH_DBG("%s, driver is not ready, do it later\n", __func__);
+        rn5t618_otg_job.flag  = 1;
+        rn5t618_otg_job.value = value;
+        return 0;
+    }
     rn5t618_otg_value = value;
     schedule_work(&rn5t618_otg_work);
     return 0;
 }
-#endif
 
-static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
+int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
 {
+    if (!g_rn5t618_supply) {
+        RICOH_DBG("%s, driver is not ready, do it later\n", __func__);
+        rn5t618_charger_job.flag  = 1;
+        rn5t618_charger_job.value = value;
+        return 0;
+    }
     switch (value) {
     case USB_BC_MODE_DISCONNECT:                                        // disconnect
     case USB_BC_MODE_SDP:                                               // pc
@@ -832,6 +845,7 @@ static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, v
     }
     return 0;
 }
+#endif
 
 /*
  * add for debug 
@@ -1468,11 +1482,15 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     charger->coulomb_type        = COULOMB_SINGLE_CHG_INC; 
     supply->charge_timeout_retry = g_rn5t618_init->charge_timeout_retry;
 #ifdef CONFIG_AMLOGIC_USB
-    supply->otg_nb.notifier_call = rn5t618_otg_change;
-    supply->usb_nb.notifier_call = rn5t618_usb_charger;
     INIT_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
-    dwc_otg_power_register_notifier(&supply->otg_nb);
-    dwc_otg_charger_detect_register_notifier(&supply->usb_nb);
+    if (rn5t618_charger_job.flag) {     // do later job for usb charger detect
+        rn5t618_usb_charger(NULL, rn5t618_charger_job.value, NULL);    
+        rn5t618_charger_job.flag = 0;
+    }
+    if (rn5t618_otg_job.flag) {
+        rn5t618_otg_change(NULL, rn5t618_otg_job.value, NULL);    
+        rn5t618_otg_job.flag = 0;
+    }
 #endif
     if (g_rn5t618_init->reset_to_system) {
         rn5t618_reboot_nb.notifier_call = rn5t618_reboot_work;
@@ -1564,10 +1582,6 @@ static int rn5t618_battery_remove(struct platform_device *dev)
 {
     struct rn5t618_supply *supply= platform_get_drvdata(dev);
 
-#ifdef CONFIG_AMLOGIC_USB
-    dwc_otg_power_unregister_notifier(&supply->otg_nb);
-    dwc_otg_charger_detect_unregister_notifier(&supply->usb_nb);
-#endif
     cancel_work_sync(&supply->irq_work);
     cancel_delayed_work_sync(&supply->work);
     power_supply_unregister( &supply->usb);
