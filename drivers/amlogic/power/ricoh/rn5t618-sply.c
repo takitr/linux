@@ -34,6 +34,7 @@
 #include <linux/notifier.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/wakelock_android.h>
 #include <linux/earlysuspend.h>
 #endif
 
@@ -53,6 +54,8 @@
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend rn5t618_early_suspend;
+static int in_early_suspend = 0;
+static struct wake_lock rn5t618_lock;
 #endif
 struct rn5t618_supply      *g_rn5t618_supply  = NULL;
 struct ricoh_pmu_init_data *g_rn5t618_init    = NULL;
@@ -832,6 +835,14 @@ int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pd
         rn5t618_charger_job.value = value;
         return 0;
     }
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (in_early_suspend) {
+        wake_lock(&rn5t618_lock);
+        RICOH_DBG("%s, usb power status changed in early suspend, wake up now\n", __func__);
+        input_report_key(rn5t618_power_key, KEY_POWER, 1);              // assume power key pressed 
+        input_sync(rn5t618_power_key);
+    }
+#endif
     switch (value) {
     case USB_BC_MODE_DISCONNECT:                                        // disconnect
     case USB_BC_MODE_SDP:                                               // pc
@@ -1347,6 +1358,7 @@ static void rn5t618_earlysuspend(struct early_suspend *h)
         rn5t618_set_charge_current(rn5t618_battery->pmu_suspend_chgcur);
         early_power_status = supply->aml_charger.ext_valid; 
     }
+    in_early_suspend = 1;
 }
 
 static void rn5t618_lateresume(struct early_suspend *h)
@@ -1360,6 +1372,8 @@ static void rn5t618_lateresume(struct early_suspend *h)
         input_report_key(rn5t618_power_key, KEY_POWER, 0);                  // cancel power key 
         input_sync(rn5t618_power_key);
     }
+    in_early_suspend = 0;
+    wake_unlock(&rn5t618_lock);
 }
 #endif
 
@@ -1562,6 +1576,7 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     rn5t618_early_suspend.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 2;
     rn5t618_early_suspend.param   = supply;
     register_early_suspend(&rn5t618_early_suspend);
+    wake_lock_init(&rn5t618_lock, WAKE_LOCK_SUSPEND, "rn5t618");
 #endif
     if (rn5t618_battery) {
         aml_pmu_probe_process(charger, rn5t618_battery);
@@ -1607,6 +1622,9 @@ static int rn5t618_battery_remove(struct platform_device *dev)
     kfree(supply);
     input_unregister_device(rn5t618_power_key);
     kfree(rn5t618_power_key);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    wake_lock_destroy(&rn5t618_lock);
+#endif
 
     return 0;
 }
@@ -1629,6 +1647,7 @@ static int rn5t618_suspend(struct platform_device *dev, pm_message_t state)
         input_sync(rn5t618_power_key);
         return -1;
     }
+    in_early_suspend = 0;
 #endif
 
     return 0;
