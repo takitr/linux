@@ -2660,8 +2660,8 @@ void OV5647_set_param_wb(struct ov5647_device *dev,enum  camera_wb_flip_e para)/
             dev->cam_para->cam_command = CAM_COMMAND_AWB;
         }else{
             dev->cam_para->cam_command = CAM_COMMAND_MWB;
-            memcpy(dev->cam_para->xml_wb_manual->reg_map,dev->configure->wb.wb[index].export,WB_MAX * sizeof(int));
         }
+	memcpy(dev->cam_para->xml_wb_manual->reg_map,dev->configure->wb.wb[index].export,WB_MAX * sizeof(int));
         printk("set wb :%d\n",index);
         dev->fe_arg.port = TVIN_PORT_ISP;
         dev->fe_arg.index = 0;
