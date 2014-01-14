@@ -51,6 +51,7 @@ int osd_rdma_enable(u32  enable);
 #endif
 
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
+
 static bool vsync_hit = false;
 static bool osd_vf_need_update = false;
 #ifdef CONFIG_AM_FB_EXT
@@ -219,6 +220,98 @@ static inline void wait_vsync_wakeup(void)
 	vsync_hit = true;
 	wake_up_interruptible(&osd_vsync_wq);
 }
+
+static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
+{
+#define  	VOUT_ENCI	1
+#define   	VOUT_ENCP	2
+#define	VOUT_ENCT	3
+	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
+	unsigned  int  odd_or_even_line;
+	unsigned  int  scan_line_number = 0;
+	unsigned  char output_type=0;
+
+	aml_write_reg32(P_RDMA_CTRL, 1<<24);
+	do{
+		if((aml_read_reg32(P_RDMA_STATUS)&0xffffff0f) == 0){
+		break;
+            }
+	}while(1);
+
+#ifdef CONFIG_VSYNC_RDMA
+	reset_rdma();
+#endif
+
+	output_type=aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
+	osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
+	switch(output_type)
+	{
+		case VOUT_ENCP:
+			if (aml_read_reg32(P_ENCP_VIDEO_MODE) & (1 << 12)) //1080i
+				osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+			break;
+		case VOUT_ENCI:
+			if (aml_read_reg32(P_ENCI_VIDEO_EN) & 1)
+				osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+			break;
+	}
+
+	if(osd_hw.free_scale_enable[OSD1])
+	{
+		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
+	}
+
+	if (osd_hw.scan_mode == SCAN_MODE_INTERLACE)
+	{
+		fb0_cfg_w0=aml_read_reg32(P_VIU_OSD1_BLK0_CFG_W0);
+		fb1_cfg_w0=aml_read_reg32(P_VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
+		if (aml_read_reg32(P_ENCP_VIDEO_MODE) & (1 << 12))
+		{
+			/* 1080I */
+			scan_line_number = ((aml_read_reg32(P_ENCP_INFO_READ))&0x1fff0000)>>16;
+			if ((osd_hw.pandata[OSD1].y_start%2) == 0)
+			{
+				if (scan_line_number >= 562){
+					/* bottom field, odd lines*/
+					odd_or_even_line = 0;	//vsync enable when the next vsync trigger
+				} else {
+					/* top field, even lines*/
+					odd_or_even_line = 1;
+				}
+			}else{
+				if (scan_line_number >= 562) {
+					/* top field, even lines*/
+					odd_or_even_line = 1;
+				} else {
+					/* bottom field, odd lines*/
+					odd_or_even_line = 0;
+				}
+			}
+		} else {
+			if ((osd_hw.pandata[OSD1].y_start%2) == 0){
+				odd_or_even_line = aml_read_reg32(P_ENCI_INFO_READ) & 1;
+			}else{
+				odd_or_even_line = !(aml_read_reg32(P_ENCI_INFO_READ) & 1);
+			}
+		}
+
+		fb0_cfg_w0 &=~1;
+		fb1_cfg_w0 &=~1;
+		fb0_cfg_w0 |=odd_or_even_line;
+		fb1_cfg_w0 |=odd_or_even_line;
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK1_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK2_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK3_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK1_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK2_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static inline void  walk_through_update_list(void)
 {
 	u32  i,j;
@@ -236,6 +329,7 @@ static inline void  walk_through_update_list(void)
 		}
 	}
 }
+
 /**********************************************************************/
 /**********          osd vsync irq handler              ***************/
 /**********************************************************************/
@@ -254,6 +348,7 @@ static void osd_fiq_isr(void)
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
+#if 0
 #define  	VOUT_ENCI	1
 #define   	VOUT_ENCP	2
 #define	VOUT_ENCT	3
@@ -329,15 +424,17 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		aml_write_reg32(P_VIU_OSD1_BLK2_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 		aml_write_reg32(P_VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
-
+#endif
 	//go through update list
 #ifndef CONFIG_VSYNC_RDMA
 	walk_through_update_list();
 #endif
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 
+#if 0
 #ifdef CONFIG_VSYNC_RDMA
 	reset_rdma();
+#endif
 #endif
 
 	if (!vsync_hit)
@@ -2243,6 +2340,20 @@ void osd_init_hw(u32  logo_loaded)
 
 #ifdef CONFIG_VSYNC_RDMA
 	osd_rdma_enable(1);
+#endif
+
+#ifdef CONFIG_VSYNC_RDMA
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
+	if (request_irq(INT_RDMA, &osd_rdma_isr,
+                    IRQF_SHARED, "osd_rdma", (void *)"osd_rdma"))
+
+#else
+	if (request_irq(INT_RDMA, &osd_rdma_isr,
+                    IRQF_DISABLED, "osd_rdma", (void *)"osd_rdma"))
+#endif
+	{
+		amlog_level(LOG_LEVEL_HIGH,"can't request irq for rdma\r\n");
+	}
 #endif
 	return ;
 }
