@@ -178,7 +178,7 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reserve-memory = <0x01400000>;
+		reserve-memory = <0x02000000>;
 	};
 
 /// ***************************************************************************************
@@ -264,7 +264,7 @@ void root_func(){
         status = "ok";
         share-memory-name = "ppmgr0";
         share-memory-offset = <0>;
-        share-memory-size = <0x01400000>;
+        share-memory-size = <0x02000000>;
     };
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout

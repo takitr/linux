@@ -15,7 +15,6 @@
 static int is_actived = 0;
 
 static unsigned video_nr = 13;
-static int receiver_register = 0;
 module_param(video_nr, uint, 0644);
 MODULE_PARM_DESC(video_nr, "videoX start number, 13 is autodetect");
 
@@ -30,6 +29,10 @@ MODULE_PARM_DESC(debug, "activates debug info");
 static unsigned int vid_limit = 16;
 module_param(vid_limit, uint, 0644);
 MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
+
+static unsigned int freerun_mode = 1;
+module_param(freerun_mode, uint, 0664);
+MODULE_PARM_DESC(freerun_mode, "av synchronization");
 
 static const struct ionvideo_fmt formats[] = {
     {
@@ -113,17 +116,83 @@ EXPORT_SYMBOL(is_ionvideo_active);
 
 static void videoc_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
     if (vf->pts) {
-        timestamp_vpts_set(vf->pts);
-        receiver_register = 0;
-        dev->pts = vf->pts_us64;
-    } else if (receiver_register){
-        timestamp_vpts_set(timestamp_pcrscr_get());
-        receiver_register = 0;
-        dev->pts = timestamp_vpts_get();
+        if (abs(timestamp_pcrscr_get() - vf->pts) > tsync_vpts_discontinuity_margin()) {
+            tsync_avevent_locked(VIDEO_TSTAMP_DISCONTINUITY, vf->pts);
+        } else {
+            timestamp_vpts_set(vf->pts);
+            dev->pts = vf->pts_us64;
+        }
     } else {
         timestamp_vpts_inc(DUR2PTS(vf->duration));
         dev->pts = timestamp_vpts_get();
     }
+    if (dev->receiver_register){
+        tsync_avevent_locked(VIDEO_START, vf->pts ? vf->pts : timestamp_pcrscr_get());
+        dev->receiver_register = 0;
+    }
+}
+
+static int ionvideo_av_pause(void) {
+    static int p = 0;
+
+    if (p == timestamp_pcrscr_get()) {
+        return -EAGAIN;
+    } else {
+        p = timestamp_pcrscr_get();
+    }
+
+    return 0;
+}
+
+static int ionvideo_av_synchronization(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
+    struct vframe_s* vf;
+    struct vb2_buffer *vb = &(buf->vb);
+    int ret = 0;
+    int d = timestamp_vpts_get() - timestamp_pcrscr_get();
+
+    if (d > 1350 && d < 450000) {
+        vf = vf_get(RECEIVER_NAME);
+        if (vf) {
+            ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
+            videoc_compute_pts(dev, vf);
+            vf_put(vf, RECEIVER_NAME);
+        } else {
+            ret = -EAGAIN;
+        }
+    } else if (d < -11520) {
+        int s = (-d) >> 13;
+        printk("s");
+        while (vf_peek(RECEIVER_NAME) && s-- > 0) {
+            vf = vf_get(RECEIVER_NAME);
+            if (vf) {
+                videoc_compute_pts(dev, vf);
+                vf_put(vf, RECEIVER_NAME);
+            } else {
+                ret = -EAGAIN;
+            }
+        }
+        vf = vf_get(RECEIVER_NAME);
+        if (vf) {
+            ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
+            videoc_compute_pts(dev, vf);
+            vf_put(vf, RECEIVER_NAME);
+        } else {
+            ret = -EAGAIN;
+        }
+    } else if (d <= 1350 && d >= -11520) {
+        vf = vf_get(RECEIVER_NAME);
+        if (vf) {
+            ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
+            videoc_compute_pts(dev, vf);
+            vf_put(vf, RECEIVER_NAME);
+        } else {
+            ret = -EAGAIN;
+        }
+    } else if (d > 450000) {
+        printk("ionvideo_av_synchronization error\n");
+    }
+
+    return ret;
 }
 
 static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
@@ -131,21 +200,27 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
     struct vframe_s* vf;
     struct vb2_buffer *vb = &(buf->vb);
     int ret = 0;
-
 //-------------------------------------------------------
-    vf = vf_get(RECEIVER_NAME);
-    ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
-    if (ret != 0) {
+    if (freerun_mode == 0) {
+        ret = ionvideo_av_synchronization(dev, buf);
+        if (ret) {
+            return ret;
+        }
+    } else {
+        vf = vf_get(RECEIVER_NAME);
+        videoc_compute_pts(dev, vf);
+        ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
+        if (ret) {
+            vf_put(vf, RECEIVER_NAME);
+            return ret;
+        }
         vf_put(vf, RECEIVER_NAME);
-        return ret;
     }
-    videoc_compute_pts(dev, vf);
-    vf_put(vf, RECEIVER_NAME);
 //-------------------------------------------------------
-	buf->vb.v4l2_buf.timestamp.tv_sec = dev->pts >> 32;
-	buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts & 0xFFFFFFFF;
- //   buf->vb.v4l2_buf.timestamp.tv_sec = 0;
- //   buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts;
+    buf->vb.v4l2_buf.timestamp.tv_sec = dev->pts >> 32;
+    buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts & 0xFFFFFFFF;
+//  buf->vb.v4l2_buf.timestamp.tv_sec = 0;
+//  buf->vb.v4l2_buf.timestamp.tv_usec = dev->pts;
 
     return 0;
 }
@@ -171,7 +246,6 @@ static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
     }
     buf = list_entry(dma_q->active.next, struct ionvideo_buffer, list);
     spin_unlock_irqrestore(&dev->slock, flags);
-
     /* Fill buffer */
     if (ionvideo_fillbuff(dev, buf)) {
         return;
@@ -357,7 +431,6 @@ static void buffer_queue(struct vb2_buffer *vb) {
 static int start_streaming(struct vb2_queue *vq, unsigned int count) {
     struct ionvideo_dev *dev = vb2_get_drv_priv(vq);
     is_actived = 1;
-    receiver_register = 1;
     dprintk(dev, 2, "%s\n", __func__);
     return ionvideo_start_generating(dev);
 }
@@ -401,6 +474,7 @@ static int vidioc_open(struct file *file) {
     }
     dev->pts = 0;
     dprintk(dev, 2, "vidioc_open\n");
+    printk("ionvideo open\n");
     return v4l2_fh_open(file);
 }
 
@@ -408,6 +482,7 @@ static int vidioc_release(struct file *file) {
     struct ionvideo_dev *dev = video_drvdata(file);
     ppmgr2_release(&(dev->ppmgr2_dev));
     dprintk(dev, 2, "vidioc_release\n");
+    printk("ionvideo release\n");
     return vb2_fop_release(file);
 }
 
@@ -534,6 +609,22 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *p) {
     return ret;
 }
 
+static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p){
+    if (freerun_mode == 0) {
+        static int p = 0;
+        int d = timestamp_vpts_get() - timestamp_pcrscr_get();
+        if (p == timestamp_pcrscr_get()) {
+            return -EAGAIN;
+        } else {
+            p = timestamp_pcrscr_get();
+        }
+        if (d > 1350 && d < 450000) {
+            return -EAGAIN;
+        }
+    }
+    return vb2_ioctl_dqbuf(file, priv, p);
+}
+
 #define NUM_INPUTS 10
 /* only one input in this sample driver */
 static int vidioc_enum_input(struct file *file, void *priv, struct v4l2_input *inp) {
@@ -590,7 +681,7 @@ static const struct v4l2_ioctl_ops ionvideo_ioctl_ops = {
     .vidioc_prepare_buf = vb2_ioctl_prepare_buf,
     .vidioc_querybuf = vb2_ioctl_querybuf,
     .vidioc_qbuf = vidioc_qbuf,
-    .vidioc_dqbuf = vb2_ioctl_dqbuf,
+    .vidioc_dqbuf = vidioc_dqbuf,
     .vidioc_enum_input = vidioc_enum_input,
     .vidioc_g_input = vidioc_g_input,
     .vidioc_s_input = vidioc_s_input,
@@ -632,13 +723,14 @@ static int ionvideo_release(void) {
 }
 
 static int video_receiver_event_fun(int type, void* data, void* private_data) {
-    struct ionvideo_dev *dev = (struct ionvideo_dev *) private_data;
+
+    struct ionvideo_dev *dev = (struct ionvideo_dev *)private_data;
 
     if (type == VFRAME_EVENT_PROVIDER_UNREG) {
-        receiver_register = 0;
+        dev->receiver_register = 0;
         printk("unreg:ionvideo\n");
     }else if (type == VFRAME_EVENT_PROVIDER_REG) {
-        receiver_register = 1;
+        dev->receiver_register = 1;
         printk("reg:ionvideo\n");
     }
     return 0;
@@ -711,7 +803,7 @@ static int __init ionvideo_create_instance(int inst)
 
     /* Now that everything is fine, let's add it to device list */
     list_add_tail(&dev->ionvideo_devlist, &ionvideo_devlist);
-    vf_receiver_init(&dev->video_vf_receiver, RECEIVER_NAME, &video_vf_receiver, &dev );
+    vf_receiver_init(&dev->video_vf_receiver, RECEIVER_NAME, &video_vf_receiver, dev);
     vf_reg_receiver(&dev->video_vf_receiver);
     v4l2_info(&dev->v4l2_dev, "V4L2 device registered as %s\n",
             video_device_node_name(vfd));
