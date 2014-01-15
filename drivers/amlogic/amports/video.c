@@ -4422,11 +4422,15 @@ static void do_vpu_delay_work(struct work_struct *work)
     if (vpu_delay_work_flag & VPU_DELAYWORK_VPU_CLK) {
         vpu_delay_work_flag &= ~VPU_DELAYWORK_VPU_CLK;
 
+        spin_unlock_irqrestore(&delay_work_lock, flags);
+
         if (vpu_clk_level > 0) {
             request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
         } else {
             release_vpu_clk_vmod(VPU_VIU_VD1);
         }
+
+        spin_lock_irqsave(&delay_work_lock, flags);
     }
 
     r = READ_VCBUS_REG(VPP_MISC + cur_dev->vpp_off);
