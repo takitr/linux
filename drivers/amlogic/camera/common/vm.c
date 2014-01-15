@@ -1390,7 +1390,7 @@ static int vm_task(void *data) {
 
 		/* wait for frame from 656 provider until 500ms runs out */
 		//vf = local_vf_peek();
-		wait_event_interruptible_timeout(frame_ready, is_vf_available(),msecs_to_jiffies(1000));
+		wait_event_interruptible_timeout(frame_ready, is_vf_available(),msecs_to_jiffies(5000));
                   
 		if(!task_running){
 			up(&vb_done_sema);
