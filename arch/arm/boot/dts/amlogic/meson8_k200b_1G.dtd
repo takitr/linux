@@ -149,10 +149,23 @@ void root_func(){
 		compatible = "amlogic,mesonstream";
 		dev_name = "mesonstream.0";
 		status = "okay";
-		reserve-memory = <0x10000000 0x02000000>;
+		reserve-memory = <0x02000000>;
 		reserve-iomap = "true";
 	};
 
+/// ***************************************************************************************
+///     -       DISP&MM-A/V stream
+//$$ MODULE = "DISP&MM-A/V video dec"
+//$$ DEVICE="vdec"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+        vdec{
+                compatible = "amlogic,vdec";
+                dev_name = "vdec.0";
+                status = "okay";
+                reserve-memory = <0x10000000>;
+		reserve-iomap = "true";
+        };
 
 /// ***************************************************************************************
 ///	-	DISP&MM-PostProcess
