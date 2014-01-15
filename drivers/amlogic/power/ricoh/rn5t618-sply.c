@@ -63,13 +63,15 @@ static int power_protection   = 0;
 static int over_discharge_cnt = 0;
 
 #ifdef CONFIG_AMLOGIC_USB
-struct work_struct          rn5t618_otg_work;
 struct later_job {
     int flag;
     int value;
 };
 static struct later_job rn5t618_charger_job = {};
 static struct later_job rn5t618_otg_job = {};
+static int rn5t618_otg_value = -1;
+static int otg_mask = 0;
+struct delayed_work rn5t618_otg_work;
 #endif
 
 static int rn5t618_update_state(struct aml_charger *charger);
@@ -768,19 +770,20 @@ static void rn5t618_battery_setup_psy(struct rn5t618_supply *supply)
 }
 
 #ifdef CONFIG_AMLOGIC_USB
-static int rn5t618_otg_value = -1;
 static void rn5t618_otg_work_fun(struct work_struct *work)
 {
     uint8_t val;
     if (rn5t618_otg_value == -1) {
         return ;    
     }
-    msleep(100);
     RICOH_DBG("%s, value:%d, is_short:%d\n", __func__, rn5t618_otg_value, g_rn5t618_init->vbus_dcin_short_connect);
     if (rn5t618_otg_value) {
         rn5t618_read(0xB3, &val);
         if (g_rn5t618_init->vbus_dcin_short_connect) {
+            otg_mask = 1;
             val |= 0x08; 
+            rn5t618_set_charge_enable(0);
+            rn5t618_set_dcin_current_limit(100);
         } else {
             val |= 0x10; 
         }
@@ -789,19 +792,23 @@ static void rn5t618_otg_work_fun(struct work_struct *work)
     } else {
         rn5t618_read(0xB3, &val);
         if (g_rn5t618_init->vbus_dcin_short_connect) {
+            otg_mask = 0;
             val &= ~0x08; 
+            rn5t618_set_charge_enable(1);
+            rn5t618_set_dcin_current_limit(2500); 
         } else {
             val &= ~0x10; 
         }
         printk("[RN5T618] clear boost en bit, val:%x\n", val);
         rn5t618_write(0xB3, val);
     }
-    msleep(10);
     rn5t618_read(0xB3, &val);
     printk("register 0xB3:%02x\n", val);
-    rn5t618_otg_value = -1;
     rn5t618_update_state(&g_rn5t618_supply->aml_charger);
     power_supply_changed(&g_rn5t618_supply->batt);
+    if (rn5t618_otg_value && g_rn5t618_init->vbus_dcin_short_connect) { 
+        schedule_delayed_work(&rn5t618_otg_work, msecs_to_jiffies(2000));
+    }
 }
 
 int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
@@ -813,7 +820,7 @@ int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pda
         return 0;
     }
     rn5t618_otg_value = value;
-    schedule_work(&rn5t618_otg_work);
+    schedule_work(&rn5t618_otg_work.work);
     return 0;
 }
 
@@ -1171,6 +1178,13 @@ static int rn5t618_update_state(struct aml_charger *charger)
         charger->ext_valid  = 0;
         power_supply_changed(&supply->batt);
     }
+#ifdef CONFIG_AMLOGIC_USB
+    if (otg_mask) {
+        charger->dcin_valid = 0;
+        charger->usb_valid  = 0;
+        charger->ext_valid  = 0;
+    }
+#endif
 
     rn5t618_read(0x00C5, buff);
     if (buff[0] & 0x20) {
@@ -1482,7 +1496,7 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     charger->coulomb_type        = COULOMB_SINGLE_CHG_INC; 
     supply->charge_timeout_retry = g_rn5t618_init->charge_timeout_retry;
 #ifdef CONFIG_AMLOGIC_USB
-    INIT_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
+    INIT_DELAYED_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
     if (rn5t618_charger_job.flag) {     // do later job for usb charger detect
         rn5t618_usb_charger(NULL, rn5t618_charger_job.value, NULL);    
         rn5t618_charger_job.flag = 0;
