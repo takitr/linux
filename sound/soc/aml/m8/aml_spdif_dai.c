@@ -29,7 +29,7 @@
 #include "aml_i2s.h"
 #include <linux/of.h>
 
-#define DEBUG_ALSA_SPDIF_DAI
+//#define DEBUG_ALSA_SPDIF_DAI
 #define ALSA_PRINT(fmt,args...)	printk(KERN_INFO "[aml-spdif-dai]" fmt,##args)
 #ifdef DEBUG_ALSA_SPDIF_DAI
 #define ALSA_DEBUG(fmt,args...) 	printk(KERN_INFO "[aml-spdif-dai]" fmt,##args)
@@ -44,14 +44,14 @@ extern unsigned int IEC958_mode_codec;
 static int aml_dai_spdif_set_sysclk(struct snd_soc_dai *cpu_dai,
 				int clk_id, unsigned int freq, int dir)
 {
+	ALSA_TRACE();
 	return 0;
 }
 
 static int aml_dai_spdif_trigger(struct snd_pcm_substream *substream, int cmd,
 				struct snd_soc_dai *dai)
 {
-	ALSA_DEBUG();
-    ALSA_TRACE();
+    	ALSA_TRACE();
 	struct snd_soc_pcm_runtime *rtd = NULL;
 	rtd = (struct snd_soc_pcm_runtime *)substream->private_data;
 	switch (cmd) {
@@ -91,11 +91,9 @@ special call by the audiodsp,add these code,as there are three cases for 958 s/p
 2)PCM  output for  all audio, when pcm mode is selected by user .
 3)PCM  output for audios except ac3/dts,when raw output mode is selected by user
 */
-static unsigned set_clock = 0;
+static unsigned set_clock =  -1;
 static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 {
-	ALSA_DEBUG();
-    ALSA_TRACE();
 	_aiu_958_raw_setting_t set;
 	_aiu_958_channel_status_t chstat;
 	struct snd_dma_buffer *buf = &substream->dma_buffer;	
@@ -105,7 +103,8 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
         return;
     }
 	unsigned i2s_mode,iec958_mode;	
-	unsigned start,size,sample_rate;
+	unsigned start,size;
+	int sample_rate;
 	sample_rate = AUDIO_CLK_FREQ_48;
 	memset((void*)(&set), 0, sizeof(set));
 	memset((void*)(&chstat), 0, sizeof(chstat));
@@ -154,8 +153,8 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 			sample_rate	=	AUDIO_CLK_FREQ_441;
 			break;
 	};		
-    printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
     if(set_clock != sample_rate){
+    	ALSA_PRINT("enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
         set_clock = sample_rate;
         audio_set_958_clk(sample_rate, AUDIO_CLK_256FS);
     }
@@ -215,7 +214,7 @@ static void aml_hw_iec958_init(struct snd_pcm_substream *substream)
 		audio_set_958outbuf(start, size, (iec958_mode == AIU_958_MODE_RAW)?1:0);
 		memset((void*)buf->area,0,size);
 	}
-	printk("aiu 958 pcm buffer size %d \n",size);	
+	ALSA_DEBUG("aiu 958 pcm buffer size %d \n",size);	
 	audio_set_958_mode(iec958_mode, &set);
 	if(IEC958_mode_codec == 4)  //dd+
 		WRITE_MPEG_REG_BITS(AIU_CLK_CTRL, 0, 4, 2); // 4x than i2s
@@ -257,7 +256,6 @@ void	aml_alsa_hw_reprepare(void)
 static int aml_dai_spdif_startup(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {	  	
-	ALSA_DEBUG();
     	ALSA_TRACE();	
 	int ret = 0;
     	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -289,7 +287,6 @@ out:
 static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
-	ALSA_DEBUG();
     	ALSA_TRACE();	
     	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_dma_buffer *buf = &substream->dma_buffer;	
@@ -306,8 +303,7 @@ static void aml_dai_spdif_shutdown(struct snd_pcm_substream *substream,
 static int aml_dai_spdif_prepare(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
-	ALSA_DEBUG();
-    ALSA_TRACE();
+      ALSA_TRACE();
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
     	struct snd_pcm_runtime *runtime = substream->runtime;
     	struct aml_runtime_data *prtd = runtime->private_data;
@@ -333,8 +329,7 @@ static int aml_dai_spdif_hw_params(struct snd_pcm_substream *substream,
 				struct snd_pcm_hw_params *params,
 				struct snd_soc_dai *socdai)
 {
-	ALSA_DEBUG();
-    ALSA_TRACE();
+    	ALSA_TRACE();
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
     	struct snd_pcm_runtime *runtime = substream->runtime;
     	struct aml_runtime_data *prtd = runtime->private_data;
@@ -347,14 +342,13 @@ static int aml_dai_spdif_hw_params(struct snd_pcm_substream *substream,
 #ifdef CONFIG_PM
 static int aml_dai_spdif_suspend(struct snd_soc_dai *cpu_dai)
 {
-
+	ALSA_TRACE();
 	return 0;
 }
 
 static int aml_dai_spdif_resume(struct snd_soc_dai *cpu_dai)
 {
-
-
+	ALSA_TRACE();
 	return 0;
 }
 #else
@@ -403,7 +397,7 @@ static const struct snd_soc_component_driver aml_component= {
 };
 static  int aml_dai_spdif_probe(struct platform_device *pdev)
 {
-	printk("aml_spdif_probe \n");
+	ALSA_PRINT("aml_spdif_probe \n");
 	return snd_soc_register_component(&pdev->dev, &aml_component,
 					 aml_spdif_dai, ARRAY_SIZE(aml_spdif_dai));}
 
@@ -435,7 +429,7 @@ static struct platform_driver aml_spdif_dai_driver = {
 
 static int __init aml_dai_spdif_init(void)
 {
-	printk("enter aml_dai_spdif_init \n");
+	ALSA_PRINT("enter aml_dai_spdif_init \n");
 	return platform_driver_register(&aml_spdif_dai_driver);
 }
 module_init(aml_dai_spdif_init);

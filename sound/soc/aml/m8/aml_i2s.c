@@ -203,7 +203,7 @@ static int aml_i2s_hw_params(struct snd_pcm_substream *substream,
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 	runtime->dma_bytes = params_buffer_bytes(params);
-	ALSA_PRINT("runtime dma_bytes %d,stream type \n",runtime->dma_bytes,substream->stream);
+	ALSA_DEBUG("runtime dma_bytes %d,stream type %d \n",runtime->dma_bytes,substream->stream);
 	s->I2S_addr = runtime->dma_addr;
 
     /*

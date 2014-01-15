@@ -62,17 +62,13 @@ static void  aml_hw_i2s_init(struct snd_pcm_runtime *runtime)
 		}
 		audio_set_i2s_mode(i2s_mode);
 		audio_set_aiubuf(runtime->dma_addr, runtime->dma_bytes,runtime->channels);
-		ALSA_PRINT("i2s dma %x,phy addr %x \n",(unsigned)runtime->dma_area,(unsigned)runtime->dma_addr);
-		//memset((void*)runtime->dma_area,0,runtime->dma_bytes);
-		ALSA_PRINT("I2S hw init,i2s mode %d\n",i2s_mode);
+		ALSA_PRINT("i2s dma %x,phy addr %x,mode %d,ch %d \n",(unsigned)runtime->dma_area,(unsigned)runtime->dma_addr,i2s_mode,runtime->channels);
 
 }
 static int aml_dai_i2s_startup(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {	  	
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_TRACE();
 	int ret = 0;
     	struct snd_pcm_runtime *runtime = substream->runtime;
     	struct aml_runtime_data *prtd = (struct aml_runtime_data *)runtime->private_data;
@@ -102,20 +98,16 @@ out:
 static void aml_dai_i2s_shutdown(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_TRACE();
 }
-static unsigned set_clock = 0;
+static int  set_clock = -1;
 static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 					struct snd_soc_dai *dai)
 {
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_TRACE();
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct aml_runtime_data *prtd = runtime->private_data;
-	unsigned sample_rate = AUDIO_CLK_FREQ_48;
+	int  sample_rate = AUDIO_CLK_FREQ_48;
 	audio_stream_t *s = &prtd->s;	
 	switch(runtime->rate){
 		case 192000:
@@ -162,8 +154,8 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 			break;
 	};
 
-    printk(KERN_INFO "enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
     if(set_clock != sample_rate ){
+		ALSA_PRINT("enterd %s,set_clock:%d,sample_rate=%d\n",__func__,set_clock,sample_rate);
         set_clock = sample_rate;
         audio_set_i2s_clk(sample_rate, AUDIO_CLK_256FS);
     }
@@ -190,8 +182,7 @@ static int aml_dai_i2s_prepare(struct snd_pcm_substream *substream,
 static int aml_dai_i2s_trigger(struct snd_pcm_substream *substream, int cmd,
 				struct snd_soc_dai *dai)
 {
-	ALSA_DEBUG();
-    //printk("****aml_dai_i2s_trigger******\n");
+	ALSA_TRACE();
 	struct snd_pcm_runtime *rtd = substream->runtime;
 	switch (cmd) {
 		case SNDRV_PCM_TRIGGER_START:
@@ -229,20 +220,14 @@ static int aml_dai_i2s_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params,
 					struct snd_soc_dai *dai)
 {
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
-	
-		
+	ALSA_TRACE();
 	return 0;
 }
 
 static int aml_dai_set_i2s_fmt(struct snd_soc_dai *dai,
 					unsigned int fmt)
 {
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_TRACE();
 	if(fmt&SND_SOC_DAIFMT_CBS_CFS)//slave mode 
 		dai_info[dai->id].i2s_mode = I2S_SLAVE_MODE;
     
@@ -262,24 +247,21 @@ static int aml_dai_set_i2s_fmt(struct snd_soc_dai *dai,
 static int aml_dai_set_i2s_sysclk(struct snd_soc_dai *dai,
 					int clk_id, unsigned int freq, int dir)
 {
-#ifdef AML_DAI_DEBUG
-	printk("***Entered %s:%s\n", __FILE__,__func__);
-#endif
+	ALSA_TRACE();
 	return 0;
 }
 
 #ifdef CONFIG_PM
 static int aml_dai_i2s_suspend(struct snd_soc_dai *dai)
 {
-		
-  printk("***Entered %s:%s\n", __FILE__,__func__);
-  return 0;
+	ALSA_TRACE();
+	return 0;
 }
 
 static int aml_dai_i2s_resume(struct snd_soc_dai *dai)
 {
-  printk("***Entered %s:%s\n", __FILE__,__func__);
-  return 0;
+	ALSA_TRACE();
+	return 0;
 }
 
 #else /* CONFIG_PM */

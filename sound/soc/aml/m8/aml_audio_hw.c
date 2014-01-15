@@ -195,7 +195,6 @@ int audio_clock_config_table[][11][2]=
 
 void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
 {
-	printk("====== %s ======\n",__FUNCTION__);
     WRITE_MPEG_REG(AIU_MEM_I2S_START_PTR, addr & 0xffffffc0);
     WRITE_MPEG_REG(AIU_MEM_I2S_RD_PTR, addr & 0xffffffc0);
     if(channel == 8)
