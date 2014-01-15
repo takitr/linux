@@ -317,6 +317,19 @@ typedef struct
     unsigned                                    CTS;
 } Hdmi_rx_audio_info_t;
 
+#define HDMI_E_NONE         0x0
+// HPD Event & Status
+#define E_HPD_PULG_IN       0x1
+#define E_HPD_PLUG_OUT      0x2
+#define S_HPD_PLUG_IN       0x1
+#define S_HPD_PLUG_OUT      0x0
+
+#define E_HDCP_CHK_BKSV      0x1
+
+typedef struct {
+    unsigned int event;
+    unsigned int stat;
+}hdmi_mo_s;
 
 //-----------------------HDMI AUDIO END----------------------------------------
 
@@ -324,6 +337,25 @@ typedef struct
 //-------------------HDCP--------------------------------
 // HDCP keys from Efuse are encrypted by default, in this test HDCP keys are written by CPU with encryption manually added
 #define ENCRYPT_KEY                                 0xbe
+
+typedef enum {
+     HDCP_NO_AUTH						         = 0,
+     HDCP_NO_DEVICE_WITH_SLAVE_ADDR	,
+     HDCP_BCAP_ERROR						    ,
+     HDCP_BKSV_ERROR						    ,
+     HDCP_R0S_ARE_MISSMATCH				  ,
+     HDCP_RIS_ARE_MISSMATCH				   ,
+     HDCP_REAUTHENTATION_REQ				 ,
+     HDCP_REQ_AUTHENTICATION				 ,
+     HDCP_NO_ACK_FROM_DEV			       ,
+     HDCP_NO_RSEN							       ,
+     HDCP_AUTHENTICATED					     ,
+     HDCP_REPEATER_AUTH_REQ				   ,
+     HDCP_REQ_SHA_CALC					     ,
+     HDCP_REQ_SHA_HW_CALC					   ,
+     HDCP_FAILED_ViERROR					    ,
+     HDCP_MAX
+} hdcp_auth_state_t;
 
 
 
@@ -431,25 +463,6 @@ typedef enum {
       CABLE_MAX
 }hdmi_tx_display_type_t;
 
-
-typedef enum {
-     HDCP_NO_AUTH						         = 0,
-     HDCP_NO_DEVICE_WITH_SLAVE_ADDR	,
-     HDCP_BCAP_ERROR						    ,
-     HDCP_BKSV_ERROR						    ,
-     HDCP_R0S_ARE_MISSMATCH				  ,
-     HDCP_RIS_ARE_MISSMATCH				   ,
-     HDCP_REAUTHENTATION_REQ				 ,
-     HDCP_REQ_AUTHENTICATION				 ,
-     HDCP_NO_ACK_FROM_DEV			       ,
-     HDCP_NO_RSEN							       ,
-     HDCP_AUTHENTICATED					     ,
-     HDCP_REPEATER_AUTH_REQ				   ,
-     HDCP_REQ_SHA_CALC					     ,
-     HDCP_REQ_SHA_HW_CALC					   ,
-     HDCP_FAILED_ViERROR					    ,
-     HDCP_MAX
-} hdcp_auth_state_t;
 
 
          //0b000 = MCLK is 128*Fs

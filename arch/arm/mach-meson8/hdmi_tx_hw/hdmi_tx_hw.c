@@ -1224,7 +1224,7 @@ void hdmi_hw_init(hdmitx_dev_t* hdmitx_device)
     //tmp_add_data[7:0]   = 0xa ; // time_divider[7:0] for DDC I2C bus clock
     //tmp_add_data = 0xa; //800k
     //tmp_add_data = 0x3f; //190k
-    tmp_add_data = 0x30 - 1; //50k     // hdmi system clock change to XTAL 24MHz
+    tmp_add_data = 0x18 - 1; //50k     // hdmi system clock change to XTAL 24MHz
     hdmi_wr_reg(TX_HDCP_CONFIG3, tmp_add_data);
 
     //tmp_add_data[15:8] = 0;
@@ -1384,7 +1384,7 @@ static void hdmi_hw_reset(hdmitx_dev_t* hdmitx_device, Hdmi_tx_video_para_t *par
     tmp_add_data = 0x0c; // for hdcp, can not use 0x0e 
     hdmi_wr_reg(TX_HDCP_EDID_CONFIG, tmp_add_data);
     
-    hdmi_wr_reg(TX_HDCP_CONFIG0,      1<<3);  //set TX rom_encrypt_off=1
+    hdmi_wr_reg(TX_HDCP_CONFIG0,      0x3<<3);  //set TX rom_encrypt_off=1
     hdmi_wr_reg(TX_HDCP_MEM_CONFIG,   0<<3);  //set TX read_decrypt=0
     hdmi_wr_reg(TX_HDCP_ENCRYPT_BYTE, 0);     //set TX encrypt_byte=0x00
 
@@ -2563,6 +2563,11 @@ static void hdmitx_debug(hdmitx_dev_t* hdmitx_device, const char* buf)
         hdmitx_dump_tvenc_reg(hdmitx_device->cur_VIC, 1);
         return;
     }
+    else if(strncmp(tmpbuf, "ss", 2) == 0) {
+        printk("hdmitx_device->output_blank_flag: 0x%x\n", hdmitx_device->output_blank_flag);
+        printk("hdmitx_device->hpd_state: 0x%x\n", hdmitx_device->hpd_state);
+        printk("hdmitx_device->cur_VIC: 0x%x\n", hdmitx_device->cur_VIC);
+    }
     else if(strncmp(tmpbuf, "hpd_lock", 8) == 0) {
         if(tmpbuf[8] == '1') {
             hdmitx_device->hpd_lock = 1;
@@ -2896,10 +2901,8 @@ static int hdmitx_cntl_config(hdmitx_dev_t* hdmitx_device, unsigned cmd, unsigne
         break;
     case CONF_VIDEO_BLANK_OP:
         if(argv == VIDEO_BLANK) {
-// todo later
-            return 0;
             aml_write_reg32(P_VPU_HDMI_DATA_OVR, (0x200 << 20) | (0x0 << 10) | (0x200 << 0));   // set blank CrYCb as 0x200 0x0 0x200
-            aml_set_reg32_bits(P_VPU_HDMI_SETTING, 0, 5, 2);        // Output data map: CrYCb
+            aml_set_reg32_bits(P_VPU_HDMI_SETTING, 0, 5, 3);        // Output data map: CrYCb
             aml_set_reg32_bits(P_VPU_HDMI_DATA_OVR, 1, 31, 1);      // Enable HDMI data override
         }
         if(argv == VIDEO_UNBLANK) {

@@ -63,6 +63,7 @@ typedef struct hdmi_tx_dev_s {
     struct proc_dir_entry *proc_file;
     struct task_struct *task;
     struct task_struct *task_monitor;
+    struct task_struct *task_hdcp;
     struct {
         void (*SetPacket)(int type, unsigned char* DB, unsigned char* HB);
         void (*SetAudioInfoFrame)(unsigned char* AUD_DB, unsigned char* CHAN_STAT_BUF);
@@ -116,6 +117,9 @@ typedef struct hdmi_tx_dev_s {
     unsigned int  tv_cec_support;
     unsigned int  tv_no_edid;           // For some un-well-known TVs, no edid at all
     unsigned int  hpd_lock;
+    unsigned int  output_blank_flag;    // if equals to 1, means current video & audio output are blank
+    hdmi_mo_s hpd;
+    hdmi_mo_s hdcp;
 }hdmitx_dev_t;
 
 #define CMD_DDC_OFFSET          (0x10 << 24)
@@ -227,6 +231,7 @@ extern int hdmi_set_3d(hdmitx_dev_t* hdmitx_device, int type, unsigned int param
 
 extern int hdmitx_set_audio(hdmitx_dev_t* hdmitx_device, Hdmi_tx_audio_para_t* audio_param, int hdmi_ch);
 
+extern hdmitx_dev_t * get_hdmitx_device(void);
 
 extern  int hdmi_print_buf(char* buf, int len);
 
