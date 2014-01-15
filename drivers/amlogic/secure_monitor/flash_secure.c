@@ -152,7 +152,22 @@ extern 	int secure_storage_spi_write(u8 *buf,u32 len);
 	}	
 	printk("///////////////////////////////////////save secure success//////////////////////////////////\n");
 	return;
-#endif	
+#endif
+
+#elif CONFIG_EMMC_SECURE_STORAGE
+extern 	int mmc_secure_storage_ops(unsigned char * buf, unsigned int len, int wr_flag);
+	unsigned char * secure_ptr = psrc;
+	int error = 0;
+
+	printk("%s %d save secure here \n",__func__, __LINE__);
+	error=mmc_secure_storage_ops(secure_ptr, size, 1);
+	if(error){
+		printk("save secure failed\n");
+	}
+	printk("///////////////////////////////////////save secure success//////////////////////////////////\n");
+	return;
+#endif
+
 }
 
 
