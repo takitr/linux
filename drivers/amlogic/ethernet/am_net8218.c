@@ -1184,10 +1184,6 @@ static int netdev_close(struct net_device *dev)
 	if (g_debug > 0) {
 		printk(KERN_DEBUG "%s: closed\n", dev->name);
 	}
-	np->refcnt--;
-	if(np->refcnt == 0){
-		switch_mod_gate_by_name("ethernet",0);
-	}
 	return 0;
 }
 
@@ -2332,7 +2328,6 @@ static int ethernet_early_suspend(struct early_suspend *dev)
 {
 	printk("ethernet_early_suspend!\n");
 	netdev_close(my_ndev);
-	switch_mod_gate_by_name("ethernet",0);
 	return 0;
 }
 static int ethernet_late_resume(struct early_suspend *dev)
@@ -2446,7 +2441,6 @@ static int ethernet_suspend(struct platform_device *dev, pm_message_t event)
 {
 	printk("ethernet_suspend!\n");
 	netdev_close(my_ndev);	
-	switch_mod_gate_by_name("ethernet",0);
 	return 0;
 }
 
