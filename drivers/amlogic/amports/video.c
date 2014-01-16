@@ -123,6 +123,11 @@ static struct vframe_provider_s * osd_prov = NULL;
 //#define SLOW_SYNC_REPEAT
 //#define INTERLACE_FIELD_MATCH_PROCESS
 
+#ifdef INTERLACE_FIELD_MATCH_PROCESS
+#define FIELD_MATCH_THRESHOLD  10
+static int field_matching_count;
+#endif
+
 #define M_PTS_SMOOTH_MAX 45000
 #define M_PTS_SMOOTH_MIN 2250
 #define M_PTS_SMOOTH_ADJUST 900
@@ -1401,17 +1406,17 @@ static int detect_vout_type(void)
 #endif
 
 #ifdef INTERLACE_FIELD_MATCH_PROCESS
-static inline bool interlace_field_type_match(int vout_type, vframe_t *vf)
+static inline bool interlace_field_type_need_match(int vout_type, vframe_t *vf)
 {
     if (DUR2PTS(vf->duration) != vsync_pts_inc) {
         return false;
     }
 
     if ((vout_type == VOUT_TYPE_TOP_FIELD) &&
-        ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP)) {
+        ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM)) {
         return true;
     } else if ((vout_type == VOUT_TYPE_BOT_FIELD) &&
-               ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_BOTTOM)) {
+               ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP)) {
         return true;
     }
 
@@ -1984,11 +1989,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 
     while (vf) {
-        if (vpts_expire(cur_dispbuf, vf)
-#ifdef INTERLACE_FIELD_MATCH_PROCESS
-            || interlace_field_type_match(vout_type, vf)
-#endif
-           ) {
+        if (vpts_expire(cur_dispbuf, vf)) {
             amlog_mask(LOG_MASK_TIMESTAMP,
                        "VIDEO_PTS = 0x%x, cur_dur=0x%x, next_pts=0x%x, scr = 0x%x\n",
                        timestamp_vpts_get(),
@@ -2117,6 +2118,19 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         toggle_cnt++;
 #endif
     }
+
+#ifdef INTERLACE_FIELD_MATCH_PROCESS
+    if (interlace_field_type_need_match(vout_type, vf)) {
+        if (field_matching_count++ == FIELD_MATCH_THRESHOLD) {
+            field_matching_count = 0;
+            // adjust system time to get one more field toggle
+            // at next vsync to match field
+            timestamp_pcrscr_inc(vsync_pts_inc); 
+        }
+    } else {
+        field_matching_count = 0;
+    }
+#endif
 
 SET_FILTER:
     /* filter setting management */
