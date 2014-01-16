@@ -96,6 +96,7 @@ void root_func(){
         dev_name = "ion_dev";
         status = "ok";
         reserve-memory = <0x01200000>;
+        reserve-iomap = "true";
     };
 
 /// **************************************************************************************	
@@ -111,6 +112,7 @@ void root_func(){
 		dev_name = "mesonfb";
 		status = "okay";
 		reserve-memory = <0x00500000 0x00100000>;
+		reserve-iomap = "true";
  		vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
  		display_size_default = <1024 600 1024 1200 32>;
 	};
@@ -124,6 +126,7 @@ void root_func(){
 		dev_name = "mesonfb-ext";
 		status = "disabled";
 		reserve-memory = <0x00500000 0x00100000>;
+		reserve-iomap = "true";
 		display_size_default = <1024 600 1024 1200 32>;
 	 
 	};
@@ -139,16 +142,18 @@ void root_func(){
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x04000000 0x00f00000>;
+		reserve-iomap = "true";
 	};
 
-//	vdin0{
-//		compatible = "amlogic,vdin";
-//		dev_name = "vdin";
-//		status = "okay";
-//		reserve-memory = <0x04000000 0x04000000>;
-//		irq = <115>;
-//		vdin_id = <0>;
-//	};
+	vdin0{
+		compatible = "amlogic,vdin";
+		dev_name = "vdin";
+		status = "okay";
+		reserve-memory = <0x04000000>;
+		reserve-iomap = "true";
+		irq = <115>;
+		vdin_id = <0>;
+	};
 
 	vm{
 		compatible = "amlogic,vm";
@@ -167,6 +172,7 @@ void root_func(){
 		dev_name = "ppmgr";
 		status = "okay";
 		reserve-memory = <0x00d00000>;		
+		reserve-iomap = "true";
 	};
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout
@@ -1057,13 +1063,13 @@ void root_func(){
 /// ***************************************************************************************
 ///	-	Audio
 //$$ MODULE="Audio"
-//$$ DEVICE="audio_platform"
-//$$ L2 PROP_STR = "status"  
-    audio_platform{
-        compatible = "amlogic,aml-audio";
-        dev_name = "aml-audio.0";
-	status = "okay";
-    };
+//$$ DEVICE="audio"
+//$$ L2 PROP_STR = "status"
+		audio{
+			compatible = "amlogic,aml-audio";
+			dev_name = "aml-audio.0";
+			status = "okay";
+		};
 
 //$$ DEVICE="audio_dai"
 //$$ L2 PROP_STR = "status"

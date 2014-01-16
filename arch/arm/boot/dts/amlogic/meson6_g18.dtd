@@ -96,6 +96,7 @@ void root_func(){
         dev_name = "ion_dev";
         status = "ok";
         reserve-memory = <0x01200000>;
+        reserve-iomap = "true";
     };
 
 /// **************************************************************************************	
@@ -111,6 +112,7 @@ void root_func(){
 		dev_name = "mesonfb";
 		status = "okay";
 		reserve-memory = <0x01000000 0x00100000>;
+		reserve-iomap = "true";
 	  vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
 	  scale_mode = <0>; /*0:default 1:new*/
 	  display_size_default = <1920 1080 1920 2160 32>;
@@ -123,6 +125,7 @@ void root_func(){
 		dev_name = "deinterlace";
 		status = "okay";
 		reserve-memory = <0x02300000>;
+		reserve-iomap = "true";
 	};
 
 /// ***************************************************************************************
@@ -136,6 +139,7 @@ void root_func(){
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x04000000 0x00a00000>;
+		reserve-iomap = "true";
 	};
 
 /// ***************************************************************************************
@@ -148,7 +152,8 @@ void root_func(){
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reserve-memory = <0x02c00000>;		
+		reserve-memory = <0x02c00000>;	
+		reserve-iomap = "true";	
 	};
 
 
