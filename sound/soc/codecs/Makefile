@@ -250,7 +250,7 @@ obj-$(CONFIG_SND_SOC_WM_ADSP)	+= snd-soc-wm-adsp.o
 obj-$(CONFIG_SND_SOC_WM_HUBS)	+= snd-soc-wm-hubs.o
 obj-$(CONFIG_SND_SOC_DUMMY_CODEC)   += snd-soc-dummy_codec.o
 obj-$(CONFIG_SND_SOC_AML_M8_CODEC)	+= snd-soc-aml-m8-codec.o
-obj-y += aml_audio_codec_probe.o
+#obj-y += aml_audio_codec_probe.o
 obj-$(CONFIG_SND_SOC_PCM2BT)    += snd-soc-pcm2bt.o
 
 # Amp
