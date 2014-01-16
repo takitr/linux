@@ -79,6 +79,9 @@ struct touch_pdata {
 
 	struct tp_key *tp_key;
 	int tp_key_num;
+	int select_gpio_num;
+	int select_fw_gpio[10];
+	char *fw_select[10];
 };
 
 typedef enum
@@ -99,5 +102,6 @@ int create_init(struct device dev, struct touch_pdata *pdata);
 GET_DT_ERR_TYPE request_touch_gpio(struct touch_pdata *pdata);
 void free_touch_gpio(struct touch_pdata *pdata);
 void destroy_remove(struct device dev, struct touch_pdata *pdata);
+int get_gpio_fw(struct touch_pdata *pdata);
 
 #endif

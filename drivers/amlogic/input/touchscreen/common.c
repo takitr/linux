@@ -205,7 +205,7 @@ void set_power_pin(struct touch_pdata *pdata, u8 on)
 GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pdata)
 {
 		const char *str;
-	  int err, retry;
+	  int err, retry, i;
 		int irq_table[4] = {
 												GPIO_IRQ_HIGH,
 												GPIO_IRQ_LOW,
@@ -218,9 +218,9 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 												"GPIO_IRQ_RISING",
 												"GPIO_IRQ_FALLING",
 											};
-	if (!pdata->fw_file)
+	if (pdata->fw_file)
 		strcpy(pdata->fw_file, "/system/etc/touch/touch.fw");
-	if (!pdata->config_file)
+	if (pdata->config_file)
 		strcpy(pdata->config_file, "/system/etc/touch/touch.cfg");
 	if (!of_node) {
 		printk("%s: dev.of_node == NULL!\n", pdata->owner);
@@ -230,17 +230,17 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
   err = of_property_read_string(of_node, "touch_name", (const char **)&pdata->owner);
 	if (err) {
 		pdata->owner = "amlogic";
-		printk("waring: get touch name failed,set name amlogic!\n");
+		printk("info: set name amlogic!\n");
 	}
 	err = of_property_read_u32(of_node,"reg",&pdata->reg);
 	if (err) {
-	  printk("%s warnning: faild to get ic type!\n", pdata->owner);
+	  printk("%s info: get ic type!\n", pdata->owner);
 	  pdata->reg = 0;
   }
   printk("%s: reg=%x\n", pdata->owner, pdata->reg);
 	err = of_property_read_string(of_node, "i2c_bus", &str);
 	if (err) {
-		printk("%s warnning: faild to get i2c_bus str,use default i2c bus!\n", pdata->owner);
+		printk("%s info: get i2c_bus str,use default i2c bus!\n", pdata->owner);
 		pdata->bus_type = AML_I2C_BUS_A;
 	}
 	 else {
@@ -256,14 +256,14 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 	printk("%s: bus_type=%d\n", pdata->owner, pdata->bus_type);
 	err = of_property_read_u32(of_node,"ic_type",&pdata->ic_type);
 	if (err) {
-	  printk("%s warnning: faild to get ic type!\n", pdata->owner);
+	  printk("%s info: get ic type!\n", pdata->owner);
 	  pdata->ic_type = 0;
   }
 	printk("%s: IC type=%d\n", pdata->owner, pdata->ic_type);
 
 	err = of_property_read_u32(of_node,"irq",&pdata->irq);
 	if (err) {
-	  printk("%s warnning£ºto get IRQ number!\n", pdata->owner);
+	  printk("%s: get IRQ number!\n", pdata->owner);
 		pdata->irq = 0;
   }
   pdata->irq += INT_GPIO_0;
@@ -271,7 +271,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 		
 	err = of_property_read_string(of_node,"irq_edge",&str);
 	if (err) {
-	  printk("%s warnning: faild to get irq edge, set irq edge GPIO_IRQ_FALLING!\n", pdata->owner);
+	  printk("%s info: get irq edge, set irq edge GPIO_IRQ_FALLING!\n", pdata->owner);
 	  pdata->irq_edge = irq_table[3];
   }
   else {
@@ -280,7 +280,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 				break;
 		}
 		if (retry == 4) {
-			printk("%s warnning: faild to get irq edge, set irq edge GPIO_IRQ_FALLING!\n", pdata->owner);
+			printk("%s info: get irq edge, set irq edge GPIO_IRQ_FALLING!\n", pdata->owner);
 			pdata->irq_edge = irq_table[3];
 		}
 		else
@@ -288,28 +288,28 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 	}
 	err = of_property_read_u32(of_node,"auto_update_fw",&pdata->auto_update_fw);
 	if (err) {
-	  printk("%s warnning: faild to get auto_update_fw!\n", pdata->owner);
+	  printk("%s info: get auto_update_fw!\n", pdata->owner);
 	  pdata->auto_update_fw = 0;
   }
 	err = of_property_read_u32(of_node,"xres",&pdata->xres);
 	if (err) {
-	  printk("%s: faild to get x resolution!\n", pdata->owner);
+	  printk("%s info: get x resolution!\n", pdata->owner);
 	  return ERR_GET_DATA;
   }
 	err = of_property_read_u32(of_node,"yres",&pdata->yres);
 	if (err) {
-	  printk("%s: faild to get y resolution!\n",pdata->owner);
+	  printk("%s info: get y resolution!\n",pdata->owner);
 	  return ERR_GET_DATA;
   }	
 	err = of_property_read_u32(of_node,"pol",&pdata->pol);
 	if (err) {
-	  printk("%s warnning: faild to get pol!\n", pdata->owner);
+	  printk("%s info: get pol!\n", pdata->owner);
 	  pdata->pol = 0;
   }
 
 	err = of_property_read_u32(of_node,"max_num",&pdata->max_num);
 	if (err) {
-	  printk("%s warnning: faild to get max num, set max num 5!\n", pdata->owner);
+	  printk("%s info: get max num, set max num 5!\n", pdata->owner);
 	  pdata->max_num = 5;
   }
 
@@ -317,7 +317,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 
 	err = of_property_read_string(of_node, "gpio_interrupt", &str);
 	if (err) {
-	  printk("%s: faild to get gpio interrupt!\n", pdata->owner);
+	  printk("%s info: get gpio interrupt!\n", pdata->owner);
 	  pdata->gpio_interrupt = 0;
 	  return ERR_GET_DATA;
   }
@@ -326,7 +326,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
     printk("%s: alloc gpio_interrupt(%s)!\n", pdata->owner, str);
     if (pdata->gpio_interrupt <= 0) {
       pdata->gpio_interrupt = 0;
-      printk("%s: faild to alloc gpio_interrupt(%s)!\n", pdata->owner, str);
+      printk("%s info: alloc gpio_interrupt(%s)!\n", pdata->owner, str);
       //return ERR_GPIO_REQ;
     }
   }
@@ -337,7 +337,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
     printk("%s: alloc gpio_reset(%s)!\n", pdata->owner, str);
     if (pdata->gpio_reset <= 0) {
     	pdata->gpio_reset = 0;
-    	printk("%s warning: faild to alloc gpio_reset(%s)!\n", pdata->owner, str);
+		printk("%s info: alloc gpio_reset(%s)!\n", pdata->owner, str);
     }
   }
   else {
@@ -350,7 +350,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
     printk("%s: alloc gpio_power(%s)!\n", pdata->owner, str);
     if (pdata->gpio_power <= 0) {
     	pdata->gpio_power = 0;
-    	printk("%s warning: faild to alloc gpio_power(%s)!\n", pdata->owner, str);
+		printk("%s info: alloc gpio_power(%s)!\n", pdata->owner, str);
     }
   }
   else {
@@ -359,7 +359,7 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 
   err = of_property_read_string(of_node,"fw_file",&str);
 	if (err) {
-	  printk("%s warnning: faild to get fw_file, set firmware %s!\n",pdata->owner, pdata->fw_file);
+	  printk("%s info: get fw_file, set firmware %s!\n",pdata->owner, pdata->fw_file);
   }
   else {
 	strcpy(pdata->fw_file, str);
@@ -368,13 +368,35 @@ GET_DT_ERR_TYPE get_dt_data(struct device_node* of_node, struct touch_pdata *pda
 
   err = of_property_read_string(of_node,"config_file", &str);
 	if (err) {
-	  printk("%s warnning: faild to get config_file, set config_file %s!\n", pdata->owner, pdata->config_file);
+	  printk("%s info: get config_file, set config_file %s!\n", pdata->owner, pdata->config_file);
   }
   else {
 	strcpy(pdata->config_file, str);
   	printk("%s get config_file, set config_file %s!\n", pdata->owner, pdata->config_file);
   }
-  
+  err = of_property_read_u32(of_node,"select_gpio_num",&pdata->select_gpio_num);
+  if (err) {
+	 printk("%s info: get select_gpio_num!\n", pdata->owner);
+	 pdata->select_gpio_num = 0;
+  }
+  if (pdata->select_gpio_num > 0) {
+	for (i=0; i<pdata->select_gpio_num; i++) {
+	  err = of_property_read_string_index(of_node, "select_fw_gpio", i, &str);
+	  if(err < 0){
+		printk("%s: find select_fw_gpio[%d] faild\n", pdata->owner, i);
+		break;
+	  }
+	  else {
+		   pdata->select_fw_gpio[i] = amlogic_gpio_name_map_num(str);
+		   printk("%s: alloc select_fw_gpio[%d](%s)!\n", pdata->owner, i, str);
+		   if (pdata->select_fw_gpio[i] <= 0) {
+		      pdata->select_fw_gpio[i] = 0;
+		      printk("%s info: alloc select_fw_gpio[%d](%s)!\n", pdata->owner, i, str);
+		      //return ERR_GPIO_REQ;
+		   }
+	  }
+	}
+ }
   return ERR_NO;
 }
 
@@ -411,7 +433,7 @@ int create_init(struct device dev, struct touch_pdata *pdata)
 
 GET_DT_ERR_TYPE request_touch_gpio(struct touch_pdata *pdata)
 {
-	int err;
+	int err, i;
 	 
 	if (pdata->gpio_interrupt) {
       err = aml_gpio_request(pdata->gpio_interrupt);
@@ -440,11 +462,25 @@ GET_DT_ERR_TYPE request_touch_gpio(struct touch_pdata *pdata)
 	    printk("%s: request gpio_power = (%d)\n",pdata->owner, pdata->gpio_power);
 	}
 	
+	if (pdata->select_gpio_num) {
+		for (i=0; i<pdata->select_gpio_num; i++)
+			if (pdata->select_fw_gpio[i] > 0) {
+				err = aml_gpio_request(pdata->select_fw_gpio[i]);
+				if (err) {
+					printk("%s: faild to alloc select_fw_gpio[%d]!\n", pdata->owner, i);
+					return ERR_GPIO_REQ;
+				}
+				aml_gpio_direction_input(pdata->select_fw_gpio[i]);
+				printk("%s: request select_fw_gpio[%d] = (%d)\n",pdata->owner, i, pdata->select_fw_gpio[i]);
+		  }
+	}
+
 	return ERR_NO;
 }
 
 void free_touch_gpio(struct touch_pdata *pdata)
 {
+	int i;
 	if (pdata->gpio_interrupt) {
 		aml_gpio_free(pdata->gpio_interrupt);
 		pdata->gpio_interrupt = 0;
@@ -457,6 +493,27 @@ void free_touch_gpio(struct touch_pdata *pdata)
 		aml_gpio_free(pdata->gpio_power);
 		pdata->gpio_power = 0;
 	}
+
+	if (pdata->select_gpio_num) {
+		for (i=0; i<pdata->select_gpio_num; i++) {
+			aml_gpio_free(pdata->select_fw_gpio[i]);
+			pdata->select_fw_gpio[i] = 0;
+		}
+	}
+}
+
+int get_gpio_fw(struct touch_pdata *pdata)
+{
+	int value = 0, i;
+	if (pdata->select_gpio_num <= 0) {
+		printk("%s: pdata->select_gpio_num = %d\n", pdata->owner, pdata->select_gpio_num);
+		return -1;
+	}
+	for (i=0; i<pdata->select_gpio_num; i++)
+		value |= aml_get_value(pdata->select_fw_gpio[i])<<i;
+	value = value & ((2 << pdata->select_gpio_num) - 1);
+	printk("%s: get_gpio_fw = 0x%x\n",pdata->owner, value);
+	return value;
 }
 void destroy_remove(struct device dev, struct touch_pdata *pdata)
 {
