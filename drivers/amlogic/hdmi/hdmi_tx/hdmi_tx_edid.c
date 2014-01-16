@@ -356,17 +356,6 @@ int Edid_Parse_check_HDMI_VSDB(HDMI_TX_INFO_t * info, unsigned char *buff)
     }
 
     set_vsdb_phy_addr(&info->vsdb_phy_addr, &buff[BlockAddr]);
-    if(info->vsdb_phy_addr.a == 0) {
-        hdmi_print(IMP, EDID "not a valid CEC physical address\n");
-    }
-    else {
-        vsdb_phy_addr_t *tmp = &info->vsdb_phy_addr;
-        if(tmp->valid){
-            aml_write_reg32(P_AO_DEBUG_REG1, (((tmp->a) & 0xf) << 12) | (((tmp->b) & 0xf) << 8) | (((tmp->c) & 0xf) << 4) | ((tmp->d) & 0xf));
-            hdmi_print(IMP, EDID "CEC Physical address: 0x%x\n",aml_read_reg32(P_AO_DEBUG_REG1));
-            hdmi_print(IMP, EDID "CEC Physical address: %1x.%1x.%1x.%1x\n", tmp->a, tmp->b, tmp->c, tmp->d);
-        }
-    }
 
     if(temp_addr >= VSpecificBoundary)
     {

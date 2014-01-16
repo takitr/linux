@@ -44,8 +44,9 @@
 
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
+
 #if 0   //todo
-#include "../hdmi_tx_cec.h"
 #include "../hdmi_tx_hdcp.h"
 #include "../hdmi_tx_compliance.h"
 #endif

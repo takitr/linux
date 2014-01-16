@@ -29,6 +29,9 @@ void hdmi_wr_reg(unsigned int addr, unsigned int data);
 #define hdmi_set_reg_bits(reg, val, start, len) \
   hdmi_wr_reg(reg, (hdmi_rd_reg(reg) & ~(((1L<<(len))-1)<<(start)))|((unsigned int)(val) << (start)))
 
+unsigned long aocec_rd_reg(unsigned long addr);
+void aocec_wr_reg(unsigned long addr, unsigned long data);
+
 typedef struct {
     unsigned short cbus_addr;
     unsigned char gate_bit;

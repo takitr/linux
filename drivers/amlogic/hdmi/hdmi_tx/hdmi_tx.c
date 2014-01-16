@@ -47,8 +47,8 @@
 
 #include <linux/amlogic/hdmi_tx/hdmi_info_global.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
 
-#include "hdmi_tx_cec.h"
 #define DEVICE_NAME "amhdmitx"
 #define HDMI_TX_COUNT 32
 #define HDMI_TX_POOL_NUM  6
@@ -1184,7 +1184,6 @@ edid_op:
             hdmitx_edid_clear(hdmitx_device);
             //When unplug hdmi, clear the hdmitx module edid ram and edid buffer.
             hdmitx_edid_ram_buffer_clear(hdmitx_device);
-            cec_node_uninit(hdmitx_device);
             if(hdmitx_device->unplug_powerdown){
                 hdmitx_set_display(hdmitx_device, HDMI_Unkown);
                 if(hdmitx_device->HWOp.Cntl){
@@ -1203,6 +1202,10 @@ edid_op:
                 hdmi_hdcp_reset = 1;
             }
             switch_set_state(&hdcp_dev, 0);
+#ifdef CONFIG_ARCH_MESON6
+
+            aml_set_reg32_bits(P_MEDIA_CPU_IRQ_IN2_INTR_STAT_CLR, 1, 0, 1); // Write 1 to clear int for cec fiq.
+#endif
         }
 #if 0
         /* authentication process */
