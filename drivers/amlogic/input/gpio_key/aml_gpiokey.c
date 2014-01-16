@@ -123,6 +123,28 @@ static void update_work_func(struct work_struct *work)
     kp_work(kp_data);
 }
 
+/***What we do here is just for loss wakeup key when suspend. 
+	In suspend routine, the intr is disable.			*******/
+//we need do more things to adapt the gpio change.
+int det_pwr_key(void)
+{
+	return (readl(P_AO_IRQ_STAT) & (1<<8));
+}
+/*Enable gpio interrupt for AO domain interrupt*/
+void set_pwr_key(void)
+{
+	writel(readl(P_AO_IRQ_GPIO_REG) | (1<<18) | (1<<16) | (0x3<<0),P_AO_IRQ_GPIO_REG);
+	writel(readl(P_AO_IRQ_MASK_FIQ_SEL) | (1<<8),P_AO_IRQ_MASK_FIQ_SEL);
+	writel(1<<8,P_AO_IRQ_STAT_CLR); //clear intr
+}
+
+void clr_pwr_key(void)
+{
+	writel(1<<8,P_AO_IRQ_STAT_CLR); //clear intr
+}
+
+extern int deep_suspend_flag;
+
 
 #ifdef USE_IRQ
 
@@ -130,6 +152,9 @@ static irqreturn_t kp_isr(int irq, void *data)
 {
     struct kp *kp_data=(struct kp *)data;
     schedule_work(&(kp_data->work_update));
+
+	if(!deep_suspend_flag)
+		clr_pwr_key();
     return IRQ_HANDLED;
 }
 
@@ -361,6 +386,7 @@ static int gpio_key_probe(struct platform_device *pdev)
 		    state = -EINVAL;
 		    goto get_key_param_failed;
     }
+	set_pwr_key();
     printk("gpio keypad register input device completed.\r\n");
     register_keypad_dev(gp_kp);
     kfree(key_param);
@@ -415,6 +441,10 @@ static int gpio_key_resume(struct platform_device *dev)
         input_sync(gp_kp->input);	
 
         WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
+
+		deep_suspend_flag = 0;
+
+		clr_pwr_key();
     }
     return 0;
 }
@@ -458,7 +488,4 @@ module_exit(gpio_key_exit);
 MODULE_AUTHOR("Frank Chen");
 MODULE_DESCRIPTION("GPIO Keypad Driver");
 MODULE_LICENSE("GPL");
-
-
-
 
