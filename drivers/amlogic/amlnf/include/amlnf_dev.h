@@ -121,6 +121,7 @@ struct _nftl_cfg{
     uint16 nftl_support_wear_leveling;
     uint16 nftl_need_erase;
     uint16 nftl_part_reserved_block_ratio;
+    uint16 nftl_part_adjust_block_num;	
     uint16 nftl_min_free_block_num;
     uint16 nftl_gc_threshold_free_block_num;
     uint16 nftl_min_free_block;

@@ -8,7 +8,13 @@
 #define SUPPORT_WEAR_LEVELING                     1
 #define NFTL_ERASE                                0
 
+//#define NAND_ADJUST_PART_TABLE
+#ifdef NAND_ADJUST_PART_TABLE
+#define PART_RESERVED_BLOCK_RATIO                 10
+#define 	ADJUST_BLOCK_NUM						6
+#else
 #define PART_RESERVED_BLOCK_RATIO                 8
+#endif
 #define MIN_FREE_BLOCK_NUM                        6
 #define GC_THRESHOLD_FREE_BLOCK_NUM               4
 

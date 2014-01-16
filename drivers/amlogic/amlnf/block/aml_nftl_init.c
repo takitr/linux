@@ -108,6 +108,9 @@ int aml_nftl_initialize(struct aml_nftl_dev *nftl_dev,int no)
 	nftl_dev->nftl_cfg.nftl_support_wear_leveling = SUPPORT_WEAR_LEVELING;
 	nftl_dev->nftl_cfg.nftl_need_erase = NFTL_ERASE;
 	nftl_dev->nftl_cfg.nftl_part_reserved_block_ratio = PART_RESERVED_BLOCK_RATIO;
+#ifdef NAND_ADJUST_PART_TABLE
+	nftl_dev->nftl_cfg.nftl_part_adjust_block_num = ADJUST_BLOCK_NUM;
+#endif
 	nftl_dev->nftl_cfg.nftl_min_free_block_num = MIN_FREE_BLOCK_NUM;
 	nftl_dev->nftl_cfg.nftl_min_free_block = MIN_FREE_BLOCK;
 	nftl_dev->nftl_cfg.nftl_gc_threshold_free_block_num = GC_THRESHOLD_FREE_BLOCK_NUM ;
