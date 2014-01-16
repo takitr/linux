@@ -18,7 +18,9 @@
 #ifndef _TV_CEC_H_
 #define _TV_CEC_H_
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h> 
+#ifdef CONFIG_ARCH_MESON8
 #include <mach/hdmi_parameter.h>
+#endif
 
 #define CEC0_LOG_ADDR 4 // MBX logical address
 #define TV_CEC_INTERVAL     (HZ*3)
@@ -495,11 +497,7 @@ typedef enum {
 void cec_enable_irq(void);
 void cec_disable_irq(void);
 
-void tx_irq_handle(void);
-void ao_cec_init(void);
-
 int cec_ll_tx_polling(const unsigned char *msg, unsigned char len);
-void cec_gpi_receive_bits(void);
 
 int cec_ll_tx(const unsigned char *msg, unsigned char len);
 int cec_ll_rx( unsigned char *msg, unsigned char *len);
@@ -581,12 +579,19 @@ void cec_inactive_source(void);
 void cec_set_standby(void);
 void cec_isr_post_process(void);
 void cec_clear_buf(unsigned int flag);
-#ifdef CONFIG_ARCH_MESON8
 
+#ifdef CONFIG_ARCH_MESON8
 void cec_arbit_bit_time_set(unsigned bit_set, unsigned time_set, unsigned flag);
 void tx_irq_handle(void);
 void cec_arbit_bit_time_read(void);
+void tx_irq_handle(void);
+void ao_cec_init(void);
 #endif
+
+#ifdef CONFIG_ARCH_MESON6
+void cec_gpi_init(void);
+#endif
+
 unsigned char check_cec_msg_valid(const cec_rx_message_t* pcec_message);
 void cec_send_event(cec_rx_message_t* pcec_message);
 void cec_user_control_pressed(cec_rx_message_t* pcec_message);

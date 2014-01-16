@@ -54,7 +54,6 @@
 #include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
 #include <mach/hdmi_tx_reg.h>
 #include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
-#include <mach/hdmi_parameter.h>
 
 static hdmitx_dev_t* hdmitx_device = NULL;
 
@@ -99,9 +98,6 @@ static unsigned char * osd_name = "Amlogic MBox";
 static unsigned int vendor_id = 0x00;
 
 static irqreturn_t cec_isr_handler(int irq, void *dev_instance);
-#ifdef CONFIG_ARCH_MESON6
-static void cec_gpi_init(void);
-#endif
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
@@ -1750,6 +1746,7 @@ void cec_usrcmd_set_dispatch(const char * buf, size_t count)
     }
     tmpbuf[n]=0;
     hdmirx_cec_dbg_print("cec_usrcmd_set_dispatch: \n");
+#ifdef CONFIG_ARCH_MESON8
     if(strncmp(tmpbuf, "waocec", 6)==0){
         bit_set = simple_strtoul(tmpbuf+6, NULL, 16);
         time_set = simple_strtoul(buf+n+1, NULL, 16);
@@ -1759,6 +1756,7 @@ void cec_usrcmd_set_dispatch(const char * buf, size_t count)
         cec_arbit_bit_time_read();
         return;
     }
+#endif
     switch (param[0]) {
     case GET_CEC_VERSION:   //0 LA
         cec_usrcmd_get_cec_version(param[1]);
