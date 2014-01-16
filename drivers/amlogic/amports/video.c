@@ -1732,6 +1732,7 @@ void vsync_rdma_process(void)
 }
 #endif
 
+static vmode_t old_vmode = VMODE_MAX;
 #ifdef FIQ_VSYNC
 void vsync_fisr(void)
 #else
@@ -1771,6 +1772,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             video_property_changed = true;
             printk("Change to video 1\n");
         }
+    }
+    vinfo_t *check_vinfo = get_current_vinfo();
+    if((check_vinfo != NULL) && (old_vmode != check_vinfo->mode)){
+    	first_picture = 1;
+    	old_vmode = check_vinfo->mode;	
     }
 
     if((dev_id_s[dev_id_len-1] == '2' && cur_dev_idx == 0) ||
