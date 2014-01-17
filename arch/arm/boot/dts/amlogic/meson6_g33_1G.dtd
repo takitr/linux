@@ -159,6 +159,8 @@ void root_func(){
 		compatible = "amlogic,vm";
 		dev_name = "vm.0";
 		status = "okay";
+		reserve-memory = <0x0800000>;
+		reserve-iomap = "true";
 	};
 
 /// ***************************************************************************************
@@ -1180,8 +1182,8 @@ void root_func(){
 			i2c_bus = "i2c_bus_a";
 			gpio_pwdn = "GPIOE_11";
 			gpio_rst = "GPIOZ_0";
-			mirror_flip = <0>;
-			vertical_flip = <1>;
+			mirror_flip = <1>;
+			vertical_flip = <0>;
 			status = "okay";
 		};
 ///	-	gc0328
