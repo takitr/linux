@@ -824,9 +824,9 @@ static int aml_sdio_suspend(struct platform_device *pdev, pm_message_t state)
             break;
 
         // clear detect information when suspend
-        if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
-            aml_sd_uart_detect_clr(pdata);
-        }
+        // if (!(pdata->caps & MMC_CAP_NONREMOVABLE)) {
+            // aml_sd_uart_detect_clr(pdata);
+        // }
 
         i++;
 	}
