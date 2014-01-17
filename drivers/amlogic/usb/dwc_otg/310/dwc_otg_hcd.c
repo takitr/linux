@@ -1098,8 +1098,10 @@ static void dwc_otg_hcd_reinit(dwc_otg_hcd_t * hcd)
 	dwc_hc_t *channel;
 	dwc_hc_t *channel_tmp;
 
-	if(!hcd->core_if->suspend_mode)
+	if((!hcd->core_if->suspend_mode)&&(!hcd->core_if->not_clear_hcd_flag))
 		hcd->flags.d32 = 0;
+	
+	hcd->core_if->not_clear_hcd_flag=0;	
 
 	hcd->non_periodic_qh_ptr = &hcd->non_periodic_sched_active;
 	hcd->non_periodic_channels = 0;
