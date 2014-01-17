@@ -8,6 +8,23 @@
 
 #define CONFIG_OF
 
+int is_phydev_off_adjust(void)
+{
+	int ret = 0;
+	#ifdef NAND_ADJUST_PART_TABLE
+		ret = 1;
+	#endif
+	return  ret ;
+}
+int get_adjust_block_num(void)
+{
+	int ret = 0;
+	#ifdef NAND_ADJUST_PART_TABLE
+		ret = ADJUST_BLOCK_NUM;
+	#endif
+	return	ret ;
+}
+
 #ifndef AML_NAND_UBOOT
 int boot_device_flag = -1;
 #endif

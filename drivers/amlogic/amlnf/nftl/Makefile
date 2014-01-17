@@ -7,7 +7,7 @@ TOP_KBUILD_SRC := $(KBUILD_SRC)/
 endif
 
 $(obj)/aml_nftl_core.o:
-	@cp $(TOP_KBUILD_SRC)drivers/amlogic/amlnf/nftl/aml_nftl_core_140116.z \
+	@cp $(TOP_KBUILD_SRC)drivers/amlogic/amlnf/nftl/aml_nftl_core_140117.z \
         drivers/amlogic/amlnf/nftl/aml_nftl_core.o
 
 $(obj)/aml_nftl_core.o:  FORCE

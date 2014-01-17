@@ -432,4 +432,7 @@ extern int amlnf_phy_init(unsigned char flag, struct platform_device *pdev );
 extern int amlnf_logic_init(unsigned flag);
 extern int amlnf_dev_init(unsigned flag);
 
+extern  int is_phydev_off_adjust(void); 
+extern  int get_adjust_block_num(void);
+
 #endif

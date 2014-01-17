@@ -50,7 +50,7 @@ typedef short            	  sint16;
  __func__, __LINE__, ##__VA_ARGS__)
 */
 
-#define	FACTORY_BAD_BLOCK_ERROR  	              159
+#define	FACTORY_BAD_BLOCK_ERROR  	              2
 #define BYTES_PER_SECTOR                          512
 #define SHIFT_PER_SECTOR                          9
 #define BYTES_OF_USER_PER_PAGE                    16

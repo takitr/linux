@@ -908,9 +908,12 @@ int amlnand_phydev_init(struct amlnand_chip *aml_chip)
 					partition = &(dev_para->partitions[j]);
 					dev_size += partition->size;
 				}
-#ifndef NAND_ADJUST_PART_TABLE
-				dev_size = dev_size + dev_size/ADJUST_SIZE_NFTL;  //adjust dev_size for nftl				
-#endif
+				if(!is_phydev_off_adjust()){
+					int adjust_shift =  ffs(ADJUST_SIZE_NFTL) -1;
+					//aml_nand_msg("not adjust, adjust_shift : %d",adjust_shift);
+					dev_size = dev_size + (dev_size >> adjust_shift); 
+				}
+				//dev_size = dev_size + ((uint64_t)(dev_size)/(uint64_t)(ADJUST_SIZE_NFTL));   //adjust dev_size for nftl				
 			}
 			else{
 				if((phydev_pre->option & DEV_SLC_MODE) && (flash->option & NAND_CHIP_SLC_MODE) && (!(phydev->option & DEV_MULTI_PLANE_MODE ))){
@@ -1043,35 +1046,48 @@ int amlnand_phydev_init(struct amlnand_chip *aml_chip)
 						}
 					}
 					aml_nand_dbg("offset = %llx, %llx",offset,tmp_erase_shift);
-#ifdef NAND_ADJUST_PART_TABLE	
-					total_blk = dev_size  >> phydev->erasesize_shift;
-					total_blk = total_blk + total_blk /ADJUST_SIZE_NFTL + ADJUST_BLOCK_NUM;
-					dev_size = total_blk << phydev->erasesize_shift;
-#endif
-					total_blk = dev_size  >> tmp_erase_shift;
-					
+					if(!is_phydev_off_adjust()){
+						total_blk = dev_size  >> tmp_erase_shift;
+					}else{
+						aml_nand_msg("nand adjust phy offset : block %d",ADJUST_BLOCK_NUM);
+						total_blk = dev_size  >> phydev->erasesize_shift;
+						total_blk = total_blk + total_blk /ADJUST_PART_SIZE + ADJUST_BLOCK_NUM;
+					}
 					memset(ops_para, 0, sizeof(struct chip_ops_para));
 					ops_para->option = phydev->option;
-					do{
-						ops_para->page_addr = ((((unsigned)((((unsigned)(offset >> tmp_erase_shift))) - (((unsigned)(offset >> tmp_erase_shift))) \
-							% controller->chip_num) /controller->chip_num) + tmp_blk -tmp_blk /controller->chip_num ) * pages_per_blk);
-						ops_para->chipnr =((unsigned) (offset >>tmp_erase_shift)) % controller->chip_num;	
-						ret = operation->block_isbad(aml_chip);
-						if (ret == NAND_BLOCK_FACTORY_BAD){
+					if(!is_phydev_off_adjust()){
+						do{
+							ops_para->page_addr = ((((unsigned)((((unsigned)(offset >> tmp_erase_shift))) - (((unsigned)(offset >> tmp_erase_shift))) \
+								% controller->chip_num) /controller->chip_num) + tmp_blk -tmp_blk /controller->chip_num ) * pages_per_blk);
+							ops_para->chipnr =((unsigned) (offset >>tmp_erase_shift)) % controller->chip_num;	
+							ret = operation->block_isbad(aml_chip);
+							if (ret == NAND_BLOCK_FACTORY_BAD){
+								offset += flash->blocksize;
+								continue;
+							}
+							start_blk++;
 							offset += flash->blocksize;
-							continue;
-						}
-						start_blk++;
-						offset += flash->blocksize;
-					} while (start_blk < total_blk);
-#ifdef NAND_ADJUST_PART_TABLE					
-					total_blk = ((((unsigned) ((offset -tmp_offset) >> tmp_erase_shift)) - 1)/(controller->chip_num*plane_num) + 1)* (controller->chip_num*plane_num);
-					phydev->size = ((uint64_t)total_blk*(uint64_t)flash->blocksize);		
-#else
-					total_blk = ((((unsigned) (offset >> phydev->erasesize_shift)) - 1)/(controller->chip_num*plane_num) + 1)* (controller->chip_num*plane_num);
-					aml_nand_dbg("total_blk =%d",total_blk);
-					phydev->size = ((uint64_t)total_blk*(uint64_t)phydev->erasesize);				
-#endif				
+						} while (start_blk < total_blk);
+						total_blk = ((((unsigned) (offset >> phydev->erasesize_shift)) - 1)/(controller->chip_num*plane_num) + 1)* (controller->chip_num*plane_num);
+						aml_nand_dbg("total_blk =%d",total_blk);
+						phydev->size = ((uint64_t)total_blk*(uint64_t)phydev->erasesize);
+					}else{
+						do{
+							ops_para->page_addr = ((unsigned)(offset >> phydev->writesize_shift)) ;
+							//ops_para->chipnr =((unsigned) (offset>>phydev->erasesize_shift)) % controller->chip_num;
+							ret = operation->block_isbad(aml_chip); 
+							if (ret == NAND_BLOCK_FACTORY_BAD){
+								offset += phydev->erasesize;
+								//aml_nand_msg("#### : offset %llx",offset);
+								continue;	
+							}
+							start_blk++;
+							offset += phydev->erasesize;
+						}while(start_blk < total_blk);
+						
+						total_blk = ((((unsigned) ((offset -tmp_offset) >> phydev->erasesize_shift)) - 1)/(controller->chip_num*plane_num) + 1)* (controller->chip_num*plane_num);
+						phydev->size = ((uint64_t)total_blk*(uint64_t)phydev->erasesize);
+				}				
 			}
 			else{
 				phydev->size = dev_size;
