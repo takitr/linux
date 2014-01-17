@@ -4,11 +4,17 @@
 //#include <asm/arch/register.h>
 #include <mach/register.h>
 #include <mach/cpu.h>
-#include "mipi_dsi_phy_reg.h"
+#include <mach/mipi_dsi_reg.h>
 #include <linux/amlogic/vout/lcdoutc.h>
 //#include <asm/arch/lcdoutc.h>
 
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define DPRINT(...)		printk(__VA_ARGS__)
+#else
+#define DPRINT(...)
+#endif
 // --------------------------------------------------------
 // MIPI DSI Data Type/ MIPI DCS Command Type Definitions
 // --------------------------------------------------------

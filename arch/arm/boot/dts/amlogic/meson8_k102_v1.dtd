@@ -1057,8 +1057,9 @@ sdio{
 //$$ L2 PROP_U32 2 = "hsync_width_backporch"
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
-//$$ L2 PROP_U32 = "lane_num"
-//$$ L2 PROP_U32 2 = "factor"
+//$$ L2 PROP_U32 = "dsi_lane_num"
+//$$ L2 PROP_U32 = "dsi_bit_rate_min_max"
+//$$ L2 PROP_U32 = "dsi_sleep_out_display_on_delay"
 	lcd_B080XAN01:lcd_B080XAN01{	//k101
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
@@ -1069,11 +1070,13 @@ sdio{
 		period=<948 1140>;		/** horizontal period(htotal), vertical period(vtotal) */
 
 		clock_hz_pol=<64843200 0>;	/** clock_hz(unit in Hz, both support clk and frame_rate, >200 regard as clk, <200 regard as frame_rate), clk_pol(only valid for TTL) */
-		hsync_width_backporch=<64 120>;	/** hsync_width, hsync_backporch(include hsync_width) */
-		vsync_width_backporch=<50 80>;	/** vsync_width, vsync_backporch(include vsync_width) */
+		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
+		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-    lane_num=<4>;//lane num
-
+		
+    dsi_lane_num=<4>;/** mipi dsi data lane number */
+    dsi_bit_rate_min_max=<500 600>;/** range of mipi dsi data lane bit rate(unit: MHz) */
+    dsi_sleep_out_display_on_delay=<20 20>; /** mipi dsi basic delay: (unit: ms) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
@@ -1165,9 +1168,10 @@ sdio{
 //$$ L2 PROP_U32 2 = "hsync_width_backporch"
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
-//$$ L2 PROP_U32 = "lane_num"
-//$$ L2 PROP_U32 2 = "factor"
-	lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{	//k101
+//$$ L2 PROP_U32 = "dsi_lane_num"
+//$$ L2 PROP_U32 2 = "pclk_lanebyteclk_factor"
+//$$ L2 PROP_U32 2 = "dsi_bit_rate_min_max"
+	lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{
 		model_name="CLAA101FP05XG";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<216 135>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
@@ -1180,8 +1184,10 @@ sdio{
 		hsync_width_backporch=<32 80>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<6 26>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-    factor = < 2 3 >;
-    lane_num=<4>;//lane num
+		
+    dsi_lane_num=<4>;/** mipi dsi data lane number */
+    dsi_bit_rate_min_max=<900 1000>;/** range of mipi dsi data lane bit rate(unit: MHz) */
+    pclk_lanebyteclk_factor =<15>;/** special adjust, default is 0 */
 	};
 
 //$$ DEVICE="lcd_extern"

@@ -1072,8 +1072,9 @@ sdio{
 //$$ L2 PROP_U32 2 = "hsync_width_backporch"
 //$$ L2 PROP_U32 2 = "vsync_width_backporch"
 //$$ L2 PROP_U32 2 = "pol_hsync_vsync"
-//$$ L2 PROP_U32 = "lane_num"
-//$$ L2 PROP_U32 = "dsi_clk_min_max"
+//$$ L2 PROP_U32 = "dsi_lane_num"
+//$$ L2 PROP_U32 = "dsi_bit_rate_min_max"
+//$$ L2 PROP_U32 = "dsi_sleep_out_display_on_delay"
 	lcd_B080XAN01:lcd_B080XAN01{	//k101
 		model_name="B080XAN01";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
@@ -1087,8 +1088,10 @@ sdio{
 		hsync_width_backporch=<64 56>;	/** hsync_width, hsync_backporch(include hsync_width) */
 		vsync_width_backporch=<50 30>;	/** vsync_width, vsync_backporch(include vsync_width) */
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
-                lane_num=<4>;//lane num
-    dsi_clk_min_max=<500 600>;/*area of bit rate of one lane:(dsi_clk_min=500, dsi_clk_max=600)*/
+		
+    dsi_lane_num=<4>;/** mipi dsi data lane number */
+    dsi_bit_rate_min_max=<500 600>;/** range of mipi dsi data lane bit rate(unit: MHz) */
+    dsi_sleep_out_display_on_delay=<20 20>; /** mipi dsi basic delay: (unit: ms) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_CLAP070NJ02>
