@@ -209,6 +209,26 @@ void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
 
 }
 
+void video_prot_clear(video_prot_t* video_prot) {
+
+    video_prot->is_4k2k = 0;
+    video_prot->y_step = 0;
+    video_prot->pat_val = 0x0;
+    video_prot->src_vframe_ratio = 0;
+    video_prot->src_vframe_width = 0;
+    video_prot->src_vframe_height = 0;
+    video_prot->x_start = 0;
+    video_prot->y_start = 0;
+    video_prot->x_end = 0;
+    video_prot->y_end = 0;
+    video_prot->viu_type = 0;
+    video_prot->src_vframe_orientation = 0;
+    video_prot->angle_changed = 0;
+    video_prot->angle = 0;
+    video_prot->status = 0;
+    video_prot->enable_layer = 0;
+}
+
 void video_prot_set_angle(video_prot_t* video_prot, u32 angle_orientation) {
     if (video_prot->viu_type & VIDTYPE_VIU_NV21) {
         set_prot_NV21(video_prot->x_start, video_prot->x_end, video_prot->y_start, video_prot->y_end, video_prot->y_step, angle_orientation, video_prot->pat_val);
@@ -219,8 +239,6 @@ void video_prot_set_angle(video_prot_t* video_prot, u32 angle_orientation) {
     } else {
         set_prot_NV21(0, video_prot->x_end, 0, video_prot->y_end, video_prot->y_step, 0, video_prot->pat_val);
     }
-    video_prot->angle = angle_orientation;
-    video_prot->status = angle_orientation % 2;
 }
 
 void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf) {

@@ -2361,7 +2361,7 @@ static int ppmgr_task(void *data)
                     ppmgr_device.angle = 0;
                     ppmgr_device.videoangle = (ppmgr_device.angle + ppmgr_device.orientation) % 4;
                     set_property_change(1);
-                    set_video_angle(ppmgr_device.global_angle);
+                    //set_video_angle(ppmgr_device.global_angle);
                 }
                 ppmgr_device.started = 0;
             }
