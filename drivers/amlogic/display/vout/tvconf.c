@@ -366,6 +366,11 @@ static const vinfo_t *tv_get_current_info(void)
 	return info->vinfo;
 }
 
+tvmode_t vmode_to_tvmode(vmode_t mod) 
+{
+    return vmode_tvmode_tab[mod];
+}
+
 static int tv_set_current_vmode(vmode_t mod)
 {
 	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_SXGA)
@@ -377,7 +382,7 @@ static int tv_set_current_vmode(vmode_t mod)
 	switch_vpu_mem_pd_vmod(info->vinfo->mode, VPU_MEM_POWER_ON);
 	request_vpu_clk_vmod(info->vinfo->video_clk, info->vinfo->mode);
 #endif
-	tvoutc_setmode(vmode_tvmode_tab[mod]);
+	tvoutc_setmode(vmode_to_tvmode(mod));
 //	change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }

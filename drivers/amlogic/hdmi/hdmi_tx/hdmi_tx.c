@@ -1175,9 +1175,11 @@ edid_op:
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_CLR_AVI_PACKET, 0);
             hdmitx_device->HWOp.CntlConfig(hdmitx_device, CONF_CLR_VSDB_PACKET, 0);
             // if VIID PLL is using, then disable HPLL
+            #if 0
             if(hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_VIID_IS_USING, 0)) {
                 hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_HPLL_OP, HPLL_DISABLE);
             }
+            #endif
             hdmitx_device->HWOp.CntlDDC(hdmitx_device, DDC_HDCP_OP, HDCP_OFF);
             hdmitx_device->HWOp.CntlMisc(hdmitx_device, MISC_TMDS_PHY_OP, TMDS_PHY_DISABLE);
             hdmitx_device->HWOp.Cntl(hdmitx_device, HDMITX_IP_SW_RST, TX_SYS_SW_RST);
@@ -1723,8 +1725,8 @@ static void __exit amhdmitx_exit(void)
     return ;
 }
 
-module_init(amhdmitx_init);
-//arch_initcall(amhdmitx_init);
+//module_init(amhdmitx_init);
+arch_initcall(amhdmitx_init);
 module_exit(amhdmitx_exit);
 
 MODULE_DESCRIPTION("AMLOGIC HDMI TX driver");

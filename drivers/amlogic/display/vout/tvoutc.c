@@ -29,7 +29,9 @@
 #include <mach/am_regs.h>
 
 #include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/logo/logo.h>
 #include "tvoutc.h"
+#include "tvconf.h"
 #include <linux/clk.h>
 #include <plat/io.h>
 #include <mach/tvregs.h>
@@ -253,6 +255,12 @@ static void set_tvmode_misc(tvmode_t mode)
  */
 static int uboot_display_already(tvmode_t mode)
 {
+    tvmode_t source = vmode_to_tvmode(get_resolution_vmode());
+    if(source == mode)
+        return 1;
+    else 
+        return 0;
+    /*
     const  reg_t *s = tvregsTab[mode];
     unsigned int pxcnt_tab = 0;
     unsigned int lncnt_tab = 0;
@@ -273,6 +281,7 @@ static int uboot_display_already(tvmode_t mode)
     } else {
         return 0;
     }
+    */
 }
 
 int tvoutc_setmode(tvmode_t mode)
