@@ -231,11 +231,10 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 	unsigned  int  scan_line_number = 0;
 	unsigned  char output_type=0;
 
-	aml_write_reg32(P_RDMA_CTRL, 1<<24);
 	do{
-		if((aml_read_reg32(P_RDMA_STATUS)&0xffffff0f) == 0){
-		break;
-            }
+		if((aml_read_reg32(P_RDMA_STATUS)&0x0fffff0f) == 0){
+			break;
+		}
 	}while(1);
 
 #ifdef CONFIG_VSYNC_RDMA
@@ -309,6 +308,18 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
 
+	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
+
+	if (!vsync_hit)
+	{
+#ifdef FIQ_VSYNC
+		fiq_bridge_pulse_trigger(&osd_hw.fiq_handle_item);
+#else
+		wait_vsync_wakeup();
+#endif
+	}
+
+	aml_write_reg32(P_RDMA_CTRL, 1<<24);
 	return IRQ_HANDLED;
 }
 
@@ -348,7 +359,7 @@ static void osd_fiq_isr(void)
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
-#if 0
+#ifndef CONFIG_VSYNC_RDMA
 #define  	VOUT_ENCI	1
 #define   	VOUT_ENCP	2
 #define	VOUT_ENCT	3
@@ -424,12 +435,11 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		aml_write_reg32(P_VIU_OSD1_BLK2_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 		aml_write_reg32(P_VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
-#endif
 	//go through update list
-#ifndef CONFIG_VSYNC_RDMA
 	walk_through_update_list();
-#endif
+
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
+#endif
 
 #if 0
 #ifdef CONFIG_VSYNC_RDMA
@@ -437,6 +447,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 #endif
 
+#ifndef CONFIG_VSYNC_RDMA
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
@@ -445,9 +456,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		wait_vsync_wakeup();
 #endif
 	}
+#endif
 
 #ifndef FIQ_VSYNC
-	return  IRQ_HANDLED ;
+	return  IRQ_HANDLED;
 #endif
 }
 
