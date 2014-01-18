@@ -47,6 +47,7 @@
 #define MODULE_NAME "amvdec_h264_4k2k"
 
 #define PUT_INTERVAL        (HZ/100)
+#define ERROR_RESET_COUNT   100
 
 #define STAT_TIMER_INIT     0x01
 #define STAT_MC_LOAD        0x02
@@ -84,6 +85,7 @@ static struct vframe_provider_s vh264_4k2k_vf_prov;
 static u32 frame_width, frame_height, frame_dur, frame_ar;
 static struct timer_list recycle_timer;
 static u32 stat;
+static u32 error_watchdog_count;
 
 #ifdef DEBUG_PTS
 static unsigned long pts_missed, pts_hit;
@@ -93,6 +95,7 @@ static struct dec_sysinfo vh264_4k2k_amstream_dec_info;
 extern u32 trickmode_i;
 
 static DEFINE_SPINLOCK(lock);
+static int fatal_error;
 
 #define CBCR_MERGE
 
@@ -861,6 +864,27 @@ printk("S->M,[%d] %s = 0x%x\n", ret, reg_name[ret], READ_VREG(VDEC2_MAILBOX_DATA
 static void vh264_4k2k_put_timer_func(unsigned long arg)
 {
     struct timer_list *timer = (struct timer_list *)arg;
+    receviver_start_e state = RECEIVER_INACTIVE;
+
+    if (vf_get_receiver(PROVIDER_NAME)) {
+        state = vf_notify_receiver(PROVIDER_NAME, VFRAME_EVENT_PROVIDER_QUREY_STATE, NULL);
+        if ((state == RECEIVER_STATE_NULL)||(state == RECEIVER_STATE_NONE)){
+            state = RECEIVER_INACTIVE;
+        }
+    } else {
+        state = RECEIVER_INACTIVE;
+    }
+
+    // error watchdog
+    if (((READ_VREG(VLD_MEM_VIFIFO_CONTROL) & 0x100) == 0) && // decoder has input
+        (state == RECEIVER_INACTIVE) &&                       // receiver has no buffer to recycle
+        (kfifo_is_empty(&display_q)) &&                       // no buffer in display queue
+        (kfifo_is_empty(&recycle_q))) {                       // no buffer to recycle
+        if (++error_watchdog_count == ERROR_RESET_COUNT) {    // and it lasts for a while
+            printk("H264 4k2k decoder fatal error watchdog.\n");
+            fatal_error = 0x10;
+        }
+    }
 
     while (!kfifo_is_empty(&recycle_q) &&
            (READ_VREG(BUFFER_RECYCLE) == 0)) {
@@ -890,8 +914,8 @@ int vh264_4k2k_dec_status(struct vdec_status *vstatus)
     } else {
         vstatus->fps = -1;
     }
-    vstatus->error_count = READ_VREG(AV_SCRATCH_D);
-    vstatus->status = stat;
+    vstatus->error_count = 0;
+    vstatus->status = stat | (fatal_error << 16);
     return 0;
 }
 
@@ -1130,6 +1154,7 @@ static void vh264_4k2k_local_init(void)
     frame_height = vh264_4k2k_amstream_dec_info.height;
     frame_dur = (vh264_4k2k_amstream_dec_info.rate == 0) ? 3600 : vh264_4k2k_amstream_dec_info.rate;
     frame_ar = frame_height * 0x100 / frame_width;
+    error_watchdog_count = 0;
 
     printk("H264_4K2K: decinfo: %dx%d rate=%d\n", frame_width, frame_height, frame_dur);
 
@@ -1284,6 +1309,8 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     printk("amvdec_h264_4k2k probe start.\n");
 
+    fatal_error = 0;
+
     if (!(mem = platform_get_resource(pdev, IORESOURCE_MEM, 0))) {
         printk("\namvdec_h264_4k2k memory resource undefined.\n");
         return -EFAULT;
@@ -1303,7 +1330,6 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     if (vh264_4k2k_init() < 0) {
         printk("\namvdec_h264_4k2k init failed.\n");
-
         return -ENODEV;
     }
 
@@ -1315,6 +1341,7 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 static int amvdec_h264_4k2k_remove(struct platform_device *pdev)
 {
     printk("amvdec_h264_4k2k_remove\n");
+
     vh264_4k2k_stop();
 
     vdec_poweroff(VDEC_2);
