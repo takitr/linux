@@ -122,10 +122,10 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-	   	reserve-memory = <0x01000000  0x00100000>;
+	   	reserve-memory = <0x01800000  0x00100000>;
 	   	reserve-iomap = "true";
         vmode = <3>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
- 		display_size_default = <1920 1080 1920 2160 32>;
+ 		display_size_default = <1920 1080 1920 3240 32>;
 	};
 	
 //$$ DEVICE="deinterlace"
