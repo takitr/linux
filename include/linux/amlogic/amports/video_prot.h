@@ -27,6 +27,7 @@ typedef struct {
     u32 power_down;
     u32 power_on;
     u32 use_prot;
+    u32 disable_prot;
     u32 x_start;
     u32 y_start;
     u32 x_end;

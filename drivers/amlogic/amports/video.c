@@ -236,6 +236,8 @@ static int video_onoff_state = VIDEO_ENABLE_STATE_IDLE;
          if (!use_prot) { \
              VD1_MEM_POWER_ON(); \
              VIDEO_LAYER_ON(); \
+         } else {\
+             VD1_MEM_POWER_ON(); \
          } \
     } while (0)
 #else
@@ -1869,8 +1871,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         PROT_MEM_POWER_OFF();
         video_prot_clear(&video_prot);
         video_prot.power_down = 0;
-        video_prot.power_on = 0;
+        //video_prot.power_on = 0;
         video_prot.angle_changed = 0;
+        video_prot.enable_layer = 0;
+        video_property_changed = true;
     }
     if (use_prot && video_prot.power_down) {
         video_prot_set_angle(&video_prot, 0);
@@ -1894,20 +1898,19 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
         }
         u32 angle_orientation = (video_angle + video_prot.src_vframe_orientation) % 4;
         u32 last_angle_orientation = (video_prot.angle + video_prot.src_vframe_orientation) % 4;
-        if (angle_orientation != last_angle_orientation || video_prot.enable_layer) {
+        if (video_prot.enable_layer || get_vpu_mem_pd_vmod(VPU_PIC_ROT2) == VPU_MEM_POWER_DOWN) {
             if (angle_orientation % 2) {
                 if (video_prot.angle_changed & 0x1) {
                     video_prot.angle_changed = 0x2;
                     video_prot_set_angle(&video_prot, 0);
                     video_prot_gate(0);
                     video_prot_set_angle(&video_prot, 0);
-                    wait_count = 20;
+                    wait_count = 50;
                     return IRQ_HANDLED;
                 } else if (video_prot.angle_changed & 0x2) {
                     if (wait_count-- > 0) {
                         return IRQ_HANDLED;
                     }
-                    VD1_MEM_POWER_ON();
                     VIDEO_LAYER_ON();
                     video_prot.angle = angle_orientation;
                     video_prot.status = angle_orientation % 2;
@@ -1927,13 +1930,21 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
                     video_prot.angle_changed = 0;
                 }
             }
-
+        } else if (angle_orientation != last_angle_orientation) {
+            if (video_prot.angle_changed & 0x1) {
+                video_prot.angle = angle_orientation;
+                video_prot.status = angle_orientation % 2;
+                video_prot_set_angle(&video_prot, angle_orientation);
+                video_prot_gate(video_prot.status);
+                video_property_changed = 1;
+                video_prot.angle_changed = 0;
+            }
         } else {
             video_prot.angle_changed = 0;
         }
         if (video_prot.enable_layer) {
             wait_count = 20;
-            VD1_MEM_POWER_ON();
+            //VD1_MEM_POWER_ON();
             VIDEO_LAYER_ON();
             video_prot.enable_layer = 0;
             return IRQ_HANDLED;

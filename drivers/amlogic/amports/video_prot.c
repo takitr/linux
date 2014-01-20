@@ -206,6 +206,7 @@ void video_prot_init(video_prot_t* video_prot, vframe_t *vf) {
     video_prot->y_end = vf->height - 1;
     video_prot->viu_type = vf->type;
     video_prot->src_vframe_orientation = vf->orientation;
+    video_prot->disable_prot = 0;
 
 }
 
