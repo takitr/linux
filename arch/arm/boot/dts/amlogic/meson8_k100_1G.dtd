@@ -195,7 +195,8 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin0";
         status = "ok";
-	 reserve-memory = <0x04000000>;
+	reserve-memory = <0x02700000>;
+	camera_size = <2592 1944>;//2592x1944x2x4=41M
 	 reserve-iomap = "true";
         irq = <115>;
         vdin_id = <0>;
@@ -210,7 +211,8 @@ void root_func(){
         compatible = "amlogic,vdin";
         dev_name = "vdin1";
         status = "ok";
-	 reserve-memory = <0x04000000>;
+	reserve-memory = <0x01000000>;
+	miracast_size = <1920 1080>;//1920x1080x2x4=17M
 	 reserve-iomap = "true";
         irq = <117>;
         vdin_id = <1>;
