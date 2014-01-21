@@ -1770,11 +1770,17 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				goto cmd_abort;
 			}
 
-			if (reqs >= packed_nr)
+			if (reqs >= packed_nr) {
 				mmc_blk_packed_hdr_wrq_prep(mq->mqrq_cur,
 							    card, mq);
-			else
-				mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+            }
+			else {
+#ifdef CONFIG_AML_MMC_DEBUG_FORCE_SINGLE_BLOCK_RW
+				mmc_blk_rw_rq_prep(mq->mqrq_cur, card, true, mq); // --debug: force single block
+#else 
+                mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+#endif
+            }
 			areq = &mq->mqrq_cur->mmc_active;
 		} else
 			areq = NULL;
@@ -1883,8 +1889,13 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 				 * In case of a incomplete request
 				 * prepare it again and resend.
 				 */
+#ifdef CONFIG_AML_MMC_DEBUG_FORCE_SINGLE_BLOCK_RW
 				mmc_blk_rw_rq_prep(mq_rq, card,
-						disable_multi, mq);
+						true, mq); // --debug: force single block
+#else
+				mmc_blk_rw_rq_prep(mq_rq, card,
+                        disable_multi, mq);
+#endif
 				mmc_start_req(card->host,
 						&mq_rq->mmc_active, NULL);
 			}
@@ -1916,7 +1927,11 @@ static int mmc_blk_issue_rw_rq(struct mmc_queue *mq, struct request *rqc)
 			if (mmc_packed_cmd(mq->mqrq_cur->cmd_type))
 				mmc_blk_revert_packed_req(mq, mq->mqrq_cur);
 
-			mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+#ifdef CONFIG_AML_MMC_DEBUG_FORCE_SINGLE_BLOCK_RW
+			mmc_blk_rw_rq_prep(mq->mqrq_cur, card, true, mq); // --debug: force single block
+#else
+            mmc_blk_rw_rq_prep(mq->mqrq_cur, card, 0, mq);
+#endif
 			mmc_start_req(card->host,
 				      &mq->mqrq_cur->mmc_active, NULL);
 		}

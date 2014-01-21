@@ -14,23 +14,33 @@
 #include <linux/earlysuspend.h>
 
 enum aml_mmc_waitfor {
-	XFER_INIT,
+	XFER_INIT,              /* 0 */
 	XFER_START,				/* 1 */
-	XFER_IRQ_OCCUR,			/* 2 */
-	XFER_IRQ_FIFO_ERR,		/* 3 */
-	XFER_IRQ_CRC_ERR,		/* 4 */
-	XFER_IRQ_TIMEOUT_ERR,	/* 5 */
-	XFER_IRQ_TASKLET_CMD,	/* 6 */
-	XFER_IRQ_TASKLET_DATA,	/* 7 */
-	XFER_IRQ_TASKLET_BUSY,	/* 8 */
-	XFER_IRQ_UNKNOWN_IRQ,	/* 9 */
-	XFER_TIMER_TIMEOUT,		/* 10 */
-	XFER_TASKLET_CMD,		/* 11 */
-	XFER_TASKLET_DATA,		/* 12 */
-	XFER_TASKLET_BUSY,		/* 13 */
-	XFER_TIMEDOUT,			/* 14 */
-	XFER_FINISHED,			/* 15 */
-	XFER_AFTER_START,		/* 16 */
+	XFER_AFTER_START,		/* 2 */
+	XFER_IRQ_OCCUR,			/* 3 */
+	XFER_IRQ_TASKLET_CMD,	/* 4 */
+	XFER_IRQ_TASKLET_DATA,	/* 5 */
+	XFER_IRQ_TASKLET_BUSY,	/* 6 */
+	XFER_IRQ_UNKNOWN_IRQ,	/* 7 */
+	XFER_TIMER_TIMEOUT,		/* 8 */
+	XFER_TASKLET_CMD,		/* 9 */
+	XFER_TASKLET_DATA,		/* 10 */
+	XFER_TASKLET_BUSY,		/* 11 */
+	XFER_TIMEDOUT,			/* 12 */
+	XFER_FINISHED,			/* 13 */
+};
+
+enum aml_host_status { /* Host controller status */
+	HOST_INVALID = 0,       /* 0, invalid value used for initialization */
+	HOST_RX_FIFO_FULL = 1,  /* 1, start with 1 */
+	HOST_TX_FIFO_EMPTY,	    /* 2 */
+	HOST_RSP_CRC_ERR,	    /* 3 */
+	HOST_DAT_CRC_ERR,	    /* 4 */
+	HOST_RSP_TIMEOUT_ERR,   /* 5 */
+	HOST_DAT_TIMEOUT_ERR,   /* 6 */
+    HOST_ERR_END,	        /* 7, end of errors */
+	HOST_TASKLET_CMD,	    /* 8 */
+	HOST_TASKLET_DATA,	    /* 9 */
 };
 
 struct amlsd_host;
@@ -38,8 +48,8 @@ struct amlsd_platform {
 	struct amlsd_host* host;
 	struct mmc_host *mmc;
 	struct list_head sibling;
-	unsigned long ocr_avail;
-	unsigned int port;
+	u32 ocr_avail;
+	u32 port;
 #define     PORT_SDIO_A     0
 #define     PORT_SDIO_B     1
 #define     PORT_SDIO_C     2
@@ -56,9 +66,12 @@ struct amlsd_platform {
 	unsigned int f_max;
 	unsigned int f_max_w;
 	unsigned int clkc;
+	unsigned int clk2;
 	unsigned int clkc_w;
 	unsigned int ctrl;
 	unsigned int clock;
+	unsigned char signal_voltage;		/* signalling voltage (1.8V or 3.3V) */
+
 	unsigned int low_burst;
 	unsigned int irq_in;
 	unsigned int irq_in_edge;
@@ -71,6 +84,7 @@ struct amlsd_platform {
 	unsigned int gpio_ro;
     unsigned int gpio_dat3;
     unsigned int jtag_pin;
+
     int is_sduart;
     bool is_in;
 
@@ -130,21 +144,21 @@ struct amlsd_host {
 	unsigned int f_max;
 	unsigned int f_max_w;
 	unsigned int f_min;
-	struct tasklet_struct cmd_tlet;
-	struct tasklet_struct data_tlet;
-	struct tasklet_struct busy_tlet;
-	struct tasklet_struct to_tlet;
+	// struct tasklet_struct cmd_tlet;
+	// struct tasklet_struct data_tlet;
+	// struct tasklet_struct busy_tlet;
+	// struct tasklet_struct to_tlet;
     // struct timer_list timeout_tlist;
 	struct delayed_work	timeout;
-	struct early_suspend amlsd_early_suspend;
+	// struct early_suspend amlsd_early_suspend;
 
 	unsigned int send;
 	unsigned int ctrl;
 	unsigned int clkc;
-	unsigned int clkc_w;
-	unsigned int pdma;
-	unsigned int pdma_s;
-	unsigned int pdma_low;
+	// unsigned int clkc_w;
+	// unsigned int pdma;
+	// unsigned int pdma_s;
+	// unsigned int pdma_low;
 	unsigned int misc;
 	unsigned int ictl;
 	unsigned int ista;
@@ -157,12 +171,18 @@ struct amlsd_host {
 	spinlock_t	mrq_lock;
 	int			cmd_is_stop;
 	enum aml_mmc_waitfor	xfer_step;
+	enum aml_mmc_waitfor	xfer_step_prev;
 
 	int			bus_width;
 	int     port;
 	int     locked;
-	char		*status;
-	unsigned int		ccnt, dcnt;
+    bool    is_gated;
+	// unsigned int		ccnt, dcnt;
+
+	int     status; // host status: xx_error/ok
+
+    char    *msg_buf;
+#define MESSAGE_BUF_SIZE            512
 
 #ifdef CONFIG_DEBUG_FS
 	struct dentry		*debug_root;
@@ -174,20 +194,22 @@ struct amlsd_host {
 	struct notifier_block	freq_transition;
 #endif
 
-    u32			opcode; // add by gch for debug
-	u32			arg; // add by gch for debug
+    u32			opcode;
+	u32			arg;
+    u32         cmd25_cnt;
     
 #ifdef      CONFIG_MMC_AML_DEBUG
     u32         req_cnt;
     u32         trans_size;
     u32         time_req_sta; // request start time
+
+    u32         reg_buf[16];
 #endif
     
-    struct pinctrl *pinctrl;
-    char pinctrl_name[30];
+    struct pinctrl  *pinctrl;
+    char        pinctrl_name[30];
 
-    int storage_flag; // used for judging if there is a tsd/emmc
-
+    int         storage_flag; // used for judging if there is a tsd/emmc
     int         version; // bit[7-0]--minor version, bit[31-8]--major version
 };
 
@@ -514,7 +536,7 @@ struct sdhc_ista{
 	u32 rxfifo_full:1; /*[12] RxFIFO Full(W1C)*/
 	u32 txfifo_empty:1; /*[13] TxFIFO Empty(W1C)*/
 	u32 addi_dat1_irq:1; /*[14] Additional SDIO DAT1 Interrupt*/
-	u32 reserved:19; /*[31:13] reserved*/
+	u32 reserved:17; /*[31:13] reserved*/
 };
 
 /*
@@ -548,6 +570,7 @@ struct sdhc_clk2{
 	u32 reserved:8; /*[31:24] reserved*/
 };
 
+#define SDHC_CLOCK_SRC_OSC              0 // 24MHz
 #define SDHC_CLOCK_SRC_FCLK_DIV4        1
 #define SDHC_CLOCK_SRC_FCLK_DIV3        2
 #define SDHC_CLOCK_SRC_FCLK_DIV5        3
@@ -610,6 +633,12 @@ extern struct mmc_host *sdio_host;
 #define print_tmp(fmt, args...) do{\
 		printk("[%s] " fmt, __FUNCTION__, ##args);	\
 }while(0)
+
+
+#define print_dbg(fmt, args...) do{\
+	printk("[%s]\033[0;40;35m " fmt "\033[0m", __FUNCTION__, ##args);  \
+}while(0)
+
 
 // P_AO_SECURE_REG1 is "Secure Register 1" in <M8-Secure-AHB-Registers.doc>
 #define aml_jtag_gpioao() do{\

@@ -16,5 +16,9 @@ config MMC_AML
 config MMC_AML_DEBUG
     bool "Amlogic Multimedia Card Debug support"
 	default n
+	
+config AML_MMC_DEBUG_FORCE_SINGLE_BLOCK_RW
+    bool "force read and write to use single-block mode(CMD17/24)."
+	default n
     
 endmenu
