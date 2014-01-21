@@ -122,10 +122,21 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-	   	reserve-memory = <0x01800000  0x00100000>;
-	   	reserve-iomap = "true";
-        vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
- 		display_size_default = <2048 1536 2048 3072 32>;//2048x1536x8=0x01800000
+	   	reserve-memory = <0x02400000  0x00100000>;
+               vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
+ 		display_size_default = <2048 1536 2048 4608 32>;//2048x1536x4x3=0x02400000
+	};
+//$$ DEVICE = "mesonfb-ext"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+//$$ L2 PROP_U32 5 = "display_size_default"
+	mesonfb-ext{
+		compatible = "amlogic,mesonfb-ext";
+		dev_name = "mesonfb-ext";
+		status = "ok";
+		reserve-memory = <0x02400000  0x00100000>; 	 
+		display_size_default = <2048 1536 2048 4608 32>;//2048x1536x4x3=0x02400000
+	 
 	};
 
 /// ***************************************************************************************
@@ -446,7 +457,7 @@ sdio{
 //$$ L3 PROP_U32 = "f_max"
 //$$ L3 PROP_U32 = "f_max_w"
 //$$ L3 PROP_U32 = "max_req_size"
-//$$ L2 PROP_STR = "gpio_dat3"       	
+//$$ L2 PROP_STR = "gpio_dat3"
 //$$ L2 PROP_U32 = "card_type"
         emmc{
             status = "ok";
@@ -470,7 +481,7 @@ sdio{
 //$$ L2 PROP_STR 4 = "caps"
 //$$ L3 PROP_U32 = "f_min"
 //$$ L3 PROP_U32 = "f_max"
-//$$ L3 PROP_U32 = "max_req_size"    
+//$$ L3 PROP_U32 = "max_req_size"
 //$$ L2 PROP_U32 = "card_type"    
         sdio{
           status = "okay";
@@ -1535,9 +1546,10 @@ sdio{
 			i2c_bus = "i2c_bus_d";
 			gpio_pwdn = "GPIOH_5";
 			gpio_rst = "GPIOH_4";
-			mirror_flip = <0>;
+			mirror_flip = <1>;
 			vertical_flip = <0>;	
 			config_path = "/system/etc/camera_isp_cfg/ov5647_k100";
+			vcm_mode = <1>;
 			bt_path = "gpio";
 			status = "okay";
 		};
@@ -1575,6 +1587,52 @@ sdio{
         cam_8{
 			cam_name = "sp0a19";
 			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_6";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
+			bt_path = "gpio";
+			status = "okay";
+		};
+
+
+///	-	hm5065
+//$$ DEVICE="hm5065"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"
+		cam_9{
+			cam_name = "hm5065";
+			front_back = <0>;
+			i2c_bus = "i2c_bus_d";
+			gpio_pwdn = "GPIOH_5";
+			gpio_rst = "GPIOH_4";
+			mirror_flip = <0>;
+			vertical_flip = <0>;	
+			bt_path = "gpio";
+			status = "okay";
+		};
+
+
+///	-    sp1628
+//$$ DEVICE="sp1628"
+//$$ L2 PROP_STR = "status"
+//$$ L2 PROP_U32 = "front_back"
+//$$ L2 PROP_STR = "i2c_bus"
+//$$ L2 PROP_STR = "gpio_pwdn"
+//$$ L2 PROP_STR = "gpio_rst"
+//$$ L2 PROP_U32 = "mirror_flip"
+//$$ L2 PROP_U32 = "vertical_flip"
+//$$ L2 PROP_STR = "bt_path"
+		cam_10{
+			cam_name = "sp1628";
+			front_back = <1>;
 			i2c_bus = "i2c_bus_d";
 			gpio_pwdn = "GPIOH_6";
 			gpio_rst = "GPIOH_4";
@@ -1685,7 +1743,7 @@ sdio{
 		usid-min = <8>; /*reserved*/
 		usid-max = <31>; /*reserved*/
 	};
-	
+
 /// ***************************************************************************************
 ///	-	Thermal
 //$$ MODULE="Thermal"
@@ -1706,6 +1764,73 @@ sdio{
 
 	};
 	
+/// ***************************************************************************************
+///	-	Securitykey
+//$$ MODULE="Securitykey"
+//$$ DEVICE="securitykey"
+//$$ L2 PROP_STR = "status"
+    securitykey{
+		compatible = "amlogic,aml_keys";
+		status = "ok";
+	};
+
+/// ***************************************************************************************
+///	-	Unifykey
+//$$ MODULE="Unifykey"
+//$$ DEVICE="securitykey"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 ="unifykey-num"
+//$$ L2 PROP_CHOICE "Unifykey_0_match" = "unifykey-index-0"
+//$$ L2 PROP_CHOICE "Unifykey_1_match" = "unifykey-index-1"
+//$$ L2 PROP_CHOICE "Unifykey_2_match" = "unifykey-index-2"
+    	unifykey{
+		compatible = "amlogic,unifykey";
+		status = "ok";
+
+		/*efuse-version = <0>;*/ /*m6 efuse version 2,m3 efuse version 1, not config efuse version in default*/
+		unifykey-num = <3>;
+		unifykey-index-0 = <&keysn_0>;
+		unifykey-index-1 = <&keysn_1>;
+		unifykey-index-2 = <&keysn_2>;
+
+
+//$$ MATCH "Unifykey_0_match" = <&keysn_0>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_0: key_0{
+			key-name = "key0";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+		
+//$$ MATCH "Unifykey_1_match" = <&keysn_1>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_1:key_1{
+			key-name = "key1";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+		
+//$$ MATCH "Unifykey_2_match" = <&keysn_2>
+//$$ L2 PROP_STR = "key-name"
+//$$ L2 PROP_STR = "key-device"
+//$$ L2 PROP_STR = "key-dataformat"
+//$$ L2 PROP_STR 3 = "key-permit"
+		keysn_2:key_2{
+			key-name = "key2";
+			key-device = "nandkey";
+			key-dataformat = "hexdata";
+			key-permit = "read","write","del";
+		};
+	};
+
 /// ***************************************************************************************
 ///	-	HDMI
 //$$ MODULE="HDMI"
@@ -1823,7 +1948,9 @@ sdio{
 			xres = <2048>;
 			yres = <1536>;
 			pol = <0x4>;
+			auto_update_fw = <0x1>;
 			config_file = "/etc/touch/goodix.cfg";
+			fw_file = "/etc/touch/goodix.bin";
 		};
    };
 
