@@ -98,10 +98,10 @@ static int hp_det_adc_value(struct aml_audio_private_data *p_aml_audio)
         msleep(15);
     }
     hp_val_sum = hp_val_sum >> 3;
-
+	//printk("00000000000hp_val_sum = %hx\n",hp_val_sum);
     if(hp_val_sum >= p_aml_audio->hp_val_h){
         ret = 0;
-    }else if((hp_val_sum <= (p_aml_audio->hp_val_l))&& hp_val_sum >=0){
+    }else if((hp_val_sum <  (p_aml_audio->hp_val_l))&& hp_val_sum >=0){
         ret = 1;
         if(p_aml_audio->mic_det){
             if(hp_val_sum <=  p_aml_audio->mic_val){
@@ -354,15 +354,77 @@ static int aml_suspend_pre(struct snd_soc_card *card)
     return 0;
 }
 
+static int i2s_gpio_set(struct snd_soc_card *card)
+{
+    struct aml_audio_private_data *p_aml_audio;
+    const char *str=NULL;
+    int ret;
+    
+
+    p_aml_audio = snd_soc_card_get_drvdata(card);
+    if(p_aml_audio->pin_ctl)
+        devm_pinctrl_put(p_aml_audio->pin_ctl);
+    ret = of_property_read_string(card->dev->of_node, "I2S_MCLK", &str);
+    if (ret < 0) {
+        printk("I2S_MCLK: faild to get gpio I2S_MCLK!\n");
+    }else{
+        p_aml_audio->gpio_i2s_m = amlogic_gpio_name_map_num(str);
+        amlogic_gpio_request_one(p_aml_audio->gpio_i2s_m,GPIOF_OUT_INIT_LOW,"low_mclk");
+        amlogic_set_value(p_aml_audio->gpio_i2s_m, 0, "low_mclk");
+    }
+
+    ret = of_property_read_string(card->dev->of_node, "I2S_SCLK", &str);
+    if (ret < 0) {
+        printk("I2S_SCLK: faild to get gpio I2S_SCLK!\n");
+    }else{
+        p_aml_audio->gpio_i2s_s = amlogic_gpio_name_map_num(str);
+        amlogic_gpio_request_one(p_aml_audio->gpio_i2s_s,GPIOF_OUT_INIT_LOW,"low_sclk");
+        amlogic_set_value(p_aml_audio->gpio_i2s_s, 0, "low_sclk");
+    }
+
+    ret = of_property_read_string(card->dev->of_node, "I2S_LRCLK", &str);
+    if (ret < 0) {
+        printk("I2S_LRCLK: faild to get gpio I2S_LRCLK!\n");
+    }else{
+        p_aml_audio->gpio_i2s_r = amlogic_gpio_name_map_num(str);
+        amlogic_gpio_request_one(p_aml_audio->gpio_i2s_r,GPIOF_OUT_INIT_LOW,"low_lrclk");
+        amlogic_set_value(p_aml_audio->gpio_i2s_r, 0, "low_lrclk");
+    }
+
+    ret = of_property_read_string(card->dev->of_node, "I2S_ODAT", &str);
+    if (ret < 0) {
+        printk("I2S_ODAT: faild to get gpio I2S_ODAT!\n");
+    }else{
+        p_aml_audio->gpio_i2s_o = amlogic_gpio_name_map_num(str);
+        amlogic_gpio_request_one(p_aml_audio->gpio_i2s_o,GPIOF_OUT_INIT_LOW,"low_odata");
+        amlogic_set_value(p_aml_audio->gpio_i2s_o, 0, "low_odata");
+    }
+    return 0;
+}
 static int aml_suspend_post(struct snd_soc_card *card)
 {
-    printk(KERN_DEBUG "enter %s\n", __func__);
+    printk(KERN_INFO "enter %s\n", __func__);   
+    i2s_gpio_set(card);
     return 0;
 }
 
 static int aml_resume_pre(struct snd_soc_card *card)
 {
-    printk(KERN_DEBUG "enter %s\n", __func__);
+    printk(KERN_INFO "enter %s\n", __func__);
+    struct aml_audio_private_data *p_aml_audio;
+    p_aml_audio = snd_soc_card_get_drvdata(card);  
+
+    if(p_aml_audio->gpio_i2s_m)
+        amlogic_gpio_free(p_aml_audio->gpio_i2s_m,"low_mclk");
+    if(p_aml_audio->gpio_i2s_s)
+        amlogic_gpio_free(p_aml_audio->gpio_i2s_s,"low_sclk");
+    if(p_aml_audio->gpio_i2s_r)
+        amlogic_gpio_free(p_aml_audio->gpio_i2s_r,"low_lrclk");
+    if(p_aml_audio->gpio_i2s_o)
+        amlogic_gpio_free(p_aml_audio->gpio_i2s_o,"low_odata");
+   
+
+    p_aml_audio->pin_ctl = devm_pinctrl_get_select(card->dev, "aml_snd_m8");
     return 0;
 }
 
