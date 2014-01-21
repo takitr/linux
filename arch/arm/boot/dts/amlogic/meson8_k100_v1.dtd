@@ -166,6 +166,7 @@ void root_func(){
                 dev_name = "vdec.0";
                 status = "okay";
                 reserve-memory = <0x10000000>;
+                reserve-iomap = "true";
         };
 
 /// ***************************************************************************************
