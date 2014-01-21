@@ -364,7 +364,17 @@ int sp0a19_v4l2_probe(struct i2c_adapter *adapter)
     return ret;
 }
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP2518
+int sp2518_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+    unsigned char reg;
+    reg = aml_i2c_get_byte_add8(adapter, 0x30, 0x02);
+    if (reg == 0x53)
+        ret = 1;
+    return ret;
+}
+#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838
 int sp0838_v4l2_probe(struct i2c_adapter *adapter)
 {
@@ -635,6 +645,17 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = sp0838_v4l2_probe,
 	},
 #endif
+		
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP2518
+	{
+		.addr = 0x30,
+		.name = "sp2518",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1600X1200,
+		.probe_func = sp2518_v4l2_probe,
+	},
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI253
 	{
 		.addr = 0x20,
