@@ -1230,6 +1230,7 @@ int aml_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq)
 
 int aml_sd_voltage_switch (struct amlsd_platform* pdata, char signal_voltage)
 {
+#ifdef CONFIG_ARCH_MESON8
 #ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU 
     int vol = LDO4DAC_REG_3_3_V;
     int delay_ms = 0;
@@ -1279,6 +1280,7 @@ int aml_sd_voltage_switch (struct amlsd_platform* pdata, char signal_voltage)
         // sdhc_err("delay %dms.\n", delay_ms); 
     }
 #endif 
+#endif
 
     return 0;
 }
