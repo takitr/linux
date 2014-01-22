@@ -57,6 +57,7 @@ unsigned int acodec_regbank[252] = {0x00, 0x05, 0x00, 0x01, 0x7d, 0x02, 0x7d, 0x
 
 extern void audio_set_i2s_clk(unsigned freq, unsigned fs_config);
 extern unsigned audio_aiu_pg_enable(unsigned char enable);
+struct snd_soc_codec *m8_codec = NULL;
 void adac_wr_reg (unsigned long addr, unsigned long data)
 {
     // Write high byte for 16-bit register
@@ -746,6 +747,7 @@ static const struct snd_soc_dapm_route aml_m8_audio_map[] = {
 
 static int aml_m8_soc_probe(struct snd_soc_codec *codec){
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
+    m8_codec = codec;
 	audio_aiu_pg_enable(1);
 	aml_m8_codec_reset(codec);
 	audio_aiu_pg_enable(0);
@@ -805,6 +807,18 @@ static int aml_m8_codec_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void aml_m8_codec_shutdown(struct platform_device *pdev)
+{
+    printk(KERN_DEBUG "aml_m8_platform_shutdown\n");
+    struct snd_soc_codec *codec = m8_codec;
+    
+    if(codec){
+        u16 mute_reg = snd_soc_read(codec, AMLM8_MUTE_2) & 0xfc;
+
+        snd_soc_write(codec, AMLM8_MUTE_2, mute_reg | 0x3);
+    }
+}
+
 #ifdef CONFIG_USE_OF
 static const struct of_device_id amlogic_audio_codec_dt_match[]={
     { .compatible = "amlogic,m8_audio_codec", },
@@ -821,6 +835,7 @@ static struct platform_driver aml_m8_codec_platform_driver = {
 	},
 	.probe = aml_m8_codec_probe,
 	.remove = aml_m8_codec_remove,
+	.shutdown = aml_m8_codec_shutdown,
 };
 
 static int __init aml_m8_codec_modinit(void)
