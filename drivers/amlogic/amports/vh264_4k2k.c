@@ -457,16 +457,29 @@ long init_canvas(int start_addr, long dpb_size, int dpb_number, int mb_width, in
     int canvas_addr = ANC0_CANVAS_ADDR;
     int vdec2_canvas_addr = VDEC2_ANC0_CANVAS_ADDR;
     int index = AMVDEC_H264_4K2K_CANVAS_INDEX;
+    u32 disp_addr = 0xffffffff;
 
     dpb_addr = start_addr;
 
     mb_total = mb_width * mb_height;
 
+    if (is_vpp_postblend()) {
+        canvas_t cur_canvas;
+
+        canvas_read((READ_VCBUS_REG(VD1_IF0_CANVAS0) & 0xff), &cur_canvas);
+        disp_addr = (cur_canvas.addr + 7) >> 3;
+    }
+
     for (i=0; i<dpb_number; i++) {
         WRITE_VREG(canvas_addr++, index | ((index+1)<<8) | ((index+2)<<16));
         WRITE_VREG(vdec2_canvas_addr++, index | ((index+1)<<8) | ((index+2)<<16));
 
-        addr = dpb_addr;
+        if (((dpb_addr + 7) >> 3) == disp_addr) {
+            addr = start_addr + dpb_number * dpb_size;
+        } else {
+            addr = dpb_addr;
+        }
+
         buffer_spec[i].y_addr = addr;
         buffer_spec[i].y_canvas_index = index;
         canvas_config(index,
@@ -638,7 +651,7 @@ static irqreturn_t vh264_4k2k_isr(int irq, void *dev_id)
         dpb_size = mb_width * mb_height * 384;
         ref_size = mb_width * mb_height * 96;
         ref_start_addr = dpb_start_addr +
-                            (dpb_size * total_dec_frame_buffering);
+                            (dpb_size * (total_dec_frame_buffering+1));
 
         if (((ref_start_addr + ref_size * (max_reference_frame_num+1))) >= decoder_buffer_end) {
             printk(" No enough memory for alloc buffer\n");
