@@ -580,7 +580,7 @@ typedef struct resolution_param {
 	struct v4l2_frmsize_discrete frmsize;
 	struct v4l2_frmsize_discrete active_frmsize;
 	int active_fps;
-	resulution_size_t size_type;
+	resolution_size_t size_type;
 	struct aml_camera_i2c_fig_s *reg_script[2]; //0:dvp, 1:mipi
 } resolution_param_t;
 
@@ -1975,6 +1975,13 @@ struct aml_camera_i2c_fig_s OV5647_capture_5M_script[] = {
 
 static resolution_param_t  debug_prev_resolution_array[] = {
 	{
+		.frmsize			= {176, 144},
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
+		.size_type			= SIZE_176X144,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	},{
 		.frmsize			= {352, 288},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
@@ -2029,6 +2036,13 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 
 static resolution_param_t  prev_resolution_array[] = {
 	{
+		.frmsize			= {176, 144},
+		.active_frmsize		= {1280, 960},
+		.active_fps			= 30,
+		.size_type			= SIZE_176X144,
+		.reg_script[0]			= OV5647_preview_960P_script,
+		.reg_script[1]			= OV5647_VGA_script_mipi,
+	},{
 		.frmsize			= {352, 288},
 		.active_frmsize		= {1280, 960},
 		.active_fps			= 30,
@@ -2885,9 +2899,9 @@ static int set_flip(struct ov5647_device *dev)
         return 0;
 }
 
-static resulution_size_t get_size_type(int width, int height)
+static resolution_size_t get_size_type(int width, int height)
 {
-	resulution_size_t rv = SIZE_NULL;
+	resolution_size_t rv = SIZE_NULL;
 	if (width * height >= 2500 * 1900)
 		rv = SIZE_2592X1944;
 	else if (width * height >= 2048 * 1536)
@@ -2910,6 +2924,8 @@ static resulution_size_t get_size_type(int width, int height)
 		rv = SIZE_352X288;
 	else if (width * height >= 320 * 240)
 		rv = SIZE_320X240;
+	else if (width * height >= 176 * 144)
+		rv = SIZE_176X144;
 	return rv;
 }
 
@@ -2944,7 +2960,7 @@ static resolution_param_t* get_resolution_param(struct ov5647_device *dev, int o
     int i = 0;
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
-    resulution_size_t res_type = SIZE_NULL;
+    resolution_size_t res_type = SIZE_NULL;
     printk("target resolution is %dX%d\n", width, height);
     res_type = get_size_type(width, height);
     if (res_type == SIZE_NULL)

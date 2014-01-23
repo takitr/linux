@@ -473,7 +473,7 @@ typedef struct {
 	unsigned char addr;
 	char* name;
 	unsigned char pwdn;
-	resulution_size_t max_cap_size;
+	resolution_size_t max_cap_size;
 	aml_cam_probe_fun_t probe_func;
 }aml_cam_dev_info_t;
 
@@ -709,7 +709,7 @@ static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)
 }
 
 struct res_item {
-	resulution_size_t size;
+	resolution_size_t size;
 	char* name;
 };
 
@@ -758,9 +758,9 @@ struct res_item res_item_array[] = {
 };
 
 
-static resulution_size_t get_res_size(const char* res_str)
+static resolution_size_t get_res_size(const char* res_str)
 {
-	resulution_size_t ret = SIZE_NULL;
+	resolution_size_t ret = SIZE_NULL;
 	struct res_item* item;
 	int i;
 	if (!res_str)
