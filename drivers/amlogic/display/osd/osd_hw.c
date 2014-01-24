@@ -40,6 +40,7 @@
 #include "osd_hw_def.h"
 #include "osd_prot.h"
 //#include <mach/utils.h>
+#include "osd_antiflicker.h"
 
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define  FIQ_VSYNC
@@ -711,6 +712,9 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	}
 #endif
 
+	if(osd_hw.antiflicker_mode){
+		osd_antiflicker_update_pan(yoffset, yres);
+	}
 #ifdef CONFIG_AM_FB_EXT
 	osd_ext_clone_pan(index);
 #endif
@@ -1205,6 +1209,41 @@ void osd_get_osd_rotate_on_hw(u32 index,u32 *on_off)
 	*on_off = osd_hw.rotate[index].on_off;
 }
 
+void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres)
+{
+	bool osd_need_antiflicker = false;
+
+	switch (vmode) {
+		case VMODE_480I:
+		case VMODE_480CVBS:
+		case VMODE_576I:
+		case VMODE_576CVBS:
+		case VMODE_1080I:
+		case VMODE_1080I_50HZ:
+			osd_need_antiflicker = true;
+		break;
+		default:
+		break;
+	}
+
+	if (osd_need_antiflicker){
+		osd_hw.antiflicker_mode = 1;
+		osd_antiflicker_task_start();
+		osd_antiflicker_enable(1);
+		osd_antiflicker_update_pan(osd_hw.pandata[index].y_start, yres);
+	}else{
+		if(osd_hw.antiflicker_mode){
+			osd_antiflicker_task_stop();
+		}
+		osd_hw.antiflicker_mode = 0;
+	}
+}
+
+void osd_get_osd_antiflicker_hw(u32 index, u32 *on_off)
+{
+	*on_off = osd_hw.antiflicker_mode;
+}
+
 void osd_set_osd_reverse_hw(u32 index, u32 reverse)
 {
 	osd_hw.osd_reverse[index] = reverse;
@@ -1263,13 +1302,14 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 		osd_hw.pandata[index].x_end   += diff_x;
 		osd_hw.pandata[index].y_start += diff_y;
 		osd_hw.pandata[index].y_end   += diff_y;
+#if 0
 		add_to_update_list(index,DISP_GEOMETRY);
 
 #ifdef CONFIG_AM_FB_EXT
 		osd_ext_clone_pan(index);
 #endif
 		osd_wait_vsync_hw();
-
+#endif
 		amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \
 				xoffset,yoffset,osd_hw.pandata[index].x_start ,osd_hw.pandata[index].x_end , \
 				osd_hw.pandata[index].y_start ,osd_hw.pandata[index].y_end );
@@ -2331,6 +2371,7 @@ void osd_init_hw(u32  logo_loaded)
 	osd_hw.osd_reverse[OSD1] = osd_hw.osd_reverse[OSD2] = 0;
 	osd_hw.rotation_pandata[OSD1].x_start = osd_hw.rotation_pandata[OSD1].y_start = 0;
 	osd_hw.rotation_pandata[OSD2].x_start = osd_hw.rotation_pandata[OSD2].y_start = 0;
+	osd_hw.antiflicker_mode = 0;
 	memset(osd_hw.rotate,0,sizeof(osd_rotate_t));
 
 #ifdef FIQ_VSYNC

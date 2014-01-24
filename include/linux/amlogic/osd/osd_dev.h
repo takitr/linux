@@ -101,6 +101,8 @@ extern void osddev_get_osd_reverse(u32 index, u32 *reverse);
 extern void osddev_set_osd_reverse(u32 index, u32 reverse);
 extern void osddev_get_osd_rotate_on(u32 index, u32 *on_off);
 extern void osddev_set_osd_rotate_on(u32 index, u32 on_off);
+extern void osddev_get_osd_antiflicker(u32 index, u32 *on_off);
+extern void osddev_set_osd_antiflicker(u32 index, u32 vmode, u32 yres);
 extern void osddev_get_osd_rotate_angle(u32 index, u32 *angle);
 extern void osddev_set_osd_rotate_angle(u32 index, u32 angle);
 extern void osddev_get_prot_canvas(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);

@@ -565,7 +565,6 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 	myfb_dev_t *fb_dev;
 	int  i,blank;
 	disp_rect_t  *disp_rect;
-
 	
 	vinfo = get_current_vinfo();
 	amlog_mask_level(LOG_MASK_PARA,LOG_LEVEL_LOW,"tv_server:vmode=%s\r\n", vinfo->name);
@@ -580,6 +579,7 @@ int osd_notify_callback(struct notifier_block *block, unsigned long cmd , void *
 			set_default_display_axis(&fb_dev->fb_info->var,&fb_dev->osd_ctl,vinfo);
 			console_lock();
 			osddev_update_disp_axis(fb_dev,1);
+			osddev_set_osd_antiflicker(OSD1, vinfo->mode, gp_fbdev_list[OSD1]->fb_info->var.yres);
 			console_unlock();
 		}
 		break;
@@ -1285,6 +1285,35 @@ static ssize_t store_prot_canvas(struct device *device, struct device_attribute 
 	return count;
 }
 
+static ssize_t show_antiflicker(struct device *device, struct device_attribute *attr,
+                        char *buf)
+{
+	unsigned int osd_antiflicker = 0;
+	struct fb_info *fb_info = dev_get_drvdata(device);
+
+	osddev_get_osd_antiflicker(fb_info->node, &osd_antiflicker);
+	return snprintf(buf, PAGE_SIZE, "osd_antifliter:[%s]\n", osd_antiflicker?"ON":"OFF");
+}
+
+static ssize_t store_antiflicker(struct device *device, struct device_attribute *attr,
+                         const char *buf, size_t count)
+{
+	const vinfo_t *vinfo;
+	unsigned int osd_antiflicker = 0;
+	struct fb_info *fb_info = dev_get_drvdata(device);
+
+	osd_antiflicker = simple_strtoul(buf, NULL, 0);
+	vinfo = get_current_vinfo();
+
+	if(osd_antiflicker == 2){
+		osddev_set_osd_antiflicker(fb_info->node, osd_antiflicker, fb_info->var.yres);
+	}else{
+		osddev_set_osd_antiflicker(fb_info->node, vinfo->mode, fb_info->var.yres);
+	}
+
+	return count;
+}
+
 static inline  int str2lower(char *str)
 {
 	while(*str != '\0')
@@ -1417,6 +1446,7 @@ static struct device_attribute osd_attrs[] = {
 	__ATTR(prot_canvas, S_IRUGO|S_IWUSR, show_prot_canvas, store_prot_canvas),
 	__ATTR(osd_reverse, S_IRUGO|S_IWUSR, show_osd_reverse, store_osd_reverse),
 	__ATTR(prot_state, S_IRUGO|S_IWUSR, show_prot_state, NULL),
+	__ATTR(osd_antiflicker, S_IRUGO|S_IWUSR, show_antiflicker, store_antiflicker),
 };		
 
 #ifdef  CONFIG_PM
@@ -1589,6 +1619,7 @@ osd_probe(struct platform_device *pdev)
 			r = -EFAULT;
 			goto failed2;
 		}
+
 		mem->start = (phys_addr_t)get_reserve_block_addr(ret);
 		mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
 #endif
