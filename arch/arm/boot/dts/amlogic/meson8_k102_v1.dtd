@@ -959,8 +959,8 @@ sdio{
 		pinctrl-6 = <&lcd_ttl_rgb_6bit_pins_off &lcd_ttl_clk_pins_off &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_off>;
 		pinctrl-7 = <&lcd_ttl_rgb_8bit_pins_off &lcd_ttl_clk_pins_off &lcd_ttl_hvsync_pins_off &lcd_ttl_de_pins_off>;
 
- 		lcd_model_name ="lcd_B080XAN01";	/** lcd model name for uboot driver */
- 		lcd_model_config = <&lcd_B080XAN01>;	/** choose panel model config */
+ 		lcd_model_name ="lcd_KD079D1";	/** lcd model name for uboot driver */
+ 		lcd_model_config = <&lcd_KD079D1>;	/** choose panel model config */
  		lcd_bits_user=<6>;	/** user defined lcd bits(6 or 8, decided by hardware design; only valid when lcd_bits_option=1) */
 
 		/* below configs are decided by hardware design, you can modify them if needed. */
@@ -1063,7 +1063,7 @@ sdio{
 		pol_hsync_vsync=<0 0>;	/** hsync_polarity, vsync_polarity : (0=negative, 1=positive) */
 	};
 
-//$$ MATCH "lcd_model_config_match" = <&lcd_B080XAN01>
+//$$ MATCH "lcd_model_config_match" = <&lcd_KD079D1>
 //$$ L2 PROP_STR = "model_name"
 //$$ L2 PROP_STR = "interface"
 //$$ L2 PROP_U32 2 = "active_area"
@@ -1077,8 +1077,8 @@ sdio{
 //$$ L2 PROP_U32 = "dsi_lane_num"
 //$$ L2 PROP_U32 = "dsi_bit_rate_min_max"
 //$$ L2 PROP_U32 = "dsi_sleep_out_display_on_delay"
-	lcd_B080XAN01:lcd_B080XAN01{	//k101
-		model_name="B080XAN01";	/** lcd model name */
+	lcd_KD079D1:lcd_KD079D1{	//k102
+		model_name="KD079D1";	/** lcd model name */
 		interface="mipi";		/** lcd_interface(mipi, lvds, edp, ttl) */
 		active_area=<119 159>;		/** lcd active_area or display_area horizontal size, vertical size : (unit in mm, you can find them on the home page of lcd spec) */
 		lcd_bits_option=<6 1>;		/** lcd_bits(6,8), bits_option(0=only support one mode as lcd_bits define, 1=both support 6/8bit) */
@@ -1093,7 +1093,7 @@ sdio{
 		
     dsi_lane_num=<4>;/** mipi dsi data lane number */
     dsi_bit_rate_min_max=<500 600>;/** range of mipi dsi data lane bit rate(unit: MHz) */
-    dsi_sleep_out_display_on_delay=<20 20>; /** mipi dsi basic delay: (unit: ms) */
+    dsi_sleep_out_display_on_delay=<100 100>; /** mipi dsi basic delay: (unit: ms) */
 	};
 
 //$$ MATCH "lcd_model_config_match" = <&lcd_LD070WX4>
