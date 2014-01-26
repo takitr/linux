@@ -150,7 +150,7 @@ static int ionvideo_av_synchronization(struct ionvideo_dev *dev, struct ionvideo
     int ret = 0;
     int d = timestamp_vpts_get() - timestamp_pcrscr_get();
 
-    if (d > 1350 && d < 450000) {
+    if (d > 1350) {
         vf = vf_get(RECEIVER_NAME);
         if (vf) {
             ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
@@ -188,7 +188,8 @@ static int ionvideo_av_synchronization(struct ionvideo_dev *dev, struct ionvideo
         } else {
             ret = -EAGAIN;
         }
-    } else if (d > 450000) {
+    }
+    if (d > 450000) {
         printk("ionvideo_av_synchronization error\n");
     }
 
@@ -618,7 +619,7 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *p){
         } else {
             p = timestamp_pcrscr_get();
         }
-        if (d > 1350 && d < 450000) {
+        if (d > 1350) {
             return -EAGAIN;
         }
     }
