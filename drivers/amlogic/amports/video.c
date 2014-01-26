@@ -301,6 +301,12 @@ static int video_onoff_state = VIDEO_ENABLE_STATE_IDLE;
          } \
     } while (0)
 
+#ifndef CONFIG_AM_VIDEO2
+#define DisableVPP2VideoLayer() \
+    do { aml_clr_reg32_mask(P_VPP2_MISC, \
+         VPP_VD1_PREBLEND|VPP_VD2_PREBLEND|VPP_VD2_POSTBLEND|VPP_VD1_POSTBLEND ); \
+    } while (0)
+#endif
 /*********************************************************/
 
 #define VOUT_TYPE_TOP_FIELD 0
@@ -4642,6 +4648,10 @@ static int __init video_init(void)
 
     DisableVideoLayer();
     DisableVideoLayer2();
+
+#ifndef CONFIG_AM_VIDEO2
+    DisableVPP2VideoLayer();
+#endif
 
     cur_dispbuf = NULL;
 
