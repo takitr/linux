@@ -126,6 +126,18 @@ void root_func(){
                vmode = <1>; /**0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P 3:VMODE_1080P*/
  		display_size_default = <2048 1536 2048 4608 32>;//2048x1536x4x3=0x02400000
 	};
+//$$ DEVICE = "mesonfb-ext"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+//$$ L2 PROP_U32 5 = "display_size_default"
+	mesonfb-ext{
+		compatible = "amlogic,mesonfb-ext";
+		dev_name = "mesonfb-ext";
+		status = "ok";
+		reserve-memory = <0x02400000  0x00100000>; 	 
+		display_size_default = <2048 1536 2048 4608 32>;//2048x1536x4x3=0x02400000
+	 
+	};
 
 /// ***************************************************************************************
 ///	-	DISP&MM-A/V stream
