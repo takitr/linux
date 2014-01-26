@@ -182,6 +182,7 @@ void root_func(){
 		dev_name = "ppmgr";
 		status = "okay";
 		reserve-memory = <0x01000000>;
+		reserve-iomap = "true";
 	};
 
 /// ***************************************************************************************
