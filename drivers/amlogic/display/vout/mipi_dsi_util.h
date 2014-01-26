@@ -4,11 +4,12 @@
 //#include <asm/arch/register.h>
 #include <mach/register.h>
 #include <mach/cpu.h>
-#include <mach/mipi_dsi_reg.h>
 #include <linux/amlogic/vout/lcdoutc.h>
 //#include <asm/arch/lcdoutc.h>
 
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+#include <mach/mipi_dsi_reg.h>
+
 //#define PRINT_DEBUG_INFO
 #ifdef PRINT_DEBUG_INFO
 #define DPRINT(...)		printk(__VA_ARGS__)
