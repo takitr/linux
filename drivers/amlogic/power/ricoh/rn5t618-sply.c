@@ -1197,6 +1197,12 @@ static int rn5t618_update_state(struct aml_charger *charger)
     }
 #endif
 
+    rn5t618_read(0x00ef, buff);
+    if (buff[0] & 0x01) {
+        RICOH_DBG("cc is paused, reopen it\n");
+        buff[0] &= ~0x01;
+        rn5t618_write(0x00ef, buff[0]); 
+    }
     rn5t618_read(0x00C5, buff);
     if (buff[0] & 0x20) {
         RICOH_DBG("charge time out, reset charger\n");
