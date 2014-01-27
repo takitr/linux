@@ -530,8 +530,10 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
 
         if(fmt == FMT_YUV422_SINGLE){
             iformat = 10;
-        }else if(fmt == FMT_YUV444_SINGLE){
+        }else if((fmt == FMT_YUV444_SINGLE)||(fmt== FMT_RGB888)){
             iformat = 1;
+            if(fmt == FMT_RGB888)
+                r2y_en = 1;
             canvas_w =  picsize_x*3;
             canvas_w =  ((canvas_w+31)>>5)<<5;
             canvas_config(ENC_CANVAS_OFFSET+6,
@@ -567,7 +569,9 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
                 canvas_w/2 , picsize_y/2,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             input = ((ENC_CANVAS_OFFSET+8)<<16)|((ENC_CANVAS_OFFSET+7)<<8)|(ENC_CANVAS_OFFSET+6);
-        }else if(fmt == FMT_YUV444_PLANE){
+        }else if((fmt == FMT_YUV444_PLANE)||(fmt == FMT_RGB888_PLANE)){
+            if(fmt == FMT_RGB888_PLANE)
+                r2y_en = 1;
             iformat = 5;
             canvas_w =  ((encoder_width+31)>>5)<<5;
             canvas_config(ENC_CANVAS_OFFSET+6,
@@ -583,10 +587,6 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
                 canvas_w, picsize_y,
                 CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
             input = ((ENC_CANVAS_OFFSET+8)<<16)|((ENC_CANVAS_OFFSET+7)<<8)|(ENC_CANVAS_OFFSET+6);
-        }else if(fmt == FMT_RGB888){
-            iformat = 8;
-        }else if(fmt == FMT_RGB565){
-            iformat = 9;
         }else if(fmt == FMT_RGBA8888){
             iformat = 12;
         }
@@ -605,7 +605,9 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
         }else if(fmt == FMT_YUV420){
             iformat = 4;
             input = input&0xfffff;
-        }else if(fmt == FMT_YUV444_PLANE){
+        }else if((fmt == FMT_YUV444_PLANE)||(fmt == FMT_RGB888_PLANE)){
+            if(fmt == FMT_RGB888_PLANE)
+                r2y_en = 1;
             iformat = 5;
             input = input&0xfffff;
         }else{
