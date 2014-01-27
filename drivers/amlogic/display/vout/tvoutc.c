@@ -287,8 +287,11 @@ static int uboot_display_already(tvmode_t mode)
 int tvoutc_setmode(tvmode_t mode)
 {
     const  reg_t *s;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     static int uboot_display_flag = 1;
-
+#else
+    static int uboot_display_flag = 0;
+#endif
     if (mode >= TVMODE_MAX) {
         printk(KERN_ERR "Invalid video output modes.\n");
         return -ENODEV;
