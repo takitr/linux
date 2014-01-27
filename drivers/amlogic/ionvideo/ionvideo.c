@@ -132,18 +132,20 @@ static void videoc_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
     }
 }
 
-static int ionvideo_av_pause(void) {
-    static int p = 0;
-
-    if (p == timestamp_pcrscr_get()) {
-        return -EAGAIN;
+static void videoc_omx_compute_pts(struct ionvideo_dev *dev, struct vframe_s* vf) {
+    if (vf->pts) {
+        timestamp_vpts_set(vf->pts);
+        dev->receiver_register = 0;
+        dev->pts = vf->pts_us64;
+    } else if (dev->receiver_register){
+        timestamp_vpts_set(timestamp_pcrscr_get());
+        dev->receiver_register = 0;
+        dev->pts = timestamp_vpts_get();
     } else {
-        p = timestamp_pcrscr_get();
-    }
-
-    return 0;
+        timestamp_vpts_inc(DUR2PTS(vf->duration));
+        dev->pts = timestamp_vpts_get();
+    }    
 }
-
 static int ionvideo_av_synchronization(struct ionvideo_dev *dev, struct ionvideo_buffer *buf) {
     struct vframe_s* vf;
     struct vb2_buffer *vb = &(buf->vb);
@@ -209,7 +211,7 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
         }
     } else {
         vf = vf_get(RECEIVER_NAME);
-        videoc_compute_pts(dev, vf);
+        videoc_omx_compute_pts(dev, vf);
         ret = ppmgr2_process(vf, &dev->ppmgr2_dev, vb->v4l2_buf.index);
         if (ret) {
             vf_put(vf, RECEIVER_NAME);
