@@ -134,7 +134,7 @@ void root_func(){
 		compatible = "amlogic,mesonfb-ext";
 		dev_name = "mesonfb-ext";
 		status = "ok";
-		reserve-memory = <0x02400000  0x00100000>; 	 
+		need-memory = <0>; /*0:no need,1:need*/
 		display_size_default = <2048 1536 2048 4608 32>;//2048x1536x4x3=0x02400000
 	 
 	};

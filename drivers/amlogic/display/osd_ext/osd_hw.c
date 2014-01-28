@@ -511,9 +511,16 @@ void osd_ext_setup(struct osd_ctl_s *osd_ext_ctl,
 		osd_ext_hw.fb_gem[index].addr = fbmem;
 		osd_ext_hw.fb_gem[index].width = w;
 		osd_ext_hw.fb_gem[index].height = yres_virtual;
-		canvas_config(osd_ext_hw.fb_gem[index].canvas_idx, osd_ext_hw.fb_gem[index].addr,
-			      osd_ext_hw.fb_gem[index].width, osd_ext_hw.fb_gem[index].height,
-			      CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+
+		if(fbmem == 0){
+			canvas_config(osd_ext_hw.fb_gem[index].canvas_idx, osd_hw.fb_gem[index].addr,
+				osd_ext_hw.fb_gem[index].width, osd_ext_hw.fb_gem[index].height,
+				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+		}else{
+			canvas_config(osd_ext_hw.fb_gem[index].canvas_idx, osd_ext_hw.fb_gem[index].addr,
+				osd_ext_hw.fb_gem[index].width, osd_ext_hw.fb_gem[index].height,
+				CANVAS_ADDR_NOWRAP, CANVAS_BLKMODE_LINEAR);
+		}
 	}
 
 	if (color != osd_ext_hw.color_info[index]) {

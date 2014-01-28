@@ -1367,6 +1367,7 @@ osd_ext_probe(struct platform_device *pdev)
 	logo_object_t  *init_logo_obj = NULL;
 	int  logo_osd_ext_index = 0, i;
 	myfb_dev_t 	*fbdev = NULL;
+	int osd_ext_memory = 0;	//0:don't need osd_ext memory,1:need osd_ext memory
 
 	vout2_register_client(&osd_ext_notifier_nb);
 
@@ -1376,6 +1377,12 @@ osd_ext_probe(struct platform_device *pdev)
 		osddev_ext_init();
 	}
 	vinfo = get_current_vinfo2();
+
+	ret = of_property_read_u32_array(pdev->dev.of_node, "need-memory", &osd_ext_memory, 1);
+	if(ret){
+		printk("don't find need osd_ext memory from mesonfb_ext-dts\n");
+	}
+
 	for (index = 0; index < OSD_COUNT; index++) {
 		//platform resource
 #if 0
@@ -1391,15 +1398,17 @@ osd_ext_probe(struct platform_device *pdev)
 			continue ;
 		}
 #else
-		mem = &memobj;
-		ret = find_reserve_block(pdev->dev.of_node->name,index);
-		if(ret < 0){
-			amlog_level(LOG_LEVEL_HIGH,"can not find %s%d reserve block\n",pdev->dev.of_node->name,index);
-			r = -EFAULT;
-			goto failed2;
+		if(osd_ext_memory){
+			mem = &memobj;
+			ret = find_reserve_block(pdev->dev.of_node->name,index);
+			if(ret < 0){
+				amlog_level(LOG_LEVEL_HIGH,"can not find %s%d reserve block\n",pdev->dev.of_node->name,index);
+				r = -EFAULT;
+				goto failed2;
+			}
+			mem->start = (phys_addr_t)get_reserve_block_addr(ret);
+			mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
 		}
-		mem->start = (phys_addr_t)get_reserve_block_addr(ret);
-		mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(ret)-1;
 #endif
 		fbi = framebuffer_alloc(sizeof(struct myfb_dev), &pdev->dev);
 		if (!fbi) {
@@ -1417,14 +1426,19 @@ osd_ext_probe(struct platform_device *pdev)
 		fix = &fbi->fix;
 
 		gp_fbdev_list[index] = fbdev;
-		fbdev->fb_mem_paddr = mem->start;
-		fbdev->fb_len = mem->end - mem->start + 1;
-		fbdev->fb_mem_vaddr = ioremap_wc(fbdev->fb_mem_paddr, fbdev->fb_len);
 
-		if (!fbdev->fb_mem_vaddr) {
-			amlog_level(LOG_LEVEL_HIGH, "failed to ioremap framebuffer\n");
-			r = -ENOMEM;
-			goto failed1;
+		if(osd_ext_memory){
+			fbdev->fb_mem_paddr = mem->start;
+			fbdev->fb_len = mem->end - mem->start + 1;
+			fbdev->fb_mem_vaddr = ioremap_wc(fbdev->fb_mem_paddr, fbdev->fb_len);
+
+			if (!fbdev->fb_mem_vaddr) {
+				amlog_level(LOG_LEVEL_HIGH, "failed to ioremap framebuffer\n");
+				r = -ENOMEM;
+				goto failed1;
+			}
+		}else{
+			fbdev->fb_mem_paddr = 0;		//osd_ext don't need memory
 		}
 
 		//clear framebuffer memory
@@ -1477,10 +1491,14 @@ osd_ext_probe(struct platform_device *pdev)
 			r = -ENOENT;
 			goto failed1;
 		}
-		Bpp = (fbdev->color->color_index > 8 ? (fbdev->color->color_index > 16 ? (fbdev->color->color_index > 24 ? 4 : 3) : 2) : 1);
-		fix->line_length = var->xres_virtual * Bpp;
-		fix->smem_start = fbdev->fb_mem_paddr;
-		fix->smem_len = fbdev->fb_len;
+
+		if(osd_ext_memory){
+			Bpp = (fbdev->color->color_index > 8 ? (fbdev->color->color_index > 16 ? (fbdev->color->color_index > 24 ? 4 : 3) : 2) : 1);
+			fix->line_length = var->xres_virtual * Bpp;
+			fix->smem_start = fbdev->fb_mem_paddr;
+			fix->smem_len = fbdev->fb_len;
+		}
+
 		if (fb_alloc_cmap(&fbi->cmap, 16, 0) != 0) {
 			amlog_level(LOG_LEVEL_HIGH, "unable to allocate color map memory\n");
 			r = -ENOMEM;
@@ -1495,8 +1513,12 @@ osd_ext_probe(struct platform_device *pdev)
 		memset(fbi->pseudo_palette, 0, sizeof(u32) * 16);
 
 		fbi->fbops = &osd_ext_ops;
-		fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
-		fbi->screen_size = fix->smem_len;
+
+		if(osd_ext_memory){
+			fbi->screen_base = (char __iomem *)fbdev->fb_mem_vaddr ;
+			fbi->screen_size = fix->smem_len;
+		}
+
 		set_default_display_axis(&fbdev->fb_info->var, &fbdev->osd_ext_ctl, vinfo);
 		osd_ext_check_var(var, fbi);
 		register_framebuffer(fbi);
