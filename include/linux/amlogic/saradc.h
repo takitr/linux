@@ -22,16 +22,6 @@ enum {
 	MEDIAN_AVG_8,
 };
 
-struct calibration {
-	int ref;
-	int val;
-};
-
-struct saradc_platform_data{
-	struct calibration *cal;
-	int cal_num;
-};
-
 // touchscreen command
 enum {
 	CMD_GET_X = 0,
