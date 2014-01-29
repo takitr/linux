@@ -900,6 +900,7 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
     struct snd_pcm_substream *substream =(struct snd_pcm_substream*)para;
     Hdmi_tx_audio_para_t* audio_param = &(hdmitx_device.cur_audio_param);
 
+    hdmitx_device.audio_param_update_flag = 0;
     switch (substream->runtime->rate) {
         case 192000:
             audio_param->sample_rate = FS_192K;
@@ -914,10 +915,16 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
             audio_param->sample_rate = FS_88K2;
             break;
         case 48000:
-            audio_param->sample_rate = FS_48K;
+            if(audio_param->sample_rate != FS_48K) {
+                audio_param->sample_rate = FS_48K; 
+                hdmitx_device.audio_param_update_flag = 1;
+            }
             break;
         case 44100:
-            audio_param->sample_rate = FS_44K1;
+            if(audio_param->sample_rate != FS_44K1) {
+                audio_param->sample_rate = FS_44K1;
+                hdmitx_device.audio_param_update_flag = 1;
+            }
             break;
         case 32000:
             audio_param->sample_rate = FS_32K;
@@ -930,13 +937,25 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
 
     switch (cmd){
     case AOUT_EVENT_IEC_60958_PCM:
-        audio_param->type = CT_PCM;
-        audio_param->sample_size = SS_16BITS;
+        if(audio_param->type != CT_PCM) {
+            audio_param->type = CT_PCM;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
+        if(audio_param->sample_size != SS_16BITS) {
+            audio_param->sample_size = SS_16BITS;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
         hdmi_print(INF, AUD "aout notify format PCM\n");
         break;
     case AOUT_EVENT_RAWDATA_AC_3:
-        audio_param->type = CT_AC_3;
-        audio_param->sample_size = SS_16BITS;
+        if(audio_param->type != CT_AC_3) {
+            audio_param->type = CT_AC_3;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
+        if(audio_param->sample_size = SS_16BITS ) {
+            audio_param->sample_size = SS_16BITS;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
         hdmi_print(INF, AUD "aout notify format AC-3\n");
         break;
     case AOUT_EVENT_RAWDATA_MPEG1:
@@ -975,8 +994,14 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         hdmi_print(INF, AUD "aout notify format One Bit Audio\n");
         break;
     case AOUT_EVENT_RAWDATA_DOBLY_DIGITAL_PLUS:
-        audio_param->type = CT_DOLBY_D;
-        audio_param->sample_size = SS_16BITS;
+        if(audio_param->type != CT_DOLBY_D) {
+            audio_param->type = CT_DOLBY_D;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
+        if(audio_param->sample_size != SS_16BITS) {
+            audio_param->sample_size = SS_16BITS;
+            hdmitx_device.audio_param_update_flag = 1;
+        }
         //audio_param->sample_rate = FS_48K;//192K;      // FS_48K;       //
         hdmi_print(INF, AUD "aout notify format Dobly Digital +\n");
         break;
@@ -1004,9 +1029,14 @@ static int hdmitx_notify_callback_a(struct notifier_block *block, unsigned long 
         break;
     }
 
-    audio_param->channel_num = substream->runtime->channels - 1;
+    if(audio_param->channel_num != (substream->runtime->channels - 1)) {
+        audio_param->channel_num = substream->runtime->channels - 1;
+        hdmitx_device.audio_param_update_flag = 1;
+    }
 
-    hdmitx_device.audio_param_update_flag = 1;
+    if(hdmitx_device.audio_param_update_flag == 0)
+        printk("HDMI: no audio update\n");
+
     return 0;
 }
 
