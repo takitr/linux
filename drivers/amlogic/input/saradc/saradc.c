@@ -48,7 +48,9 @@ static void saradc_reset(void)
 	set_clock_divider(20);
 	enable_clock();
 	enable_adc();
+#ifdef CONFIG_ARCH_MESON8
 	enable_bandgap();
+#endif
 	set_sample_mode(DIFF_MODE);
 	set_tempsen(0);
 	disable_fifo_irq();
@@ -417,6 +419,7 @@ static struct class saradc_class = {
 
 int get_cpu_temp()
 {
+#ifdef CONFIG_ARCH_MESON8
 	int ret=-1,tempa;
 	if(gp_saradc->flag){
 		ret=get_adc_sample(6);
@@ -429,6 +432,9 @@ int get_cpu_temp()
 		ret=NOT_WRITE_EFUSE;
 	}
 	return ret;
+#else
+	return NOT_WRITE_EFUSE;
+#endif
 }
 static int saradc_probe(struct platform_device *pdev)
 {
