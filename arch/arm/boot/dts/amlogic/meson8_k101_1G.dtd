@@ -1666,6 +1666,7 @@ lcd_LD070WX4:lcd_LD070WX4{
             dev_name = "wifi_power";
             status = "okay";
             power_gpio = "GPIOAO_6";
+            power_gpio2 = "GPIOX_11";
 	};  
     
 /// ***************************************************************************************

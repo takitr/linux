@@ -1613,6 +1613,7 @@ lcd_CLAA101FP05XG:lcd_CLAA101FP05XG{	//k101
             dev_name = "wifi_power";
             status = "okay";
             power_gpio = "GPIOAO_6";
+            power_gpio2 = "GPIOX_11";
 	};  
     
 /// ***************************************************************************************

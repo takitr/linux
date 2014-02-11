@@ -360,6 +360,7 @@ void root_func(){
 		irq_num = <4>;
 		irq_trigger_type = "GPIO_IRQ_HIGH";
 		power_on_pin = "GPIOAO_6";
+		power_on_pin2 = "GPIOX_11";
 		clock_32k_pin = "GPIOX_10";
 	};
 	
@@ -371,6 +372,7 @@ void root_func(){
             dev_name = "wifi_power";
             status = "okay";
             power_gpio = "GPIOAO_6";
+            power_gpio2 = "GPIOX_11";
 	}; 
 
 /// ***************************************************************************************
