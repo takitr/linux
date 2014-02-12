@@ -746,6 +746,8 @@ typedef struct csi_parm_s {
 	unsigned hs_freq; //hz
 	unsigned urgent;
 
+        unsigned int lane_mask;
+
 	clk_channel_t clk_channel;
 	unsigned int skip_frames;
 	tvin_color_fmt_t csi_ofmt;
