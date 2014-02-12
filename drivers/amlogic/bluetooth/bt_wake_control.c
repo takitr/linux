@@ -22,6 +22,7 @@
 #include <mach/am_regs.h>
 //#include <linux/gpio.h>
 //#include <mach/msm_serial_hs.h>
+#include <plat/wakeup.h>
 
 #include <net/bluetooth/bluetooth.h>
 #include <net/bluetooth/hci_core.h> /* event notifications */
@@ -73,8 +74,6 @@ static const struct of_device_id bt_sleep_match[]={
 
 /* 1 second timeout */
 #define TX_TIMER_INTERVAL	1
-
-#define BT_WAKE_FLAG 0x12344331 
 
 static int ext_wake_active = 0;
 static spinlock_t ext_wake_lock;
@@ -456,7 +455,7 @@ static int btwake_control_suspend(struct platform_device *pdev, pm_message_t sta
 
 static int btwake_control_resume(struct platform_device *pdev)
 {
-    if (READ_AOBUS_REG(AO_RTI_STATUS_REG2) == BT_WAKE_FLAG) {
+    if (READ_AOBUS_REG(AO_RTI_STATUS_REG2) == FLAG_WAKEUP_BT) {
         wake_lock_timeout(&bsi->wake_lock, HZ * 5);
         WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
     }

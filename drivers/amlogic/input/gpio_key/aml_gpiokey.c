@@ -46,6 +46,7 @@
 #include <linux/of.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/switch.h>
+#include <plat/wakeup.h>
 
 #define MOD_NAME       "gpio_key"
 //#define USE_IRQ     1
@@ -515,15 +516,15 @@ static int gpio_key_suspend(struct platform_device *dev, pm_message_t state)
 static int gpio_key_resume(struct platform_device *dev)
 {
     printk("gpio_key_resume");
-    if (READ_AOBUS_REG(AO_RTI_STATUS_REG2) == 0x1234abcd) {
-	if( quick_boot_mode == 0 ) { 
-        	// power button, not alarm
-		//printk("gpio_key_resume send KEY_POWER\n");
-        	input_report_key(gp_kp->input, KEY_POWER, 0);
-        	input_sync(gp_kp->input);
-        	input_report_key(gp_kp->input, KEY_POWER, 1);
-        	input_sync(gp_kp->input);
-	}	
+    if (READ_AOBUS_REG(AO_RTI_STATUS_REG2) == FLAG_WAKEUP_PWRKEY) {
+			if( quick_boot_mode == 0 ) { 
+		        	// power button, not alarm
+				//printk("gpio_key_resume send KEY_POWER\n");
+		        	input_report_key(gp_kp->input, KEY_POWER, 0);
+		        	input_sync(gp_kp->input);
+		        	input_report_key(gp_kp->input, KEY_POWER, 1);
+		        	input_sync(gp_kp->input);
+			}	
 
         WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0);
 
