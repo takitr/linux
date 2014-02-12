@@ -619,6 +619,7 @@ struct ov5647_device {
 	para_index_t pindex;
 	
 	struct vdin_v4l2_ops_s *vops;
+        unsigned int            is_vdin_start;
 	
 	fe_arg_t fe_arg;
 	
@@ -3655,7 +3656,7 @@ static int vidioc_s_crop(struct file *file, void *fh,
 {
 	if (a->c.width == 0 && a->c.height == 0) {
 		printk("disable capture proc\n");
-		//capture_proc = 0;
+		capture_proc = 0;
 	} else {
 		printk("enable capture proc\n");
 		capture_proc = 1;
@@ -3759,14 +3760,13 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		// set_resolution_param(dev, res_param);
 	} else {
 		printk("preview resolution is %dX%d\n",fh->width,  fh->height);
-		if((fh->width == 1280 && fh->height == 720) || 
-			(fh->width == 1920 && fh->height == 1080)){
+	        if (0 == capture_proc) {
 			ov5647_work_mode = CAMERA_RECORD;
-			capture_proc = 0;
-		}else
+		}else {
 			ov5647_work_mode = CAMERA_PREVIEW;
-			
-		if (capture_proc == 0) {
+                }
+
+                if (0 == dev->is_vdin_start) {
 			printk("loading sensor setting\n");
 		        res_param = get_resolution_param(dev, 0, fh->width,fh->height);
 		        if (!res_param) {
@@ -3779,8 +3779,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 		            dest_hactive = 0;
 		            dest_vactive = 0;
 		        }
-		} else
-			capture_proc = 2;
+		}
 	}
 	ret = 0;
 out:
@@ -3868,14 +3867,13 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
 	if (i != fh->type)
 		return -EINVAL;
 
-	if (capture_proc) {
+        if (dev->is_vdin_start) {
 		printk("vidioc_streamon in capture process\n");
 		ret =  videobuf_streamon(&fh->vb_vidq);
 		if(ret == 0){
 			fh->stream_on        = 1;
 		}
-		if (capture_proc == 2)
-			capture_proc = 0;
+
 		return 0;
 	}
 
@@ -3939,6 +3937,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type i)
     ret =  videobuf_streamon(&fh->vb_vidq);
     if(ret == 0){
         dev->vops->start_tvin_service(0,&para);
+        dev->is_vdin_start      = 1;
         fh->stream_on        = 1;
     }
     /*** 		set cm2 		***/
@@ -3979,6 +3978,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type i)
 	}
 	if(ret == 0 ){
 		dev->vops->stop_tvin_service(0);
+                dev->is_vdin_start      = 0;
 		fh->stream_on        = 0;
 	}
 	dev->ae_on = false;
@@ -4371,6 +4371,7 @@ static int ov5647_open(struct file *file)
     dev->dev = fh;
     cf = dev->configure;
     printk("open successfully\n");
+    dev->is_vdin_start = 0;
     return 0;
 }
 
@@ -4412,8 +4413,9 @@ static int ov5647_close(struct file *file)
     capture_proc = 0;
     ov5647_stop_thread(vidq);
     videobuf_stop(&fh->vb_vidq);
-    if(fh->stream_on){
+    if (dev->is_vdin_start) {
         dev->vops->stop_tvin_service(0);
+        dev->is_vdin_start = 0;
     }
     videobuf_mmap_free(&fh->vb_vidq);
 
