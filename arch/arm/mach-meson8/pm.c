@@ -48,127 +48,7 @@ static int early_suspend_flag = 0;
 #define OFF 0
 
 static struct meson_pm_config *pdata;
-#if 0
-#define GATE_OFFs(_MOD) do {power_gate_flag[GCLK_IDX_##_MOD] = IS_CLK_GATE_ON(_MOD);CLK_GATE_OFF(_MOD);} while(0)
-#define GATE_ONs(_MOD) do {if (power_gate_flag[GCLK_IDX_##_MOD]) CLK_GATE_ON(_MOD);} while(0)
-#define GATE_SWITCH(flag, _MOD) do {if (flag) GATE_ONs(_MOD); else GATE_OFFs(_MOD);} while(0)
-static int power_gate_flag[GCLK_IDX_MAX];
 
-
-void power_gate_switch(int flag)
-{
-    //GATE_SWITCH(flag, DDR);
-    GATE_SWITCH(flag, DOS);
-    GATE_SWITCH(flag,MIPI_APB_CLK);
-    GATE_SWITCH(flag,MIPI_SYS_CLK);
-    //GATE_SWITCH(flag, AHB_BRIDGE);
-    //GATE_SWITCH(flag, ISA);
-    //GATE_SWITCH(flag, APB_CBUS);
-    //GATE_SWITCH(flag, _1200XXX);
-    GATE_SWITCH(flag, SPICC);
-    GATE_SWITCH(flag, I2C);
-    GATE_SWITCH(flag, SAR_ADC);
-    GATE_SWITCH(flag, SMART_CARD_MPEG_DOMAIN);
-    GATE_SWITCH(flag, RANDOM_NUM_GEN);
-    GATE_SWITCH(flag, UART0);
-    GATE_SWITCH(flag, SDHC);
-    GATE_SWITCH(flag, STREAM);
-    GATE_SWITCH(flag, ASYNC_FIFO);
-    GATE_SWITCH(flag, SDIO);
-    GATE_SWITCH(flag, AUD_BUF);
-    //GATE_SWITCH(flag, HIU_PARSER);
-    //GATE_SWITCH(flag, AMRISC);
-    GATE_SWITCH(flag, BT656_IN);
-    //GATE_SWITCH(flag, ASSIST_MISC);
-    //GATE_SWITCH(flag, VI_CORE);
-    GATE_SWITCH(flag, SPI2);
-    //GATE_SWITCH(flag, MDEC_CLK_ASSIST);
-    //GATE_SWITCH(flag, MDEC_CLK_PSC);
-    GATE_SWITCH(flag, SPI1);
-    //GATE_SWITCH(flag, AUD_IN);
-    GATE_SWITCH(flag, ETHERNET);
-    GATE_SWITCH(flag, AIU_AI_TOP_GLUE);
-    GATE_SWITCH(flag, AIU_IEC958);
-    GATE_SWITCH(flag, AIU_I2S_OUT);
-    GATE_SWITCH(flag, AIU_AMCLK_MEASURE);
-    GATE_SWITCH(flag, AIU_AIFIFO2);
-    GATE_SWITCH(flag, AIU_AUD_MIXER);
-    GATE_SWITCH(flag, AIU_MIXER_REG);
-    GATE_SWITCH(flag, AIU_ADC);
-    GATE_SWITCH(flag, BLK_MOV);
-    //GATE_SWITCH(flag, UART1);
-    GATE_SWITCH(flag, VGHL_PWM);
-    GATE_SWITCH(flag, GE2D);
-    GATE_SWITCH(flag, USB0);
-    GATE_SWITCH(flag, USB1);
-    //GATE_SWITCH(flag, RESET);
-    GATE_SWITCH(flag, NAND);
-    GATE_SWITCH(flag, HIU_PARSER_TOP);
-    //GATE_SWITCH(flag, MDEC_CLK_DBLK);
-    GATE_SWITCH(flag, MIPI_PHY);
-    GATE_SWITCH(flag, VIDEO_IN);
-    //GATE_SWITCH(flag, AHB_ARB0);
-    GATE_SWITCH(flag, EFUSE);
-    GATE_SWITCH(flag, ROM_CLK);
-    //GATE_SWITCH(flag, AHB_DATA_BUS);
-    //GATE_SWITCH(flag, AHB_CONTROL_BUS);
-    GATE_SWITCH(flag, MISC_USB1_TO_DDR);
-    GATE_SWITCH(flag, MISC_USB0_TO_DDR);
-    //GATE_SWITCH(flag, AIU_PCLK);
-    //GATE_SWITCH(flag, MMC_PCLK);
-    GATE_SWITCH(flag, UART2);
-    GATE_SWITCH(flag, DAC_CLK);
-    GATE_SWITCH(flag, AIU_AOCLK);
-    GATE_SWITCH(flag, AIU_AMCLK);
-    GATE_SWITCH(flag, AIU_ICE958_AMCLK);
-    GATE_SWITCH(flag, AIU_AUDIN_SCLK);
-    GATE_SWITCH(flag, DEMUX);
-}
-EXPORT_SYMBOL(power_gate_switch);
-
-void early_power_gate_switch(int flag)
-{
-    //GATE_SWITCH(flag, AMRISC);
-    //GATE_SWITCH(flag, AUD_IN);
-    GATE_SWITCH(flag, BLK_MOV);
-    GATE_SWITCH(flag, VENC_I_TOP);
-    GATE_SWITCH(flag, VENC_P_TOP);
-    //GATE_SWITCH(flag, VENC_T_TOP);
-    GATE_SWITCH(flag, VENC_DAC);
-    GATE_SWITCH(flag, MISC_DVIN);
-    GATE_SWITCH(flag, MISC_RDMA);
-    GATE_SWITCH(flag, VENCI_INT);
-    //GATE_SWITCH(flag, VIU2);
-    GATE_SWITCH(flag, VENCP_INT);
-    //GATE_SWITCH(flag, VENCT_INT);
-    //GATE_SWITCH(flag, VENCL_INT);
-    //GATE_SWITCH(flag, VENC_L_TOP);
-    GATE_SWITCH(flag, VCLK2_VENCI);
-    GATE_SWITCH(flag, VCLK2_VENCI1);
-    GATE_SWITCH(flag, VCLK2_VENCP);
-    GATE_SWITCH(flag, VCLK2_VENCP1);
-    GATE_SWITCH(flag, VCLK2_VENCT);
-    GATE_SWITCH(flag, VCLK2_VENCT1);
-    GATE_SWITCH(flag, VCLK2_OTHER);
-    GATE_SWITCH(flag, VCLK2_ENCI);
-    GATE_SWITCH(flag, VCLK2_ENCP);
-    
-    GATE_SWITCH(flag, ENC480P);
-    //GATE_SWITCH(flag, VCLK2_ENCT);
-    //GATE_SWITCH(flag, VCLK2_ENCL);
-    GATE_SWITCH(flag, VCLK2_VENCL);
-    GATE_SWITCH(flag, VCLK2_OTHER1);
-    //GATE_SWITCH(flag, LED_PWM);
-    //GATE_SWITCH(flag, GE2D);
-    //GATE_SWITCH(flag, VIDEO_IN);
-    GATE_SWITCH(flag, VI_CORE);
-    
-    GATE_SWITCH(flag, HDMI_INTR_SYNC);
-    GATE_SWITCH(flag, HDMI_PCLK);
-    GATE_SWITCH(flag, VCLK1_HDMI);
-}
-EXPORT_SYMBOL(early_power_gate_switch);
-#endif
 #define CLK(addr)  \
 { \
 	.clk_name=#addr, \
@@ -357,6 +237,10 @@ static void meson_system_late_resume(struct early_suspend *h)
 	}
 }
 #endif
+
+extern int det_pwr_key(void);
+extern void clr_pwr_key(void);
+
 static void meson_pm_suspend(void)
 {
 	printk(KERN_INFO "enter meson_pm_suspend!\n");
@@ -376,19 +260,26 @@ static void meson_pm_suspend(void)
 	//switch A9 clock to xtal 24MHz
 	aml_clr_reg32_mask(P_HHI_SYS_CPU_CLK_CNTL, 1 << 7);
 	aml_clr_reg32_mask(P_HHI_SYS_PLL_CNTL, 1 << 30);//disable sys pll
+
+	if(det_pwr_key())//get pwr key and wakeup im
+	{
+		clr_pwr_key();
+		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x1234abcd);
+	}else{
 #ifdef CONFIG_MESON_SUSPEND
-	meson_power_suspend();
+		meson_power_suspend();
 #else
 #if 0
-	//k101 power key
-	aml_set_reg32_mask(P_AO_GPIO_O_EN_N, (1 << 3));
-	aml_set_reg32_mask(P_AO_RTI_PULL_UP_REG, (1 << 3)|(1<<19));
-	do{
-		udelay(1000);
-	}while((aml_read_reg32(P_AO_GPIO_I)&(1<<3)));
+		//k101 power key
+		aml_set_reg32_mask(P_AO_GPIO_O_EN_N, (1 << 3));
+		aml_set_reg32_mask(P_AO_RTI_PULL_UP_REG, (1 << 3)|(1<<19));
+		do{
+			udelay(1000);
+		}while((aml_read_reg32(P_AO_GPIO_I)&(1<<3)));
 #endif
-	WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x1234abcd);
+		WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x1234abcd);
 #endif
+	}
 	aml_set_reg32_mask(P_HHI_SYS_PLL_CNTL, (1 << 30)); //enable sys pll
 	printk(KERN_INFO "... wake up\n");
 	WRITE_AOBUS_REG(AO_RTI_STATUS_REG2, 0x1234abcd);
@@ -526,3 +417,4 @@ static int __init meson_pm_init(void)
 	return platform_driver_probe(&meson_pm_driver, meson_pm_probe);
 }
 late_initcall(meson_pm_init);
+

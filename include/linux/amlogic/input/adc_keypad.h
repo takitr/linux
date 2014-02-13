@@ -3,7 +3,7 @@
 
 struct adc_key{
 	int code;	/* input key code */
-	unsigned char *name;
+	const char *name;
 	int chan;
 	int value;	/* voltage/3.3v * 1023 */
 	int tolerance;

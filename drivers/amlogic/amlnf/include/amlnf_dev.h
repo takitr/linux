@@ -34,7 +34,7 @@
 #define AML_NFTL_BOUNCE_SIZE	 		0x40000
 
 #define NFTL_MAX_SCHEDULE_TIMEOUT		         1000
-#define NFTL_FLUSH_DATA_TIME			         8
+#define NFTL_FLUSH_DATA_TIME			         1
 #define NFTL_CACHE_FORCE_WRITE_LEN               16
 
 
@@ -121,6 +121,7 @@ struct _nftl_cfg{
     uint16 nftl_support_wear_leveling;
     uint16 nftl_need_erase;
     uint16 nftl_part_reserved_block_ratio;
+    uint16 nftl_part_adjust_block_num;	
     uint16 nftl_min_free_block_num;
     uint16 nftl_gc_threshold_free_block_num;
     uint16 nftl_min_free_block;
@@ -430,5 +431,8 @@ extern int amlnf_phy_init(unsigned char flag, struct platform_device *pdev );
 #endif
 extern int amlnf_logic_init(unsigned flag);
 extern int amlnf_dev_init(unsigned flag);
+
+extern  int is_phydev_off_adjust(void); 
+extern  int get_adjust_block_num(void);
 
 #endif

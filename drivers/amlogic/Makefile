@@ -33,7 +33,8 @@ obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
-ifeq ($(CONFIG_AML_NEXT_GEN_NAND),y)
+#ifeq ($(CONFIG_AML_NEXT_GEN_NAND),y)
+ifeq  ($(CONFIG_ARCH_MESON8),y)
 obj-$(CONFIG_AML_NEXT_GEN_NAND) += amlnf/
 else
 obj-$(CONFIG_AM_NAND) += nand/
@@ -73,7 +74,7 @@ obj-y += power/
 #obj-$(CONFIG_AM_GPIO) +=gpio/
 
 obj-y += tvin_v4l2/
-obj-y += tvin/
+obj-$(CONFIG_TVIN) += ../../../hardware/tvin/
 
 obj-y += thermal/
 
@@ -83,7 +84,7 @@ obj-$(CONFIG_BOOT_MONITOR) += boot_monitor/
 #obj-$(CONFIG_AML_WATCHDOG) += aml_watchdog/
 #####Sound system is later init in kernel default..######################
 obj-$(CONFIG_AMAUDIO) += amaudio/
-
+obj-y += mhl/
 obj-y += hdmi/
 
 ifeq ($(CONFIG_AM_NEW_TV_ARCH),y)
@@ -106,6 +107,7 @@ obj-$(CONFIG_RTL8192CU) += ../../../hardware/wifi/realtek/drivers/8192cu/rtl8xxx
 obj-$(CONFIG_RTL8192DU) += ../../../hardware/wifi/realtek/drivers/8192du/rtl8xxx_DU/
 obj-$(CONFIG_RTL8192EU) += ../../../hardware/wifi/realtek/drivers/8192eu/rtl8192EU/
 obj-y += bluetooth/
+obj-$(CONFIG_MESON_NFC) += nfc/
 #obj-y += camera/
 #obj-$(CONFIG_AMLOGIC_MODEM) += modem/
 #obj-$(CONFIG_AM_DEBUG) += debug/

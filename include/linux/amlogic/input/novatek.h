@@ -1,5 +1,5 @@
 /*
- * include/linux/novatek_touchdriver.h
+ * include/linux/novatek_ts.h
  *
  * Copyright (C) 2010 - 2011 Novatek, Inc.
  * 
@@ -18,15 +18,13 @@
 #ifndef 	_LINUX_NOVATEK_TOUCH_H 
 #define		_LINUX_NOVATEK_TOUCH_H
 
-#include <linux/earlysuspend.h>
-#include <linux/hrtimer.h>
-#include <linux/i2c.h>
-#include <linux/input.h>
 
+//#define NT11002
+#define NT11003
 
 #define NOVATEK_TS_ADDR		(0x01)
 #define NOVATEK_HW_ADDR		(0x7F)
-#define NOVATEK_FW_ADDR 	(0x01)
+
 
 //*************************TouchScreen Work Part*****************************
 
@@ -35,12 +33,13 @@
 
 /*******************Step 1: define resolution *****************/
 //define default resolution of the touchscreen
-//#define TOUCH_MAX_HEIGHT	960//1024			
-//#define TOUCH_MAX_WIDTH		1920 //	1984
+#define TP_MAX_WIDTH	1280
+#define TP_MAX_HEIGHT	800
 
 //define default resolution of LCM
-//#define SCREEN_MAX_HEIGHT   600
-//#define SCREEN_MAX_WIDTH    1024
+#define LCD_MAX_WIDTH	1280
+#define LCD_MAX_HEIGHT	800
+
 //#define TOOL_PRESSURE		100
 //#if 0
 //#define INT_PORT  	    S3C64XX_GPN(15)						//Int IO port  S3C64XX_GPL(10)
@@ -64,34 +63,21 @@
 //#define Novatek_HWRST_LowLeval()    (gpio_set_value(BABBAGE_NOVATEK_TS_RST1, 0))
 //#define Nvoatek_HWRST_HighLeval()   (gpio_set_value(BABBAGE_NOVATEK_TS_RST1, 1))
 //whether need send cfg?
-struct tp_event {
-	u16	x;
-	u16	y;
-    	s16 id;
-	u16	pressure;
-	u8  touch_point;
-	u8  flag;
-};
-#define DRIVER_SEND_CFG
-#define NT11002   1
-#define NT11003   0
-#define IC_DEFINE   NT11002
-#if IC_DEFINE == NT11002
-#define IIC_BYTENUM    4
-#elif IC_DEFINE == NT11003
-#define IIC_BYTENUM    6
-#endif
-//set trigger mode
-#define INT_TRIGGER		0
 
-#define POLL_TIME		10	//actual query spacing interval:POLL_TIME+6
 
-#define NOVATEK_MULTI_TOUCH
-#ifdef NOVATEK_MULTI_TOUCH
-	#define MAX_FINGER_NUM	2//10	
-#else
-	#define MAX_FINGER_NUM	1	
+#if defined(NT11002)
+
+#define IIC_BYTENUM			4
+#define MAX_FINGER_NUM		2
+
+#elif defined(NT11003)
+
+#define IIC_BYTENUM			6
+#define MAX_FINGER_NUM		5
+
 #endif
+
+
 //#define  HAVE_TOUCH_KEY
 #ifdef HAVE_TOUCH_KEY
 #define MENU        21
@@ -103,26 +89,6 @@ struct tp_event {
 
 //#define swap(x, y) do { typeof(x) z = x; x = y; y = z; } while (0)
 
-struct novatek_ts_data {
-	uint16_t addr;
-	uint8_t bad_data;
-	struct i2c_client *client;
-	struct input_dev *input_dev;
-	int use_reset;		//use RESET flag
-	int use_irq;		//use EINT flag
-	int read_mode;		//read moudle mode,20110221 by andrew
-	struct hrtimer timer;
-	struct work_struct  work;
-	char phys[32];
-	int retry;
-	struct early_suspend early_suspend;
-	int (*power)(struct novatek_ts_data * ts, int on);
-	uint16_t abs_x_max;
-	uint16_t abs_y_max;
-	uint8_t max_touch_num;
-	uint8_t int_trigger_type;
-	uint8_t green_wake_mode;
-};
 
 //static const char *novatek_ts_name = "nt1103-ts";
 //static struct workqueue_struct *novatek_wq;
@@ -140,33 +106,28 @@ struct novatek_ts_data {
 //*************************Touchkey Surpport Part*****************************
 //#define HAVE_TOUCH_KEY
 #ifdef HAVE_TOUCH_KEY
-	#define READ_COOR_ADDR 0x00
-	const uint16_t touch_key_array[]={
-									  KEY_MENU,				//MENU
-									  KEY_HOME,				//HOME
-									  KEY_SEND				//CALL
-									  
-									 }; 
-	#define MAX_KEY_NUM	 (sizeof(touch_key_array)/sizeof(touch_key_array[0]))
-#else
-	#define READ_COOR_ADDR 0x00
+
+const uint16_t touch_key_array[] =
+{
+	KEY_MENU,				//MENU
+	KEY_HOME,				//HOME
+	KEY_SEND				//CALL							  
+};
+
+#define MAX_KEY_NUM	 (sizeof(touch_key_array)/sizeof(touch_key_array[0]))
+
 #endif
 //*****************************End of Part II*********************************
 
 
-// Chip Reset define 
-#define  HW_RST      0
-#define  SW_RST      1
+#define TP_COORDINATE_XY_CHANGE
+//#define TP_COORDINATE_X_REVERSE
+//#define TP_COORDINATE_Y_REVERSE
 
-#if 0
-#define KFprintk(x...) printk(x)
-#else
-#define KFprintk(x...) do{} while(0)
-#endif
-static struct early_suspend novatek_power; //for ealy suspend
-static struct i2c_client *this_client;
 
-#define NVT_APK_DRIVER_FUNC_SUPPORT
-//#define NVT_FW_UPDATE_FUNC_SUPPORT
+#define NTP_APK_DRIVER_FUNC_SUPPORT
+#define NVT_BOOTLOADER_FUNC_SUPPORT
+//#define NTP_CHARGER_DETECT_SUPPORT
+
 
 #endif /* _LINUX_NOVATEK_TOUCH_H */

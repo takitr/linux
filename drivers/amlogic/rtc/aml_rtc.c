@@ -308,7 +308,7 @@ static void rtc_set_mode(unsigned mode)
 }
 
 static void static_register_write(unsigned data);
-static int	 _ser_access_write_locked(unsigned long addr, unsigned long data);
+static void	 _ser_access_write_locked(unsigned long addr, unsigned long data);
 static void aml_rtc_reset(void)
 {
     if (get_rtc_status())
@@ -358,7 +358,7 @@ out:
 	return val;
 }
 
-static int _ser_access_write_locked(unsigned long addr, unsigned long data)
+static void _ser_access_write_locked(unsigned long addr, unsigned long data)
 {
 	int s_nrdy_cnt = 0;
 	int rst_times = 0;
@@ -749,27 +749,27 @@ static int get_gpo_flag(void)
 
 unsigned int aml_read_rtc_mem_reg(unsigned char reg_id)
 {
-	if (reg_id > 4)
-		return 0;
 	unsigned char reg_array[] = {
 		RTC_REGMEM_ADDR_0,
 		RTC_REGMEM_ADDR_1,
 		RTC_REGMEM_ADDR_2,
 		RTC_REGMEM_ADDR_3,
 	};
+	if (reg_id > 4)
+		return 0;
 	return  ser_access_read(reg_array[reg_id]);
 }
 
 int aml_write_rtc_mem_reg(unsigned char reg_id, unsigned int data)
 {
-	if (reg_id > 4)
-		return 0;
 	unsigned char reg_array[] = {
 		RTC_REGMEM_ADDR_0,
 		RTC_REGMEM_ADDR_1,
 		RTC_REGMEM_ADDR_2,
 		RTC_REGMEM_ADDR_3,
 	};
+	if (reg_id > 4)
+		return 0;
 	return  ser_access_write(reg_array[reg_id], data);
 }
 
@@ -811,14 +811,14 @@ static int power_down_gpo(unsigned long data)
 	return 0;
 }
 #endif
-static int aml_rtc_shutdown(struct platform_device *pdev)
+static void aml_rtc_shutdown(struct platform_device *pdev)
 {
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6	
 	ser_access_write(RTC_GPO_COUNTER_ADDR,0x500000);
 #else	
 	ser_access_write(RTC_GPO_COUNTER_ADDR,0x100000);
 #endif    
-    return 0;
+//    return 0;
 }
 
 static int aml_rtc_remove(struct platform_device *dev)

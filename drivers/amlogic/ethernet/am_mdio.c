@@ -19,12 +19,12 @@ static int mdio_read(struct mii_bus *bus, int phyaddr, int phyreg)
                         ((phyreg << 6) & (0x000007C0)));
         regValue |= MII_BUSY | MDCCLK;
 
-        do {} while (((readl(priv->base_addr + mii_address)) & MII_BUSY) == 1);
-        writel(regValue, priv->base_addr + mii_address);
-        do {} while (((readl(priv->base_addr + mii_address)) & MII_BUSY) == 1);
+        do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
+        writel(regValue, (void*)(priv->base_addr + mii_address));
+        do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
 
         /* Read the data from the MII data register */
-        data = (int)readl(priv->base_addr + mii_data);
+        data = (int)readl((void*)(priv->base_addr + mii_data));
 
         return data;
 }
@@ -40,12 +40,12 @@ static int mdio_write(struct mii_bus *bus, int phyaddr, int phyreg, u16 phydata)
         u16 value = (((phyaddr << 11) & (0x0000F800)) | ((phyreg << 6) & (0x000007C0))) | MII_WRITE;
         value |= MII_BUSY | MDCCLK;
 
-        do {} while (((readl(priv->base_addr + mii_address)) & MII_BUSY) == 1);
-        writel(phydata, priv->base_addr + mii_data);
+        do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
+        writel(phydata, (void*)(priv->base_addr + mii_data));
 
-        writel(value, priv->base_addr + mii_address);
+        writel(value, (void*)(priv->base_addr + mii_address));
 
-        do {} while (((readl(priv->base_addr + mii_address)) & MII_BUSY) == 1);
+        do {} while (((readl((void*)(priv->base_addr + mii_address))) & MII_BUSY) == 1);
 	
 	return 0;
 }

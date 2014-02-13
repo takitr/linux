@@ -742,12 +742,13 @@ i2c_new_existing_device(struct i2c_adapter *adap,
 
 	return client;
 
-out_err:
+/*out_err:
 	dev_err(&adap->dev, "Failed to register i2c client %s at 0x%02x "
 		"(%d)\n", client->name, client->addr, status);
 out_err_silent:
 	kfree(client);
 	return NULL;
+*/
 }
 
 /**

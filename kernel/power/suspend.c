@@ -133,6 +133,9 @@ static int suspend_test(int level)
  * hibernation).  Run suspend notifiers, allocate the "suspend" console and
  * freeze processes.
  */
+ 
+int deep_suspend_flag;
+
 static int suspend_prepare(suspend_state_t state)
 {
 	int error;
@@ -146,6 +149,7 @@ static int suspend_prepare(suspend_state_t state)
 	if (error)
 		goto Finish;
 
+	deep_suspend_flag=1;
 	error = suspend_freeze_processes();
 	if (!error)
 		return 0;

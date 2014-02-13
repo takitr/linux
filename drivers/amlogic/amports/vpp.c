@@ -29,9 +29,9 @@
 #include <linux/amlogic/amports/vframe.h>
 #include "video.h"
 #include "vpp.h"
-#include <linux/amlogic/amports/video_prot.h>
 
 #include <linux/amlogic/amports/vframe_provider.h>
+#include <linux/amlogic/amports/video_prot.h>
 
 #ifdef CONFIG_AM_DEINTERLACE
 #include "deinterlace.h"
@@ -371,31 +371,17 @@ RESTART:
 
     /* keep 8 bits resolution for aspect conversion */
     if (wide_mode == VIDEO_WIDEOPTION_4_3) {
-        if (get_prot_status()) {
-            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-                aspect_factor = 0xc0;
-            else
-                aspect_factor = 0x155;
-        } else {
-            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-                aspect_factor = 0x155;
-            else
-                aspect_factor = 0xc0;
-        }
+        if (vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+            aspect_factor = 0x155;
+        else
+            aspect_factor = 0xc0;
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
     else if (wide_mode == VIDEO_WIDEOPTION_16_9) {
-        if (get_prot_status()) {
-            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-                aspect_factor = 0x90;
-            else
-                aspect_factor = 0x1c7;
-        } else {
-            if(vpp_flags & VPP_FLAG_PORTRAIT_MODE)
-                aspect_factor = 0x1c7;
-            else
-                aspect_factor = 0x90;
-        }
+        if (vpp_flags & VPP_FLAG_PORTRAIT_MODE)
+            aspect_factor = 0x1c7;
+        else
+            aspect_factor = 0x90;
         wide_mode = VIDEO_WIDEOPTION_NORMAL;
     }
 
@@ -681,6 +667,7 @@ RESTART:
     }
 
     next_frame_par->VPP_hf_ini_phase_ = vpp_zoom_center_x & 0xff;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     if (get_prot_status()){
         s32 tmp_height = (((s32)next_frame_par->VPP_vd_end_lines_ + 1) << 18) / tmp_ratio_y;
         s32 tmp_top = 0;
@@ -716,6 +703,7 @@ RESTART:
         //printk("vf2 %d %d %d %d\n", next_frame_par->VPP_hd_start_lines_, next_frame_par->VPP_hd_end_lines_,
         //        next_frame_par->VPP_vd_start_lines_, next_frame_par->VPP_vd_end_lines_);
     }
+#endif
 }
 
 void
@@ -787,6 +775,7 @@ vpp_set_filters(u32 wide_mode,
     vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
 }
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 void
 prot_get_parameter(u32 wide_mode,
                 vframe_t *vf,
@@ -855,6 +844,7 @@ prot_get_parameter(u32 wide_mode,
 
     vpp_set_filters2(src_width, src_height, vinfo, vpp_flags, next_frame_par);
 }
+#endif
 
 void vpp_set_osd_layer_preblend(u32 *enable)
 {

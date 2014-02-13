@@ -31,14 +31,10 @@
 #include <linux/amlogic/tvin/tvin.h>
 
 #include <mach/gpio.h>
-
-#include "hw/hdmi_tx_reg.h"
-#include "hdmi_tx_module.h"
-#include "hdmi_tx_cec.h"
-
+#include <mach/hdmi_tx_reg.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_module.h>
+#include <linux/amlogic/hdmi_tx/hdmi_tx_cec.h>
 hdmitx_dev_t *hdmitx_device = NULL;
-
-unsigned int cec_key_flag =0;
 
 __u16 cec_key_map[128] = {
     KEY_SELECT, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, 0 , 0 , 0 ,//0x00
@@ -50,14 +46,14 @@ __u16 cec_key_map[128] = {
     0 , 0, 0, 0, 0, 0, 0, 0,//0x30
     0 , 0, 0, 0, 0, 0, 0, 0,
     
-    KEY_POWER , KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_MUTE, KEY_PLAYPAUSE, KEY_STOP, KEY_PLAYPAUSE, 0,//0x40
-    KEY_REWIND, KEY_FASTFORWARD, 0, KEY_PREVIOUSSONG, KEY_NEXTSONG, 0, 0, 0,
+    KEY_POWER , KEY_VOLUMEUP, KEY_VOLUMEDOWN, KEY_MUTE, KEY_PLAYPAUSE, KEY_STOP, KEY_PLAYPAUSE, KEY_RECORD,//0x40
+    KEY_REWIND, KEY_FASTFORWARD, KEY_EJECTCD, KEY_NEXTSONG, KEY_PREVIOUSSONG, 0, 0, 0,
     0 , 0, 0, 0, 0, 0, 0, 0,//0x50
     0 , 0, 0, 0, 0, 0, 0, 0,
     KEY_PLAYCD, KEY_PLAYPAUSE, KEY_RECORD, KEY_PAUSECD, KEY_STOPCD, KEY_MUTE, 0, KEY_TUNER,//0x60
     0 , KEY_MEDIA, 0, 0, KEY_POWER, 0, 0, 0,
     0 , KEY_BLUE, KEY_RED, KEY_GREEN, KEY_YELLOW, 0, 0, 0,//0x70
-    0 , 0, 0, 0, 0, 0, 0, 0,
+    0 , 0, 0, 0, 0, 0, 0, 0x2fd,
 };
 
 void cec_send_event(cec_rx_message_t* pcec_message)
@@ -81,20 +77,18 @@ void cec_send_event(cec_rx_message_t* pcec_message)
     
     for (i = 0; i < operand_num; i++ ) {
        operands[i] = pcec_message->content.msg.operands[i]; 
-       hdmitx_cec_dbg_print("CEC:operands[%d]:%u\n", i, operands[i]);       
+       hdmi_print(INF, CEC  ":operands[%d]:%u\n", i, operands[i]);       
     }
-    if(cec_key_flag) {
-        input_event(remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 1);
-        input_sync(remote_cec_dev);
-        hdmitx_cec_dbg_print("CEC:cec_key_map[operands[0]]:%d\n",cec_key_map[operands[0]]);
+    if(cec_global_info.cec_flag.cec_key_flag) {
+        input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 1);
+        input_sync(cec_global_info.remote_cec_dev);
+        hdmi_print(INF, CEC  ":key map:%d\n",cec_key_map[operands[0]]);
     }
     else{
-        input_event(remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 0);
-        input_sync(remote_cec_dev);
-        hdmitx_cec_dbg_print("CEC:cec_key_map[operands[0]]:%d\n",cec_key_map[operands[0]]);
+        input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands[0]], 0);
+        input_sync(cec_global_info.remote_cec_dev);
+        hdmi_print(INF, CEC  ":key map:%d\n",cec_key_map[operands[0]]);
     }   
-
-    hdmitx_cec_dbg_print("CEC:cec_send_event\n");
 }
 
 
@@ -104,16 +98,17 @@ void cec_send_event_irq(void)
     unsigned char   operand_num_irq;
     unsigned char operands_irq[14];
          
-    operand_num_irq = cec_rx_msg_buf.cec_rx_message[cec_rx_msg_buf.rx_write_pos].operand_num;
+    operand_num_irq = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].operand_num;
     for (i = 0; i < operand_num_irq; i++ )
     {
-        operands_irq[i] = cec_rx_msg_buf.cec_rx_message[cec_rx_msg_buf.rx_write_pos].content.msg.operands[i]; 
-        hdmitx_cec_dbg_print("CEC:operands_irq[%d]:0x%x\n", i, operands_irq[i]);       
+        operands_irq[i] = cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.operands[i]; 
+        hdmi_print(INF, CEC  ":operands_irq[%d]:0x%x\n", i, operands_irq[i]);       
     }
     
-    switch(cec_rx_msg_buf.cec_rx_message[cec_rx_msg_buf.rx_write_pos].content.msg.operands[0]){
+    switch(cec_global_info.cec_rx_msg_buf.cec_rx_message[cec_global_info.cec_rx_msg_buf.rx_write_pos].content.msg.operands[0]){
     case 0x33:
-        cec_system_audio_mode_request();
+        //cec_system_audio_mode_request();
+        //cec_set_system_audio_mode();
         break;
     case 0x35:
         break;
@@ -121,37 +116,35 @@ void cec_send_event_irq(void)
         break;      
     }	
     
-    input_event(remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 1);
-    input_sync(remote_cec_dev);	
-    input_event(remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 0);
-    input_sync(remote_cec_dev);
-    hdmitx_cec_dbg_print("CEC:cec_key_map[operands_irq[0]]:%d\n",cec_key_map[operands_irq[0]]);       		
-   	
-    hdmitx_cec_dbg_print("CEC:cec_send_event_irq\n");  	 	
+    input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 1);
+    input_sync(cec_global_info.remote_cec_dev);	
+    input_event(cec_global_info.remote_cec_dev, EV_KEY, cec_key_map[operands_irq[0]], 0);
+    input_sync(cec_global_info.remote_cec_dev);
+    hdmi_print(INF, CEC  ":key map:%d\n",cec_key_map[operands_irq[0]]);      		  	 	
 }
 
 void cec_user_control_pressed_irq(void)
 {
-    hdmitx_cec_dbg_print("CEC Key pressed \n");
+    hdmi_print(INF, CEC  ": Key pressed \n");
     cec_send_event_irq();
 }
 
 void cec_user_control_released_irq(void)  
 {
-    hdmitx_cec_dbg_print("CEC Key released \n");
-}
+    hdmi_print(INF, CEC  ": Key released \n");
+} 
 
 void cec_user_control_pressed(cec_rx_message_t* pcec_message)
 {
-    printk("\nCEC Key pressed \n");
-    cec_key_flag = 1;
+    hdmi_print(INF, CEC  ": Key pressed \n");
+    cec_global_info.cec_flag.cec_key_flag = 1;
     cec_send_event(pcec_message);
 }
 
 void cec_user_control_released(cec_rx_message_t* pcec_message)  
 {
-    printk("\nCEC Key released \n");
-    cec_key_flag = 1;
+    hdmi_print(INF, CEC  ": Key released \n");
+    cec_global_info.cec_flag.cec_key_flag = 1;
     cec_send_event(pcec_message);
 }
 
@@ -163,11 +156,11 @@ void cec_standby(cec_rx_message_t* pcec_message)
 {
     if(hdmitx_device->cec_func_config & (1 << CEC_FUNC_MSAK)) {
         if(hdmitx_device->cec_func_config & (1 << ONE_TOUCH_STANDBY_MASK)) {
-            printk("CEC: System will be in standby mode\n");
-            input_event(remote_cec_dev, EV_KEY, KEY_POWER, 1);
-            input_sync(remote_cec_dev);
-            input_event(remote_cec_dev, EV_KEY, KEY_POWER, 0);
-            input_sync(remote_cec_dev);
+            hdmi_print(INF, CEC  ": System will be in standby mode\n");
+            input_event(cec_global_info.remote_cec_dev, EV_KEY, KEY_POWER, 1);
+            input_sync(cec_global_info.remote_cec_dev);
+            input_event(cec_global_info.remote_cec_dev, EV_KEY, KEY_POWER, 0);
+            input_sync(cec_global_info.remote_cec_dev);
         }
     }
 }

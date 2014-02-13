@@ -5,6 +5,12 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/types.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/device.h>
+#include <linux/string.h>
+#include <linux/sched.h>
 
 #define DVFS_DBG(format, args...) \
     if (1) printk(KERN_ERR "[DVFS]"format, ##args)
@@ -195,6 +201,119 @@ struct aml_dvfs_driver aml_dummy_dvfs_driver = {
     .get_voltage = NULL,
 };
 
+static ssize_t dvfs_help(struct class *class, struct class_attribute *attr,   char *buf)
+{
+    return sprintf(buf, 
+                   "HELP:\n"
+                   "    echo r [name] > dvfs            ---- read voltage of [name]\n"
+                   "    echo w [name] [value] > dvfs    ---- write voltage of [name] to [value]\n"
+                   "\n"
+                   "EXAMPLE:\n"
+                   "    echo r vcck > dvfs              ---- read current voltage of vcck\n"
+                   "    echo w vcck 1100000 > dvfs      ---- set voltage of vcck to 1.1v\n"
+                   "\n"
+                   "Supported names:\n"
+                   "    vcck    ---- voltage of ARM core\n"
+                   "    vddee   ---- voltage of VDDEE(everything else)\n"
+                   "    ddr     ---- voltage of DDR\n"
+    );
+}
+
+static int get_dvfs_id_by_name(char *str)
+{
+    if (!strncmp(str, "vcck", 4)) {
+        return AML_DVFS_ID_VCCK;    
+    } else if (!strncmp(str, "vddee", 5)) {
+        return AML_DVFS_ID_VDDEE;    
+    } else if (!strncmp(str, "ddr", 3)) {
+        return AML_DVFS_ID_DDR;    
+    }
+    return -1;
+}
+
+static ssize_t dvfs_class_write(struct class *class, struct class_attribute *attr,   const char *buf, size_t count)
+{
+    int ret = -1;
+    int  id, i;
+    unsigned int uV;
+    char *arg[3] = {}, *para, *buf_work, *p;
+    struct aml_dvfs_master  *master;
+    struct list_head        *element;
+
+    buf_work = kstrdup(buf, GFP_KERNEL);
+    p = buf_work;
+    for (i = 0; i < 3; i++) {
+        para = strsep(&p, " ");
+        if (para == NULL) {
+            break;
+        }    
+        arg[i] = para;
+    }    
+    if (i < 2 || i > 3) { 
+        ret = 1; 
+        goto error;
+    } 
+
+    switch (arg[0][0]) {
+    case 'r':
+        id = get_dvfs_id_by_name(arg[1]);
+        if (id < 0) {
+            goto error;    
+        }
+        list_for_each(element, &__aml_dvfs_list) {
+            master = list_entry(element, struct aml_dvfs_master, list); 
+            if (master->id == id) {
+                mutex_lock(&master->mutex);
+                if (master->driver->get_voltage) {
+                    ret = master->driver->get_voltage(id, &uV);
+                } 
+                mutex_unlock(&master->mutex);
+            }
+        }
+        if (ret < 0) {
+            printk("get voltage of %s failed\n", arg[1]);    
+        } else {
+            printk("voltage of %s is %d\n", arg[1], uV); 
+        }
+        break;
+
+    case 'w':
+        if (i != 3) {
+            goto error;    
+        }
+        id = get_dvfs_id_by_name(arg[1]);
+        if (id < 0) {
+            goto error;    
+        }
+        uV = simple_strtoul(arg[2], NULL, 10); 
+        list_for_each(element, &__aml_dvfs_list) {
+            master = list_entry(element, struct aml_dvfs_master, list); 
+            if (master->id == id) {
+                mutex_lock(&master->mutex);
+                if (master->driver->set_voltage) {
+                    ret = master->driver->set_voltage(id, uV, uV);
+                } 
+                mutex_unlock(&master->mutex);
+            }
+        }
+        if (ret < 0) {
+            printk("set vcck to %d uV failed\n", uV);    
+        } else {
+            printk("set vcck to %d uV success\n", uV);    
+        }
+        break;
+    }
+error:
+    kfree(buf_work);
+    if (ret) {
+        printk(" error\n");    
+    }
+    return count; 
+}
+
+static CLASS_ATTR(dvfs, S_IWUSR | S_IRUGO, dvfs_help, dvfs_class_write);
+struct class *aml_dvfs_class;
+
 struct cpufreq_frequency_table *aml_dvfs_get_freq_table(unsigned int id)
 {
     struct aml_dvfs_master  *master;
@@ -298,7 +417,8 @@ static int aml_dvfs_probe(struct platform_device *pdev)
         }
     }
 
-    return 0;
+    aml_dvfs_class = class_create(THIS_MODULE, "dvfs");
+    return class_create_file(aml_dvfs_class, &class_attr_dvfs);
 }
 
 static int aml_dvfs_remove(struct platform_device *pdev)
@@ -306,13 +426,13 @@ static int aml_dvfs_remove(struct platform_device *pdev)
     struct list_head *element;
     struct aml_dvfs_master *master;
 
+    class_destroy(aml_dvfs_class); 
     list_for_each(element, &__aml_dvfs_list) {
         master = list_entry(element, struct aml_dvfs_master, list);
         kfree(master->freq_table);
         kfree(master->table);
         kfree(master);
     }
-    
     return 0;
 }
 

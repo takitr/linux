@@ -39,7 +39,7 @@ static int ltr558_probed = 0;
 static int calibrate_high_ltr558 = 0;	//add for calibrate
 static int calibrate_low_ltr558 = 0;
 static int calibrate_status_ltr558 = 0;	// add for calibrate
-static int ps_opened_ltr558; 
+//static int ps_opened_ltr558; 
 static int als_opened_ltr558; 
 //static struct work_struct irq_workqueue; 
 static int ps_data_changed_ltr558; 
@@ -304,7 +304,6 @@ static int ltr558_ps_read(void)
 	int psdata;
 	//unsigned int psval_lo, psval_hi, psdata;
 	//int psval_lo, psval_hi, psdata;
-	int ret = 0;
 	ltr558_i2c_read_reg(LTR558_PS_DATA_0, &psval_lo); 
 	if (psval_lo < 0){ 
 		psdata = psval_lo; 
@@ -339,6 +338,7 @@ static int ltr558_ps_read_status(void)
  return intval;
 }
 
+#if 0 
 static int ltr558_ps_open(struct inode *inode, struct file *file) 
 { 
  if (ps_opened_ltr558) { 
@@ -349,13 +349,13 @@ static int ltr558_ps_open(struct inode *inode, struct file *file)
  return 0; 
 } 
  
- 
 static int ltr558_ps_release(struct inode *inode, struct file *file) 
 { 
  LTR558_DEBUG(KERN_ALERT "%s\n", __func__); 
  ps_opened_ltr558 = 0; 
  return ltr558_ps_disable(); 
 } 
+#endif
 //gionee liudj add for debug begin
 /*----------------------------------------------------------------------------*/
 static ssize_t ltr558_show_ps(struct device* cd, struct device_attribute *attr, char* buf)
@@ -369,7 +369,7 @@ static ssize_t ltr558_show_ps(struct device* cd, struct device_attribute *attr, 
 		return 0;
 	}
  	dat = ltr558_ps_read();
-	ltr558_i2c_read_reg(0x8c, &dat1);
+	ltr558_i2c_read_reg(0x8c, (unsigned char *)&dat1);
 	if(0 > dat)
 		dat = ltr558_ps_read();
 	return snprintf(buf,PAGE_SIZE,"ps_data %d     0x%x    high=0x%x   low=0x%x  0x8c=0x%x\n",dat, dat, calibrate_high_ltr558, calibrate_low_ltr558, dat1);		
@@ -403,7 +403,6 @@ static ssize_t ltr558_ps_status(struct device* cd, struct device_attribute *attr
 }*/
 static ssize_t ltr558_ps_status(struct device* cd, struct device_attribute *attr, char* buf)
 {
-	unsigned char dat=0;
 	int i = 0;
 	u8 bufdata;
 	int count  = 0;
@@ -467,7 +466,7 @@ static int read_int_from_buf(struct device* cd, const char* buf, size_t count,
 	return idx;
 }
 
-static ssize_t ltr558_store_reg(struct device* cd,struct device_attribute *attr,char *buf,ssize_t count)
+static ssize_t ltr558_store_reg(struct device* cd,struct device_attribute *attr,const char *buf,size_t count)
 {
 
 	u32 data[2];
@@ -478,7 +477,7 @@ static ssize_t ltr558_store_reg(struct device* cd,struct device_attribute *attr,
 		return 0;
 	}
 
-	if(2 != read_int_from_buf(the_data_ltr558,buf,count,data,2))
+	if(2 != read_int_from_buf(NULL ,buf,count,data,2))
 	{
 		LTR558_DEBUG("%sinvalid format:\n",__func__);
 		return 0;
@@ -574,6 +573,7 @@ static ssize_t ltr558_show_version(struct device* cd,
 	LTR558_DEBUG("%s  failed", __func__);
 	return err;
 }
+#if 0
 static long ltr558_ps_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 { 
 	int ret = 0; 
@@ -621,7 +621,9 @@ static long ltr558_ps_ioctl(struct file *file, unsigned int cmd, unsigned long a
 	}
 	return ret;
 }
- 
+#endif
+
+#if 0 
 static struct file_operations ltr558_ps_fops = { 
  .owner  = THIS_MODULE, 
  .open  = ltr558_ps_open, 
@@ -629,13 +631,7 @@ static struct file_operations ltr558_ps_fops = {
  .unlocked_ioctl  = ltr558_ps_ioctl, 
  //.poll  = ltr558_ps_poll, 
 }; 
- 
- 
-static struct miscdevice ltr558_ps_dev = { 
- .minor = MISC_DYNAMIC_MINOR, 
- .name = LTR558_DEVICE, 
- .fops = &ltr558_ps_fops, 
-}; 
+#endif 
  
 /*
 * ################ 
@@ -696,7 +692,6 @@ static int ltr558_als_read(int gainrange)
  int alsval_ch1 =0;
  int luxdata_int=0; 
  int ratio=0;
- int luxdata_flt=0; 
  int ch0_coeff=0;
  int ch1_coeff=0; 
   #if 0
@@ -708,12 +703,12 @@ static int ltr558_als_read(int gainrange)
  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH1_1, &alsval_ch1_hi); 
  alsval_ch1 = (alsval_ch1_hi * 256) + alsval_ch1_lo; 
  #else
-  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH1_0, &alsval_ch1_lo); 
-  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH1_1, &alsval_ch1_hi); 
+  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH1_0, (unsigned char *)&alsval_ch1_lo); 
+  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH1_1, (unsigned char *)&alsval_ch1_hi); 
  alsval_ch1 = (alsval_ch1_hi * 256) + alsval_ch1_lo; 
  
-  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH0_0, &alsval_ch0_lo); 
-  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH0_1, &alsval_ch0_hi); 
+  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH0_0, (unsigned char *)&alsval_ch0_lo); 
+  ltr558_i2c_read_reg(LTR558_ALS_DATA_CH0_1, (unsigned char *)&alsval_ch0_hi); 
  alsval_ch0 = (alsval_ch0_hi * 256) + alsval_ch0_lo;  
  #endif
  LTR558_DEBUG("alsval_ch0[%d],alsval_ch1[%d]\n",alsval_ch0,alsval_ch1);
@@ -782,7 +777,7 @@ static int ltr558_als_read_status(void)
  return intval; 
 } 
  
- 
+#if 0 
 static int ltr558_als_open(struct inode *inode, struct file *file) 
 { 
  if (als_opened_ltr558) { 
@@ -792,7 +787,9 @@ static int ltr558_als_open(struct inode *inode, struct file *file)
  als_opened_ltr558 = 1; 
  return 0; 
 } 
- 
+#endif
+
+#if 0 
 static int ltr558_als_release(struct inode *inode, struct file *file) 
 { 
  LTR558_DEBUG(KERN_ALERT "%s\n", __func__); 
@@ -847,8 +844,9 @@ static long ltr558_als_ioctl(struct file *file, unsigned int cmd, unsigned long 
  } 
  return ret; 
 }
+#endif 
+
 /*
- 
 static unsigned int ltr558_als_poll(struct file *fp, poll_table * wait) 
 { 
  if(als_data_changed_ltr558) 
@@ -862,6 +860,7 @@ static unsigned int ltr558_als_poll(struct file *fp, poll_table * wait)
 } 
 
  */
+ #if 0
 static struct file_operations ltr558_als_fops = { 
  .owner  = THIS_MODULE, 
  .open  = ltr558_als_open, 
@@ -869,13 +868,7 @@ static struct file_operations ltr558_als_fops = {
  .unlocked_ioctl  = ltr558_als_ioctl, 
  //.poll        = ltr558_als_poll, 
 }; 
- 
- 
-static struct miscdevice ltr558_als_dev = { 
- .minor = MISC_DYNAMIC_MINOR, 
- .name = LTR558_DEVICE, 
- .fops = &ltr558_als_fops, 
-}; 
+#endif 
 
 //=================
 static int ltr558_open(struct inode *inode, struct file *file) 
@@ -1182,11 +1175,10 @@ reset:
 //	error = ltr558_als_enable(init_als_gain); 
 /*	if (error < 0) 
 	{
-		goto out; 
+        return error; 
 	}
 */	error = 0; 
 
-out: 
 	return error; 
 } 
 
@@ -1212,8 +1204,7 @@ static void ltr558_early_suspend(struct early_suspend *handler)
 
 static void ltr558_early_resume(struct early_suspend *handler)
 {	
-	
- int ret; 
+ //int ret; 
  //ret = ltr558_devinit(); 
  LTR558_DEBUG("%s\n", __func__);
  // ret = ltr558_ps_enable(PS_RANGE1); 

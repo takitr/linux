@@ -5,8 +5,8 @@
 # Written by Cai Yun 2013-07-04
 
 #debug
-print=echo
-#print=test  
+#print=echo
+print=test  
 
 TMP_DTD="./arch/arm/boot/meson.dtd"
 touch "$TMP_DTD"
@@ -15,72 +15,62 @@ copy_fragment(){
     if [ -z "$val_1" ]; then          # no "#ifdef" or "#ifndef", is "#else" ?
         local val_2=`sed -n -e "s/^#else/else/p" "$TMP_FILE"`
         if [ -n "$val_2" ]; then  # key word--"#else"
-            noelse=1
-            if [ "$nodef" -eq 0 ]; then   # ifdef config
-                nodef=1
-                if [ "$invalidconfig" -eq 1 ] ; then # ifdef config is not define
-                    start_copy=$[$start_copy+1]                             # start copy
-                fi
-            fi
-            if [ "$nodef" -eq 1 ] ; then  # ifndef config
-                nodef=0
-                if [ "$invalidconfig" -eq 0 ]; then # ifndef config is define
-                    start_copy=$[$start_copy+1]                             # start copy
-                fi
-            fi
+        	$print "key word--#else"
+           noelse=1
         else  # no key word--"#else"
             val_2=`sed -n -e 's/^#endif/END_CONFIG/p' "$TMP_FILE"`
             if [ -z "$val_2" ]; then  # no key word--"#endif"
-                if [ "$invalidconfig" -eq "$nodef" ] ; then
+                total=$[$[$invalidconfig+$nodef+$noelse]%2]
+                $print "total is $total"
+                if [ $total -eq 0 ]; then
                     local val_3=`sed -n -e 's/^sub_file.//p' "$TMP_FILE"`
                     if [ -z "$val_3" ]; then
-
                         local val_4=`sed -n -e '/^#/p' "$TMP_FILE"`
                         if [ -z "$val_4" ]; then
                             cat "$TMP_FILE" >> "$TMP_DTD"
+                            #cat "$TMP_FILE"
+                            $print "no #ifdef #ifndef #else"
                         fi
                     fi
+                    
                     if [ -n "$val_3" ]; then
                         if [[ IFS != $saveIFS ]] ; then
                             IFS=$saveIFS
                         fi
                         process_file "${path}$val_3"
                     fi
+                
                 fi
             fi
             if [ -n "$val_2" ] ; then    # key word--"#endif"
-                 if ([ "$invalidconfig" -ne 1 ] || [ "$noelse" -ne 0 ]); then
-                    start_copy=$[$start_copy-1]
-                 fi
+            $print "key word-- #endif"
                     invalidconfig=0
+                    nodef=0
                     noelse=0
             fi
         fi
     fi       # no "#ifdef" or "#ifndef"
     
     if [ -n "$val_1" ]; then          # key word--"#ifdef" or "#ifndef", there is a CONFIG
+    $print "key word--#ifdef or #ifndef, there is a CONFIG: $val_1"
         local CONFIG=`"$path"/scripts/config -s  "$1"`
         if [[ "$CONFIG" = 'y' ]] || [[ "$CONFIG" = 'm' ]] ; then
+        		$print "CONFIG is y or m"
             invalidconfig=0
-            if [ "$nodef" -eq 0 ]; then         # ifdef config is y  or m
-                start_copy=$[$start_copy+1]
-            fi
         else
+        		$print "CONFIG is not define"
             invalidconfig=1
-            if [ "$nodef" -eq 1 ]; then         # ifdef config is not define
-                start_copy=$[$start_copy+1]
-            fi
         fi
     fi
 }
 
 
 process_file(){
-    $print "process file $1 start"
-    local start_copy=0
+    echo "process file $1 start"
     local invalidconfig=0
     local nodef=0
     local noelse=0
+    local total=0
 
     line=`sed -n '$=' $1`
 
@@ -104,7 +94,7 @@ process_file(){
         IFS=$saveIFS
     fi
     
-    $print "process file $1 end"
+    echo "process file $1 end"
     $print ""
 }   
     

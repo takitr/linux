@@ -1254,7 +1254,7 @@ static s32 gtp_init_panel(struct goodix_ts_data *ts)
     u8 opr_buf[16] = {0};
     u8 sensor_id = 0; 
 		int cfg_info_group1_len;
-		u8 *cfg_info_group1;
+		u8 *cfg_info_group1 = NULL;
 
     u8 cfg_info_group2[] = CTP_CFG_GROUP2;
     u8 cfg_info_group3[] = CTP_CFG_GROUP3;
@@ -2214,10 +2214,11 @@ static void gt9xx_upgrade_touch(void)
 	}
 }
 #ifdef LATE_UPGRADE
-static void gt9xx_late_upgrade(struct goodix_ts_data *ts)
+static int gt9xx_late_upgrade(void *data)
 {
-	int file_size;
-	int count;
+	int file_size = -1;
+	int count = 0;
+	struct goodix_ts_data *ts = (struct goodix_ts_data *)data;
 	while(count < 10000) {
 		file_size = touch_open_fw(ts_com->config_file);
 		if(file_size < 0) {
@@ -2235,7 +2236,8 @@ static void gt9xx_late_upgrade(struct goodix_ts_data *ts)
 			gtp_irq_enable(ts);
 		ts->config_finish = 1;
 	}
-	do_exit(0);
+	//do_exit(0);
+	return 0;
 }
 #endif
 /*******************************************************

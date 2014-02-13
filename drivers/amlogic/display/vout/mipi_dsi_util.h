@@ -3,10 +3,12 @@
 
 //#include <asm/arch/register.h>
 #include <mach/register.h>
-
-#include "mipi_dsi_phy_reg.h"
+#include <mach/cpu.h>
 #include <linux/amlogic/vout/lcdoutc.h>
 //#include <asm/arch/lcdoutc.h>
+
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+#include <mach/mipi_dsi_reg.h>
 
 //#define PRINT_DEBUG_INFO
 #ifdef PRINT_DEBUG_INFO
@@ -14,7 +16,6 @@
 #else
 #define DPRINT(...)
 #endif
-
 // --------------------------------------------------------
 // MIPI DSI Data Type/ MIPI DCS Command Type Definitions
 // --------------------------------------------------------
@@ -567,12 +568,12 @@ int set_lcd_clk(unsigned int display_w, unsigned int display_h,
                 */
 void init_mipi_dsi_phy(Lcd_Config_t *pConf);
 
-extern void start_mipi_dsi_host();                                             // close the default reset
+extern void start_mipi_dsi_host(void);                                             // close the default reset
 
-extern void powerup_mipi_dsi_dphy();                                           // power up mipi_dsi and dphy
-extern void powerdown_mipi_dsi_dphy();                                         // power down mipi_dsi and dphy
+extern void powerup_mipi_dsi_dphy(void);                                           // power up mipi_dsi and dphy
+extern void powerdown_mipi_dsi_dphy(void);                                         // power down mipi_dsi and dphy
 
-extern void set_mipi_int();                                                    // configure mipi interrupt registers
+extern void set_mipi_int(void);                                                    // configure mipi interrupt registers
 extern void set_mipi_dcs(int trans_type,                                       // 0: high speed, 1: low power
                 int ack_req,                                          // 1: request ack, 0: do not need ack
                 int tear_en                                           // 1: enable tear ack, 0: disable tear ack
@@ -589,16 +590,16 @@ extern void set_mipi_edpi(unsigned int edpi_allowed_cmd_size,                  /
                 unsigned int color_code                              // color code
                 );
 
-extern void check_phy_st();                                                    // Check the status of the dphy: phylock and stopstateclklane
+extern void check_phy_st(void);                                                    // Check the status of the dphy: phylock and stopstateclklane
 
 extern void delay_us(int us);
 extern void config_video_para(tv_enc_lcd_type_t output_type,
                 unsigned int    color_code,                   // Configure video parameter such HFP/HSA/HBP/HACT...
                 Lcd_Config_t    *pConf);
 
-extern void wait_bta_ack();                                                    // wait ack from bta
-extern void wait_cmd_fifo_empty();                                             // wait generic fifo empty
-extern unsigned int wait_for_generic_read_response();                          // wait read response
+extern void wait_bta_ack(void);                                                    // wait ack from bta
+extern void wait_cmd_fifo_empty(void);                                             // wait generic fifo empty
+extern unsigned int wait_for_generic_read_response(void);                          // wait read response
 
 extern unsigned int generic_if_wr(unsigned int address, unsigned int data_in); // Generic Interface Write
 extern unsigned int generic_if_rd(unsigned int address);                       // Generic Interface Read
@@ -632,9 +633,9 @@ extern void DCS_long_write_packet(unsigned int data_type,                      /
 
 extern void check_mipi_dsi_color_config (unsigned int venc_color_type, unsigned int dpi_color_type);
 
-void startup_mipi_dsi_host();
+void startup_mipi_dsi_host(void);
 
-extern void auo_panel_init();
+extern void auo_panel_init(void);
 
 // DCS COMMAND LIST
 #define DCS_CMD_CODE_ENTER_IDLE_MODE      0x0
@@ -678,5 +679,5 @@ void dsi_probe(Lcd_Config_t *pConf);
 //****************************************************************************************************/
 //      from test_prm.h
 //****************************************************************************************************/
-
+#endif
 #endif

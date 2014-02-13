@@ -244,6 +244,16 @@ void osddev_set_osd_rotate_on(u32 index, u32 on_off)
         osd_set_osd_rotate_on_hw(index, on_off);
 }
 
+void osddev_get_osd_antiflicker(u32 index, u32 *on_off)
+{
+        osd_get_osd_antiflicker_hw(index, on_off);
+}
+
+void osddev_set_osd_antiflicker(u32 index, u32 vmode, u32 yres)
+{
+        osd_set_osd_antiflicker_hw(index, vmode, yres);
+}
+
 void osddev_get_osd_rotate_angle(u32 index, u32 *angle)
 {
         osd_get_osd_rotate_angle_hw(index, angle);

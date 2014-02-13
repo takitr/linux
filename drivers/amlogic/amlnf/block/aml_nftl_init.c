@@ -29,6 +29,7 @@ extern uint32 __nand_write(struct aml_nftl_part_t* part,uint32 start_sector,uint
 extern uint32 __nand_flush_write_cache(struct aml_nftl_part_t* part);
 extern void print_free_list(struct aml_nftl_part_t* part);
 extern void print_block_invalid_list(struct aml_nftl_part_t* part);
+extern  int get_adjust_block_num(void);
 
 uint32 _nand_read(struct aml_nftl_dev *nftl_dev,uint32 start_sector,uint32 len,unsigned char *buf);
 uint32 _nand_write(struct aml_nftl_dev *nftl_dev,uint32 start_sector,uint32 len,unsigned char *buf);
@@ -107,7 +108,13 @@ int aml_nftl_initialize(struct aml_nftl_dev *nftl_dev,int no)
 	nftl_dev->nftl_cfg.nftl_support_gc_read_reclaim = SUPPORT_GC_READ_RECLAIM;
 	nftl_dev->nftl_cfg.nftl_support_wear_leveling = SUPPORT_WEAR_LEVELING;
 	nftl_dev->nftl_cfg.nftl_need_erase = NFTL_ERASE;
-	nftl_dev->nftl_cfg.nftl_part_reserved_block_ratio = PART_RESERVED_BLOCK_RATIO;
+	if(!is_phydev_off_adjust()){
+		nftl_dev->nftl_cfg.nftl_part_reserved_block_ratio = 8;
+	}else{
+		nftl_dev->nftl_cfg.nftl_part_reserved_block_ratio = 10;
+	}
+	nftl_dev->nftl_cfg.nftl_part_adjust_block_num = get_adjust_block_num();
+	printk("adjust_block_num : %d,reserved_block_ratio %d\n",nftl_dev->nftl_cfg.nftl_part_adjust_block_num,nftl_dev->nftl_cfg.nftl_part_reserved_block_ratio);
 	nftl_dev->nftl_cfg.nftl_min_free_block_num = MIN_FREE_BLOCK_NUM;
 	nftl_dev->nftl_cfg.nftl_min_free_block = MIN_FREE_BLOCK;
 	nftl_dev->nftl_cfg.nftl_gc_threshold_free_block_num = GC_THRESHOLD_FREE_BLOCK_NUM ;

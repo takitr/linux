@@ -80,7 +80,7 @@ static struct aml_nand_device *to_nand_dev(struct platform_device *pdev)
 {
 	return pdev->dev.platform_data;
 }
-
+#if 0
 static pinmux_item_t nand_ce0_pins[] = {
     {
         .reg = PINMUX_REG(2),
@@ -129,7 +129,7 @@ static pinmux_set_t nand_ce3 = {
     .chip_select = NULL,
     .pinmux = &nand_ce3_pins[0]
 };
-
+#endif
 static pinmux_item_t nand_rb0_pins[] = {
     {
         .reg = PINMUX_REG(2),
@@ -182,16 +182,11 @@ void aml_pinmux_set(const char *name)
 			}
 }
 
-void aml_pinmux_clr()
-{
-	pinctrl_put(p_pictl);
-	p_pictl=NULL;
-}
 
 static void m3_nand_select_chip(struct aml_nand_chip *aml_chip, int chipnr)
 {
-	int i;
-	struct device *nand_dev = aml_chip->device ;
+//	int i;
+	//struct device *nand_dev = aml_chip->device ;
 	switch (chipnr) {
 		case 0:
 		case 1:
@@ -748,7 +743,7 @@ static int m3_nand_hwecc_correct(struct aml_nand_chip *aml_chip, unsigned char *
 	unsigned nand_page_size = chip->ecc.steps * chip->ecc.size;
 	unsigned pages_per_blk_shift = (chip->phys_erase_shift - chip->page_shift);
 	int user_byte_num = (chip->ecc.steps * aml_chip->user_byte_mode);
-	int bch_mode = aml_chip->bch_mode, ran_mode, read_page;
+	int bch_mode = aml_chip->bch_mode, read_page;
 	int error = 0, i = 0, stat = 0;
 	int en_slc = 0;
 #ifdef MX_REVD
@@ -874,10 +869,10 @@ exit:
 	return;
 }
 
- int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t *buf,int oob_required, int page, int cached, int raw)
+ int m3_nand_boot_write_page(struct mtd_info *mtd, struct nand_chip *chip,uint32_t offset, int data_len, const uint8_t *buf,int oob_required, int page, int cached, int raw)
 {
 	struct aml_nand_chip *aml_chip = mtd_to_nand_chip(mtd);
-	int status, i, write_page, configure_data, pages_per_blk, write_page_tmp, ran_mode;
+	int status, i, write_page, configure_data, pages_per_blk, ran_mode;
 	int new_nand_type = 0;
 	int en_slc = 0;
 #ifdef MX_REVD
@@ -1081,7 +1076,7 @@ static int aml_nand_probe(struct aml_nand_platform *plat, struct device *dev)
 	struct aml_nand_chip *aml_chip = NULL;
 	struct nand_chip *chip = NULL;
 	struct mtd_info *mtd = NULL;
-	int err = 0, i;
+	int err = 0;
 
 	aml_chip = kzalloc(sizeof(*aml_chip), GFP_KERNEL);
 	if (aml_chip == NULL) {
@@ -1352,7 +1347,7 @@ static int amlogic_parse_nand_partion(struct device_node *np,struct aml_nand_pla
 	struct mtd_partition *p=NULL;
 	struct device_node *child;
 	unsigned int part_num=0;
-	int i=0;
+//	int i=0;
 	child = of_get_next_child(np, NULL);
 	if (!child) {
 		printk("no partition \n");
@@ -1387,7 +1382,7 @@ err:
 ssize_t show_nand_version_info(struct class *class,
 			struct class_attribute *attr,	char *buf)
 {
-    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
+//    struct aml_nand_chip *aml_chip = container_of(class, struct aml_nand_chip, cls);
 
     printk(KERN_INFO "kernel Version %s,uboot version %s\n", DRV_VERSION,DRV_UBOOT_VERSION);
 
@@ -1602,7 +1597,7 @@ static struct nand_plane_mode nand_plane_mode_cfg[]={
 static int m3_get_nand_platform(struct aml_nand_device *aml_nand_dev,struct platform_device *pdev)
 {
 	int ret;
-	const char *name,*propname;
+	const char *propname;
 	struct property *prop;
 	const __be32 *list;
 	int size,config,index;

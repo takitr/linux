@@ -25,11 +25,13 @@
 #include <linux/errno.h>
 #include <linux/kernel.h>
 #include <linux/delay.h>
-
+#include <linux/utils.h>
 #include <mach/am_regs.h>
 
 #include <linux/amlogic/vout/vinfo.h>
+#include <linux/amlogic/logo/logo.h>
 #include "tvoutc.h"
+#include "tvconf.h"
 #include <linux/clk.h>
 #include <plat/io.h>
 #include <mach/tvregs.h>
@@ -245,10 +247,51 @@ static void set_tvmode_misc(tvmode_t mode)
     set_vmode_clk(mode);
 }
 
+/*
+ * uboot_display_already() uses to judge whether display has already
+ * be set in uboot.
+ * Here, first read the value of reg P_ENCP_VIDEO_MAX_PXCNT and
+ * P_ENCP_VIDEO_MAX_LNCNT, then compare with value of tvregsTab[mode]
+ */
+static int uboot_display_already(tvmode_t mode)
+{
+    tvmode_t source = vmode_to_tvmode(get_resolution_vmode());
+    if(source == mode)
+        return 1;
+    else 
+        return 0;
+    /*
+    const  reg_t *s = tvregsTab[mode];
+    unsigned int pxcnt_tab = 0;
+    unsigned int lncnt_tab = 0;
+
+    while(s->reg != MREG_END_MARKER) {
+        if(s->reg == P_ENCP_VIDEO_MAX_PXCNT) {
+            pxcnt_tab = s->val;
+        }
+        if(s->reg == P_ENCP_VIDEO_MAX_LNCNT) {
+            lncnt_tab = s->val;
+        }
+        s++;
+    }
+
+    if((pxcnt_tab == aml_read_reg32(P_ENCP_VIDEO_MAX_PXCNT)) &&
+       (lncnt_tab == aml_read_reg32(P_ENCP_VIDEO_MAX_LNCNT))) {
+        return 1;
+    } else {
+        return 0;
+    }
+    */
+}
+
 int tvoutc_setmode(tvmode_t mode)
 {
     const  reg_t *s;
-
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+    static int uboot_display_flag = 1;
+#else
+    static int uboot_display_flag = 0;
+#endif
     if (mode >= TVMODE_MAX) {
         printk(KERN_ERR "Invalid video output modes.\n");
         return -ENODEV;
@@ -262,7 +305,14 @@ int tvoutc_setmode(tvmode_t mode)
     printk("TV mode %s selected.\n", tvinfoTab[mode].id);
    
     s = tvregsTab[mode];
-			
+
+    if(uboot_display_flag) {
+        uboot_display_flag = 0;
+        if(uboot_display_already(mode)) {
+            printk("already display in uboot\n");
+            return 0;
+        }
+    }
     while (MREG_END_MARKER != s->reg)
         setreg(s++);
     printk("%s[%d]\n", __func__, __LINE__);

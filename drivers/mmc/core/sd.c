@@ -767,9 +767,11 @@ try_again:
 	   ((*rocr & 0x41000000) == 0x41000000)) {
 		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
 		if (err == -EAGAIN) {
+		    printk("1) switch to 1.8V fail, ret=%d\n", err);
 			retries--;
 			goto try_again;
 		} else if (err) {
+            printk("2) switch to 1.8V fail, ret=%d\n", err);
 			retries = 0;
 			goto try_again;
 		}

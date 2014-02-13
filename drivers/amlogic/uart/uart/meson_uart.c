@@ -652,7 +652,6 @@ static void meson_uart_start_port(struct meson_uart_port *mup)
 
 	//tasklet_init(&mup->tlet, meson_uart_tasklet_action,
 	// (unsigned long)mup);
-	printk("P_AO_RTI_PIN_MUX_REG:%x\n",readl(P_AO_RTI_PIN_MUX_REG));
 	if(of_get_property(mup->pdev->dev.of_node, "pinctrl-names", NULL)){
 		mup->p=devm_pinctrl_get_select_default(&mup->pdev->dev);
 		if (IS_ERR(mup->p)){
@@ -660,8 +659,8 @@ static void meson_uart_start_port(struct meson_uart_port *mup)
 		}
 		/* set pinmux here */
 		printk("set %s pinmux use pinctrl subsystem\n",mup->aup->port_name[index]);
+		printk("P_AO_RTI_PIN_MUX_REG:%x\n",aml_read_reg32(P_AO_RTI_PIN_MUX_REG));
 	}
-	printk("P_AO_RTI_PIN_MUX_REG:%x\n",readl(P_AO_RTI_PIN_MUX_REG));
 	// need put pinctrl      
 	aml_set_reg32_mask((uint32_t)&uart->mode, UART_RXRST);
 	aml_clr_reg32_mask((uint32_t)&uart->mode, UART_RXRST);
@@ -695,6 +694,7 @@ static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart
 	mup->pdev = pdev;
 	mup->aup = aup;
 	mup->uart = aup->regaddr[port_index];
+	spin_lock_init(&mup->wr_lock);
 	up = &mup->port;
 	up->dev = &pdev->dev;
 	up->iotype	= UPIO_PORT;
@@ -705,6 +705,7 @@ static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart
 	up->irq	= aup->irq_no[port_index];
 	up->type =1;
 	up->x_char = 0;
+	spin_lock_init(&up->lock);
 
 	if(meson_uart_console_index == port_index){
 		up->cons = meson_register_uart_console;
@@ -911,7 +912,7 @@ static struct platform_device_id meson_uart_driver_ids[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(platform, meson_uart_driver_ids);
-
+#if 0
 static struct ktermios meson_std_termios = {	
 	.c_iflag = ICRNL | IXON,
 	.c_oflag = OPOST | ONLCR,
@@ -922,7 +923,7 @@ static struct ktermios meson_std_termios = {
 	.c_ispeed = 115200,
 	.c_ospeed = 115200
 };
-
+#endif
 static struct uart_driver meson_uart_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= "serial",

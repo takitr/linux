@@ -205,27 +205,27 @@ static inline u16 join_bytes(u8 a, u8 b)
 	return ab;
 }
 
-static u32 gsl_read_interface(struct i2c_client *client, u8 reg, u8 *buf, u32 num)
-{
-	struct i2c_msg xfer_msg[2];
-
-	xfer_msg[0].addr = client->addr;
-	xfer_msg[0].len = 1;
-	xfer_msg[0].flags = client->flags & I2C_M_TEN;
-	xfer_msg[0].buf = &reg;
-
-	xfer_msg[1].addr = client->addr;
-	xfer_msg[1].len = num;
-	xfer_msg[1].flags |= I2C_M_RD;
-	xfer_msg[1].buf = buf;
-
-	if (reg < 0x80) {
-		i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg));
-		msleep(5);
-	}
-
-	return i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg)) == ARRAY_SIZE(xfer_msg) ? 0 : -EFAULT;
-}
+//static u32 gsl_read_interface(struct i2c_client *client, u8 reg, u8 *buf, u32 num)
+//{
+//	struct i2c_msg xfer_msg[2];
+//
+//	xfer_msg[0].addr = client->addr;
+//	xfer_msg[0].len = 1;
+//	xfer_msg[0].flags = client->flags & I2C_M_TEN;
+//	xfer_msg[0].buf = &reg;
+//
+//	xfer_msg[1].addr = client->addr;
+//	xfer_msg[1].len = num;
+//	xfer_msg[1].flags |= I2C_M_RD;
+//	xfer_msg[1].buf = buf;
+//
+//	if (reg < 0x80) {
+//		i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg));
+//		msleep(5);
+//	}
+//
+//	return i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg)) == ARRAY_SIZE(xfer_msg) ? 0 : -EFAULT;
+//}
 
 static u32 gsl_write_interface(struct i2c_client *client, const u8 reg, u8 *buf, u32 num)
 {
@@ -281,7 +281,7 @@ static void gsl_load_fw(struct i2c_client *client)
 		while (send_flag < DMA_TRANS_LEN+1) {
 			if (offset >= file_size) break;
 			touch_read_fw(offset, READ_COUNT, &tmp[0]);
-			ret = sscanf(&tmp[0],"{0x%x,0x%lx},",&(fw_d->offset),&(fw_d->val));
+			ret = sscanf(&tmp[0],"{0x%x,0x%lx},",(int *)&(fw_d->offset),(long *)&(fw_d->val));
 			if (ret != 2) {
 				offset ++;
 				continue;
@@ -608,6 +608,7 @@ static void filter_point(u16 x, u16 y , u8 id)
 }
 #endif
 
+#ifndef FILTER_POINT
 static void record_point(u16 x, u16 y , u8 id)
 {
 	u16 x_err =0;
@@ -660,7 +661,7 @@ static void record_point(u16 x, u16 y , u8 id)
 	}
 	
 }
-
+#endif
 #ifdef HAVE_TOUCH_KEY
 static void report_key(struct gsl_ts *ts, u16 x, u16 y)
 {
@@ -904,7 +905,7 @@ static void gsl_timer_handle(unsigned long data)
 static int gsl_ts_init_ts(struct i2c_client *client, struct gsl_ts *ts)
 {
 	struct input_dev *input_device;
-	int i, rc = 0;
+	int rc = 0;
 	
 	printk("[GSLX680] Enter %s\n", __func__);
 
@@ -1010,8 +1011,8 @@ static void do_download(struct work_struct *work)
 
 static int gsl_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 {
-	struct gsl_ts *ts = dev_get_drvdata(&(client->dev));
-	int rc = 0;
+//	struct gsl_ts *ts = dev_get_drvdata(&(client->dev));
+//	int rc = 0;
 
 	//printk("gsl1680 call func start%s\n", __func__);
 		   
@@ -1025,7 +1026,7 @@ static int gsl_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 static int gsl_ts_resume(struct i2c_client *client)
 {
 	struct gsl_ts *ts = dev_get_drvdata(&(client->dev));
-	int rc = 0;
+//	int rc = 0;
 
   	//printk("gsl1680 call func start%s\n", __func__);
 	
@@ -1056,10 +1057,13 @@ static void gsl_ts_early_suspend(struct early_suspend *h)
 static void gsl_ts_late_resume(struct early_suspend *h)
 {
 	struct gsl_ts *ts = container_of(h, struct gsl_ts, early_suspend);
-	printk("gsl1680 call func start%s\n", __func__);
 	int need_delay = 0;
+	printk("gsl1680 call func start%s\n", __func__);
 	if (ts->dl_fw) {
-		down_interruptible(&ts->fw_sema);
+		if (down_interruptible(&ts->fw_sema))
+		{
+			printk("fail get fw_sema!\n");
+		}
 		ts->dl_fw = 0;
 		need_delay = 1;
 	} else {
@@ -1095,7 +1099,7 @@ static void gslx680_upgrade_touch(void)
 }
 
 #ifdef LATE_UPGRADE
-static void gslx680_late_upgrade(void)
+static int gslx680_late_upgrade(void *p)
 {
 	int file_size;
 //static int count;
@@ -1111,7 +1115,8 @@ static void gslx680_late_upgrade(void)
 	gslx680_upgrade_touch();
 	printk("%s first load firmware\n", g_pdata->owner);
 	enable_irq(this_client->irq);
-	do_exit(0);
+	//do_exit(0);
+	return 0;
 }
 #endif
 static void gslx680_test_i2c(char *ver)
@@ -1125,7 +1130,7 @@ static int gsl_ts_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct gsl_ts *ts;
-	int rc;
+	int rc = 0;
 
 	printk("GSLX680 Enter %s\n", __func__);
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {

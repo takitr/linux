@@ -31,6 +31,12 @@
 #include <linux/earlysuspend.h>
 static struct early_suspend early_suspend;
 #endif
+#include <linux/workqueue.h>
+#include <uapi/linux/reboot.h>
+#include <linux/notifier.h>
+
+static struct delayed_work boot_queue;
+static struct notifier_block bm_reboot_nb;
 
 #define WATCHDOG_ENABLE_BIT 22
 static struct platform_device *pdev;
@@ -43,7 +49,7 @@ void boot_timer_func(unsigned long arg);
 void boot_timer2_func(unsigned long arg);
 
 #define BOOT_TIMER_INTERVAL     (HZ*4)
-#define BOOT_TIMER2_INTERVAL    (HZ*240)
+#define BOOT_TIMER2_INTERVAL    (HZ*600)
 
 static void disable_watchdog(void)
 {
@@ -55,7 +61,7 @@ static void enable_watchdog(void)
 {
 	printk(KERN_INFO "** enable watchdog\n");
     aml_write_reg32(P_WATCHDOG_RESET, 0);
-    aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | 0xEFFFF);//about 5sec
+    aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT |( 0x186a0*9));//about 9sec
 }
 static void reset_watchdog(void)
 {
@@ -139,29 +145,48 @@ static struct class boot_monitor_class = {
 static void meson_system_early_suspend(struct early_suspend *h)
 {	
 	aml_write_reg32(P_WATCHDOG_RESET, 0);
-    	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | (0xEFFFF*2));//about 10sec
+    	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | (0x186a0*18));//about 18sec
 	return ;
 }
 
 static void meson_system_late_resume(struct early_suspend *h)
 {
-	 aml_write_reg32(P_WATCHDOG_RESET, 0);
-    	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | 0xEFFFF);//about 5sec
+	enable_watchdog();
 	return;
 }
 #endif
 
+static void boot_moniter_work(struct work_struct *work)
+{
+	reset_watchdog();
+	mod_delayed_work(system_freezable_wq, &boot_queue,
+				 round_jiffies(msecs_to_jiffies(1000)));
+}
+static int bm_reboot_notifier(struct notifier_block *nb, unsigned long state, void *cmd)
+{ 
+	printk("cacel delay work and reset watch dog\n");
+	cancel_delayed_work(&boot_queue);     
+	aml_write_reg32(P_AO_RTI_STATUS_REG1, MESON_CHARGING_REBOOT);       
+	aml_write_reg32(P_WATCHDOG_RESET, 0);       
+	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT | (0x186a0*18));//about 18sec    
+	return NOTIFY_DONE;
+}
+
 /* Device model stuff */
 static int boot_monitor_probe(struct platform_device *dev)
 {
+	int ret;
 	printk(KERN_INFO "boot_monitor: device successfully initialized.\n");
-
+#if 0
     init_timer(&boot_timer);
     boot_timer.data = (ulong) & boot_timer;
     boot_timer.function = boot_timer_func;
     boot_timer.expires = jiffies + BOOT_TIMER_INTERVAL;
     add_timer(&boot_timer); 
-    printk("sandy test  boot_monitor \n"); 
+    printk("sandy test  boot_monitor \n");
+#endif
+	INIT_DELAYED_WORK(&boot_queue, boot_moniter_work);
+	boot_moniter_work(NULL);
     enable_watchdog();
     aml_write_reg32(P_AO_RTI_STATUS_REG1, MESON_NORMAL_BOOT);
         init_timer(&boot_timer2);
@@ -177,6 +202,13 @@ static int boot_monitor_probe(struct platform_device *dev)
 	early_suspend.resume = meson_system_late_resume;
 	register_early_suspend(&early_suspend);
 #endif
+	bm_reboot_nb.notifier_call = bm_reboot_notifier;
+	bm_reboot_nb.priority=0x7fffffff;
+	 ret = register_reboot_notifier(&bm_reboot_nb);
+	if (ret) {
+		printk("notifier register bm_reboot_notifier fail!\n");
+	}
+	
 	return 0;
 }
 int boot_suspend(struct platform_device *pdev, pm_message_t state)
@@ -187,7 +219,10 @@ int boot_suspend(struct platform_device *pdev, pm_message_t state)
 
 int boot_resume(struct platform_device *pdev)
 {
-	enable_watchdog();
+	
+	printk(KERN_INFO "** resume watchdog\n");
+	aml_write_reg32(P_WATCHDOG_RESET, 0);
+	aml_write_reg32(P_WATCHDOG_TC, 1 << WATCHDOG_ENABLE_BIT |( 0x186a0*18));//about 18sec
 	return 0;
 }
 

@@ -42,7 +42,7 @@ int g_enter_isp = 0;
 
 static struct workqueue_struct *goodix_wq;
 static struct i2c_client * i2c_connect_client = NULL;
-static struct proc_dir_entry *goodix_proc_entry;
+//static struct proc_dir_entry *goodix_proc_entry;
 static struct kobject *goodix_debug_kobj;
 
 /*******************************************************
@@ -152,6 +152,31 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 	uint8_t rd_cfg_buf[7] = {0x66,};
 	u32 offset = 0,count = 0;
 #ifdef DRIVER_SEND_CFG
+#ifdef CONFIG_OF
+	uint8_t *cfg_info_group1 = NULL;
+#else
+	uint8_t cfg_info_group1[] = {0x65,
+							0x03,0x04,0x00,0x03,0x00,0x0A,0x21,0x1E,0xE7,0x32,0x02,0x05,0x10,0x4C,0x4F,0x4F,
+							0x20,0x07,0x00,0x80,0x80,0x3C,0x5A,0x0E,0x0D,0x0C,0x0B,0x0A,0x09,0x08,0x07,0x06,
+							0x05,0x04,0x03,0x02,0x01,0x00,0x1D,0x1C,0x1B,0x1A,0x19,0x18,0x17,0x16,0x15,0x14,
+							0x13,0x12,0x11,0x10,0x0F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+							0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+							0x00,0x00,0x00,0x00,0x00};
+#endif
+	uint8_t cfg_info_group2[] = {
+	//TODO puts your group2 config info here,if need.
+	};
+	uint8_t cfg_info_group3[] = {
+	//TODO puts your group3 config info here,if need.
+	};
+	uint8_t cfg_info_group4[] = {
+	//TODO puts your group4 config info here,if need.
+	};
+	uint8_t * send_cfg_buf[4] = {cfg_info_group1, cfg_info_group2, cfg_info_group3, cfg_info_group4};
+	uint8_t cfg_info_len[4] = {count,
+							   sizeof(cfg_info_group2)/sizeof(cfg_info_group2[0]),
+							   sizeof(cfg_info_group3)/sizeof(cfg_info_group3[0]),
+							   sizeof(cfg_info_group4)/sizeof(cfg_info_group4[0])};
 
 #ifdef CONFIG_OF
 	int file_size;
@@ -174,7 +199,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 
 	while (offset < file_size) {
     touch_read_fw(offset, READ_COUNT, &tmp[0]);
-    i_ret = sscanf(&tmp[0],"0x%x,",config_info + count);
+    i_ret = sscanf(&tmp[0],"0x%x,",(int *)(config_info + count));
     if (i_ret == 1) {
 			count++;
 		}
@@ -183,7 +208,7 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 
 	touch_close_fw();
 
-	uint8_t *cfg_info_group1 = config_info;
+	cfg_info_group1 = config_info;
 
 	printk("cfg_info_len1 = %d\n",count);
 //	int i=0;
@@ -191,39 +216,17 @@ static int goodix_init_panel(struct goodix_ts_data *ts)
 //		printk("%x ", cfg_info_group1[i]);
 //	}
 //	printk("\n");
-	
-#else
-	uint8_t cfg_info_group1[] = {0x65,
-							0x03,0x04,0x00,0x03,0x00,0x0A,0x21,0x1E,0xE7,0x32,0x02,0x05,0x10,0x4C,0x4F,0x4F,
-							0x20,0x07,0x00,0x80,0x80,0x3C,0x5A,0x0E,0x0D,0x0C,0x0B,0x0A,0x09,0x08,0x07,0x06,
-							0x05,0x04,0x03,0x02,0x01,0x00,0x1D,0x1C,0x1B,0x1A,0x19,0x18,0x17,0x16,0x15,0x14,
-							0x13,0x12,0x11,0x10,0x0F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-							0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-							0x00,0x00,0x00,0x00,0x00};
-	count	= sizeof(cfg_info_group1)/sizeof(cfg_info_group1[0]);
-#endif
-	uint8_t cfg_info_group2[] = {
-	//TODO puts your group2 config info here,if need.
-	};
-	uint8_t cfg_info_group3[] = {
-	//TODO puts your group3 config info here,if need.
-	};
-	uint8_t cfg_info_group4[] = {
-	//TODO puts your group4 config info here,if need.
-	};
-
 	cfg_info_group1[2] = g_pdata->xres >> 8;
 	cfg_info_group1[3] = g_pdata->xres & 0xff;
 	cfg_info_group1[4] = g_pdata->yres >> 8;
 	cfg_info_group1[5] = g_pdata->yres & 0xff;
 	cfg_info_group1[6] = g_pdata->max_num;
 	cfg_info_group1[7] = (g_pdata->irq_edge & 0x1) | (cfg_info_group1[7] & ~0x03);
-
-	uint8_t * send_cfg_buf[4] = {cfg_info_group1, cfg_info_group2, cfg_info_group3, cfg_info_group4};
-	uint8_t cfg_info_len[4] = {count,
-							   sizeof(cfg_info_group2)/sizeof(cfg_info_group2[0]),
-							   sizeof(cfg_info_group3)/sizeof(cfg_info_group3[0]),
-							   sizeof(cfg_info_group4)/sizeof(cfg_info_group4[0])};
+	send_cfg_buf[0] = cfg_info_group1;
+#else
+	count	= sizeof(cfg_info_group1)/sizeof(cfg_info_group1[0]);
+#endif
+	cfg_info_len[0] = count;
 	printk("len1=%d,len2=%d,len3=%d,len4=%d\n", cfg_info_len[0],cfg_info_len[1],cfg_info_len[2],cfg_info_len[3]);
 	if((!cfg_info_len[1])&&(!cfg_info_len[2])&&(!cfg_info_len[3]))
 	{
@@ -519,13 +522,13 @@ Parameter:
 return:
 	Timer work mode. HRTIMER_NORESTART---not restart mode
 *******************************************************/
-static enum hrtimer_restart goodix_ts_timer_func(struct hrtimer *timer)
-{
-	struct goodix_ts_data *ts = container_of(timer, struct goodix_ts_data, timer);
-	queue_work(goodix_wq, &ts->work);
-	hrtimer_start(&ts->timer, ktime_set(0, (POLL_TIME+6)*1000000), HRTIMER_MODE_REL);
-	return HRTIMER_NORESTART;
-}
+//static enum hrtimer_restart goodix_ts_timer_func(struct hrtimer *timer)
+//{
+//	struct goodix_ts_data *ts = container_of(timer, struct goodix_ts_data, timer);
+//	queue_work(goodix_wq, &ts->work);
+//	hrtimer_start(&ts->timer, ktime_set(0, (POLL_TIME+6)*1000000), HRTIMER_MODE_REL);
+//	return HRTIMER_NORESTART;
+//}
 
 /*******************************************************
 Description:
@@ -677,70 +680,70 @@ Parameter:
 return:
 	Executive outcomes. 0---failed.
 *******************************************************/
-static ssize_t goodix_debug_diffdata_show(struct device *dev,
-			struct device_attribute *attr, char *buf)
-{
-	//char diff_data[300];
-	unsigned char diff_data[2241] = {00,};
-	int ret = -1;
-	char diff_data_cmd[2] = {80, 202};
-	int i;
-	int short_tmp;
-	struct goodix_ts_data *ts = i2c_get_clientdata(i2c_connect_client);
-//	int INT_PORT  = pdata->gpio_irq;
-
-
-	disable_irq(ts->client->irq);
-	//memset(diff_data, 0, sizeof(diff_data));
-	int_wakeup_green(ts, 0);
-	ret = i2c_write_bytes(ts->client, diff_data_cmd, 2);
-	if(ret != 1)
-	{
-		dev_info(&ts->client->dev, "Write diff data cmd failed!\n");
-		enable_irq(ts->client->irq);
-		return 0;
-	}
-
-#ifdef CONFIG_OF
-	aml_gpio_direction_input(g_pdata->gpio_interrupt);
-	while(aml_get_value(g_pdata->gpio_interrupt))
-#else
-	while(gpio_in_get(g_pdata->gpio_interrupt))
-#endif
-		msleep(1);
-	ret = i2c_read_bytes(ts->client, diff_data, sizeof(diff_data));
-	if(ret <= 0)
-	{
-		dev_info(&ts->client->dev, "Read diff data failed!\n");
-		enable_irq(ts->client->irq);
-		return 0;
-	}
-	for(i=1; i<sizeof(diff_data); i+=2)
-	{
-		short_tmp = diff_data[i] + (diff_data[i+1]<<8);
-		if(short_tmp&0x8000)
-			short_tmp -= 65535;
-		if(short_tmp == 512)continue;
-		sprintf(buf+strlen(buf)," %d",short_tmp);
-		//printk(" %d\n", short_tmp);
-	}
-
-	diff_data_cmd[1] = 0;
-	ret = i2c_write_bytes(ts->client, diff_data_cmd, 2);
-	if(ret != 1)
-	{
-		dev_info(&ts->client->dev, "Write diff data cmd failed!\n");
-		enable_irq(ts->client->irq);
-		return 0;
-	}
-	enable_irq(ts->client->irq);
-	/*for (i=0; i<1024; i++)
-	{
-		sprintf(buf+strlen(buf)," %d",i);
-	}*/
-
-	return strlen(buf);
-}
+//static ssize_t goodix_debug_diffdata_show(struct device *dev,
+//			struct device_attribute *attr, char *buf)
+//{
+//	//char diff_data[300];
+//	unsigned char diff_data[2241] = {00,};
+//	int ret = -1;
+//	char diff_data_cmd[2] = {80, 202};
+//	int i;
+//	int short_tmp;
+//	struct goodix_ts_data *ts = i2c_get_clientdata(i2c_connect_client);
+////	int INT_PORT  = pdata->gpio_irq;
+//
+//
+//	disable_irq(ts->client->irq);
+//	//memset(diff_data, 0, sizeof(diff_data));
+//	int_wakeup_green(ts, 0);
+//	ret = i2c_write_bytes(ts->client, diff_data_cmd, 2);
+//	if(ret != 1)
+//	{
+//		dev_info(&ts->client->dev, "Write diff data cmd failed!\n");
+//		enable_irq(ts->client->irq);
+//		return 0;
+//	}
+//
+//#ifdef CONFIG_OF
+//	aml_gpio_direction_input(g_pdata->gpio_interrupt);
+//	while(aml_get_value(g_pdata->gpio_interrupt))
+//#else
+//	while(gpio_in_get(g_pdata->gpio_interrupt))
+//#endif
+//		msleep(1);
+//	ret = i2c_read_bytes(ts->client, diff_data, sizeof(diff_data));
+//	if(ret <= 0)
+//	{
+//		dev_info(&ts->client->dev, "Read diff data failed!\n");
+//		enable_irq(ts->client->irq);
+//		return 0;
+//	}
+//	for(i=1; i<sizeof(diff_data); i+=2)
+//	{
+//		short_tmp = diff_data[i] + (diff_data[i+1]<<8);
+//		if(short_tmp&0x8000)
+//			short_tmp -= 65535;
+//		if(short_tmp == 512)continue;
+//		sprintf(buf+strlen(buf)," %d",short_tmp);
+//		//printk(" %d\n", short_tmp);
+//	}
+//
+//	diff_data_cmd[1] = 0;
+//	ret = i2c_write_bytes(ts->client, diff_data_cmd, 2);
+//	if(ret != 1)
+//	{
+//		dev_info(&ts->client->dev, "Write diff data cmd failed!\n");
+//		enable_irq(ts->client->irq);
+//		return 0;
+//	}
+//	enable_irq(ts->client->irq);
+//	/*for (i=0; i<1024; i++)
+//	{
+//		sprintf(buf+strlen(buf)," %d",i);
+//	}*/
+//
+//	return strlen(buf);
+//}
 
 
 /*******************************************************
@@ -782,7 +785,7 @@ static ssize_t goodix_debug_calibration_store(struct device *dev,
 
 static DEVICE_ATTR(version, S_IRUGO, goodix_debug_version_show, NULL);
 static DEVICE_ATTR(resolution, S_IRUGO, goodix_debug_resolution_show, NULL);
-static DEVICE_ATTR(diffdata, S_IRUGO, goodix_debug_diffdata_show, NULL);
+//static DEVICE_ATTR(diffdata, S_IRUGO, goodix_debug_diffdata_show, NULL);
 static DEVICE_ATTR(calibration, S_IWUSR , NULL, goodix_debug_calibration_store);
 
 
@@ -818,12 +821,12 @@ static int goodix_debug_sysfs_init(void)
 		printk(KERN_ERR "%s: sysfs_create_calibration_file failed\n", __func__);
 		return ret;
 	}
-	ret = sysfs_create_file(goodix_debug_kobj, &dev_attr_diffdata.attr);
-	if (ret)
-	{
-		printk(KERN_ERR "%s: sysfs_create_diffdata_file failed\n", __func__);
-		return ret;
-	}
+//	ret = sysfs_create_file(goodix_debug_kobj, &dev_attr_diffdata.attr);
+//	if (ret)
+//	{
+//		printk(KERN_ERR "%s: sysfs_create_diffdata_file failed\n", __func__);
+//		return ret;
+//	}
 	ret = sysfs_create_file(goodix_debug_kobj, &dev_attr_resolution.attr);
 	if (ret) {
 		printk(KERN_ERR "%s: sysfs_create_resolution_file failed\n", __func__);
@@ -837,7 +840,7 @@ static void goodix_debug_sysfs_deinit(void)
 {
 	sysfs_remove_file(goodix_debug_kobj, &dev_attr_version.attr);
 	sysfs_remove_file(goodix_debug_kobj, &dev_attr_resolution.attr);
-	sysfs_remove_file(goodix_debug_kobj, &dev_attr_diffdata.attr);
+//	sysfs_remove_file(goodix_debug_kobj, &dev_attr_diffdata.attr);
 	sysfs_remove_file(goodix_debug_kobj, &dev_attr_calibration.attr);
 	kobject_del(goodix_debug_kobj);
 }
@@ -913,7 +916,7 @@ static void gt81xx_upgrade_touch(void)
 	}
 }
 #ifdef LATE_UPGRADE
-static void gt81xx_late_upgrade(void)
+static int gt81xx_late_upgrade(void *p)
 {
 	int file_size;
 	struct goodix_ts_data *ts;
@@ -932,7 +935,8 @@ static void gt81xx_late_upgrade(void)
 	printk("%s :first load firmware\n", g_pdata->owner);
 	if(ts->use_irq)
 		enable_irq(i2c_connect_client->irq);
-	do_exit(0);
+	return 0;	
+	//do_exit(0);
 }
 #endif
 static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -1024,7 +1028,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		goto err_i2c_failed;
 	}
 #ifdef LATE_UPGRADE
-	g_pdata->upgrade_task = kthread_run(gt81xx_late_upgrade, NULL, "gt81xx_late_upgrade");
+	g_pdata->upgrade_task = kthread_run(gt81xx_late_upgrade,(void *) NULL, "gt81xx_late_upgrade");
 	if (!g_pdata->upgrade_task) {
 		printk("%s creat upgrade process failed\n", __func__);
 		goto err_init_goodix_ts;
@@ -1127,7 +1131,7 @@ static int goodix_ts_probe(struct i2c_client *client, const struct i2c_device_id
 		}
 	}
 
-works_in_polling_mode:
+//works_in_polling_mode:
 
 	if (!ts->use_irq)
 	{
@@ -1185,7 +1189,7 @@ works_in_polling_mode:
 	create_init(client->dev, g_pdata);
 	return 0;
 
-err_create_proc_entry:
+//err_create_proc_entry:
 #ifdef CONFIG_HAS_EARLYSUSPEND
     unregister_early_suspend(&ts->early_suspend);
 #endif
@@ -1209,7 +1213,7 @@ err_i2c_failed:
 	kfree(ts);
 err_goodix_is_not_exist:
 	free_touch_gpio(g_pdata);
-err_alloc_data_failed:
+//err_alloc_data_failed:
 err_check_functionality_failed:
 	ts_com->owner = NULL;
 	return ret;

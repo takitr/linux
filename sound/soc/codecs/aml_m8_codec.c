@@ -27,10 +27,6 @@
 
 #include <linux/of.h>
 
-//#define MODELQUICKSTART
-#define stimulus_print   printk
-u16 aml_m8_reg[252] = {0};
-
 unsigned int acodec_regbank[252] = {0x00, 0x05, 0x00, 0x01, 0x7d, 0x02, 0x7d, 0x02, 0x01, 0x7d, // Reg   0 -   9
                                     0x02, 0x7d, 0x02, 0x01, 0x7d, 0x02, 0x7d, 0x02, 0x00, 0x00, // Reg  10 -  19
                                     0xce, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Reg  20 -  29
@@ -61,6 +57,7 @@ unsigned int acodec_regbank[252] = {0x00, 0x05, 0x00, 0x01, 0x7d, 0x02, 0x7d, 0x
 
 extern void audio_set_i2s_clk(unsigned freq, unsigned fs_config);
 extern unsigned audio_aiu_pg_enable(unsigned char enable);
+struct snd_soc_codec *m8_codec = NULL;
 void adac_wr_reg (unsigned long addr, unsigned long data)
 {
     // Write high byte for 16-bit register
@@ -83,8 +80,8 @@ unsigned  long adac_rd_reg (unsigned long addr)
 
 static bool aml_m8_is_16bit_reg(unsigned int reg)
 {
-	return 	(reg == 0x24) || (reg == 0x26) || (reg == 0x34) ||
-			(reg == 0x38) || (reg == 0x47) || (reg == 0x59) ||
+	return 	(reg == 0x24) || (reg == 0x26) || //(reg == 0x34) ||
+			/*(reg == 0x38) ||*/ (reg == 0x47) || //(reg == 0x59) ||
 			(reg == 0x5d) || (reg == 0x80) || (reg == 0x82) ||
 			(reg == 0x88) || (reg == 0x8a);
 }
@@ -149,7 +146,7 @@ static int aml_m8_codec_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	}
 
 	/* set iface */
-	//snd_soc_write(codec, AMLM8_I2S1_CONFIG_0, iface);
+	snd_soc_write(codec, AMLM8_I2S1_CONFIG_0, iface);
 	return 0;
 }
 
@@ -157,9 +154,27 @@ static int aml_m8_codec_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params,
 			    struct snd_soc_dai *dai)
 {
-	//struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	//struct snd_soc_codec *codec = rtd->codec;
-	//u16 iface = snd_soc_read(codec, AMLM8_I2S1_CONFIG_0) & 0xcf;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_codec *codec = rtd->codec;
+	u16 iface = snd_soc_read(codec, AMLM8_I2S1_CONFIG_0) & 0xcf;
+
+    /* bit size */
+    switch (params_format(params)) {
+    case SNDRV_PCM_FORMAT_S16_LE:
+		iface |= 0x30;
+        break;
+    case SNDRV_PCM_FORMAT_S20_3LE:
+        iface |= 0x10;
+        break;
+    case SNDRV_PCM_FORMAT_S24_LE:
+        break;
+	case SNDRV_PCM_FORMAT_S18_3LE:
+        iface |= 0x20;
+        break;
+    }
+	
+	/* set iface */
+	snd_soc_write(codec, AMLM8_I2S1_CONFIG_0, iface);
 
 	return 0;
 }
@@ -190,12 +205,18 @@ static int aml_m8_codec_set_dai_sysclk(struct snd_soc_dai *dai,
 		reg |= 0x07;
 		break;
 	default:
-		return -EINVAL;
+		break;
 	}
 	
 	snd_soc_write(codec, AMLM8_CLK_EXT_SELECT, reg);
 
 	return 0;
+}
+
+static int aml_m8_codec_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int source,
+            unsigned int freq_in, unsigned int freq_out)
+{
+    return 0;
 }
 
 static int aml_m8_codec_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
@@ -228,8 +249,9 @@ static int aml_m8_codec_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 static struct snd_soc_dai_ops aml_m8_codec_dai_ops = {
  	.hw_params	= aml_m8_codec_hw_params,
 	.digital_mute = aml_m8_codec_mute,
-	//.set_sysclk	= aml_m8_codec_set_dai_sysclk,
-	//.set_clkdiv = aml_m8_codec_set_dai_clkdiv,
+	.set_sysclk	= aml_m8_codec_set_dai_sysclk,
+	.set_clkdiv = aml_m8_codec_set_dai_clkdiv,
+    .set_pll = aml_m8_codec_set_dai_pll,
 	.set_fmt	= aml_m8_codec_set_dai_fmt,
 };
 #define AML_RATES SNDRV_PCM_RATE_8000_96000
@@ -257,8 +279,6 @@ struct snd_soc_dai_driver aml_m8_codec_dai = {
 static int aml_m8_set_bias_level(struct snd_soc_codec *codec,
                  enum snd_soc_bias_level level)
 {
-    //printk("****aml_m8_bias_level**level=%d,codec->dapm.bias_level=%d\n",level,codec->dapm.bias_level);
-#if 1
     switch (level) {
     case SND_SOC_BIAS_ON:
         break;
@@ -299,144 +319,11 @@ static int aml_m8_set_bias_level(struct snd_soc_codec *codec,
     }
     codec->dapm.bias_level = level;
     return 0;
-#else
-	switch (level) {
-	case SND_SOC_BIAS_ON:
-		break;
-	case SND_SOC_BIAS_PREPARE:
-		switch (codec->dapm.bias_level) {
-		case SND_SOC_BIAS_STANDBY:
-			/* 1/60 current */
-			snd_soc_update_bits(codec, AMLM8_IREF, 0xf, 0xc);
-			/* pdz to high */
-			snd_soc_update_bits(codec, AMLM8_PD_0, 0x1, 0x1);
-			/* normal current */
-			snd_soc_update_bits(codec, AMLM8_IREF, 0xf, 0x0);
-			break;
-
-		default:
-			break;
-		}
-
-		break;
-	case SND_SOC_BIAS_STANDBY:
-		switch (codec->dapm.bias_level) {
-		case SND_SOC_BIAS_PREPARE:
-			/* 3/2 current */
-			snd_soc_update_bits(codec, AMLM8_IREF, 0xf, 0x3);
-			/* pdz to high */
-			snd_soc_update_bits(codec, AMLM8_PD_0, 0x1, 0x0);
-			/* normal current */
-			snd_soc_update_bits(codec, AMLM8_IREF, 0xf, 0x0);			
-			break;
-
-		default:
-			break;
-		}
-
-		break;
-		
-	case SND_SOC_BIAS_OFF:
-	    break;
-	default:
-	    break;
-	}
-	codec->dapm.bias_level = level;
-	return 0;
-#endif
 }
 static void acodec_delay_us (int us)
 {
 	msleep(us/1000);
 } /* acodec_delay_us */
-
-
-static void adac_rd_check_reg (unsigned int addr, unsigned int exp_data, unsigned int mask)
-{
-    unsigned int rd_data;
-    rd_data = adac_rd_reg(addr);
-    if ((rd_data | mask) != (exp_data | mask)) {
-        stimulus_print("[TEST.C] Error: audio CODEC register read data mismatch!\n");
-        stimulus_print("addr=0x%x ,",addr);
-        stimulus_print(" rd_data=0x%x ,",rd_data);
-        stimulus_print(" exp_data=0x%x\n",exp_data);
-    }
-    printk("adac_rd_check_reg addr %x ,value %x \n", addr,rd_data);	
-} /* adac_rd_check_reg */
-
-void acodec_standby (struct snd_soc_codec *codec)
-{
-    unsigned long data32;
-    
-    stimulus_print("[TEST.C] audio CODEC Standby mode -- Begin\n");
-
-    // Apply reset for at least 3 clk_ext cycles
-    aml_set_reg32_bits(P_AIU_AUDAC_CTRL0, 1, 15, 1); 
-    acodec_delay_us(20);
-    aml_set_reg32_bits(P_AIU_AUDAC_CTRL0, 0, 15, 1); 
-
-    // Set up register :
-    //   pd* all low
-    //   ensleep high
-    //   cfganasleep high
-    //   cfgdigsleep low
-
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] cfg_prech_anaref
-    data32 |= 0 << 0;   // [    0] bypass_pwr_seq
-    snd_soc_write(codec, 19, data32);
-
-    data32  = 0;
-    data32 |= 0 << 4;   // [    4] pd_micb2z
-    data32 |= 0 << 3;   // [    3] pd_micb1z
-    data32 |= 0 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 0 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 0 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-
-    data32  = 0;
-    data32 |= 0 << 5;   // [    5] pd_pga2rz
-    data32 |= 0 << 4;   // [    4] pd_pga2lz
-    data32 |= 0 << 3;   // [    3] pd_pga1rz
-    data32 |= 0 << 2;   // [    2] pd_pga1lz
-    data32 |= 0 << 1;   // [    1] pd_adcrz
-    data32 |= 0 << 0;   // [    0] pd_adclz
-    snd_soc_write(codec, 22, data32);
-
-    data32  = 0;
-    data32 |= 0 << 7;   // [    7] pd_ld1rz
-    data32 |= 0 << 6;   // [    6] pd_ld1lz
-    data32 |= 0 << 5;   // [    5] pd_hs1rz
-    data32 |= 0 << 4;   // [    4] pd_hs1lz
-    data32 |= 0 << 1;   // [    1] pd_dacrz
-    data32 |= 0 << 0;   // [    0] pd_daclz
-    snd_soc_write(codec, 24, data32);
-
-    data32  = 0;
-    data32 |= 5 << 0;   // [ 3: 0] clk_ext_sel
-    snd_soc_write(codec, 1, data32);
-
-    data32  = 0;
-    data32 |= 0xc << 4; // [ 7: 4] cfganasleepiref
-    data32 |= 1   << 3; // [    3] cfganasleep
-    data32 |= 0   << 2; // [    2] cfgdigsleep
-    data32 |= 1   << 1; // [    1] envcmhold
-    data32 |= 1   << 0; // [    0] ensleep
-    snd_soc_write(codec, 20, data32);
-
-    // Set pdz to high
-    data32  = 0;
-    data32 |= 0 << 4;   // [    4] pd_micb2z
-    data32 |= 0 << 3;   // [    3] pd_micb1z
-    data32 |= 0 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 0 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-
-    acodec_delay_us(10);
-    stimulus_print("[TEST.C] audio CODEC Standby mode -- End\n");
-} /* acodec_standby */
-
 
 void acodec_normal_startup (struct snd_soc_codec *codec)
 {
@@ -454,6 +341,7 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     snd_soc_write(codec, 6, 64);
     snd_soc_write(codec, 7, 4);
     
+	snd_soc_write(codec, 3, 1);//i2s1_mode
     data32  = 0;
     data32 |= 0 << 1;   // [    1] rstadcdpz
     data32 |= 0 << 0;   // [    0] rstdacdpz
@@ -466,81 +354,18 @@ void acodec_normal_startup (struct snd_soc_codec *codec)
     data32 |= 1 << 0;   // [    0] rstdacdpz
     snd_soc_write(codec, 0, data32);
     
-    data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-
-	data32 = 0;
-	while(1){
-		data32 |= (snd_soc_read(codec, 83) | 0x3);
-		printk("acodec_normal_startup::reg83=%d\n", data32);
-		if(data32 == 3)
-			break;
-	}
-	
-}
-
-void acodec_startup_sequence (struct snd_soc_codec *codec)
-{
-    unsigned int data32;
-
-    stimulus_print("[TEST.C] audio CODEC Startup Sequence -- Begin\n");
-    
-    //--------------------------------------------------------------------------
-    // 1.	select the master clock mode mclksel[3:0] bit
-    // 2.	start the master clock
-    // 3.	set pdz bit to high
-    // 4.	select the sampling rate
-    // 5.	reset the signal path (rstdpz pin to low and back to high after 100ns)
-    // 6.	start the individual codec blocks
-    // 	    7.1.1	Pop free start up recommendations
-    // 	    To obtain a pop-free start-up for the playback channel, the corresponding 
-    // 	    blocks in the desired playback signal path must also be enable when setting
-    // 	    the master power up control active, as per the start-up sequence step 3 
-    // 	    (above).
-    //      
-    // 	    For example, when setting pdz bit to high, pddacl/rz bit, pdhsdrvl/rz bit 
-    // 	    and/or pdauxdrvl/rz bit should also be set to high at the same time to
-    // 	    obtain a clean, pop-free start up.
-    // 	    By using the latch signal properly, it is possible to guarantee that all the
-    // 	    required power control, signals are loaded to the Audio Codec IP
-    // 	    simultaneously.
-
-    // Apply reset for at least 3 clk_ext cycles
-    WRITE_MPEG_REG_BITS(AIU_AUDAC_CTRL0, 1, 15, 1); 
-    acodec_delay_us(20);
-    WRITE_MPEG_REG_BITS(AIU_AUDAC_CTRL0, 0, 15, 1); 
-
-    // Set pdz to low
-    data32  = 0;
-    data32 |= 0 << 4;   // [    4] pd_micb2z
-    data32 |= 0 << 3;   // [    3] pd_micb1z
-    data32 |= 0 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 0 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 0 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-    
-    acodec_delay_us(3000);
-
-    snd_soc_write(codec, 71, 0);
+	//set the nominal current
+	snd_soc_write(codec, 0x12, 0x0);
 
     // Disable soft-ramping
     data32  = 0;
-    data32 |= 1 << 7;   // [    7] disable_sr
-    data32 |= 2 << 5;   // [ 6: 5] dither_lvl
+    data32 |= 0 << 7;   // [    7] disable_sr
+    data32 |= 0 << 5;   // [ 6: 5] dither_lvl
     data32 |= 0 << 4;   // [    4] noise_shape_en
-    data32 |= 0 << 2;   // [ 3: 2] dem_cfg
+    data32 |= 3 << 2;   // [ 3: 2] dem_cfg
     data32 |= 0 << 0;   // [ 1: 0] cfg_adc_dither
-    snd_soc_write(codec, 243, data32);
-    acodec_delay_us(4000);
-
-    acodec_delay_us(10);
-    stimulus_print("[TEST.C] audio CODEC Startup Sequence -- End\n");
-} /* acodec_startup_sequence */
+    snd_soc_write(codec, 0xF3, data32);
+}
 
 void acodec_config(unsigned int clk_ext_sel,           // [3:0]: 0=1.958M~2.65M; 1=2.6M~3.5M; 2=3.9M~5.3M; 3=5.2M~7.06M; 4=10.2M~13.8M;
                                                         //        5=15.3M~20.7M; 6=20.4M~26.6M; 7=25.5M~34.5M; 8=30.6M~41.4M; 9=40.8M~55.2M.
@@ -577,7 +402,6 @@ void acodec_config(unsigned int clk_ext_sel,           // [3:0]: 0=1.958M~2.65M;
                    unsigned int ctr,                   // [2:0]: test mode sel. 0=Normal, 1=Digital filter loopback, 2=Digital filter bypass, 3=Digital audio I/F loopback, 4=Shaping filters loop-back.
                    unsigned int enhp)                  // Record channel high pass filter enable.
 {
-    stimulus_print("[TEST.C] audio CODEC register config -- Begin\n");
     adac_wr_reg(1, clk_ext_sel);
     adac_wr_reg(5, i2s1_play_sclk_div);
     adac_wr_reg(4, i2s1_play_lrclk_div);
@@ -596,133 +420,18 @@ void acodec_config(unsigned int clk_ext_sel,           // [3:0]: 0=1.958M~2.65M;
     adac_wr_reg(93, ld2_sel);
     adac_wr_reg(210, ctr);
     adac_wr_reg(211, (enhp<<2));
-    stimulus_print("[TEST.C] audio CODEC register config -- End\n");
 }
 
-void acodec_prepare_register (struct snd_soc_codec *codec)
+void acodec_reserved_reg_set (struct snd_soc_codec *codec)
 {
-    unsigned int data32;
-    
-    stimulus_print("[TEST.C] acodec_prepare_register -- Begin\n");
-    
-    // Individual blocks out of power down
+	unsigned int data32;
 
-    data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 0 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-
-    data32  = 0;
-    data32 |= 1 << 5;   // [    5] pd_pga2rz
-    data32 |= 1 << 4;   // [    4] pd_pga2lz
-    data32 |= 1 << 3;   // [    3] pd_pga1rz
-    data32 |= 1 << 2;   // [    2] pd_pga1lz
-    data32 |= 1 << 1;   // [    1] pd_adcrz
-    data32 |= 1 << 0;   // [    0] pd_adclz
-    snd_soc_write(codec, 22, data32);
-
-    data32  = 0;
-    data32 |= 1 << 7;   // [    7] pd_ld1rz
-    data32 |= 1 << 6;   // [    6] pd_ld1lz
-    data32 |= 1 << 5;   // [    5] pd_hs1rz
-    data32 |= 1 << 4;   // [    4] pd_hs1lz
-    data32 |= 1 << 1;   // [    1] pd_dacrz
-    data32 |= 1 << 0;   // [    0] pd_daclz
-    snd_soc_write(codec, 24, data32);
-
-    data32  = 0;
-    data32 |= 1 << 7;   // [    7] pd_ggbda2rz
-    data32 |= 1 << 6;   // [    6] pd_ggbda2lz
-    data32 |= 1 << 5;   // [    5] pd_ggbda1rz
-    data32 |= 1 << 4;   // [    4] pd_ggbda1lz
-    data32 |= 1 << 3;   // [    3] pd_ld2rz
-    data32 |= 1 << 2;   // [    2] pd_ld2lz
-    data32 |= 1 << 1;   // [    1] pd_hs2rz
-    data32 |= 1 << 0;   // [    0] pd_hs2lz
-    snd_soc_write(codec, 25, data32);
-
-//    data32  = 0;
-//    data32 |= 5 << 0;   // [ 3: 0] clk_ext_sel
-//    adac_wr_reg(1, data32);
-
-    data32  = 0;
-    data32 |= 0xc << 4; // [ 7: 4] cfganasleepiref
-    data32 |= 1   << 3; // [    3] cfganasleep
-    data32 |= 1   << 2; // [    2] cfgdigsleep
-    data32 |= 1   << 1; // [    1] envcmhold
-    data32 |= 0   << 0; // [    0] ensleep
-    snd_soc_write(codec, 20, data32);
-
-//    adac_wr_reg(38, 0x0606);
-
-    data32  = 0;
+	data32  = 0;
     data32 |= 0   << 5; // [ 6: 5] cfg_adc_vcmi
     data32 |= 0   << 3; // [ 4: 3] cfg_dac_vcmi
     data32 |= 0   << 2; // [    2] sel_in_vcm_buf
     data32 |= 0   << 0; // [ 1: 0] cfg_vcm_buf
     snd_soc_write(codec, 220, data32);
-
-    data32  = 0;
-    data32 |= 0   << 0; // [ 3: 0] config_ana_3
-    snd_soc_write(codec, 251, data32);
-
-    stimulus_print("[TEST.C] acodec_prepare_register -- End\n");
-} /* acodec_prepare_register */
-
-void acodec_powerup_bypassfastcharge (struct snd_soc_codec *codec)
-{
-    unsigned int data32;
-    
-    stimulus_print("[TEST.C] acodec_powerup_bypassfastcharge -- Begin\n");
-
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] cfg_prech_anaref
-    data32 |= 1 << 0;   // [    0] bypass_pwr_seq
-    snd_soc_write(codec, 19, data32);
-    acodec_delay_us(1000);
-
-//    // Configure FS related registers
-//    data32  = 0;
-//    data32 |= 0 << 7;   // [    7] pport1_en
-//    data32 |= 0 << 6;   // [    6] i2s1_ext_clk_en
-//    data32 |= 0 << 4;   // [ 5: 4] i2s1_word_sel
-//    data32 |= 0 << 3;   // [    3] i2s1_ms_mode
-//    data32 |= 1 << 0;   // [ 2: 0] i2s1_mode
-//    adac_wr_reg(3, data32);
-
-//    adac_wr_reg(4, 125);    // [7:0] i2s1_play_lrclk_div
-//    adac_wr_reg(5, 2);      // [7:0] i2s1_play_sclk_div
-//    adac_wr_reg(6, 125);    // [7:0] i2s1_rec_lrclk_div
-//    adac_wr_reg(7, 2);      // [7:0] i2s1_rec_sclk_div
-
-    // Cycle reset on data path
-
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] rstadcdpz
-    data32 |= 0 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
-
-    data32  = 0;
-    data32 |= 1 << 1;   // [    1] rstadcdpz
-    data32 |= 1 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
-
-    data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-
-    stimulus_print("[TEST.C] acodec_powerup_bypassfastcharge -- End\n");
-} /* acodec_powerup_bypassfastcharge */
-void acodec_reserved_reg_set (struct snd_soc_codec *codec)
-{
-	unsigned int data32;
 
 	data32  = 0;
 	data32 |= 0 << 7;    //[7]      tstenadcch
@@ -788,45 +497,6 @@ static void set_acodec_source (unsigned int src)
     // Wait until data change is settled
     while ( (((aml_read_reg32(P_AIU_CODEC_CLK_DATA_CTRL)) >> 12) & 0x3) != src) {}
 } /* set_acodec_source */
-void acodec_powerup_fastcharge (struct snd_soc_codec *codec)
-{
-    unsigned int data32;
-    
-    stimulus_print("[TEST.C] acodec_powerup_fastcharge -- Begin\n");
-
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] cfg_prech_anaref
-    data32 |= 0 << 0;   // [    0] bypass_pwr_seq
-    snd_soc_write(codec, 19, data32);
-
-    data32  = 0;
-    data32 |= 0 << 0;   // [ 2: 0] DIVa
-    snd_soc_write(codec, 162, data32);
-
-    acodec_delay_us(1000);
-
-    // Cycle reset on data path
-#if 1 
-    data32  = 0;
-    data32 |= 0 << 1;   // [    1] rstadcdpz
-    data32 |= 0 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
-
-    data32  = 0;
-    data32 |= 1 << 1;   // [    1] rstadcdpz
-    data32 |= 1 << 0;   // [    0] rstdacdpz
-    snd_soc_write(codec, 0, data32);
-
-    data32  = 0;
-    data32 |= 1 << 4;   // [    4] pd_micb2z
-    data32 |= 1 << 3;   // [    3] pd_micb1z
-    data32 |= 1 << 2;   // [    2] pd_pgbuf2z
-    data32 |= 1 << 1;   // [    1] pd_pgbuf1z
-    data32 |= 1 << 0;   // [    0] pdz
-    snd_soc_write(codec, 21, data32);
-#endif
-    stimulus_print("[TEST.C] acodec_powerup_bypassfastcharge -- End\n");
-} /* acodec_powerup_fastcharge */
 
 static void start_codec(struct snd_soc_codec *codec)
 {
@@ -841,62 +511,8 @@ static void start_codec(struct snd_soc_codec *codec)
     data32 |= 0x55  << 1;   // [7:1]    audac_i2caddr
     data32 |= 0     << 0;   // [0]      audac_intfsel: 0=use host bus; 1=use I2C.
     aml_write_reg32(P_AIU_AUDAC_CTRL0, data32);
-    // Check read back data
-    data32 = aml_read_reg32(P_AIU_AUDAC_CTRL0);
-    if (data32 != ((1<<14) | (0x55<<1))) {
-        stimulus_print("[TEST.C] Error: AIU_AUDAC_CTRL0 read data mismatch!");
-    }
 
-    // --------------------------------------------------------
-    // audio CODEC register access testing
-    // --------------------------------------------------------
-#if 0
-
-    snd_soc_write(codec, 36, 0xdead);
-    snd_soc_write(codec, 38, 0xbeef);
-    snd_soc_write(codec, 52, 0x1234);
-    snd_soc_write(codec, 56, 0x5678);
-
-    adac_rd_check_reg(36, acodec_regbank[36], 0);
-    adac_rd_check_reg(37, acodec_regbank[37], 0);
-    adac_rd_check_reg(38, acodec_regbank[38], 0);
-    adac_rd_check_reg(39, acodec_regbank[39], 0);
-    adac_rd_check_reg(52, acodec_regbank[52], 0);
-    adac_rd_check_reg(53, acodec_regbank[53], 0);
-    adac_rd_check_reg(56, acodec_regbank[56], 0);
-    adac_rd_check_reg(57, acodec_regbank[57], 0);
-
-    snd_soc_write(codec, 36, 0xbfbf);
-    snd_soc_write(codec, 38, 0x1212);
-    snd_soc_write(codec, 52, 0xe7e7);
-    snd_soc_write(codec, 56, 0x0d0d);
-
-    adac_rd_check_reg(36, acodec_regbank[36], 0);
-    adac_rd_check_reg(37, acodec_regbank[37], 0);
-    adac_rd_check_reg(38, acodec_regbank[38], 0);
-    adac_rd_check_reg(39, acodec_regbank[39], 0);
-    adac_rd_check_reg(52, acodec_regbank[52], 0);
-    adac_rd_check_reg(53, acodec_regbank[53], 0);
-    adac_rd_check_reg(56, acodec_regbank[56], 0);
-    adac_rd_check_reg(57, acodec_regbank[57], 0);
-#endif
-    // --------------------------------------
-    // Setup Audio CODEC
-    // --------------------------------------
-
-    //acodec_standby();
-#if 1
-#ifdef MODELQUICKSTART
-		acodec_powerup_bypassfastcharge(codec);
-#else
-		// TODO
-		acodec_powerup_fastcharge(codec);
-#endif  /* MODELQUICKSTART */
-#endif
-    //acodec_startup_sequence(codec);
 	acodec_normal_startup(codec);
-
-    acodec_prepare_register(codec);
 
     acodec_config(  5,      // clk_ext_sel[3:0]: 0=2.304M+/-15%; 1=3.072M+/-15%; 2=4.608M+/-15%; 3=6.144M+/-15%; 4=9.216M+/-15%;
                             //                   5=12.288M+/-15%; 6=18.432M+/-15%; 7=24.576M+/-15%; 8=30.720M+/-15%; 9=36.864M+/-15%; 10=49.152M+/-15%.
@@ -905,7 +521,7 @@ static void start_codec(struct snd_soc_codec *codec)
                     4,      // i2s1_rec_sclk_div 
                     64,     // i2s1_rec_lrclk_div
                     0,      // en_i2s1_ext_clk
-                    0,      // i2s1_word_sel: 0=24-bit; 1=20bit; 2=18-bit; 3=16-bit.
+                    3,      // i2s1_word_sel: 0=24-bit; 1=20bit; 2=18-bit; 3=16-bit.
                     0,      // i2s1_ms_mode: 0=slave mode; 1=master mode.
                     1,      // i2s1_mode[2:0]: 0=Right justify, 1=I2S, 2=Left justify, 3=Burst1, 4=Burst2, 5=Mono burst1, 6=Mono burst2, 7=Rsrv.
                     0,      // pga1_mute[1:0]: [0] Input PGA left channel mute; [1] Input PGA right channel mute. 0=un-mute; 1=mute.
@@ -915,7 +531,7 @@ static void start_codec(struct snd_soc_codec *codec)
                     0,      // ld1_out_mute[1:0]: [0] Playback left channel analog mute; [1] Playback right channel analog mute. 0=un-mute; 1=mute.
                     0,      // ld2_out_mute[1:0]: [0] Playback left channel analog mute; [1] Playback right channel analog mute. 0=un-mute; 1=mute.
                     0xbfbf,//0xbfbf, // rec_vol[15:0]: Recording digital master volume control. [7:0] Left; [15:8] Right. 0xbf=0dB.
-                    0x1414, // 0x0606,pga1_vol[15:0]: Input PGA volume control. [7:0] Left; [15:8] Right. 0x12=0dB.
+                    0x2a2a, // 0x0606,pga1_vol[15:0]: Input PGA volume control. [7:0] Left; [15:8] Right. 0x12=0dB.
                     0xe7e7, // lm_vol[15:0]: Digital playback master volume control. [7:0] Left; [15:8] Right. 0xe7=0dB.
                     0x0d0d, // hs1_vol[15:0]: Headset analog volume control. [7:0] Left; [15:8] Right. 0x0d=0dB.
                     0x0101, // pga1_sel[15:0]: PGA input selection. [7:0] Left; [15:8] Right. 0=ain1p/n, 1=ain1p, 4=ain2p/n, 5=ain2p, 3=ain3.
@@ -932,7 +548,7 @@ static void start_codec(struct snd_soc_codec *codec)
                             // [ 0] Signal from left channel DAC output.  0=Disabled; 1=Enabled;
                     0,      // ctr[2:0]: test mode sel. 0=Normal, 1=Digital filter loopback, 2=Digital filter bypass, 3=Digital audio I/F loopback, 4=Shaping filters loop-back.
                     1);     // enhp: Record channel high pass filter enable.
-//acodec_powerup_fastcharge(codec);
+
     data32  = 0;
     data32 |= 0 << 1;   // [    1] rstadcdpz
     data32 |= 0 << 0;   // [    0] rstdacdpz
@@ -967,7 +583,6 @@ void aml_m8_codec_reset(struct snd_soc_codec* codec)
 
 	set_acodec_source(2);
 	audio_util_set_dac_i2s_format(0);
-    stimulus_print("I2S clock setting over!!\n");
 
 	start_codec(codec);
     snd_soc_write(codec,0x7b,0x03);  // record left frame output the playback left and right channels. 
@@ -1005,22 +620,22 @@ static const char *wf_freq[] = {
 };
 static const char *digi_mixer[] = {
 	"Stereo Mode", "Mixed Mode", "Switch Mode", 
-	"Left Mono Mode", "Left Mono Mode"
+	"Left Mono Mode", "Right Mono Mode"
 };
 
 static const struct soc_enum amlm8_enum[] = {
 	SOC_ENUM_SINGLE(AMLM8_WIND_FILTER, 0, 8, wf_freq),	
 	SOC_ENUM_SINGLE(AMLM8_NOISE_GATE_0, 1, 4, noise_gate),
-	SOC_ENUM_SINGLE(AMLM8_REC_DMIX, 1, 5, digi_mixer),
-	SOC_ENUM_SINGLE(AMLM8_PB_DMIX, 1, 5, digi_mixer),
-	SOC_ENUM_SINGLE(AMLM8_I2S1_DMIX, 1, 5, digi_mixer)
+	SOC_ENUM_SINGLE(AMLM8_REC_DMIX, 0, 5, digi_mixer),
+	SOC_ENUM_SINGLE(AMLM8_PB_DMIX, 0, 5, digi_mixer),
+	SOC_ENUM_SINGLE(AMLM8_I2S1_DMIX, 0, 5, digi_mixer)
 };
 
 static const struct snd_kcontrol_new amlm8_snd_controls[] = {
-SOC_DOUBLE_TLV("Master Playback Volume", AMLM8_LM_VOL, 0, 8, 0xFF, 0, dac_tlv),
-SOC_DOUBLE_TLV("Headphone Volume", AMLM8_HS_VOL, 0, 8, 0x0F, 0, hs_tlv),
-SOC_DOUBLE_TLV("Capture Volume", AMLM8_REC_VOL, 0, 8, 0xFF, 0, adc_tlv),
-SOC_DOUBLE_TLV("MIC PGA Volume", AMLM8_PGA_VOL, 0, 8, 0x35, 0, pga_tlv),
+SOC_DOUBLE_R_TLV("Master Playback Volume", AMLM8_LM_LEFT_VOL, AMLM8_LM_RIGHT_VOL, 0, 0xFF, 0, dac_tlv),
+SOC_DOUBLE_R_TLV("Headphone Volume", AMLM8_HS_LEFT_VOL, AMLM8_HS_RIGHT_VOL, 0, 0x0F, 0, hs_tlv),
+SOC_DOUBLE_R_TLV("Record Volume", AMLM8_REC_LEFT_VOL, AMLM8_REC_RIGHT_VOL, 0, 0xFF, 0, adc_tlv),
+SOC_DOUBLE_R_TLV("MIC PGA Volume", AMLM8_PGA_LEFT_VOL, AMLM8_PGA_RIGHT_VOL, 0, 0x35, 0, pga_tlv),
 
 SOC_DOUBLE("Headphone Switch", AMLM8_MUTE_2, 4, 5, 1, 1),
 SOC_DOUBLE("Capture Switch", AMLM8_MUTE_0, 0, 1, 1, 1),
@@ -1042,18 +657,18 @@ SOC_VALUE_ENUM("Right LINEIN Select", right_linein_select),
 
 };
 static const struct snd_kcontrol_new amlm8_left_ld1_mixer[] = {
-SOC_DAPM_SINGLE("LEFT DAC Switch", AMLM8_LDR1_SEL, 0, 1, 0),
-SOC_DAPM_SINGLE("LEFT RECORDING PGA Switch", AMLM8_LDR1_SEL, 1, 1, 0),
-SOC_DAPM_SINGLE("RIGHT RECORDING PGA Switch", AMLM8_LDR1_SEL, 2, 1, 0),
+SOC_DAPM_SINGLE("LEFT DAC Switch", AMLM8_LDR1_LEFT_SEL, 0, 1, 0),
+SOC_DAPM_SINGLE("LEFT REC PGA Switch", AMLM8_LDR1_LEFT_SEL, 1, 1, 0),
+SOC_DAPM_SINGLE("RIGHT REC PGA Switch", AMLM8_LDR1_LEFT_SEL, 2, 1, 0),
 };
 static const struct snd_kcontrol_new amlm8_right_ld1_mixer[] = {
-SOC_DAPM_SINGLE("RIGHT DAC Switch", AMLM8_LDR1_SEL, 8, 1, 0),
-SOC_DAPM_SINGLE("RIGHT RECORDING PGA Switch", AMLM8_LDR1_SEL, 9, 1, 0),
-SOC_DAPM_SINGLE("LEFT RECORDING PGA Switch", AMLM8_LDR1_SEL, 10, 1, 0),
+SOC_DAPM_SINGLE("RIGHT DAC Switch", AMLM8_LDR1_RIGHT_SEL, 0, 1, 0),
+SOC_DAPM_SINGLE("RIGHT REC PGA Switch", AMLM8_LDR1_RIGHT_SEL, 1, 1, 0),
+SOC_DAPM_SINGLE("LEFT REC PGA Switch", AMLM8_LDR1_RIGHT_SEL, 2, 1, 0),
 };
 static const struct snd_kcontrol_new amlm8_mono_ld2_mixer[] = {
 SOC_DAPM_SINGLE("LEFT DAC Switch", AMLM8_LDR2_SEL, 0, 1, 0),
-SOC_DAPM_SINGLE("LEFT RECORDING PGA Switch", AMLM8_LDR2_SEL, 1, 1, 0),
+SOC_DAPM_SINGLE("LEFT REC PGA Switch", AMLM8_LDR2_SEL, 1, 1, 0),
 SOC_DAPM_SINGLE("RIGHT DAC Switch", AMLM8_LDR2_SEL, 2, 1, 0),
 };
 
@@ -1108,45 +723,38 @@ static const struct snd_soc_dapm_route aml_m8_audio_map[] = {
 	{ "Right ADC", NULL, "Right IN PGA" },
 
 	{ "Left Output Mixer", "LEFT DAC Switch", "Left DAC" },
-	{ "Left Output Mixer", "LEFT RECORDING PGA Switch", "Left IN PGA" },
-	{ "Left Output Mixer", "RIGHT RECORDING PGA Switch", "RIGHT IN PGA" },
+	{ "Left Output Mixer", "LEFT REC PGA Switch", "Left IN PGA" },
+	{ "Left Output Mixer", "RIGHT REC PGA Switch", "Right IN PGA" },
 
-	{ "Right Output Mixer", "Right DAC Switch", "Right DAC" },
-	{ "Right Output Mixer", "RIGHT RECORDING PGA Switch", "RIGHT IN PGA" },
-	{ "Right Output Mixer", "LEFT RECORDING PGA Switch", "Left IN PGA" },
+	{ "Right Output Mixer", "RIGHT DAC Switch", "Right DAC" },
+	{ "Right Output Mixer", "RIGHT REC PGA Switch", "Right IN PGA" },
+	{ "Right Output Mixer", "LEFT REC PGA Switch", "Left IN PGA" },
 
-	{ "Mono Output Mixer", "LEFT DAC Switch", "LEFT DAC" },
-	{ "Mono Output Mixer", "LEFT RECORDING PGA Switch", "RIGHT IN PGA" },
-	{ "Mono Output Mixer", "RIGHT DAC Switch", "RIGHT DAC" },
+	{ "Mono Output Mixer", "LEFT DAC Switch", "Left DAC" },
+	{ "Mono Output Mixer", "LEFT REC PGA Switch", "Left IN PGA" },
+	{ "Mono Output Mixer", "RIGHT DAC Switch", "Right DAC" },
 
 	{ "LINEOUTL", NULL, "Left Output Mixer" },
 	{ "LINEOUTR", NULL, "Right Output Mixer" },
 	
-	{ "LINEOUTMONO", NULL, "Left Output Mixer" },
-	{ "LINEOUTMONO", NULL, "Right Output Mixer" },
-	
-	{ "HP_L", NULL, "Left Output Mixer" },
-	{ "HP_R", NULL, "Right Output Mixer" },
-	{ "HP_L", NULL, "PG VCM" },
-	{ "HP_R", NULL, "PG VCM" },
+	{ "LINEOUTMONO", NULL, "Mono Output Mixer" },
+
+	{ "Left HP OUT PGA", NULL, "Left Output Mixer" },
+	{ "Right HP OUT PGA", NULL, "Right Output Mixer" },
+	{ "HP_L", NULL, "Left HP OUT PGA" },
+	{ "HP_R", NULL, "Right HP OUT PGA" },
 };
 
 static int aml_m8_soc_probe(struct snd_soc_codec *codec){
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
+    m8_codec = codec;
 	audio_aiu_pg_enable(1);
 	aml_m8_codec_reset(codec);
 	audio_aiu_pg_enable(0);
-    	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
-#if 0	
-	aml_m8_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	snd_soc_add_codec_controls(codec, amlm8_snd_controls,
-				ARRAY_SIZE(amlm8_snd_controls));
-	
-	snd_soc_dapm_new_controls(dapm, aml_m8_dapm_widgets,
-				  ARRAY_SIZE(aml_m8_dapm_widgets));
+   	codec->dapm.bias_level = SND_SOC_BIAS_STANDBY;
 
-	snd_soc_dapm_add_routes(dapm, aml_m8_audio_map, ARRAY_SIZE(aml_m8_audio_map));
-#endif
+	snd_soc_dapm_force_enable_pin(dapm, "MICBIAS");
+
     return 0;
 }
 static int aml_m8_soc_remove(struct snd_soc_codec *codec){
@@ -1175,14 +783,16 @@ static struct snd_soc_codec_driver soc_codec_dev_amlm8 = {
 	.read = aml_m8_read,
 	.write = aml_m8_write,
 	.set_bias_level = aml_m8_set_bias_level,
-	.reg_cache_size = ARRAY_SIZE(aml_m8_reg),
+	.reg_cache_size = ARRAY_SIZE(acodec_regbank),
 	.reg_word_size = sizeof(u16),
 	.reg_cache_step = 1,
-	.reg_cache_default = aml_m8_reg,
-/*	.dapm_widgets = aml_m8_dapm_widgets,
+	.reg_cache_default = acodec_regbank,
+	.controls = amlm8_snd_controls,
+	.num_controls = ARRAY_SIZE(amlm8_snd_controls),
+	.dapm_widgets = aml_m8_dapm_widgets,
 	.num_dapm_widgets = ARRAY_SIZE(aml_m8_dapm_widgets),
 	.dapm_routes = aml_m8_audio_map,
-	.num_dapm_routes = ARRAY_SIZE(aml_m8_audio_map),*/
+	.num_dapm_routes = ARRAY_SIZE(aml_m8_audio_map),
 };
 
 static int aml_m8_codec_probe(struct platform_device *pdev)
@@ -1195,6 +805,18 @@ static int aml_m8_codec_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_codec(&pdev->dev);
 	return 0;
+}
+
+static void aml_m8_codec_shutdown(struct platform_device *pdev)
+{
+    printk(KERN_DEBUG "aml_m8_platform_shutdown\n");
+    struct snd_soc_codec *codec = m8_codec;
+    
+    if(codec){
+        u16 mute_reg = snd_soc_read(codec, AMLM8_MUTE_2) & 0xfc;
+
+        snd_soc_write(codec, AMLM8_MUTE_2, mute_reg | 0x3);
+    }
 }
 
 #ifdef CONFIG_USE_OF
@@ -1213,6 +835,7 @@ static struct platform_driver aml_m8_codec_platform_driver = {
 	},
 	.probe = aml_m8_codec_probe,
 	.remove = aml_m8_codec_remove,
+	.shutdown = aml_m8_codec_shutdown,
 };
 
 static int __init aml_m8_codec_modinit(void)

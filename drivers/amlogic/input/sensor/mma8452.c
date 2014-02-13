@@ -371,7 +371,7 @@ static void enable_change_mma8452_reg(int enable)
 	buf[0] = MMA8452_REG_CTRL;
 	if (mma8452_i2c_rx_data(buf, 1) < 0) {
 		printk("read reg[0x%x] fail", buf[0]);
-		return -EINVAL;
+		return ;
 	}
 	if (enable) {
 		buf[1] = buf[0] & ~MMA8452_CTRL_ACTIVE;
@@ -408,7 +408,6 @@ static ssize_t mma8452_read_write_reg_store(struct device *dev,
 		const char *buf, size_t count)
 {
     char str[64];
-	size_t buf_size;
 	char *start=str;
 	unsigned long reg;
 	unsigned long value;
@@ -444,26 +443,26 @@ static ssize_t mma8452_read_write_reg_store(struct device *dev,
 				start++;
 		value = simple_strtoul(start, &start, 16);	
 		data[1] = value;		
-		printk("Write reg[0x%x]=0x%x\n", reg, data[1]);
+		printk("Write reg[0x%lx]=0x%x\n", reg, data[1]);
 		enable_change_mma8452_reg(1);
 		if (mma8452_i2c_tx_data(data, 2) < 0) {
-			printk("write reg[%x] fail", reg);
+			printk("write reg[%lx] fail", reg);
 			return -EINVAL;
 		}
 		enable_change_mma8452_reg(0);
 		// read back
 		data[0] = reg;
 		if (mma8452_i2c_rx_data(data, 1) < 0) {
-			printk("read reg[0x%x] fail", reg);
+			printk("read reg[0x%lx] fail", reg);
 			return -EINVAL;
 		}
-		printk("Read reg[%x]=0x%x\n", reg, data[0]);
+		printk("Read reg[%lx]=0x%x\n", reg, data[0]);
 	} else { 
 		if (mma8452_i2c_rx_data(data, 1) < 0) {
-			printk("read reg[0x%x] fail", reg);
+			printk("read reg[0x%lx] fail", reg);
 			return -EINVAL;
 		}
-		printk("Read reg[0x%x]=0x%x\n", reg, data[0]);
+		printk("Read reg[0x%lx]=0x%x\n", reg, data[0]);
 	}
 				
 	return count;

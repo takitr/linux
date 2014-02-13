@@ -2052,6 +2052,36 @@ static void __exit amaudio_exit(void)
   class_destroy(amaudio_clsp);
   return;
 }
+void aml_device_destroy(struct class *pclass, dev_t devt)
+{
+	device_destroy(pclass,devt);
+}
+void aml_class_destroy(struct class *cls)
+{
+	class_destroy(cls);
+}
+struct device *aml_device_create(struct class *pclass, struct device *parent,
+			     dev_t devt, void *drvdata, const char *fmt, ...)
+{
+	struct device *dev;
+	va_list vargs;	
+	va_start(vargs, fmt);
+	dev=  device_create(pclass, parent,devt, drvdata, fmt, vargs);
+	va_end(vargs);
+	return dev;	
+}
+int aml_class_create_file(struct class *cls, const struct class_attribute *attr)
+{
+	return class_create_file(cls,attr);
 
+}
+struct class *aml_class_create(struct module *owner, const char *name){
+	return class_create(owner,name);
+}
+EXPORT_SYMBOL(aml_device_destroy);
+EXPORT_SYMBOL(aml_class_destroy);
+EXPORT_SYMBOL(aml_device_create);
+EXPORT_SYMBOL(aml_class_create_file);
+EXPORT_SYMBOL(aml_class_create);
 module_init(amaudio_init);
 module_exit(amaudio_exit);

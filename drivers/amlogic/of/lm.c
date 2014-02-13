@@ -123,7 +123,8 @@ static struct lm_device *of_lm_device_create(struct device_node *node,
 	struct lm_device *dev;
 	const void *prop;
 //	struct resource *res, temp_res;
-	int ret,id,irq;
+	//int ret,id,irq;
+	int ret,id;
 
 	pr_debug("Creating of lm device %s\n", node->full_name);
 	if (!of_device_is_available(node))

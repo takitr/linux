@@ -354,7 +354,7 @@ int ov7675_v4l2_probe(struct i2c_adapter *adapter)
 #endif
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0A19
-int __init sp0a19_v4l2_probe(struct i2c_adapter *adapter)
+int sp0a19_v4l2_probe(struct i2c_adapter *adapter)
 {
     int ret = 0;
     unsigned char reg;
@@ -364,7 +364,17 @@ int __init sp0a19_v4l2_probe(struct i2c_adapter *adapter)
     return ret;
 }
 #endif
-
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP2518
+int sp2518_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+    unsigned char reg;
+    reg = aml_i2c_get_byte_add8(adapter, 0x30, 0x02);
+    if (reg == 0x53)
+        ret = 1;
+    return ret;
+}
+#endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP0838
 int sp0838_v4l2_probe(struct i2c_adapter *adapter)
 {
@@ -394,13 +404,14 @@ int hm5065_v4l2_probe(struct i2c_adapter *adapter)
 {
 	int ret = 0;
 	unsigned char reg[2];   
-	reg[0] = aml_i2c_get_byte(adapter, 0x16, 0x0000);
-	reg[1] = aml_i2c_get_byte(adapter, 0x16, 0x0001);
+	reg[0] = aml_i2c_get_byte(adapter, 0x1F, 0x0000);
+	reg[1] = aml_i2c_get_byte(adapter, 0x1F, 0x0001);
 	if (reg[0] == 0x03 && reg[1] == 0x9e)
 		ret = 1;
 	return ret;
 }
 #endif
+
 
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI2056
 int hi2056_v4l2_probe(struct i2c_adapter *adapter)
@@ -455,12 +466,24 @@ int ar0833_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP1628
+int __init sp1628_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte_add8(adapter, 0x3c, 0x02);
+	reg[1] = aml_i2c_get_byte_add8(adapter, 0x3c, 0xa0);
+	if (reg[0] == 0x16 && reg[1] == 0x28)
+		ret = 1;
+    return ret;
+}
+#endif
 
 typedef struct {
 	unsigned char addr;
 	char* name;
 	unsigned char pwdn;
-	resulution_size_t max_cap_size;
+	resolution_size_t max_cap_size;
 	aml_cam_probe_fun_t probe_func;
 }aml_cam_dev_info_t;
 
@@ -622,6 +645,17 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = sp0838_v4l2_probe,
 	},
 #endif
+		
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP2518
+	{
+		.addr = 0x30,
+		.name = "sp2518",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1600X1200,
+		.probe_func = sp2518_v4l2_probe,
+	},
+#endif
+
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HI253
 	{
 		.addr = 0x20,
@@ -633,7 +667,7 @@ static aml_cam_dev_info_t cam_devs[] = {
 #endif
 #ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_HM5065
 	{
-		.addr = 0x16,
+		.addr = 0x1f,
 		.name = "hm5065",
 		.pwdn = 0,
 		.max_cap_size = SIZE_2592X1944,
@@ -667,6 +701,16 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.probe_func = ar0833_v4l2_probe,
 	},
 #endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_SP1628
+	{
+		.addr = 0x3c,
+		.name = "sp1628",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1280X960,
+		.probe_func = sp1628_v4l2_probe,
+	},
+#endif
+
 };
 
 static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)
@@ -686,7 +730,7 @@ static aml_cam_dev_info_t* get_cam_info_by_name(const char* name)
 }
 
 struct res_item {
-	resulution_size_t size;
+	resolution_size_t size;
 	char* name;
 };
 
@@ -735,9 +779,9 @@ struct res_item res_item_array[] = {
 };
 
 
-static resulution_size_t get_res_size(const char* res_str)
+static resolution_size_t get_res_size(const char* res_str)
 {
-	resulution_size_t ret = SIZE_NULL;
+	resolution_size_t ret = SIZE_NULL;
 	struct res_item* item;
 	int i;
 	if (!res_str)
@@ -923,9 +967,7 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 		printk("%s: faild to get i2c_bus str!\n", cam_dev->name);
 		cam_dev->i2c_bus_num = AML_I2C_MASTER_A;
 	} else {
-		if (!strncmp(str, "i2c_bus_ao", 9))
-			cam_dev->i2c_bus_num = AML_I2C_MASTER_AO;
-		else if (!strncmp(str, "i2c_bus_a", 9))
+		if (!strncmp(str, "i2c_bus_a", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_A;
 		else if (!strncmp(str, "i2c_bus_b", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_B;
@@ -933,6 +975,8 @@ static int fill_cam_dev(struct device_node* p_node, aml_cam_info_t* cam_dev)
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_C;
 		else if (!strncmp(str, "i2c_bus_d", 9))
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_D;
+		else if (!strncmp(str, "i2c_bus_ao", 9))
+			cam_dev->i2c_bus_num = AML_I2C_MASTER_AO;
 		else
 			cam_dev->i2c_bus_num = AML_I2C_MASTER_A; 
 	}
@@ -1176,9 +1220,7 @@ static int do_write_work(char argn ,char **argv)
 		return -1;
 	}
 	
-	if (!strncmp(argv[1], "i2c_bus_ao", 9))
-		i2c_bus = AML_I2C_MASTER_AO;
-	else if (!strncmp(argv[1], "i2c_bus_a", 9))
+	if (!strncmp(argv[1], "i2c_bus_a", 9))
 		i2c_bus = AML_I2C_MASTER_A;
 	else if (!strncmp(argv[1], "i2c_bus_b", 9))
 		i2c_bus = AML_I2C_MASTER_B;
@@ -1186,6 +1228,8 @@ static int do_write_work(char argn ,char **argv)
 		i2c_bus = AML_I2C_MASTER_C;
 	else if (!strncmp(argv[1], "i2c_bus_d", 9))
 		i2c_bus = AML_I2C_MASTER_D;
+	else if (!strncmp(argv[1], "i2c_bus_ao", 9))
+		i2c_bus = AML_I2C_MASTER_AO;
 	else {
 		printk("bus name error!\n");
 		return -1;

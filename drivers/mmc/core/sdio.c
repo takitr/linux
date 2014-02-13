@@ -20,6 +20,8 @@
 #include <linux/mmc/sdio_func.h>
 #include <linux/mmc/sdio_ids.h>
 
+#include <mach/sd.h>
+
 #include "core.h"
 #include "bus.h"
 #include "sd.h"
@@ -969,26 +971,26 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	BUG_ON(!host->card);
 
 	/* Basic card reinitialization. */
-	mmc_claim_host(host);
+	// mmc_claim_host(host);
 
 	/* No need to reinitialize powered-resumed nonremovable cards */
-	if (mmc_card_is_removable(host) || !mmc_card_keep_power(host)) {
-		// sdio_reset(host);
-		mmc_go_idle(host);
-		err = mmc_sdio_init_card(host, host->ocr, host->card,
-					mmc_card_keep_power(host));
-	} else if (mmc_card_keep_power(host) && mmc_card_wake_sdio_irq(host)) {
+	// if (mmc_card_is_removable(host) || !mmc_card_keep_power(host)) {
+        // sdio_reset(host);
+		// mmc_go_idle(host);
+		// err = mmc_sdio_init_card(host, host->ocr, host->card,
+					// mmc_card_keep_power(host));
+	// } else if (mmc_card_keep_power(host) && mmc_card_wake_sdio_irq(host)) {
 		/* We may have switched to 1-bit mode during suspend */
-		err = sdio_enable_4bit_bus(host->card);
-		if (err > 0) {
-			mmc_set_bus_width(host, MMC_BUS_WIDTH_4);
-			err = 0;
-		}
-	}
+		// err = sdio_enable_4bit_bus(host->card);
+		// if (err > 0) {
+			// mmc_set_bus_width(host, MMC_BUS_WIDTH_4);
+			// err = 0;
+		// }
+	// }
 
-	if (!err && host->sdio_irqs)
-		wake_up_process(host->sdio_irq_thread);
-	mmc_release_host(host);
+	// if (!err && host->sdio_irqs)
+		// wake_up_process(host->sdio_irq_thread);
+	// mmc_release_host(host);
 
 	/*
 	 * If the card looked to be the same as before suspending, then
@@ -1296,12 +1298,34 @@ err:
 }
 EXPORT_SYMBOL(sdio_reset_comm);
 
-void sdio_reinit()
+static void sdio_rescan (struct mmc_host *host)
 {
-    if(comm_card){
-       sdio_reset_comm(comm_card);
+    int ret;
+
+    host->rescan_entered = 0;
+    mmc_detect_change(host, 0); // start the delayed_work
+    ret = flush_work(&(host->detect.work)); // wait for the delayed_work to finish
+    if (!ret) {
+        printk("\033[0;47;33m [%s] Error: delayed_work mmc_rescan() already idle! \033[0m\n", __func__);
     }
+    // else {
+        // printk("\033[0;40;32m [%s] delayed_work mmc_rescan() finish \033[0m\n", __FUNCTION__);
+    // }
+}
+
+void sdio_reinit (void)
+{
+    if(comm_card) { // run sdio_rescan() already
+        sdio_reset_comm(comm_card);
+    } else {
+        // printk("\033[0;40;35m [%s] real init \033[0m\n", __func__);
+        if (sdio_host) {
+            sdio_rescan(sdio_host);
+        } else {
+            printk("\033[0;47;33m [%s] Error: sdio_host is NULL \033[0m\n", __func__);
+        }
+    }
+    printk("[%s] finish\n", __func__);
 }
 EXPORT_SYMBOL(sdio_reinit);
-
 

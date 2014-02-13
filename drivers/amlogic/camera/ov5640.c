@@ -506,7 +506,7 @@ typedef struct resolution_param {
 	struct v4l2_frmsize_discrete frmsize;
 	struct v4l2_frmsize_discrete active_frmsize;
 	int active_fps;
-	resulution_size_t size_type;
+	resolution_size_t size_type;
 	struct aml_camera_i2c_fig_s* reg_script;
 } resolution_param_t;
 
@@ -2512,8 +2512,14 @@ static resolution_param_t  prev_resolution_array[] = {
 		.frmsize			= {352, 288},
 		.active_frmsize			= {1280, 958},
 		.active_fps			= 30,
-		.size_type			= SIZE_320X240,
+		.size_type			= SIZE_352X288,
 		.reg_script			= OV5640_preview_960P_30HZ_script,
+	},{
+		.frmsize			= {176, 144},
+		.active_frmsize			= {640, 478},
+		.active_fps			= 30,
+		.size_type			= SIZE_176X144,
+		.reg_script			= OV5640_preview_VGA_script,
 	},
 };
 
@@ -3233,9 +3239,9 @@ static int OV5640_FlashCtrl(struct ov5640_device *dev, int flash_mode)
 
 }    /* OV5640_FlashCtrl */
 
-static resulution_size_t get_size_type(int width, int height)
+static resolution_size_t get_size_type(int width, int height)
 {
-	resulution_size_t rv = SIZE_NULL;
+	resolution_size_t rv = SIZE_NULL;
 	if (width * height >= 2500 * 1900)
 		rv = SIZE_2592X1944;
 	else if (width * height >= 2000 * 1500)
@@ -3254,8 +3260,12 @@ static resulution_size_t get_size_type(int width, int height)
 		rv = SIZE_800X600;
 	else if (width * height >= 600 * 400)
 		rv = SIZE_640X480;
+	else if (width * height >= 352 * 288)
+		rv = SIZE_352X288;
 	else if (width * height >= 300 * 200)
 		rv = SIZE_320X240;
+	else if (width * height >= 170 * 140)
+		rv = SIZE_176X144;
 	return rv;
 }
 
@@ -3286,7 +3296,7 @@ static resolution_param_t* get_resolution_param(struct ov5640_device *dev, int i
 	int i = 0;
 	int arry_size = 0;
 	resolution_param_t* tmp_resolution_param = NULL;
-	resulution_size_t res_type = SIZE_NULL;
+	resolution_size_t res_type = SIZE_NULL;
 	res_type = get_size_type(width, height);
 	if (res_type == SIZE_NULL)
 		return NULL;

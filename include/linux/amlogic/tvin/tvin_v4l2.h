@@ -249,6 +249,8 @@ typedef enum cam_command_e {
         CAM_COMMAND_SET_FLASH_MODE,
         // torch related
         CAM_COMMAND_TORCH,
+        //bypass isp for raw data
+        CMD_ISP_BYPASS,
 } cam_command_t;
 extern const char *cam_cmd_to_str(cam_command_t cmd);
 
@@ -743,6 +745,8 @@ typedef struct csi_parm_s {
 	unsigned ui_val; //ns
 	unsigned hs_freq; //hz
 	unsigned urgent;
+
+        unsigned int lane_mask;
 
 	clk_channel_t clk_channel;
 	unsigned int skip_frames;

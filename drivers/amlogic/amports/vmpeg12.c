@@ -628,7 +628,7 @@ static void vmpeg12_canvas_init(void)
 
 static void vmpeg12_prot_init(void)
 {
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON6  
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     int save_reg = READ_VREG(POWER_CTL_VLD);
 
     WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6) | (1<<4));
@@ -639,6 +639,9 @@ static void vmpeg12_prot_init(void)
 
     WRITE_VREG(POWER_CTL_VLD, save_reg);
 
+#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6
+    WRITE_VREG(DOS_SW_RESET0, (1<<7) | (1<<6));
+    WRITE_VREG(DOS_SW_RESET0, 0);
 #else
     WRITE_MPEG_REG(RESET0_REGISTER, RESET_IQIDCT | RESET_MC);
 #endif

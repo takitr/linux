@@ -8,9 +8,9 @@ endif
 
 obj-$(CONFIG_MMC_AML)   += aml_sdio.o amlsd.o amlsd_of.o
 
-#ifeq ($(CONFIG_ARCH_MESON8),y)
-#obj-$(CONFIG_MMC_AML) += aml_sdhc_m8.o
-#endif
+ifeq ($(CONFIG_ARCH_MESON8),y)
+	obj-$(CONFIG_MMC_AML) += aml_sdhc_m8.o
+endif
 
 # ifeq ($(CONFIG_ARCH_MESON6),y)
 # obj-$(CONFIG_MMC_AML) += aml_sdhc.o

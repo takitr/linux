@@ -30,8 +30,11 @@
 #include <linux/amlogic/aml_rtc.h>
 #include <linux/amlogic/ricoh_pmu.h>
 #include <mach/usbclock.h>
+#include <linux/reboot.h>
+#include <linux/notifier.h>
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/wakelock_android.h>
 #include <linux/earlysuspend.h>
 #endif
 
@@ -51,6 +54,8 @@
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend rn5t618_early_suspend;
+static int in_early_suspend = 0;
+static struct wake_lock rn5t618_lock;
 #endif
 struct rn5t618_supply      *g_rn5t618_supply  = NULL;
 struct ricoh_pmu_init_data *g_rn5t618_init    = NULL;
@@ -61,11 +66,15 @@ static int power_protection   = 0;
 static int over_discharge_cnt = 0;
 
 #ifdef CONFIG_AMLOGIC_USB
-struct work_struct          rn5t618_otg_work;
-extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
-extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
-extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
-extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+struct later_job {
+    int flag;
+    int value;
+};
+static struct later_job rn5t618_charger_job = {};
+static struct later_job rn5t618_otg_job = {};
+static int rn5t618_otg_value = -1;
+static int otg_mask = 0;
+struct delayed_work rn5t618_otg_work;
 #endif
 
 static int rn5t618_update_state(struct aml_charger *charger);
@@ -194,6 +203,14 @@ EXPORT_SYMBOL_GPL(rn5t618_get_gpio);
 
 void rn5t618_power_off()
 {
+    if (g_rn5t618_init->reset_to_system) {
+        rn5t618_set_bits(0x0007, 0x00, 0x01);    
+    }
+    rn5t618_set_gpio(0, 1);
+    rn5t618_set_gpio(1, 1);
+    msleep(100);
+    rn5t618_set_bits(0x00EF, 0x00, 0x10);                       // disable coulomb counter
+    rn5t618_set_bits(0x00E0, 0x00, 0x01);                       // disable fuel gauge
     RICOH_DBG("%s, send power off command\n", __func__);
     rn5t618_set_bits(0x000f, 0x00, 0x01);                       // do not re-power-on system
     rn5t618_set_bits(0x000E, 0x01, 0x01);                       // software power off PMU
@@ -756,19 +773,20 @@ static void rn5t618_battery_setup_psy(struct rn5t618_supply *supply)
 }
 
 #ifdef CONFIG_AMLOGIC_USB
-static int rn5t618_otg_value = -1;
 static void rn5t618_otg_work_fun(struct work_struct *work)
 {
     uint8_t val;
     if (rn5t618_otg_value == -1) {
         return ;    
     }
-    msleep(100);
     RICOH_DBG("%s, value:%d, is_short:%d\n", __func__, rn5t618_otg_value, g_rn5t618_init->vbus_dcin_short_connect);
     if (rn5t618_otg_value) {
         rn5t618_read(0xB3, &val);
         if (g_rn5t618_init->vbus_dcin_short_connect) {
+            otg_mask = 1;
             val |= 0x08; 
+            rn5t618_set_charge_enable(0);
+            rn5t618_set_dcin_current_limit(100);
         } else {
             val |= 0x10; 
         }
@@ -777,33 +795,54 @@ static void rn5t618_otg_work_fun(struct work_struct *work)
     } else {
         rn5t618_read(0xB3, &val);
         if (g_rn5t618_init->vbus_dcin_short_connect) {
+            otg_mask = 0;
             val &= ~0x08; 
+            rn5t618_set_charge_enable(1);
+            rn5t618_set_dcin_current_limit(2500); 
         } else {
             val &= ~0x10; 
         }
         printk("[RN5T618] clear boost en bit, val:%x\n", val);
         rn5t618_write(0xB3, val);
     }
-    msleep(10);
     rn5t618_read(0xB3, &val);
     printk("register 0xB3:%02x\n", val);
-    rn5t618_otg_value = -1;
     rn5t618_update_state(&g_rn5t618_supply->aml_charger);
     power_supply_changed(&g_rn5t618_supply->batt);
+    if (rn5t618_otg_value && g_rn5t618_init->vbus_dcin_short_connect) { 
+        schedule_delayed_work(&rn5t618_otg_work, msecs_to_jiffies(2000));
+    }
 }
 
-static int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
+int rn5t618_otg_change(struct notifier_block *nb, unsigned long value, void *pdata)
 {
+    if (!g_rn5t618_supply) {
+        RICOH_DBG("%s, driver is not ready, do it later\n", __func__);
+        rn5t618_otg_job.flag  = 1;
+        rn5t618_otg_job.value = value;
+        return 0;
+    }
     rn5t618_otg_value = value;
-    schedule_work(&rn5t618_otg_work);
+    schedule_work(&rn5t618_otg_work.work);
     return 0;
 }
-#endif
 
-static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
+int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, void *pdata)
 {
-    int current_limit;
-
+    if (!g_rn5t618_supply) {
+        RICOH_DBG("%s, driver is not ready, do it later\n", __func__);
+        rn5t618_charger_job.flag  = 1;
+        rn5t618_charger_job.value = value;
+        return 0;
+    }
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    if (in_early_suspend) {
+        wake_lock(&rn5t618_lock);
+        RICOH_DBG("%s, usb power status changed in early suspend, wake up now\n", __func__);
+        input_report_key(rn5t618_power_key, KEY_POWER, 1);              // assume power key pressed 
+        input_sync(rn5t618_power_key);
+    }
+#endif
     switch (value) {
     case USB_BC_MODE_DISCONNECT:                                        // disconnect
     case USB_BC_MODE_SDP:                                               // pc
@@ -822,7 +861,9 @@ static int rn5t618_usb_charger(struct notifier_block *nb, unsigned long value, v
     default:
         break;
     }
+    return 0;
 }
+#endif
 
 /*
  * add for debug 
@@ -842,7 +883,6 @@ int printf_usage(void)
 
 static ssize_t pmu_reg_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    uint8_t data;
     return printf_usage(); 
 }
 
@@ -1149,7 +1189,20 @@ static int rn5t618_update_state(struct aml_charger *charger)
         charger->ext_valid  = 0;
         power_supply_changed(&supply->batt);
     }
+#ifdef CONFIG_AMLOGIC_USB
+    if (otg_mask) {
+        charger->dcin_valid = 0;
+        charger->usb_valid  = 0;
+        charger->ext_valid  = 0;
+    }
+#endif
 
+    rn5t618_read(0x00ef, buff);
+    if (buff[0] & 0x01) {
+        RICOH_DBG("cc is paused, reopen it\n");
+        buff[0] &= ~0x01;
+        rn5t618_write(0x00ef, buff[0]); 
+    }
     rn5t618_read(0x00C5, buff);
     if (buff[0] & 0x20) {
         RICOH_DBG("charge time out, reset charger\n");
@@ -1189,7 +1242,6 @@ static void check_chip_temperature(void)
         rn5t618_power_off();    
     }
 }
-#endif
 
 static void check_extern_power_voltage(struct aml_charger *charger)
 {
@@ -1240,6 +1292,7 @@ static void check_extern_power_voltage(struct aml_charger *charger)
         }
     }
 }
+#endif
 
 static void rn5t618_charging_monitor(struct work_struct *work)
 {
@@ -1311,6 +1364,7 @@ static void rn5t618_earlysuspend(struct early_suspend *h)
         rn5t618_set_charge_current(rn5t618_battery->pmu_suspend_chgcur);
         early_power_status = supply->aml_charger.ext_valid; 
     }
+    in_early_suspend = 1;
 }
 
 static void rn5t618_lateresume(struct early_suspend *h)
@@ -1324,6 +1378,8 @@ static void rn5t618_lateresume(struct early_suspend *h)
         input_report_key(rn5t618_power_key, KEY_POWER, 0);                  // cancel power key 
         input_sync(rn5t618_power_key);
     }
+    in_early_suspend = 0;
+    wake_unlock(&rn5t618_lock);
 }
 #endif
 
@@ -1343,6 +1399,14 @@ static void rn5t618_irq_work_func(struct work_struct *work)
 
     //TODO: add code here
     enable_irq(supply->irq);
+}
+
+static struct notifier_block rn5t618_reboot_nb;
+static int rn5t618_reboot_work(struct notifier_block *nb, unsigned long state, void *cmd)
+{
+    RICOH_DBG("%s, clear flags\n", __func__);
+    rn5t618_set_bits(0x0007, 0x00, 0x01);
+    return NOTIFY_DONE;
 }
 
 struct aml_pmu_driver rn5t618_pmu_driver = {
@@ -1452,12 +1516,20 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     charger->coulomb_type        = COULOMB_SINGLE_CHG_INC; 
     supply->charge_timeout_retry = g_rn5t618_init->charge_timeout_retry;
 #ifdef CONFIG_AMLOGIC_USB
-    supply->otg_nb.notifier_call = rn5t618_otg_change;
-    supply->usb_nb.notifier_call = rn5t618_usb_charger;
-    INIT_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
-    dwc_otg_power_register_notifier(&supply->otg_nb);
-    dwc_otg_charger_detect_register_notifier(&supply->usb_nb);
+    INIT_DELAYED_WORK(&rn5t618_otg_work, rn5t618_otg_work_fun);
+    if (rn5t618_charger_job.flag) {     // do later job for usb charger detect
+        rn5t618_usb_charger(NULL, rn5t618_charger_job.value, NULL);    
+        rn5t618_charger_job.flag = 0;
+    }
+    if (rn5t618_otg_job.flag) {
+        rn5t618_otg_change(NULL, rn5t618_otg_job.value, NULL);    
+        rn5t618_otg_job.flag = 0;
+    }
 #endif
+    if (g_rn5t618_init->reset_to_system) {
+        rn5t618_reboot_nb.notifier_call = rn5t618_reboot_work;
+        register_reboot_notifier(&rn5t618_reboot_nb);
+    }
     if (supply->irq == RN5T618_IRQ_NUM) {
         INIT_WORK(&supply->irq_work, rn5t618_irq_work_func); 
         ret = request_irq(supply->irq, 
@@ -1510,6 +1582,7 @@ static int rn5t618_battery_probe(struct platform_device *pdev)
     rn5t618_early_suspend.level   = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 2;
     rn5t618_early_suspend.param   = supply;
     register_early_suspend(&rn5t618_early_suspend);
+    wake_lock_init(&rn5t618_lock, WAKE_LOCK_SUSPEND, "rn5t618");
 #endif
     if (rn5t618_battery) {
         aml_pmu_probe_process(charger, rn5t618_battery);
@@ -1544,10 +1617,6 @@ static int rn5t618_battery_remove(struct platform_device *dev)
 {
     struct rn5t618_supply *supply= platform_get_drvdata(dev);
 
-#ifdef CONFIG_AMLOGIC_USB
-    dwc_otg_power_unregister_notifier(&supply->otg_nb);
-    dwc_otg_charger_detect_unregister_notifier(&supply->usb_nb);
-#endif
     cancel_work_sync(&supply->irq_work);
     cancel_delayed_work_sync(&supply->work);
     power_supply_unregister( &supply->usb);
@@ -1559,6 +1628,9 @@ static int rn5t618_battery_remove(struct platform_device *dev)
     kfree(supply);
     input_unregister_device(rn5t618_power_key);
     kfree(rn5t618_power_key);
+#ifdef CONFIG_HAS_EARLYSUSPEND
+    wake_lock_destroy(&rn5t618_lock);
+#endif
 
     return 0;
 }
@@ -1581,6 +1653,7 @@ static int rn5t618_suspend(struct platform_device *dev, pm_message_t state)
         input_sync(rn5t618_power_key);
         return -1;
     }
+    in_early_suspend = 0;
 #endif
 
     return 0;

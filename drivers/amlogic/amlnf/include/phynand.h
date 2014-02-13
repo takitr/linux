@@ -13,7 +13,7 @@
 #define NAND_COMPATIBLE_REGION     1
 #define NAND_RESERVED_REGION	       1
 #define NAND_ADDNEW_REGION	       1
-#define NAND_BUG_FIX_REGION	       1
+#define NAND_BUG_FIX_REGION	       3
 
 #define DRV_PHY_VERSION	   ((NAND_COMPATIBLE_REGION << 24)+(NAND_RESERVED_REGION << 16) \
 							+(NAND_ADDNEW_REGION << 8)+(NAND_BUG_FIX_REGION))	
@@ -106,6 +106,7 @@ typedef union nand_core_clk {
 
 #define 	BYTES_OF_USER_PER_PAGE                    16
 
+#define      ADJUST_PART_SIZE                                       10
 #define      ADJUST_SIZE_NFTL                                       8
 
 #define 	SHIPPED_BBT_HEAD_MAGIC			"fbbt"
@@ -356,13 +357,14 @@ typedef union nand_core_clk {
 #define	NAND_CMD_SANDISK_RETRY_STA					 0x5D
 //for hynix 20nm OTP
 #define 	HYNIX_OTP_COPY							8
-#define 	HYNIX_OTP_LEN							256
+#define 	HYNIX_OTP_LEN							528
 
 //for Hynix
 #define	HYNIX_26NM_4GB 							1		//H27UCG8T2M
 #define	HYNIX_26NM_8GB 							2		//H27UBG8T2BTR
 #define	HYNIX_20NM_4GB 							3		//
 #define	HYNIX_20NM_8GB 							4		//
+#define	HYNIX_1YNM_8GB 							6
 //for Toshiba
 #define	TOSHIBA_2XNM 							20		//TC58NVG5D2HTA00
 #define	TOSHIBA_A19NM 							21																//TC58NVG6D2GTA00
@@ -613,6 +615,15 @@ struct dev_para{
 	unsigned char nr_partitions;
 
 	unsigned option;
+};
+
+#define MAX_PART_NUM	16
+#define PART_NAME_LEN 16
+struct partitions {
+    char name[PART_NAME_LEN];            /* identifier string */
+    uint64_t size;            /* partition size, byte unit */
+    uint64_t offset;        /* offset within the master space, byte unit */
+    unsigned mask_flags;        /* master flags to mask out for this partition */
 };
 
 struct nand_config{

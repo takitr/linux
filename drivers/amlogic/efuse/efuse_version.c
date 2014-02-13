@@ -398,7 +398,7 @@ static efuseinfo_item_t efuseinfo_v2[] =
 };
 
 //m8 efuse layout according to haixiang.bao allocation
-static efuseinfo_item_t efuseinfo_M8_v20[] = 
+static efuseinfo_item_t efuseinfo_M8_serialNum_v1[] = 
 {
 	{
 		.title = "licence",
@@ -455,15 +455,6 @@ static efuseinfo_item_t efuseinfo_M8_v20[] =
 		.bch_reverse = 0,
 	},
 	{
-		.title = "machineid",
-		.id = EFUSE_MACHINEID_ID,
-		.offset = 502,
-		.enc_len = 4,
-		.data_len = 4,
-		.bch_en = 0,
-		.bch_reverse = 0,
-	},
-	{
 		.title = "version",
 		.id = EFUSE_VERSION_ID,
 		.offset = M8_EFUSE_VERSION_OFFSET, //509
@@ -473,6 +464,66 @@ static efuseinfo_item_t efuseinfo_M8_v20[] =
 		.bch_reverse = M8_EFUSE_VERSION_BCH_REVERSE,
 	},
 };
+
+//M6TVD layout
+static efuseinfo_item_t efuseinfo_m6tvd_serialNum_v1[] = 
+{
+	{
+		.title = "licence",
+		.id = EFUSE_LICENCE_ID,
+		.offset = 0,
+		.enc_len = 4,
+		.data_len = 4,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac",    //for the main network interface
+		.id = EFUSE_MAC_ID,
+		.offset = 436,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac_bt",  //for the second network interface or bt
+		.id = EFUSE_MAC_BT_ID,
+		.offset = 442,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "mac_wifi", //for the second network interface or bt
+		.id = EFUSE_MAC_WIFI_ID,
+		.offset = 448,
+		.enc_len = 6,
+		.data_len = 6,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "usid",
+		.id = EFUSE_USID_ID,
+		.offset = 454,
+		.enc_len = 48,
+		.data_len = 48,
+		.bch_en = 0,
+		.bch_reverse = 0,
+	},
+	{
+		.title = "version",
+		.id = EFUSE_VERSION_ID,
+		.offset = M6TVD_EFUSE_VERSION_OFFSET, //509
+		.enc_len = M6TVD_EFUSE_VERSION_ENC_LEN, //1
+		.data_len = M6TVD_EFUSE_VERSION_DATA_LEN,//1
+		.bch_en = M6TVD_EFUSE_VERSION_BCH_EN, //0
+		.bch_reverse = M6TVD_EFUSE_VERSION_BCH_REVERSE, //0
+	},
+};
+
 
 efuseinfo_t efuseinfo[] = 
 {
@@ -497,9 +548,14 @@ efuseinfo_t efuseinfo[] =
 		.version =3,
 	},
 	{
-		.efuseinfo_version = efuseinfo_M8_v20,
-		.size = sizeof(efuseinfo_M8_v20)/sizeof(efuseinfo_item_t),
-		.version =20,
+		.efuseinfo_version = efuseinfo_M8_serialNum_v1,
+		.size = sizeof(efuseinfo_M8_serialNum_v1)/sizeof(efuseinfo_item_t),
+		.version =M8_EFUSE_VERSION_SERIALNUM_V1,
+	},
+	{
+		.efuseinfo_version = efuseinfo_m6tvd_serialNum_v1,
+		.size = sizeof(efuseinfo_m6tvd_serialNum_v1)/sizeof(efuseinfo_item_t),
+		.version =M6TVD_EFUSE_VERSION_SERIALNUM_V1,
 	},
 };
 

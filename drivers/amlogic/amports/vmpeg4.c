@@ -777,12 +777,6 @@ static s32 vmpeg4_init(void)
 
     query_video_status(0, &trickmode_fffb);
 
-    if (!trickmode_fffb) {
-        memset(phys_to_virt(buf_start), 0, buf_size);
-
-        buf_start_map = dma_map_single(NULL, phys_to_virt(buf_start), buf_size, DMA_TO_DEVICE);
-    }
-
     amlog_level(LOG_LEVEL_INFO, "vmpeg4_init\n");
     init_timer(&recycle_timer);
 
@@ -829,10 +823,6 @@ static s32 vmpeg4_init(void)
     }
 
     stat |= STAT_MC_LOAD;
-
-    if (!trickmode_fffb) {
-        dma_unmap_single(NULL, buf_start_map, buf_size, DMA_TO_DEVICE);
-    }
 
     /* enable AMRISC side protocol */
     vmpeg4_prot_init();

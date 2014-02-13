@@ -6,7 +6,8 @@
 
 #Gravity
 
-obj-y += common.o
+obj-$(CONFIG_SENSOR_DEVICES) += common.o
+
 obj-$(CONFIG_GRAVITY_MMA8452)   += mma8452.o
 obj-$(CONFIG_GRAVITY_MMA7660)   += mma7660.o
 obj-$(CONFIG_GRAVITY_LIS3DH)   += lis3dh_acc.o

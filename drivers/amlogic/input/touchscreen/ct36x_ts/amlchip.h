@@ -19,7 +19,7 @@ void ct36x_platform_put_resource(struct ct36x_ts_info *ct36x_ts);
 void ct36x_platform_hw_reset(struct ct36x_ts_info *ct36x_ts);
 void ct36x_hw_reset(struct touch_pdata *pdata);
 void ct36x_upgrade_touch(void);
-void ct36x_late_upgrade(void);
+int ct36x_late_upgrade(void *p);
 void ct36x_read_version(char* ver);
 #else
 void ct36x_platform_hw_reset(struct ct36x_platform_data *pdata);

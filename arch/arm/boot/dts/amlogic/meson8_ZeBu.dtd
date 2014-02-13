@@ -827,6 +827,35 @@ void root_func(){
         status = "okay";
     };
 
+    aml_audio_codec{
+        compatible = "amlogic,audio_codec";
+        rt5616:rt5616{
+            codec_name = "rt5616";
+            i2c_addr = <0x1B>;
+            i2c_bus = "i2c_bus_d";
+            id_reg = <0x00>;
+            id_val = <0x21>;
+            capless = <0>;
+            status = "okay";
+        };
+        rt5631:rt5631{
+            codec_name = "rt5631";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            id_reg = <0x00>;
+            id_val = <0x01>;
+            capless = <0>;
+            status = "disable";      
+        };  
+        wm8960:wm8960{
+            codec_name = "wm8960";
+            i2c_addr = <0x1A>;
+            i2c_bus = "i2c_bus_b";
+            capless = <1>;
+	    status = "disable";
+        };
+    };
+
 //$$ DEVICE="aml_m8_sound_card"
 //$$ L2 PROP_STR = "aml,sound_card"
 //$$ L2 PROP_STR = "aml,codec_dai"
@@ -839,8 +868,17 @@ void root_func(){
     aml_m8_sound_card{
         compatible = "sound_card, aml_snd_m8";
         aml,sound_card = "AML-M8AUDIO";
-        aml,codec_dai = "AML-M8","dit-hifi";
-        aml,audio-routing =
+        aml,codec_dai = "AML-M8","rt5616-aif1","rt5631-hifi","wm8960-hifi";
+        //aml,codec_name = "aml_m8_codec.0","rt5616.4-001b";
+        //aml,audio-codec = <&rt5616>;
+        aml,audio-routing-rt5616 = 
+            "Ext Spk","LOUTL",
+            "Ext Spk","LOUTR",
+            "HP","HPOL",
+            "HP","HPOR",
+            "micbias1","MAIN MIC",
+            "IN2P","micbias1";
+        aml,audio-routing-amlm8 = 
             "Ext Spk","LINEOUTL",
             "Ext Spk","LINEOUTR",
             "HP","HP_L",

@@ -8,6 +8,23 @@
 
 #define CONFIG_OF
 
+int is_phydev_off_adjust(void)
+{
+	int ret = 0;
+	#ifdef NAND_ADJUST_PART_TABLE
+		ret = 1;
+	#endif
+	return  ret ;
+}
+int get_adjust_block_num(void)
+{
+	int ret = 0;
+	#ifdef NAND_ADJUST_PART_TABLE
+		ret = ADJUST_BLOCK_NUM;
+	#endif
+	return	ret ;
+}
+
 #ifndef AML_NAND_UBOOT
 int boot_device_flag = -1;
 #endif
@@ -201,6 +218,135 @@ static const struct block_device_operations amlnf_blk_ops = {
 		return ret;
  }
 
+static ssize_t nand_version_get(struct class *class, struct class_attribute *attr, char *buf)
+{
+	sprintf(buf,"%d",DRV_PHY_VERSION);
+	return 0;
+}
+
+static void show_partition_table(struct partitions * table)
+{
+	int i=0;
+	struct partitions * par_table=NULL;
+	printk("show partition table: \n");
+	for(i=0; i < MAX_PART_NUM; i++){
+
+		par_table =& table[i];
+		if(par_table->size == -1){
+			printk("part: %d, name : %10s, size : %-4s\n",i,par_table->name,"end");
+			break;
+		}
+		else
+			printk("part: %d, name : %10s, size : %-4llx\n",i,par_table->name,par_table->size);
+	}
+	
+	return;
+}
+
+static ssize_t nand_part_table_get(struct class *class, struct class_attribute *attr, char *buf)
+{
+	struct amlnand_phydev *phydev =NULL;
+	struct amlnand_chip *aml_chip = NULL; 	
+	struct nand_config *config = NULL;
+	struct dev_para *dev_paramt = NULL;
+	struct partitions *part_table = NULL;
+	int i=0,j=0,k=0,m=0, tmp_num =0,dev_num = PHY_DEV_NUM;
+
+	list_for_each_entry(phydev, &nphy_dev_list, list){
+		if ((phydev != NULL)  && 
+			(!strncmp((char*)phydev->name, NAND_CODE_NAME, strlen((const char*)NAND_CODE_NAME))))
+		break;
+	}
+	
+	aml_chip = (struct amlnand_chip *)phydev->priv;	
+	config =  aml_chip->config_ptr;	
+	
+	part_table = aml_nand_malloc(MAX_PART_NUM*sizeof(struct partitions));
+	if(!part_table){
+		aml_nand_msg("nand_part_table_get : malloc failed");
+		return 0;
+	}
+	memset(part_table,0x0,MAX_PART_NUM*sizeof(struct partitions));
+	
+	if(boot_device_flag == 1){
+		i += 1;
+		tmp_num = i;
+	}
+
+	for(; i<PHY_DEV_NUM+1;i++){  //code
+		dev_paramt = &config->dev_para[i];
+		if((!strncmp((char*)dev_paramt->name, NAND_CODE_NAME, strlen((const char*)NAND_CODE_NAME)))){
+			for(j=0;j<dev_paramt->nr_partitions;j++){
+				memcpy(&(part_table[j].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
+				part_table[j].size = dev_paramt->partitions[j].size;
+				part_table[j].offset = dev_paramt->partitions[j].offset;
+				part_table[j].mask_flags = dev_paramt->partitions[j].mask_flags;	
+			//	aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",\
+			//	part_table[j].name,part_table[j].size,part_table[j].offset,part_table[j].mask_flags);
+			}
+			break;
+		}
+	}
+	i = tmp_num;
+	for(; i<PHY_DEV_NUM+1;i++){  //cache
+		dev_paramt = &config->dev_para[i];
+	//	aml_nand_msg("cache : dev_paramt name %s ",dev_paramt->name);
+		if((!strncmp((char*)dev_paramt->name, NAND_CACHE_NAME, strlen((const char*)NAND_CACHE_NAME)))){
+			k = j++;
+			for(j=0;j<dev_paramt->nr_partitions;k++,j++){
+				memcpy(&(part_table[k].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
+				part_table[k].size = dev_paramt->partitions[j].size;
+				part_table[k].offset = dev_paramt->partitions[j].offset;
+				part_table[k].mask_flags = dev_paramt->partitions[j].mask_flags;	
+			//	aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",\
+				//part_table[k].name,part_table[k].size,part_table[k].offset,part_table[k].mask_flags);
+			}
+			break;
+		}
+	}
+	
+	i = tmp_num;
+	for(; i<PHY_DEV_NUM+1;i++){  //data
+		dev_paramt = &config->dev_para[i];
+		//aml_nand_msg("dev_paramt name %s ",dev_paramt->name);
+		if((!strncmp((char*)dev_paramt->name, NAND_DATA_NAME, strlen((const char*)NAND_DATA_NAME)))){
+			m=k++;
+			for(j=0;j<dev_paramt->nr_partitions;j++){
+				memcpy(&(part_table[m].name),dev_paramt->partitions[j].name,MAX_NAND_PART_NAME_LEN);
+				part_table[m].size = dev_paramt->partitions[j].size;
+				part_table[m].offset = dev_paramt->partitions[j].offset;
+				part_table[m].mask_flags = dev_paramt->partitions[j].mask_flags;	
+				//aml_nand_msg("CODE : partiton name %s, size %llx, offset %llx maskflag %d",\
+				//part_table[m].name,part_table[m].size,part_table[m].offset,part_table[m].mask_flags);
+			}
+			break;
+		}
+	}
+
+	show_partition_table(part_table);
+	memcpy(buf,part_table,MAX_PART_NUM*sizeof(struct partitions));
+	
+	if(part_table){
+		kfree(part_table);
+		part_table =NULL;
+	}
+	
+	return 0;	
+}
+
+static ssize_t store_device_flag_get(struct class *class, struct class_attribute *attr, char *buf)
+{
+	sprintf(buf,"%d",boot_device_flag);
+	
+	return 0;
+}
+
+static struct class_attribute aml_version =
+	__ATTR(version, S_IRUGO, nand_version_get, NULL);	
+static struct class_attribute aml_part_table =
+	__ATTR(part_table, S_IRUGO, nand_part_table_get, NULL);
+static struct class_attribute aml_store_device =
+	__ATTR(store_device, S_IRUGO, store_device_flag_get, NULL);	
 
 
 /*****************************************************************************
@@ -214,7 +360,7 @@ int amlnf_dev_init(unsigned flag)
 {
 	struct amlnand_phydev *phydev = NULL;
 	struct amlnf_dev* nf_dev = NULL;
-	
+	struct class * aml_store_class = NULL;
 	int ret = 0;
 	
 #ifndef AML_NAND_UBOOT
@@ -229,10 +375,40 @@ int amlnf_dev_init(unsigned flag)
 		}
 	}
 
+	aml_store_class = class_create(THIS_MODULE,"aml_store");
+	if (IS_ERR(aml_store_class)){
+		aml_nand_msg("amlnf_dev_init : class cread failed");
+		ret =-1;
+		goto exit_error0;
+	}
+	
+	ret = class_create_file(aml_store_class, &aml_version);
+	if (ret) {
+		aml_nand_msg("amlnf_dev_init :  cannot create sysfs file : ");
+		goto out_class1;
+	}
+	ret = class_create_file(aml_store_class, &aml_part_table);
+	if (ret) {
+		aml_nand_msg("amlnf_dev_init : cannot create sysfs file : ");
+		goto out_class2;
+	}
+	ret = class_create_file(aml_store_class, &aml_store_device);
+	if (ret) {
+		aml_nand_msg("amlnf_dev_init : cannot create sysfs file : ");
+		goto out_class3;
+	}
+	
 #endif
 
 	return 0;
 
+out_class3:
+	class_remove_file(aml_store_class, &aml_part_table);
+out_class2:
+	class_remove_file(aml_store_class, &aml_version);
+out_class1 : 
+	class_destroy(aml_store_class);
+	
 exit_error0:
 	return ret;	
 }

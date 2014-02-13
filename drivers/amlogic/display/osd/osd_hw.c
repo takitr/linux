@@ -40,6 +40,7 @@
 #include "osd_hw_def.h"
 #include "osd_prot.h"
 //#include <mach/utils.h>
+#include "osd_antiflicker.h"
 
 #ifdef CONFIG_AML_VSYNC_FIQ_ENABLE
 #define  FIQ_VSYNC
@@ -51,6 +52,7 @@ int osd_rdma_enable(u32  enable);
 #endif
 
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
+
 static bool vsync_hit = false;
 static bool osd_vf_need_update = false;
 #ifdef CONFIG_AM_FB_EXT
@@ -219,6 +221,109 @@ static inline void wait_vsync_wakeup(void)
 	vsync_hit = true;
 	wake_up_interruptible(&osd_vsync_wq);
 }
+
+static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
+{
+#define  	VOUT_ENCI	1
+#define   	VOUT_ENCP	2
+#define	VOUT_ENCT	3
+	unsigned  int  fb0_cfg_w0,fb1_cfg_w0;
+	unsigned  int  odd_or_even_line;
+	unsigned  int  scan_line_number = 0;
+	unsigned  char output_type=0;
+
+	do{
+		if((aml_read_reg32(P_RDMA_STATUS)&0x0fffff0f) == 0){
+			break;
+		}
+	}while(1);
+
+#ifdef CONFIG_VSYNC_RDMA
+	reset_rdma();
+#endif
+
+	output_type=aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL)&0x3;
+	osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
+	switch(output_type)
+	{
+		case VOUT_ENCP:
+			if (aml_read_reg32(P_ENCP_VIDEO_MODE) & (1 << 12)) //1080i
+				osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+			break;
+		case VOUT_ENCI:
+			if (aml_read_reg32(P_ENCI_VIDEO_EN) & 1)
+				osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+			break;
+	}
+
+	if(osd_hw.free_scale_enable[OSD1])
+	{
+		osd_hw.scan_mode= SCAN_MODE_PROGRESSIVE;
+	}
+
+	if (osd_hw.scan_mode == SCAN_MODE_INTERLACE)
+	{
+		fb0_cfg_w0=aml_read_reg32(P_VIU_OSD1_BLK0_CFG_W0);
+		fb1_cfg_w0=aml_read_reg32(P_VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET);
+		if (aml_read_reg32(P_ENCP_VIDEO_MODE) & (1 << 12))
+		{
+			/* 1080I */
+			scan_line_number = ((aml_read_reg32(P_ENCP_INFO_READ))&0x1fff0000)>>16;
+			if ((osd_hw.pandata[OSD1].y_start%2) == 0)
+			{
+				if (scan_line_number >= 562){
+					/* bottom field, odd lines*/
+					odd_or_even_line = 0;	//vsync enable when the next vsync trigger
+				} else {
+					/* top field, even lines*/
+					odd_or_even_line = 1;
+				}
+			}else{
+				if (scan_line_number >= 562) {
+					/* top field, even lines*/
+					odd_or_even_line = 1;
+				} else {
+					/* bottom field, odd lines*/
+					odd_or_even_line = 0;
+				}
+			}
+		} else {
+			if ((osd_hw.pandata[OSD1].y_start%2) == 0){
+				odd_or_even_line = aml_read_reg32(P_ENCI_INFO_READ) & 1;
+			}else{
+				odd_or_even_line = !(aml_read_reg32(P_ENCI_INFO_READ) & 1);
+			}
+		}
+
+		fb0_cfg_w0 &=~1;
+		fb1_cfg_w0 &=~1;
+		fb0_cfg_w0 |=odd_or_even_line;
+		fb1_cfg_w0 |=odd_or_even_line;
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK1_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK2_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK3_CFG_W0, fb0_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK1_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK2_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+		VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
+	}
+
+	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
+
+	if (!vsync_hit)
+	{
+#ifdef FIQ_VSYNC
+		fiq_bridge_pulse_trigger(&osd_hw.fiq_handle_item);
+#else
+		wait_vsync_wakeup();
+#endif
+	}
+
+	aml_write_reg32(P_RDMA_CTRL, 1<<24);
+	return IRQ_HANDLED;
+}
+
 static inline void  walk_through_update_list(void)
 {
 	u32  i,j;
@@ -236,6 +341,7 @@ static inline void  walk_through_update_list(void)
 		}
 	}
 }
+
 /**********************************************************************/
 /**********          osd vsync irq handler              ***************/
 /**********************************************************************/
@@ -254,6 +360,7 @@ static void osd_fiq_isr(void)
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
+#ifndef CONFIG_VSYNC_RDMA
 #define  	VOUT_ENCI	1
 #define   	VOUT_ENCP	2
 #define	VOUT_ENCT	3
@@ -329,17 +436,19 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		aml_write_reg32(P_VIU_OSD1_BLK2_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 		aml_write_reg32(P_VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
-
 	//go through update list
-#ifndef CONFIG_VSYNC_RDMA
 	walk_through_update_list();
-#endif
-	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 
+	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
+#endif
+
+#if 0
 #ifdef CONFIG_VSYNC_RDMA
 	reset_rdma();
 #endif
+#endif
 
+#ifndef CONFIG_VSYNC_RDMA
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
@@ -348,9 +457,10 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		wait_vsync_wakeup();
 #endif
 	}
+#endif
 
 #ifndef FIQ_VSYNC
-	return  IRQ_HANDLED ;
+	return  IRQ_HANDLED;
 #endif
 }
 
@@ -602,6 +712,9 @@ void osd_setup(struct osd_ctl_s *osd_ctl,
 	}
 #endif
 
+	if(osd_hw.antiflicker_mode){
+		osd_antiflicker_update_pan(yoffset, yres);
+	}
 #ifdef CONFIG_AM_FB_EXT
 	osd_ext_clone_pan(index);
 #endif
@@ -700,6 +813,7 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 #endif
 
 		amlog_level(LOG_LEVEL_HIGH,"osd%d free scale %s\r\n",index,enable?"ENABLE":"DISABLE");
+		enable = (enable&0xffff?1:0);
 		osd_hw.free_scale_enable[index]=enable;
 		if (index==OSD1)
 		{
@@ -1066,11 +1180,15 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 	}
 	else
 	{
+#ifdef CONFIG_ARCH_MESON8
 		VSYNCOSD_SET_MPEG_REG_MASK(VPU_SW_RESET, 1<<8);
 		VSYNCOSD_CLR_MPEG_REG_MASK(VPU_SW_RESET, 1<<8);
+#endif
 		if(index == OSD1){
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
 			VSYNCOSD_CLR_MPEG_REG_MASK(VIU_SW_RESET, 1<<0);
+#endif
 			VSYNCOSD_SET_MPEG_REG_MASK(VIU_OSD1_FIFO_CTRL_STAT, 1<<0);
 			//memcpy(&osd_hw.dispdata[index],&save_disp_data,sizeof(dispdata_t));
 		}else{
@@ -1089,6 +1207,41 @@ void osd_set_osd_rotate_on_hw(u32 index, u32 on_off)
 void osd_get_osd_rotate_on_hw(u32 index,u32 *on_off)
 {
 	*on_off = osd_hw.rotate[index].on_off;
+}
+
+void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres)
+{
+	bool osd_need_antiflicker = false;
+
+	switch (vmode) {
+		case VMODE_480I:
+		case VMODE_480CVBS:
+		case VMODE_576I:
+		case VMODE_576CVBS:
+		case VMODE_1080I:
+		case VMODE_1080I_50HZ:
+			osd_need_antiflicker = true;
+		break;
+		default:
+		break;
+	}
+
+	if (osd_need_antiflicker){
+		osd_hw.antiflicker_mode = 1;
+		osd_antiflicker_task_start();
+		osd_antiflicker_enable(1);
+		osd_antiflicker_update_pan(osd_hw.pandata[index].y_start, yres);
+	}else{
+		if(osd_hw.antiflicker_mode){
+			osd_antiflicker_task_stop();
+		}
+		osd_hw.antiflicker_mode = 0;
+	}
+}
+
+void osd_get_osd_antiflicker_hw(u32 index, u32 *on_off)
+{
+	*on_off = osd_hw.antiflicker_mode;
 }
 
 void osd_set_osd_reverse_hw(u32 index, u32 reverse)
@@ -1149,13 +1302,14 @@ void osd_pan_display_hw(unsigned int xoffset, unsigned int yoffset,int index )
 		osd_hw.pandata[index].x_end   += diff_x;
 		osd_hw.pandata[index].y_start += diff_y;
 		osd_hw.pandata[index].y_end   += diff_y;
+#if 0
 		add_to_update_list(index,DISP_GEOMETRY);
 
 #ifdef CONFIG_AM_FB_EXT
 		osd_ext_clone_pan(index);
 #endif
 		osd_wait_vsync_hw();
-
+#endif
 		amlog_mask_level(LOG_MASK_HARDWARE,LOG_LEVEL_LOW,"offset[%d-%d]x[%d-%d]y[%d-%d]\n", \
 				xoffset,yoffset,osd_hw.pandata[index].x_start ,osd_hw.pandata[index].x_end , \
 				osd_hw.pandata[index].y_start ,osd_hw.pandata[index].y_end );
@@ -1482,7 +1636,7 @@ static   void  osd1_update_color_mode(void)
 
 	if (osd_hw.color_info[OSD1] != NULL) {
 		data32= (osd_hw.scan_mode== SCAN_MODE_INTERLACE) ? 2 : 0;
-		data32 |=VSYNCOSD_RD_MPEG_REG(VIU_OSD1_BLK0_CFG_W0)&0x30007040;
+		data32 |= VSYNCOSD_RD_MPEG_REG(VIU_OSD1_BLK0_CFG_W0)&0x30007040;
 		data32 |= osd_hw.fb_gem[OSD1].canvas_idx << 16 ;
 		if(!osd_hw.rotate[OSD1].on_off)
 		data32 |= OSD_DATA_LITTLE_ENDIAN	 <<15 ;
@@ -1674,6 +1828,7 @@ static void osd1_update_disp_osd_rotate(void)
 	y_end = osd_hw.rotation_pandata[OSD1].y_end;
 	y_len_m1 = y_end-y_start;
 
+#ifdef CONFIG_ARCH_MESON8
 	osd_set_prot(
                 x_rev,
                 y_rev,
@@ -1699,6 +1854,7 @@ static void osd1_update_disp_osd_rotate(void)
                 REQ_OFF_MIN,
                 OSD1,
                 osd_hw.rotate[OSD1].on_off);
+#endif
 	remove_from_update_list(OSD1, DISP_OSD_ROTATE);
 }
 static void osd2_update_disp_osd_rotate(void)
@@ -1744,6 +1900,7 @@ static void osd2_update_disp_osd_rotate(void)
 	y_end = osd_hw.rotation_pandata[OSD2].y_end;
 	y_len_m1 = y_end-y_start;
 
+#ifdef CONFIG_ARCH_MESON8
 	osd_set_prot(
                 x_rev,
                 y_rev,
@@ -1769,6 +1926,7 @@ static void osd2_update_disp_osd_rotate(void)
                 REQ_OFF_MIN,
                 OSD2,
                 osd_hw.rotate[OSD2].on_off);
+#endif
     remove_from_update_list(OSD2, DISP_OSD_ROTATE);
 }
 
@@ -2038,7 +2196,9 @@ static void osd1_update_disp_geometry(void)
 			data32 = ((osd_hw.rotation_pandata[OSD1].y_start + osd_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_hw.rotation_pandata[OSD1].y_end  + osd_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,data32);
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END,data32);
+#endif
 		}else if (osd_hw.rotate[OSD1].on_off
 				&& osd_hw.rotate[OSD1].angle > 0){
 			/* enable osd rotation */
@@ -2047,7 +2207,9 @@ static void osd1_update_disp_geometry(void)
 			data32 = ((osd_hw.rotation_pandata[OSD1].y_start + osd_hw.pandata[OSD1].y_start) & 0x1fff)
 					| ((osd_hw.rotation_pandata[OSD1].y_end  + osd_hw.pandata[OSD1].y_start) & 0x1fff) << 16 ;
 			VSYNCOSD_WR_MPEG_REG(VIU_OSD1_BLK0_CFG_W2,data32);
+#ifdef CONFIG_ARCH_MESON8
 			VSYNCOSD_WR_MPEG_REG(VPU_PROT1_Y_START_END,data32);
+#endif
 		}else {
 			/* norma/l mode */
 			data32 = (osd_hw.pandata[OSD1].x_start & 0x1fff) | (osd_hw.pandata[OSD1].x_end & 0x1fff) << 16;
@@ -2209,6 +2371,7 @@ void osd_init_hw(u32  logo_loaded)
 	osd_hw.osd_reverse[OSD1] = osd_hw.osd_reverse[OSD2] = 0;
 	osd_hw.rotation_pandata[OSD1].x_start = osd_hw.rotation_pandata[OSD1].y_start = 0;
 	osd_hw.rotation_pandata[OSD2].x_start = osd_hw.rotation_pandata[OSD2].y_start = 0;
+	osd_hw.antiflicker_mode = 0;
 	memset(osd_hw.rotate,0,sizeof(osd_rotate_t));
 
 #ifdef FIQ_VSYNC
@@ -2230,6 +2393,20 @@ void osd_init_hw(u32  logo_loaded)
 
 #ifdef CONFIG_VSYNC_RDMA
 	osd_rdma_enable(1);
+#endif
+
+#ifdef CONFIG_VSYNC_RDMA
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
+	if (request_irq(INT_RDMA, &osd_rdma_isr,
+                    IRQF_SHARED, "osd_rdma", (void *)"osd_rdma"))
+
+#else
+	if (request_irq(INT_RDMA, &osd_rdma_isr,
+                    IRQF_DISABLED, "osd_rdma", (void *)"osd_rdma"))
+#endif
+	{
+		amlog_level(LOG_LEVEL_HIGH,"can't request irq for rdma\r\n");
+	}
 #endif
 	return ;
 }

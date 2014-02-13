@@ -410,7 +410,7 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 			ret = copy_from_user(&remote->bit_count, argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_CUSTOMCODE:
-			ret = copy_from_user(&remote->custom_code, argp, sizeof(long));
+			ret = copy_from_user(&remote->custom_code[remote->map_num], argp, sizeof(long));
 			break;
 		case REMOTE_IOC_SET_REG_BASE_GEN:
 			am_remote_write_reg(OPERATION_CTRL_REG0, val);

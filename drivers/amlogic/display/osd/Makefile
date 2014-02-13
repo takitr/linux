@@ -5,12 +5,10 @@
 
 obj-$(CONFIG_FB_AM) += fb.o 
 
-fb-objs =  osd_hw.o osd_main.o osd_dev.o  
+fb-objs =  osd_hw.o osd_main.o osd_dev.o  osd_antiflicker.o
 
 ifeq ($(CONFIG_ARCH_MESON8),y)
 fb-objs += osd_prot.o
-else
-fb-objs += osd_prot_dummy.o
 endif
 
 obj-$(CONFIG_VSYNC_RDMA) += osd_rdma.o

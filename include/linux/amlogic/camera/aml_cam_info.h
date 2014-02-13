@@ -8,15 +8,12 @@
 #include <linux/amlogic/tvin/tvin.h>
 #include <linux/amlogic/camera/flashlight.h>
 
-//#define AML_I2C_BUS_A 0
-//#define AML_I2C_BUS_B 1
-//#define AML_I2C_BUS_AO 2
-
 #define FRONT_CAM	0
 #define BACK_CAM	1
 
-typedef enum resulution_size {
+typedef enum resolution_size {
 	SIZE_NULL = 0,
+	SIZE_176X144,	//4:3
 	SIZE_320X240,	//4:3
 	SIZE_352X288,   //4:3
 	SIZE_640X480,	//0.3M	4:3
@@ -42,6 +39,7 @@ typedef enum resulution_size {
 	SIZE_2592X1944,	//5M	4:3
 	SIZE_3072X1728,	//5M	16:9
 	SIZE_2816X2112,	//6M	4:3
+	SIZE_3264X1836, //6m    16:9 
 	SIZE_3072X2304,	//7M	4:3
 	SIZE_3200X2400,	//7.5M	4:3
 	SIZE_3264X2448,	//8M	4:3
@@ -58,7 +56,7 @@ typedef enum resulution_size {
 	SIZE_5120X2880,	//15M	16:9
 	SIZE_5120X3840,	//20M	4:3
 	SIZE_6400X4800,	//30M	4:3
-} resulution_size_t;
+} resolution_size_t;
 
 typedef int(*aml_cam_probe_fun_t)(struct i2c_adapter *);
 
@@ -84,7 +82,7 @@ typedef struct {
 	gpio_t pwdn_pin;
 	gpio_t rst_pin;
 	gpio_t flash_ctrl_pin;
-	resulution_size_t max_cap_size;
+	resolution_size_t max_cap_size;
 	tvin_color_fmt_t bayer_fmt;
 	char* config;
 }aml_cam_info_t;

@@ -32,7 +32,6 @@ typedef  enum{
 	HW_REG_INDEX_MAX
 }hw_reg_index;
 
-
 typedef struct {
 	s32 x_start;
 	s32 x_end;
@@ -103,6 +102,8 @@ extern void osd_set_osd_reverse_hw(u32 index, u32 reverse);
 extern void osd_get_osd_reverse_hw(u32 index, u32 *reverse);
 extern void osd_set_osd_rotate_on_hw(u32 index, u32 on_off);
 extern void osd_get_osd_rotate_on_hw(u32 index, u32 *on_off);
+extern void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres);
+extern void osd_get_osd_antiflicker_hw(u32 index, u32 *on_off);
 extern void osd_set_osd_rotate_angle_hw(u32 index, u32 angle);
 extern void osd_get_osd_rotate_angle_hw(u32 index, u32 *angle);
 extern void osd_get_prot_canvas_hw(u32 index, s32 *x_start, s32 *y_start, s32 *x_end, s32 *y_end);

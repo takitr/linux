@@ -322,7 +322,7 @@ typedef struct {
 	u16 de_valid;
 	u32 h_offset;
 	u32 v_offset;
-
+	u32 vsync_h_phase;
 	u16 sth1_hs_addr;
 	u16 sth1_he_addr;
 	u16 sth1_vs_addr;
@@ -405,12 +405,11 @@ typedef struct {
 
 typedef struct DSI_Config_s{
         unsigned int    dsi_clk_div;
- //       unsigned int    dsi_clk_max;
- //       unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
-
+        unsigned int    dsi_clk_max;
+        unsigned int    dsi_clk_min; //2^32 = 4294967296 = 4.2G
         unsigned int    denominator; //
         unsigned int    numerator;//default 10000
-
+				unsigned int    mipi_init_flag;
         unsigned int    hline;
         unsigned int    hsa;
         unsigned int    hbp;
@@ -431,6 +430,9 @@ typedef struct DSI_Config_s{
         unsigned char   tear_switch;
 
         unsigned char   is_rgb;        //whether dpi color type is rgb
+        unsigned char   mipi_init[20];
+        unsigned int 		sleep_out_delay;
+        unsigned int 		display_on_delay;
 }DSI_Config_t;
 
 typedef struct {

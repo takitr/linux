@@ -224,7 +224,7 @@ struct aml_i2c {
 	pinmux_set_t	master_b_pinmux;
 	struct device *dev;
 	struct pinctrl *p;
-	char *master_state_name;
+	const char *master_state_name;
 };
 
 struct aml_i2c_ops {

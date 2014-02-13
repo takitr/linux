@@ -1869,10 +1869,7 @@ static int  amstream_probe(struct platform_device *pdev)
         return r;
     }
 
-    r = vdec_dev_register();
-    if (r) {
-        return r;
-    }
+
 
     r = register_chrdev(AMSTREAM_MAJOR, "amstream", &amstream_fops);
 
@@ -1881,9 +1878,9 @@ static int  amstream_probe(struct platform_device *pdev)
 
         goto error2;
     }
-#if 0
+#if 0 ///changed for get resourse on vdec
     vdec_set_resource(platform_get_resource(pdev, IORESOURCE_MEM, 0), (void *)&amstream_dec_info);
-#else
+///#else
     res = &memobj;
     r = find_reserve_block(pdev->dev.of_node->name,0);
     if(r < 0){
@@ -1894,8 +1891,9 @@ static int  amstream_probe(struct platform_device *pdev)
     res->start = (phys_addr_t)get_reserve_block_addr(r);
     res->end = res->start+ (phys_addr_t)get_reserve_block_size(r)-1;
     res->flags = IORESOURCE_MEM;
-    vdec_set_resource(res, (void *)&amstream_dec_info);
-#endif
+#endif	
+    vdec_set_resource(NULL, (void *)&amstream_dec_info);
+
     amstream_dev_class = class_create(THIS_MODULE, DEVICE_NAME);
 
     for (st = &ports[0], i = 0; i < MAX_AMSTREAM_PORT_NUM; i++, st++) {
@@ -1915,7 +1913,7 @@ static int  amstream_probe(struct platform_device *pdev)
     res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 #else
     res = &memobj;
-    r = find_reserve_block(pdev->dev.of_node->name,1);
+    r = find_reserve_block(pdev->dev.of_node->name,0);
     if(r < 0){
         printk("can not find %s%d reserve block\n",pdev->dev.of_node->name,1);
 	 r = -EFAULT;
@@ -2009,7 +2007,7 @@ static int  amstream_remove(struct platform_device *pdev)
     class_destroy(amstream_dev_class);
 
     unregister_chrdev(AMSTREAM_MAJOR, DEVICE_NAME);
-    vdec_dev_unregister();
+
     astream_dev_unregister();
 
     amstream_vdec_status = NULL;

@@ -4,6 +4,10 @@
 #define UBOOT_BATTERY_PARA_SUCCESS      1                       // battery parameters has got from uboot
 #define UBOOT_BATTERY_PARA_FAILED       0                       // battery parameters has not got from uboot
 
+#ifdef CONFIG_OF
+#include <linux/of.h>
+#endif
+
 /*
  * add for customer battery parameters
  */

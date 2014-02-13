@@ -33,6 +33,11 @@
 
 #include "vdec_reg.h"
 #include "vdec.h"
+#include <linux/of.h>
+#include <linux/of_fdt.h>
+#include <linux/module.h>
+
+#include <linux/platform_device.h>
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
 #include "amvdec.h"
@@ -236,12 +241,13 @@ int vdec_set_resource(struct resource *s, void *param)
         printk("ERROR:We can't support the change resource at code running\n");
         return -1;
     }
-
-    amvdec_mem_resource[0].start = s->start;
-    amvdec_mem_resource[0].end = s->end;
-    amvdec_mem_resource[0].flags = s->flags;
-
-    amvdec_mem_resource[1].start = (resource_size_t)param;
+    if(s){
+        amvdec_mem_resource[0].start = s->start;
+        amvdec_mem_resource[0].end = s->end;
+        amvdec_mem_resource[0].flags = s->flags;
+    }
+	if(param)
+        amvdec_mem_resource[1].start = (resource_size_t)param;
 
     return 0;
 }
@@ -562,29 +568,83 @@ static struct class vdec_class = {
         .class_attrs = vdec_class_attrs,
     };
 
-s32 vdec_dev_register(void)
+static int  vdec_probe(struct platform_device *pdev)
 {
     s32 r;
-
+    static struct resource res;
     r = class_register(&vdec_class);
     if (r) {
         printk("vdec class create fail.\n");
         return r;
     }
-
+    r = find_reserve_block(pdev->dev.of_node->name,0);
+    if(r < 0){
+        printk("can not find %s%d reserve block\n",vdec_class.name,0);
+	    r = -EFAULT;
+	    goto error;
+    }
+    res.start = (phys_addr_t)get_reserve_block_addr(r);
+    res.end = res.start+ (phys_addr_t)get_reserve_block_size(r)-1;
+	printk("init vdec memsource %d->%d\n",res.start,res.end);
+    res.flags = IORESOURCE_MEM;
+    vdec_set_resource(&res,NULL);
 #if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
     /* default to 250MHz */
     vdec_clock_hi_enable();
 #endif
-
     return 0;
+error:
+	class_unregister(&vdec_class);
+	return r;
 }
 
-s32 vdec_dev_unregister(void)
+static int  vdec_remove(struct platform_device *pdev)
 {
     class_unregister(&vdec_class);
 
     return 0;
 }
 
+#ifdef CONFIG_USE_OF
+static const struct of_device_id amlogic_vdec_dt_match[]={
+	{	.compatible = "amlogic,vdec",
+	},
+	{},
+};
+#else
+#define amlogic_vdec_dt_match NULL
+#endif
+
+static struct platform_driver
+        vdec_driver = {
+    .probe      = vdec_probe,
+    .remove     = vdec_remove,
+    .driver     = {
+        .name   = "vdec",
+        .of_match_table = amlogic_vdec_dt_match,
+    }
+};
+
+static int __init vdec_module_init(void)
+{
+    if (platform_driver_register(&vdec_driver)) {
+        printk("failed to register amstream module\n");
+        return -ENODEV;
+    }
+
+    return 0;
+}
+
+static void __exit vdec_module_exit(void)
+{
+    platform_driver_unregister(&vdec_driver);
+    return ;
+}
+
+module_init(vdec_module_init);
+module_exit(vdec_module_exit);
+
+MODULE_DESCRIPTION("AMLOGIC vdec  driver");
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Tim Yao <timyao@amlogic.com>");
 

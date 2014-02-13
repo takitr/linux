@@ -60,6 +60,7 @@ extern uint32 __nand_read(struct aml_nftl_part_t* part,uint32 start_sector,uint3
 extern uint32 __nand_write(struct aml_nftl_part_t* part,uint32 start_sector,uint32 len,unsigned char *buf);
 static int nftl_num;
 
+#if 0
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -72,7 +73,7 @@ static int aml_nftl_flush(struct mtd_blktrans_dev *dev)
 	int error = 0;
 	struct mtd_info *mtd = dev->mtd;
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
-	struct aml_nftl_part_t* aml_nftl_part = aml_nftl_blk->aml_nftl_part;
+
 
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
 
@@ -145,7 +146,7 @@ static int aml_nftl_calculate_sg(struct aml_nftl_blk_t *aml_nftl_blk, size_t buf
 
 	return segments;
 }
-
+#endif
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -155,13 +156,13 @@ static int aml_nftl_calculate_sg(struct aml_nftl_blk_t *aml_nftl_blk, size_t buf
 *****************************************************************************/
 int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue *rq)
 {
-	int ret=0, i;
+	int ret=0;
 	unsigned int bouncesz, buf_cnt = 0;
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
 
 	if(aml_nftl_blk->queue && aml_nftl_blk->bounce_sg)
 	{
-	    aml_nftl_dbg("_nftl_init_bounce_buf already init %x\n",PAGE_CACHE_SIZE);
+	    aml_nftl_dbg("_nftl_init_bounce_buf already init %lx\n",PAGE_CACHE_SIZE);
 	    return 0;
 	}
 	aml_nftl_blk->queue = rq;
@@ -204,18 +205,20 @@ int aml_nftl_init_bounce_buf(struct mtd_blktrans_dev *dev, struct request_queue 
 }
 
 uint32 write_sync_flag(struct aml_nftl_blk_t *aml_nftl_blk)
-{
-	#if NFTL_CACHE_FLUSH_SYNC
+{    
+#if NFTL_CACHE_FLUSH_SYNC   	
+//for USB burning tool using cache/preloader.. as media partition, 
+//so just disable sync flag for usb burning case.
 	struct mtd_info *mtd = aml_nftl_blk->mbd.mtd;
-	
+    	
 	if(memcmp(mtd->name, "NFTL_Part", 9)==0)
 		return 0;
 	else
 		return (aml_nftl_blk->req->cmd_flags & REQ_SYNC);
-	#else
+#else
 	return 0;
 	
-	#endif
+#endif
 }
 #if 0
 /*****************************************************************************
@@ -246,6 +249,8 @@ static int do_nftltrans_request(struct mtd_blktrans_ops *tr,struct mtd_blktrans_
 	size_t buflen;
 	char *buf;
 
+	//when notifer coming,nftl didnot respond to request.
+	
 	memset((unsigned char *)buf_addr, 0, (max_segm+1)*4);
 	memset((unsigned char *)offset_addr, 0, (max_segm+1)*4);
 	block = blk_rq_pos(req) << SHIFT_PER_SECTOR >> tr->blkshift;
@@ -320,7 +325,6 @@ uint32 _nand_write(struct aml_nftl_blk_t *aml_nftl_blk,uint32 start_sector,uint3
     uint32 ret;
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
     ret = __nand_write(aml_nftl_blk->aml_nftl_part,start_sector,len,buf);
-//    ktime_get_ts(&aml_nftl_blk->ts_write_start);
     aml_nftl_blk->time = jiffies;
 	mutex_unlock(aml_nftl_blk->aml_nftl_lock);
     return ret;
@@ -349,6 +353,7 @@ static int aml_nftl_readsect(struct mtd_blktrans_dev *dev, unsigned long block, 
 {
 	return _nand_read((void *)dev, block, 1,buf);
 }
+#if 0
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -370,7 +375,7 @@ static int flush_time_out(struct timespec* time_old,struct timespec* time_new,un
 
     return 0;
 }
-
+#endif
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -381,7 +386,6 @@ static int flush_time_out(struct timespec* time_old,struct timespec* time_new,un
 static int aml_nftl_thread(void *arg)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk = arg;
-	struct timespec ts_nftl_current;
     unsigned long time;
 
 	while (!kthread_should_stop()) {
@@ -433,24 +437,22 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 {
 	int error = 0;
 	struct aml_nftl_blk_t *aml_nftl_blk = nftl_notifier_to_blk(nb);
-	struct aml_nftl_part_t* aml_nftl_part = aml_nftl_blk->aml_nftl_part;
+	
 
     if(aml_nftl_blk->nftl_thread!=NULL){
         kthread_stop(aml_nftl_blk->nftl_thread); //add stop thread to ensure nftl quit safely
         aml_nftl_blk->nftl_thread=NULL;
     }
+
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
-	if(aml_nftl_blk->reboot_flag == 0) {
 
-//	aml_nftl_dbg("aml_nftl_reboot_notifier flush cache data: %d\n", aml_nftl_part->cache.cache_write_nums);
-	error = aml_nftl_blk->flush_write_cache(aml_nftl_blk);
-
+	if(aml_nftl_blk->reboot_flag == 0){
+	    error = aml_nftl_blk->flush_write_cache(aml_nftl_blk);
 	    error |= aml_nftl_blk->shutdown_op(aml_nftl_blk);
-
-			aml_nftl_blk->reboot_flag = 1;
-	//		aml_nftl_blk->mbd.readonly = 1;
+        aml_nftl_blk->reboot_flag = 1;
         aml_nftl_dbg("aml_nftl_reboot_notifier :%s %d\n",aml_nftl_blk->mbd.mtd->name,error);
-	}
+        }
+
 	mutex_unlock(aml_nftl_blk->aml_nftl_lock);
 
 	return error;
@@ -466,14 +468,23 @@ static int aml_nftl_reboot_notifier(struct notifier_block *nb, unsigned long pri
 static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 {
 	struct aml_nftl_blk_t *aml_nftl_blk;
-
+	unsigned long part_size ;
+	
 	if (mtd->type != MTD_NANDFLASH)
 		return;
-
+/*
     if(mtd->size < 0x8000000)   // >128M
     {
         return;
-    }
+    }*/
+    if(mtd->writesize < 4096)
+	 part_size = 0x1400000;	//20M
+   else
+	 part_size = 0x8000000;     //128	M	
+	
+    if(mtd->size < part_size)   
+        return;
+   
     PRINT("mtd->name: %s\n",mtd->name);
 
 	aml_nftl_blk = aml_nftl_malloc(sizeof(struct aml_nftl_blk_t));
@@ -490,6 +501,7 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	aml_nftl_blk->mbd.devnum = mtd->index;
 	aml_nftl_blk->mbd.tr = tr;
 	aml_nftl_blk->nb.notifier_call = aml_nftl_reboot_notifier;
+    aml_nftl_blk->reboot_flag = 0;
 
 	register_reboot_notifier(&aml_nftl_blk->nb);
 
@@ -556,18 +568,15 @@ static void aml_nftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 *****************************************************************************/
 static int aml_nftl_getgeo(struct mtd_blktrans_dev *dev,  struct hd_geometry *geo)
 {
-	struct aml_nftl_blk_t *aml_nftl_blk = (void *)dev;
+	
 	u_long sect;
-	/* Sort of arbitrary: round size down to 4KiB boundary */
 	sect = 8;
-
 	geo->heads = 1;
 	geo->sectors = 8;
 	geo->cylinders = sect >> 3;
-
 	return 0;
 }
-
+#if 0
 /*****************************************************************************
 *Name         :
 *Description  :
@@ -579,7 +588,7 @@ static int aml_nftl_release(struct mtd_blktrans_dev *mbd)
 {
 	int error = 0;
 	struct aml_nftl_blk_t *aml_nftl_blk = (void *)mbd;
-	struct aml_nftl_part_t* aml_nftl_part = aml_nftl_blk->aml_nftl_part;
+
 
 	mutex_lock(aml_nftl_blk->aml_nftl_lock);
 
@@ -590,7 +599,7 @@ static int aml_nftl_release(struct mtd_blktrans_dev *mbd)
 
 	return error;
 }
-
+#endif
 /*****************************************************************************
 *Name         :
 *Description  :

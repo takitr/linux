@@ -419,7 +419,7 @@ static struct v4l2_frmsize_discrete hm2057_pic_resolution[]=
 	{2592, 1944},
 };
 
-static int get_total_pic_size(resulution_size_t max_size)
+static int get_total_pic_size(resolution_size_t max_size)
 {
 	int ret = 2;
 	if (max_size >= SIZE_2592X1944)

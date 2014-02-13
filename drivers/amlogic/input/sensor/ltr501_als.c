@@ -180,7 +180,7 @@ static int ltr501_i2c_write_reg(u8 reg, u8 value)
  * ## PS CONFIG ##
  * ###############
  */
-
+#if 0
 static int ltr501_ps_enable(int gainrange)
 {
 	int ret;
@@ -221,7 +221,7 @@ static int ltr501_ps_enable(int gainrange)
 
 	return ret;
 }
-
+#endif
 
 // Put PS into Standby mode
 static int ltr501_ps_disable(void)

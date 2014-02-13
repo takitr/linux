@@ -13,6 +13,15 @@
 #include <linux/amlogic/aml_dvfs.h>
 #endif
 
+#ifdef CONFIG_AMLOGIC_USB
+static struct notifier_block rn5t618_otg_nb;                            // notifier_block for OTG issue
+static struct notifier_block rn5t618_usb_nb;                            // notifier_block for USB charger issue
+extern int dwc_otg_power_register_notifier(struct notifier_block *nb);
+extern int dwc_otg_power_unregister_notifier(struct notifier_block *nb);
+extern int dwc_otg_charger_detect_register_notifier(struct notifier_block *nb);
+extern int dwc_otg_charger_detect_unregister_notifier(struct notifier_block *nb);
+#endif
+
 struct i2c_client *g_rn5t618_client = NULL; 
 static const struct i2c_device_id ricoh_pmu_id_table[] = {
 #ifdef CONFIG_RN5T618
@@ -47,14 +56,14 @@ static const char *ricoh_pmu_sub_driver[] = {
             prop_name, value, value);                                   \
     }
 
-#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)        \
-    if (of_property_read_string(node, prop_name, &value)) {             \
-        DBG("failed to get property: %s\n", prop_name);                 \
-        goto exception;                                                 \
-    }                                                                   \
-    if (DEBUG_PARSE) {                                                  \
-        DBG("get property:%25s, value:%s\n",                            \
-            prop_name, value);                                          \
+#define PARSE_STRING_PROPERTY(node, prop_name, value, exception)            \
+    if (of_property_read_string(node, prop_name, (const char **)&value)) {  \
+        DBG("failed to get property: %s\n", prop_name);                     \
+        goto exception;                                                     \
+    }                                                                       \
+    if (DEBUG_PARSE) {                                                      \
+        DBG("get property:%25s, value:%s\n",                                \
+            prop_name, value);                                              \
     }
 
 #define ALLOC_DEVICES(return_pointer, size, flag)                       \
@@ -86,10 +95,15 @@ static void scan_node_tree(struct device_node *top_node, int off)
 
 static int setup_supply_data(struct device_node *node, struct ricoh_pmu_init_data *s_data)
 {
+    int err;
     struct device_node *b_node;
     struct battery_parameter *battery;
     phandle fhandle;
 
+    err = of_property_read_bool(node, "reset-to-system");
+    if (err) {
+        s_data->reset_to_system = 1;    
+    }
     PARSE_UINT32_PROPERTY(node, "soft_limit_to99", s_data->soft_limit_to99, parse_failed);
     PARSE_UINT32_PROPERTY(node, "board_battery",   fhandle,                 parse_failed);
     PARSE_UINT32_PROPERTY(node, "vbus_dcin_short_connect", s_data->vbus_dcin_short_connect, parse_failed);
@@ -135,11 +149,11 @@ setup2:
     return 0;
 }
 
-static struct i2c_device_id* find_id_table_by_name(struct i2c_device_id *look_table, char *name)
+static struct i2c_device_id *find_id_table_by_name(const struct i2c_device_id *look_table, char *name)
 {
     while (look_table->name && look_table->name[0]) {
         if (!strcmp(look_table->name, name)) {
-            return look_table;    
+            return (struct i2c_device_id *)look_table;    
         }
         look_table++;
     }
@@ -203,8 +217,8 @@ struct aml_dvfs_driver rn5t618_dvfs_driver = {
     .set_voltage = rn5t618_set_voltage, 
     .get_voltage = rn5t618_get_voltage,
 };
-extern struct aml_pmu_driver rn5t618_pmu_driver;
 #endif
+extern struct aml_pmu_driver rn5t618_pmu_driver;
 
 static int ricoh_pmu_check_device(struct i2c_client *client)
 {
@@ -260,6 +274,12 @@ static int ricoh_pmu_probe(struct i2c_client *client,
         aml_dvfs_register_driver(&rn5t618_dvfs_driver);
     #endif
         aml_pmu_register_driver(&rn5t618_pmu_driver);
+    #ifdef CONFIG_AMLOGIC_USB
+        rn5t618_otg_nb.notifier_call = rn5t618_otg_change;
+        rn5t618_usb_nb.notifier_call = rn5t618_usb_charger;
+        dwc_otg_power_register_notifier(&rn5t618_otg_nb);
+        dwc_otg_charger_detect_register_notifier(&rn5t618_usb_nb);
+    #endif
     }
 #endif
     /*
@@ -296,7 +316,11 @@ static int ricoh_pmu_remove(struct i2c_client *client)
     aml_dvfs_unregister_driver(&rn5t618_dvfs_driver);
 #endif
     aml_pmu_clear_driver();
-#endif
+#ifdef CONFIG_AMLOGIC_USB
+    dwc_otg_power_unregister_notifier(&rn5t618_otg_nb);
+    dwc_otg_charger_detect_unregister_notifier(&rn5t618_usb_nb);
+#endif  /* CONFIG_AMLOGIC_USB */
+#endif  /* CONFIG_RN5T618     */
 
     platform_device_del(pdev);
 #ifdef CONFIG_OF

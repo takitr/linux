@@ -3,11 +3,22 @@
 #include <linux/kernel.h>
 #include <linux/device.h>
 #include <linux/vmalloc.h>
+#include <linux/major.h>
+#include <linux/slab.h>
+#include <linux/cdev.h>
+#include <linux/fs.h>
+#include <linux/interrupt.h>
+#include <linux/amlogic/amports/amstream.h>
 
 #include <linux/amlogic/amlog.h>
 MODULE_AMLOG(AMLOG_DEFAULT_LEVEL, 0, LOG_DEFAULT_LEVEL_DESC, LOG_DEFAULT_MASK_DESC);
+#define DEVICE_NAME "amsubtitle"	/* Dev name as it appears in /proc/devices   */
+#define DEVICE_CLASS_NAME "subtitle"
+
+static int subdevice_open = 0;
 
 #define MAX_SUBTITLE_PACKET 10
+static DEFINE_MUTEX(amsubtitle_mutex);
 
 typedef struct {
     int subtitle_size;
@@ -32,6 +43,30 @@ static int subtitle_fps = 0;
 static int subtitle_subtype = 0;
 static int subtitle_reset = 0;
 //static int *subltitle_address[MAX_SUBTITLE_PACKET];
+
+typedef enum {
+    SUB_NULL = -1,
+    SUB_ENABLE = 0,
+    SUB_TOTAL,
+    SUB_WIDTH,
+    SUB_HEIGHT,
+    SUB_TYPE,
+    SUB_CURRENT,
+    SUB_INDEX,
+    SUB_WRITE_POS,
+    SUB_START_PTS,
+    SUB_FPS,
+    SUB_SUBTYPE,
+    SUB_RESET,
+    SUB_DATA_T_SIZE,
+    SUB_DATA_T_DATA
+}subinfo_para_type;
+
+typedef struct {
+    subinfo_para_type subinfo_type;
+    int subtitle_info;
+    char *data;
+} subinfo_para_t;
 
 // total
 // curr
@@ -408,24 +443,265 @@ static struct class subtitle_class = {
         .class_attrs = subtitle_class_attrs,
     };
 
-static int __init subtitle_init(void)
+/*********************************************************
+ * /dev/amvideo APIs
+ *********************************************************/
+static int amsubtitle_open(struct inode *inode, struct file *file)
+{	
+    mutex_lock(&amsubtitle_mutex);
+	
+    if (subdevice_open) {
+        mutex_unlock(&amsubtitle_mutex);
+        return -EBUSY;
+    }
+	
+	subdevice_open = 1;
+
+    try_module_get(THIS_MODULE);
+	
+    mutex_unlock(&amsubtitle_mutex);
+	
+    return 0;
+}
+
+static int amsubtitle_release(struct inode *inode, struct file *file)
 {
-    int r;
+    mutex_lock(&amsubtitle_mutex);
+	
+    subdevice_open = 0;
+	
+    module_put(THIS_MODULE);
+	
+    mutex_unlock(&amsubtitle_mutex);
+	
+    return 0;
+}
 
-    r = class_register(&subtitle_class);
+static long amsubtitle_ioctl(struct file *file,
+                          unsigned int cmd, ulong arg)
+{
+    switch (cmd) {
+    case AMSTREAM_IOC_GET_SUBTITLE_INFO: {
+            subinfo_para_t *states = (void *)arg;
+			
+            switch(states->subinfo_type) {
+            case SUB_ENABLE:
+                states->subtitle_info = subtitle_enable;
+                break;
+            case SUB_TOTAL:
+                states->subtitle_info = subtitle_total;
+                break;
+            case SUB_WIDTH:
+                states->subtitle_info = subtitle_width;
+                break;
+            case SUB_HEIGHT:
+                states->subtitle_info = subtitle_height;
+                break;
+            case SUB_TYPE:
+                states->subtitle_info = subtitle_type;
+                break;
+            case SUB_CURRENT:
+                states->subtitle_info = subtitle_current;
+                break;
+            case SUB_INDEX:
+                states->subtitle_info = subtitle_index;
+                break;
+            case SUB_WRITE_POS:
+                states->subtitle_info = subtitle_write_pos;
+                break;
+            case SUB_START_PTS:
+                states->subtitle_info = subtitle_start_pts;
+                break;
+            case SUB_FPS:
+                states->subtitle_info = subtitle_fps;
+                break;
+            case SUB_SUBTYPE:
+                states->subtitle_info = subtitle_subtype;
+                break;
+            case SUB_RESET:
+                states->subtitle_info = subtitle_reset;
+                break;
+            case SUB_DATA_T_SIZE:
+	            states->subtitle_info = subtitle_data[subtitle_write_pos].subtitle_size;
+                break;
+            case SUB_DATA_T_DATA: {
+                    if (states->subtitle_info > 0) {
+						states->subtitle_info = subtitle_data[subtitle_write_pos].data;
+                    }
+				}
+                break;
+            default:
+		        break;
+            }
+        }
 
-    if (r) {
-        amlog_level(LOG_LEVEL_ERROR, "subtitle class create fail.\n");
-        return r;
+		break;
+	case AMSTREAM_IOC_SET_SUBTITLE_INFO: {
+            subinfo_para_t *states = (void *)arg;
+            switch(states->subinfo_type) {
+            case SUB_ENABLE:
+                subtitle_enable = states->subtitle_info;
+                break;
+            case SUB_TOTAL:
+                subtitle_total = states->subtitle_info;
+                break;
+            case SUB_WIDTH:
+                subtitle_width = states->subtitle_info;
+                break;
+            case SUB_HEIGHT:
+                subtitle_height = states->subtitle_info;
+                break;
+            case SUB_TYPE:
+                subtitle_type = states->subtitle_info;
+                break;
+            case SUB_CURRENT:
+                subtitle_current = states->subtitle_info;
+                break;
+            case SUB_INDEX:
+                subtitle_index = states->subtitle_info;
+                break;
+            case SUB_WRITE_POS:
+                subtitle_write_pos = states->subtitle_info;
+                break;
+            case SUB_START_PTS:
+                subtitle_start_pts = states->subtitle_info;
+                break;
+            case SUB_FPS:
+                subtitle_fps = states->subtitle_info;
+                break;
+            case SUB_SUBTYPE:
+                subtitle_subtype = states->subtitle_info;
+                break;
+            case SUB_RESET:
+                subtitle_reset = states->subtitle_info;
+                break;
+            case SUB_DATA_T_SIZE:
+	            subtitle_data[subtitle_write_pos].subtitle_size = states->subtitle_info;
+                break;
+            case SUB_DATA_T_DATA: {
+                    if (states->subtitle_info > 0) {
+                        subtitle_data[subtitle_write_pos].data = vmalloc((states->subtitle_info));
+                        if (subtitle_data[subtitle_write_pos].data)
+                            memcpy(subtitle_data[subtitle_write_pos].data, (char *)states->data,
+                                states->subtitle_info);
+                    }
+
+                    subtitle_write_pos++;
+                    if (subtitle_write_pos >= MAX_SUBTITLE_PACKET) {
+                        subtitle_write_pos = 0;
+                    }
+                }
+                break;
+            default:
+		        break;
+            }
+        }
+
+        break;
+	default:
+		break;
     }
 
+    return 0;
+}
+
+const static struct file_operations amsubtitle_fops = {
+    .owner    = THIS_MODULE,
+    .open     = amsubtitle_open,
+    .release  = amsubtitle_release,
+    .unlocked_ioctl    = amsubtitle_ioctl,
+};
+
+static struct device *amsubtitle_dev;
+static dev_t amsub_devno;
+static struct class* amsub_clsp;
+static struct cdev*  amsub_cdevp;
+#define AMSUBTITLE_DEVICE_COUNT 1
+
+static void create_amsub_attrs(struct class* class)
+{
+    int i=0;
+    for(i=0; subtitle_class_attrs[i].attr.name; i++){
+        if(class_create_file(class, &subtitle_class_attrs[i]) < 0)
+        break;
+    }
+}
+
+static void remove_amsub_attrs(struct class* class)
+{
+    int i=0;
+    for(i=0; subtitle_class_attrs[i].attr.name; i++){
+        class_remove_file(class, &subtitle_class_attrs[i]);
+    }
+}
+
+static int __init subtitle_init(void)
+{
+    int ret = 0;
+
+    ret = alloc_chrdev_region(&amsub_devno, 0, AMSUBTITLE_DEVICE_COUNT, DEVICE_NAME);
+    if(ret < 0){
+        printk("amsub: faild to alloc major number\n");
+        ret = - ENODEV;
+        return ret;
+    }
+
+    amsub_clsp = class_create(THIS_MODULE, DEVICE_CLASS_NAME);
+    if(IS_ERR(amsub_clsp)){
+        ret = PTR_ERR(amsub_clsp);
+        goto err1;
+    }
+	
+    create_amsub_attrs(amsub_clsp);
+
+    amsub_cdevp = kmalloc(sizeof(struct cdev), GFP_KERNEL);
+    if(!amsub_cdevp){
+        printk("amsub: failed to allocate memory\n");
+        ret = -ENOMEM;
+        goto err2;
+    }
+
+    cdev_init(amsub_cdevp, &amsubtitle_fops);
+    amsub_cdevp->owner = THIS_MODULE;
+	// connect the major/minor number to cdev
+    ret = cdev_add(amsub_cdevp, amsub_devno, AMSUBTITLE_DEVICE_COUNT);
+    if(ret){
+        printk("amsub:failed to add cdev\n");
+        goto err3;
+    } 
+
+    amsubtitle_dev = device_create(amsub_clsp, NULL,
+                                MKDEV(MAJOR(amsub_devno),0), NULL,
+                                DEVICE_NAME);
+
+    if (IS_ERR(amsubtitle_dev)) {
+        amlog_level(LOG_LEVEL_ERROR, "## Can't create amsubtitle device\n");
+        goto err4;
+    }
 
     return (0);
+
+err4:
+    cdev_del(amsub_cdevp);
+err3:
+    kfree(amsub_cdevp);
+err2:
+    remove_amsub_attrs(amsub_clsp);
+    class_destroy(amsub_clsp);
+err1:
+    unregister_chrdev_region(amsub_devno, 1);
+
+    return ret;
 }
 
 static void __exit subtitle_exit(void)
 {
-    class_unregister(&subtitle_class);
+    unregister_chrdev_region(amsub_devno, 1);
+    device_destroy(amsub_clsp, MKDEV(MAJOR(amsub_devno),0));
+    cdev_del(amsub_cdevp);
+    kfree(amsub_cdevp);  
+    remove_amsub_attrs(amsub_clsp);
+    class_destroy(amsub_clsp);
 }
 
 module_init(subtitle_init);

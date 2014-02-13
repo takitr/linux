@@ -50,6 +50,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/amlogic/aml_gpio_consumer.h>
 #include <linux/of_gpio.h>
+#include <linux/amlogic/aml_pmu_common.h>
 #include <linux/amlogic/wifi_dt.h>
 #include "amlsd.h"
 
@@ -63,7 +64,13 @@ static struct mtd_partition *card_table[16];
 
 void aml_mmc_ver_msg_show (void)
 {
-    printk("mmc driver version: %d.%02d, %s\n", AML_MMC_MAJOR_VERSION, AML_MMC_MINOR_VERSION, AML_MMC_VER_MESSAGE);
+    static bool one_time_flag = false;
+
+    if (!one_time_flag) {
+        printk("mmc driver version: %d.%02d, %s\n", AML_MMC_MAJOR_VERSION, AML_MMC_MINOR_VERSION, AML_MMC_VER_MESSAGE);
+
+        one_time_flag = true;
+    }
 }
 
 static inline int card_proc_info (struct seq_file *m, char* dev_name, int i)
@@ -413,24 +420,31 @@ bool is_emmc_exist (struct amlsd_host* host) // is eMMC/tSD exist
 
 /*----sdhc----*/
 
+void aml_sdhc_print_reg_(u32 *buf)
+{
+    printk("***********SDHC_REGS***********\n");
+    printk("SDHC_ARGU: 0x%08x\n", buf[SDHC_ARGU/4]);
+    printk("SDHC_SEND: 0x%08x\n", buf[SDHC_SEND/4]);
+    printk("SDHC_CTRL: 0x%08x\n", buf[SDHC_CTRL/4]);
+    printk("SDHC_STAT: 0x%08x\n", buf[SDHC_STAT/4]);
+    printk("SDHC_CLKC: 0x%08x\n", buf[SDHC_CLKC/4]);
+    printk("SDHC_ADDR: 0x%08x\n", buf[SDHC_ADDR/4]);
+    printk("SDHC_PDMA: 0x%08x\n", buf[SDHC_PDMA/4]);
+    printk("SDHC_MISC: 0x%08x\n", buf[SDHC_MISC/4]);
+    printk("SDHC_DATA: 0x%08x\n", buf[SDHC_DATA/4]);
+    printk("SDHC_ICTL: 0x%08x\n", buf[SDHC_ICTL/4]);
+    printk("SDHC_ISTA: 0x%08x\n", buf[SDHC_ISTA/4]);
+    printk("SDHC_SRST: 0x%08x\n", buf[SDHC_SRST/4]);
+    printk("SDHC_ESTA: 0x%08x\n", buf[SDHC_ESTA/4]);
+    printk("SDHC_ENHC: 0x%08x\n", buf[SDHC_ENHC/4]);
+    printk("SDHC_CLK2: 0x%08x\n", buf[SDHC_CLK2/4]);
+}
+
 void aml_sdhc_print_reg(struct amlsd_host* host)
 {
     u32 buf[16];
-    memcpy_fromio(buf, host->base, 0x30);
-
-    printk(KERN_DEBUG "***********SDHC_REGS***********\n");
-    printk(KERN_DEBUG "SDHC_ARGU: 0x%x\n", buf[SDHC_ARGU/4]);
-    printk(KERN_DEBUG "SDHC_SEND: 0x%x\n", buf[SDHC_SEND/4]);
-    printk(KERN_DEBUG "SDHC_CTRL: 0x%x\n", buf[SDHC_CTRL/4]);
-    printk(KERN_DEBUG "SDHC_STAT: 0x%x\n", buf[SDHC_STAT/4]);
-    printk(KERN_DEBUG "SDHC_CLKC: 0x%x\n", buf[SDHC_CLKC/4]);
-    printk(KERN_DEBUG "SDHC_ADDR: 0x%x\n", buf[SDHC_ADDR/4]);
-    printk(KERN_DEBUG "SDHC_PDMA: 0x%x\n", buf[SDHC_PDMA/4]);
-    printk(KERN_DEBUG "SDHC_MISC: 0x%x\n", buf[SDHC_MISC/4]);
-    printk(KERN_DEBUG "SDHC_DATA: 0x%x\n", buf[SDHC_DATA/4]);
-    printk(KERN_DEBUG "SDHC_ICTL: 0x%x\n", buf[SDHC_ICTL/4]);
-    printk(KERN_DEBUG "SDHC_ISTA: 0x%x\n", buf[SDHC_ISTA/4]);
-    printk(KERN_DEBUG "SDHC_SRST: 0x%x\n", buf[SDHC_SRST/4]);
+    memcpy_fromio(buf, host->base, 0x3C);
+    aml_sdhc_print_reg_(buf);
 }
 
 static int aml_sdhc_regs_show(struct seq_file *s, void *v)
@@ -535,7 +549,7 @@ static int amlsd_param_show(struct seq_file *s, void *v)
 	seq_printf(s, "f_min : %d\n", pdata->f_min);
 	seq_printf(s, "port : %d\n", pdata->port);
 	seq_printf(s, "caps : 0x%x\n", pdata->caps);
-	seq_printf(s, "ocr_avail : 0x%lx\n", pdata->ocr_avail);
+	seq_printf(s, "ocr_avail : 0x%x\n", pdata->ocr_avail);
 	seq_printf(s, "max_req_size : %d\n", pdata->max_req_size);
 	return 0;
 }
@@ -663,15 +677,18 @@ void of_amlsd_pwr_on(struct amlsd_platform* pdata)
 {
 	if(pdata->gpio_power)
 		amlogic_set_value(pdata->gpio_power, pdata->power_level, MODULE_NAME);
-	if(pdata->port == MESON_SDIO_PORT_A)
-        extern_wifi_set_enable(1); //power on wifi
+	// if(pdata->port == MESON_SDIO_PORT_A) {
+        // extern_wifi_set_enable(1); //power on wifi
+    // }
 }
+
 void of_amlsd_pwr_off(struct amlsd_platform* pdata)
 {
 	if(pdata->gpio_power)
 		amlogic_set_value(pdata->gpio_power, !pdata->power_level, MODULE_NAME);
-	if(pdata->port == MESON_SDIO_PORT_A)
-        extern_wifi_set_enable(0); //power off wifi
+	// if(pdata->port == MESON_SDIO_PORT_A){
+        // extern_wifi_set_enable(0); //power off wifi
+    // }
 }
 int of_amlsd_init(struct amlsd_platform* pdata)
 {
@@ -704,8 +721,8 @@ int of_amlsd_init(struct amlsd_platform* pdata)
         }
 	}
 
-	if(pdata->port == MESON_SDIO_PORT_A)
-		wifi_setup_dt();
+	// if(pdata->port == MESON_SDIO_PORT_A)
+		// wifi_setup_dt();
 	return 0;
 }
 
@@ -738,12 +755,14 @@ static struct pinctrl * __must_check aml_devm_pinctrl_get_select (
 	
 	s = pinctrl_lookup_state(p, name);
 	if (IS_ERR(s)) {
+        sdio_err("lookup %s fail\n", name);
 		devm_pinctrl_put(p);
 		return ERR_CAST(s);
 	}
 	
 	ret = pinctrl_select_state(p, s);
 	if (ret < 0) {
+        sdio_err("select %s fail\n", name);
 		devm_pinctrl_put(p);
 		return ERR_PTR(ret);
 	}
@@ -762,20 +781,19 @@ void of_amlsd_xfer_pre(struct amlsd_platform* pdata)
         udelay(65);
     }
 
+    size = sizeof(pinctrl);
     if (pdata->port > PORT_SDIO_C) { // so it should be PORT_SDHC_X
-        strncpy(p, "sdhc_", sizeof(pinctrl));
-        size = strlen(p);
-        p += size;
+        aml_snprint(&p, &size, "sdhc_");
     }
 
     if (pdata->mmc->ios.chip_select == MMC_CS_DONTCARE) {
-        if ((pdata->mmc->caps & MMC_CAP_4_BIT_DATA) || (pdata->port != MESON_SDIO_PORT_B)) {
-            snprintf(p, sizeof(pinctrl)-size, "%s_all_pins", pdata->pinname);
+        if ((pdata->mmc->caps & MMC_CAP_4_BIT_DATA) || (pdata->port != MESON_SDIO_PORT_B) || (pdata->mmc->caps & MMC_CAP_8_BIT_DATA)) {
+            aml_snprint(&p, &size, "%s_all_pins", pdata->pinname);
         }else{
-            snprintf(p, sizeof(pinctrl)-size, "%s_1bit_pins", pdata->pinname);
+            aml_snprint(&p, &size, "%s_1bit_pins", pdata->pinname);
         }
     } else { // MMC_CS_HIGH
-        snprintf(p, sizeof(pinctrl)-size, "%s_clk_cmd_pins", pdata->pinname);
+        aml_snprint(&p, &size, "%s_clk_cmd_pins", pdata->pinname);
     }
     
     // if pinmux setting is changed (pinctrl_name is different)
@@ -904,6 +922,7 @@ static int aml_is_card_insert (struct amlsd_platform * pdata)
 	return ret;
 }
 
+#ifdef CONFIG_ARCH_MESON8
 static int aml_is_sdjtag(struct amlsd_platform * pdata)
 {
     int card0;
@@ -1023,13 +1042,22 @@ static int aml_uart_switch(struct amlsd_platform* pdata, bool on)
     pdata->uart_ao_pinctrl);
 #endif
 }
+#endif
+
+// clear detect information
+void aml_sd_uart_detect_clr (struct amlsd_platform* pdata)
+{
+    pdata->is_sduart = 0;
+    pdata->is_in = 0;
+}
 
 void aml_sd_uart_detect (struct amlsd_platform* pdata)
 {
+#ifdef CONFIG_ARCH_MESON8
     static bool is_jtag = false;
 
     if (aml_is_card_insert(pdata)){
-        if(aml_is_sduart(pdata)){
+        if (aml_is_sduart(pdata) && (!mmc_host_uhs(pdata->mmc))) {
             if (!pdata->is_sduart) { // status change
                 printk("\033[0;40;33m Uart in\033[0m\n");
                 aml_uart_switch(pdata, 1);
@@ -1074,10 +1102,30 @@ void aml_sd_uart_detect (struct amlsd_platform* pdata)
         pdata->is_in = false;
         aml_uart_switch(pdata, 0);
         aml_jtag_gpioao();
+        aml_sd_voltage_switch(pdata, MMC_SIGNAL_VOLTAGE_330); // switch to 3.3V
         if(pdata->caps & MMC_CAP_4_BIT_DATA)
             pdata->mmc->caps |= MMC_CAP_4_BIT_DATA;
     }
+#else
+    if (aml_is_card_insert(pdata)){
+        if (!pdata->is_in) { // status change, last time is out, and now is in
+            // printk("\033[0;40;35m normal SD card in \033[0m\n");
+            printk("normal card in\n");
+        }/*  else { */
+        // printk("\033[0;40;35m normal SD card in again---------------- \033[0m\n");
+        /* } */
+        pdata->is_in = true;
+    } else {
+        if (pdata->is_in) { // status change, last time is in, and now is out
+            // printk("\033[0;40;31m card out \033[0m\n");
+            printk("card out\n");
+        } /* else { */
+            // printk("\033[0;40;31m card out again---------------- \033[0m\n");
+        /* } */
 
+        pdata->is_in = false;
+    }
+#endif
     return;
 }
 
@@ -1093,7 +1141,7 @@ irqreturn_t aml_irq_cd_thread(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id)
+irqreturn_t aml_sd_irq_cd(int irq, void *dev_id)
 {
     // printk("cd dev_id %x\n", dev_id);
 	return IRQ_WAKE_THREAD;
@@ -1102,12 +1150,139 @@ irqreturn_t aml_sdio_irq_cd(int irq, void *dev_id)
 void aml_sduart_pre (struct amlsd_platform* pdata)
 {
     if (((pdata->port == MESON_SDIO_PORT_B) || (pdata->port == MESON_SDIO_PORT_XC_B))) {
+#ifdef CONFIG_ARCH_MESON8
         // clear pinmux of CARD_0 and CARD_4 to make them used as gpio
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_2, 0x00005040);
         CLEAR_CBUS_REG_MASK(PERIPHS_PIN_MUX_8, 0x00000400);
         aml_jtag_gpioao();
+#endif
         aml_sd_uart_detect(pdata);
     }
+}
+
+static int aml_cmd_invalid (struct mmc_host* mmc, struct mmc_request* mrq)
+{
+    struct amlsd_platform * pdata = mmc_priv(mmc);
+    unsigned long flags;
+
+    spin_lock_irqsave(&pdata->host->mrq_lock, flags);
+    // sdio_err("%s: filter cmd%d, card_type=%d\n", mmc_hostname(mmc), mrq->cmd->opcode, pdata->card_type);
+    mrq->cmd->error = -EINVAL;
+    spin_unlock_irqrestore(&pdata->host->mrq_lock, flags);
+    mmc_request_done(mmc, mrq);
+
+    return -EINVAL;
+}
+
+int aml_check_unsupport_cmd(struct mmc_host* mmc, struct mmc_request* mrq)
+{
+    struct amlsd_platform * pdata = mmc_priv(mmc);
+
+    // if ((pdata->port != PORT_SDIO) && (mrq->cmd->opcode == SD_IO_SEND_OP_COND ||
+    // mrq->cmd->opcode == SD_IO_RW_DIRECT ||
+    // mrq->cmd->opcode == SD_IO_RW_EXTENDED)) {
+    // mrq->cmd->error = -EINVAL;
+    // mmc_request_done(mmc, mrq);
+    // return -EINVAL;
+    // } 
+
+    if (mrq->cmd->opcode == 3) { // CMD3 means the first time initialized flow is running
+        pdata->is_fir_init = false;
+    }
+
+    if (mmc->caps & MMC_CAP_NONREMOVABLE) { // nonremovable device
+        if (pdata->is_fir_init) { // init for the first time
+            if (aml_card_type_sdio(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                        || mrq->cmd->opcode == SD_SEND_IF_COND) { // filter cmd 52/53/8 for a sdio device before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
+            } else if (aml_card_type_mmc(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                        || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED
+                        || mrq->cmd->opcode == SD_SEND_IF_COND
+                        || mrq->cmd->opcode == MMC_APP_CMD) { // filter cmd 5/52/53/8/55 for an mmc device before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
+            } else if (aml_card_type_sd(pdata) || aml_card_type_non_sdio(pdata)) {
+                if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                        || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                        || mrq->cmd->opcode == SD_IO_RW_EXTENDED) { // filter cmd 5/52/53 for a sd card before init
+                    return aml_cmd_invalid(mmc, mrq);
+                }
+            }
+        }
+    } else { // removable device
+        // filter cmd 5/52/53 for a non-sdio device
+        if (!aml_card_type_sdio(pdata) && !aml_card_type_unknown(pdata)) {
+            if (mrq->cmd->opcode == SD_IO_SEND_OP_COND
+                    || mrq->cmd->opcode == SD_IO_RW_DIRECT
+                    || mrq->cmd->opcode == SD_IO_RW_EXTENDED) {
+                return aml_cmd_invalid(mmc, mrq);
+            }
+        }
+    }
+    // sdio_err("%s: cmd%d, card_type=%d\n", mmc_hostname(mmc), mrq->cmd->opcode, pdata->card_type);
+    return 0;
+}
+
+int aml_sd_voltage_switch (struct amlsd_platform* pdata, char signal_voltage)
+{
+#ifdef CONFIG_ARCH_MESON8
+#ifdef CONFIG_AMLOGIC_BOARD_HAS_PMU 
+    int vol = LDO4DAC_REG_3_3_V;
+    int delay_ms = 0;
+    char *str;
+    struct aml_pmu_driver *pmu_driver; 
+
+    if ((pdata->port != PORT_SDHC_B) // only SDHC_B support voltage switch
+            || (pdata->signal_voltage == signal_voltage)) {
+        // print_dbg("signal_voltage=%d, direct return\n", signal_voltage);
+        return 0; // voltage is the same, return directly
+    }
+
+    pmu_driver = aml_pmu_get_driver(); 
+    if (pmu_driver == NULL) { 
+        sdhc_err("no pmu driver\n"); 
+        return -EINVAL;
+    } 
+    else if (pmu_driver->pmu_reg_write) { 
+        switch (signal_voltage) {
+            case MMC_SIGNAL_VOLTAGE_180:
+                vol = LDO4DAC_REG_1_8_V;
+                delay_ms = 20;
+                str = "1.80 V";
+
+                if (!mmc_host_uhs(pdata->mmc)) {
+                    sdhc_err("switch to 1.8V for a non-uhs device.\n"); 
+                }
+
+                break;
+            case MMC_SIGNAL_VOLTAGE_330:
+                vol = LDO4DAC_REG_3_3_V;
+                delay_ms = 20;
+                str = "3.30 V";
+                break;
+                // case MMC_SIGNAL_VOLTAGE_120: // we don't support 1.2V now
+                // str = "1.20 V";
+                // break;
+            default:
+                str = "invalid";
+                break;
+        }
+ 
+        pmu_driver->pmu_reg_write(LDO4DAC_REG_ADDR, vol); // set voltage
+        pdata->signal_voltage = signal_voltage;
+        mdelay(delay_ms); // wait for voltage to be stable
+        sdhc_dbg(AMLSD_DBG_COMMON, "voltage: %s\n", str);
+        // sdhc_err("delay %dms.\n", delay_ms); 
+    }
+#endif 
+#endif
+
+    return 0;
 }
 
 /*-------------------debug---------------------*/
@@ -1141,6 +1316,25 @@ void aml_dbg_print_pinmux (void)
             READ_CBUS_REG(PERIPHS_PIN_MUX_6), 
             READ_CBUS_REG(PERIPHS_PIN_MUX_8));
 }
+
+void aml_snprint (char **pp, int *left_size,  const char *fmt, ...)
+{
+    va_list args;
+    char *p = *pp;
+    int size;
+
+    if (*left_size <= 1) {
+        sdhc_err("buf is full\n");
+        return;
+    }
+
+    va_start(args, fmt);
+    size = vsnprintf(p, *left_size, fmt, args);
+    va_end(args);
+    *pp += size;
+    *left_size -= size;
+}
+
 
 #ifdef      CONFIG_MMC_AML_DEBUG
 
@@ -1230,14 +1424,14 @@ int aml_dbg_verify_pinmux (struct amlsd_platform * pdata)
 }
 #endif // #ifdef      CONFIG_MMC_AML_DEBUG
 
-#ifndef CONFIG_AM_WIFI_SD_MMC
-int wifi_setup_dt()
-{
-	return 0;
-}
-void extern_wifi_set_enable(int is_on)
-{
-    return;
-}
-#endif
+// #ifndef CONFIG_AM_WIFI_SD_MMC
+// int wifi_setup_dt()
+// {
+	// return 0;
+// }
+// void extern_wifi_set_enable(int is_on)
+// {
+    // return;
+// }
+// #endif
 

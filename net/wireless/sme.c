@@ -329,6 +329,10 @@ static void __cfg80211_sme_scan_done(struct net_device *dev)
 void cfg80211_sme_scan_done(struct net_device *dev)
 {
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
+	if (wdev == NULL) {
+		printk("cfg80211_sme_scan_done : null pointer\n");
+		return;
+	}
 
 	wdev_lock(wdev);
 	__cfg80211_sme_scan_done(dev);

@@ -1,6 +1,7 @@
 #ifndef	_LINUX_AXP_SPLY_H_
 #define	_LINUX_AXP_SPLY_H_
 
+#include <linux/amlogic/aml_pmu_common.h>
 /*      AXP18      */
 #define	AXP18_STATUS						POWER18_STATUS
 #define	AXP18_CHARGE_STATUS					POWER18_ONOFF
@@ -314,55 +315,11 @@ struct axp_adc_res {//struct change
 	uint16_t iusb_res;
 };
 
-struct axp_charger {
-	unsigned int sample_time;
+struct axp20_supply {
+    struct aml_charger aml_charger;
 	unsigned int interval;
-	unsigned int chgcur;
-	unsigned int chgvol;
-	unsigned int chgend;
 
-	int chgpretime;
-	int chgcsttime;
-
-	int vbat;
-	int ibat;
-	int pbat;
-	int vac;
-	int iac;
-	int vusb;
-	int iusb;
-	int ocv;
-	
-	int disvbat;
-	int disibat;
-
-	int rest_vol;
-	int ocv_rest_vol;
-	int resume;
-
-    int ocv_full;
-    int ocv_empty;
-    int soft_limit_to99;
-    void *para;
-    int  (*pmu_call_back)(void *para);
     void (*led_control)(int flag);
-
-	/* charger status */
-	bool chgen;
-	bool bat_det;
-	bool is_on;
-	bool ac_det;
-	bool usb_det;
-	bool ac_valid;
-	bool usb_valid;
-	bool ext_valid;
-	bool bat_current_direction;
-	bool in_short;
-	bool batery_active;
-	bool low_charge_current;
-	bool int_over_temp;
-	bool charge_on;
-	uint8_t fault;
 
 	/* adc */
 	struct axp_adc_res adc;
@@ -383,7 +340,7 @@ struct axp_charger {
 /*
  * export global axp_charger struct so this struct can be used by call back function.
  */
-extern struct axp_charger *gcharger;
+extern struct axp20_supply *g_axp20_supply;
 
 /*
  * R/W operation:
@@ -393,10 +350,11 @@ extern struct axp_charger *gcharger;
  * @size       : R/W size for multiple
  * @val        : value write to register
  */
-extern int axp_reg_read  (uint8_t addr, uint8_t *buf);
-extern int axp_reg_reads (uint8_t start_addr, uint8_t *buf, int size);
-extern int axp_reg_write (uint8_t addr, uint8_t val);
-extern int axp_reg_writes(uint8_t start_addr, uint8_t *buf, int size);
+extern int axp20_reg_read  (int addr, uint8_t *buf);
+extern int axp20_reg_reads (int start_addr, uint8_t *buf, int size);
+extern int axp20_reg_write (int addr, uint8_t val);
+extern int axp20_reg_writes(int start_addr, uint8_t *buf, int size);
+extern int axp20_set_bits  (int addr, uint8_t bits, uint8_t mask);
 
 extern int axp_set_charge_current(int chgcur);                          // set charge current, in uA, 0 to disable charger
 extern int axp_set_usb_voltage_limit(int voltage);                      // set usb voltage limit, in mV
@@ -413,12 +371,5 @@ extern int axp_charger_set_usbcur_limit_extern(int usbcur_limit);       // set u
 extern int axp_get_battery_percent(void);                               // return percent of battery capacity now
 extern int axp_get_battery_voltage(void);                               // return battery voltage, in mV not OCV
 extern int axp_get_battery_current(void);                               // return battery current, in mA
-
-/*
- * these functions are open to axp20_algorithm file, do not use them
- */
-extern void axp_get_coulomb(struct axp_charger *charger, int *charge_c, int *discharge_c);
-extern void axp_caculate_ocv_vol(struct axp_charger *charger, int ocv);
-extern void axp_clear_coulomb(struct axp_charger *charger);
 #endif      /* _LINUX_AXP_SPLY_H_ */
 

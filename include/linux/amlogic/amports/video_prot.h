@@ -17,7 +17,7 @@
 #define  PAT_VAL        0x00000000
 #define  PAT_START_PTR  1
 #define  PAT_END_PTR    1
-#define  HOLD_LINES     14
+#define  HOLD_LINES     4
 #define  LITTLE_ENDIAN  0
 
 typedef struct {
@@ -27,6 +27,7 @@ typedef struct {
     u32 power_down;
     u32 power_on;
     u32 use_prot;
+    u32 disable_prot;
     u32 x_start;
     u32 y_start;
     u32 x_end;
@@ -36,6 +37,7 @@ typedef struct {
     u32 is_4k2k;
     u32 angle;
     u32 angle_changed;
+    u32 enable_layer;
     u32 src_vframe_width;
     u32 src_vframe_height;
     u32 src_vframe_ratio;
@@ -44,6 +46,7 @@ typedef struct {
 
 //extern void early_init_prot();
 void video_prot_init(video_prot_t* video_prot, vframe_t *vf);
+void video_prot_clear(video_prot_t* video_prot);
 void video_prot_set_angle(video_prot_t* video_prot, u32 angle_orientation);
 void video_prot_revert_vframe(video_prot_t* video_prot, vframe_t *vf);
 void video_prot_set_canvas(vframe_t *vf);

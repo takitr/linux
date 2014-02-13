@@ -49,7 +49,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
  	};
-
+#ifdef CONFIG_ARCH_MESON8
 //$$ DEVICE="I2C_C"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2="reg"
@@ -83,4 +83,5 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 	};
+#endif
 #endif

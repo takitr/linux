@@ -585,23 +585,11 @@ struct ar0833_dmaqueue {
 	int                        ini_jiffies;
 };
 
-typedef enum resulution_size_type{
-	SIZE_NULL_TYPE = 0,
-	SIZE_CIF_352X288,
-	SIZE_VGA_640X480,
-	SIZE_720P_1280X720,
-	SIZE_960P_1280X960,
-	SIZE_1080P_1920X1080,
-	SIZE_H1080P_2592X1944,
-	SIZE_6M_3264X1836,
-	SIZE_8M_3264X2448,
-} resulution_size_type_t;
-
 typedef struct resolution_param {
 	struct v4l2_frmsize_discrete frmsize;
 	struct v4l2_frmsize_discrete active_frmsize;
 	int active_fps;
-	resulution_size_type_t size_type;
+	resolution_size_t size_type;
 	cam_i2c_msg_t* reg_script[2];
 } resolution_param_t;
 
@@ -3506,31 +3494,52 @@ static cam_i2c_msg_t AR0833_6M_script_mipi[] = {
 
 static resolution_param_t  prev_resolution_array[] = {
 	{
+		.frmsize			= {176, 144},
+		.active_frmsize		= {640, 480},
+		.active_fps			= 30,
+		.size_type			= SIZE_176X144,
+		.reg_script[0]		= AR0833_preview_VGA_script,
+		.reg_script[1]		= AR0833_VGA_script_mipi,
+	},{
+		.frmsize			= {320, 240},
+		.active_frmsize		= {640, 480},
+		.active_fps			= 30,
+		.size_type			= SIZE_320X240,
+		.reg_script[0]		= AR0833_preview_VGA_script,
+		.reg_script[1]		= AR0833_VGA_script_mipi,
+	},{
+		.frmsize			= {352, 288},
+		.active_frmsize		= {640, 480},
+		.active_fps			= 30,
+		.size_type			= SIZE_352X288,
+		.reg_script[0]		= AR0833_preview_VGA_script,
+		.reg_script[1]		= AR0833_VGA_script_mipi,
+	},{
 		.frmsize			= {640, 480},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
-		.size_type			= SIZE_VGA_640X480,
+		.size_type			= SIZE_640X480,
 		.reg_script[0]		= AR0833_preview_VGA_script,
 		.reg_script[1]		= AR0833_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
+		.size_type			= SIZE_1280X720,
 		.reg_script[0]		= AR0833_preview_720P_script,
 		.reg_script[1]		= AR0833_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_960P_1280X960,
+		.size_type			= SIZE_1280X960,
 		.reg_script[0]		= AR0833_preview_960P_script,
 		.reg_script[1]		= AR0833_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
 		.active_frmsize		= {1920, 1080},
 		.active_fps			= 15,
-		.size_type			= SIZE_1080P_1920X1080,
+		.size_type			= SIZE_1920X1080,
 		.reg_script[0]		= AR0833_preview_1080P_script,
 		.reg_script[1]		= AR0833_1080P_script_mipi, //AR0833_1080P_script_mipi,
 	}
@@ -3541,42 +3550,42 @@ static resolution_param_t  debug_prev_resolution_array[] = {
 		.frmsize			= {640, 480},
 		.active_frmsize		= {640, 480},
 		.active_fps			= 30,
-		.size_type			= SIZE_VGA_640X480,
+		.size_type			= SIZE_640X480,
 		.reg_script[0]		= AR0833_preview_VGA_script,
 		.reg_script[1]		= AR0833_VGA_script_mipi,
 	}, {
 		.frmsize			= {1280, 720},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_720P_1280X720,
+		.size_type			= SIZE_1280X720,
 		.reg_script[0]		= AR0833_preview_720P_script,
 		.reg_script[1]		= AR0833_720P_script_mipi,
 	}, {
 		.frmsize			= {1280, 960},
 		.active_frmsize		= {1280, 720},
 		.active_fps			= 30,
-		.size_type			= SIZE_960P_1280X960,
+		.size_type			= SIZE_1280X960,
 		.reg_script[0]		= AR0833_preview_960P_script,
 		.reg_script[1]		= AR0833_960P_script_mipi,
 	}, {
 		.frmsize			= {1920, 1080},
 		.active_frmsize		= {1920, 1080},
 		.active_fps			= 15,
-		.size_type			= SIZE_1080P_1920X1080,
+		.size_type			= SIZE_1920X1080,
 		.reg_script[0]		= AR0833_preview_1080P_script,
 		.reg_script[1]		= AR0833_1080P_script_mipi, //AR0833_1080P_script_mipi,
 	}, {
 		.frmsize			= {3264, 1836},
 		.active_frmsize		= {3264, 1836},
 		.active_fps			= 15,
-		.size_type			= SIZE_6M_3264X1836,
+		.size_type			= SIZE_3264X1836,
 		.reg_script[0]		= AR0833_preview_6M_script,
 		.reg_script[1]		= AR0833_6M_script_mipi, //AR0833_1080P_script_mipi,
 	}, {
 		.frmsize			= {3264, 2448},
 		.active_frmsize		= {3264, 2448},
 		.active_fps			= 15,
-		.size_type			= SIZE_8M_3264X2448,
+		.size_type			= SIZE_3264X2448,
 		.reg_script[0]		= AR0833_preview_8M_script,
 		.reg_script[1]		= AR0833_8M_script_mipi, //AR0833_1080P_script_mipi,
 	}
@@ -3587,7 +3596,7 @@ static resolution_param_t  capture_resolution_array[] = {
 		.frmsize			= {2592, 1944},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 7.5,
-		.size_type			= SIZE_H1080P_2592X1944,
+		.size_type			= SIZE_2592X1944,
 		.reg_script[0]		= AR0833_capture_8M_script,
 		.reg_script[1]		= AR0833_8M_script_mipi,
 	},
@@ -4229,19 +4238,29 @@ static int set_flip(struct ar0833_device *dev)
 }
 
 
-static resulution_size_type_t get_size_type(int width, int height)
+static resolution_size_t get_size_type(int width, int height)
 {
-    resulution_size_type_t rv = SIZE_NULL_TYPE;
-    if (width * height >= 2500 * 1900)
-        rv = SIZE_H1080P_2592X1944;
+    resolution_size_t rv = SIZE_NULL;
+    if (width * height >= 3200 * 2400)
+        rv = SIZE_3264X2448;
+    else if (width * height >= 3200 * 1800)
+        rv = SIZE_3264X1836;
+    else if (width * height >= 2500 * 1900)
+        rv = SIZE_2592X1944;
     else if (width * height >= 1900 * 1000)
-        rv = SIZE_1080P_1920X1080;
+        rv = SIZE_1920X1080;
     else if (width * height >= 1200 * 900)
-        rv = SIZE_960P_1280X960;
+        rv = SIZE_1280X960;
     else if (width * height >= 1200 * 700)
-        rv = SIZE_720P_1280X720;
+        rv = SIZE_1280X720;
     else if (width * height >= 600 * 400)
-        rv = SIZE_VGA_640X480;
+        rv = SIZE_640X480;
+    else if (width * height >= 352 * 288)
+        rv = SIZE_352X288;
+    else if (width * height >= 320 * 240)
+        rv = SIZE_320X240;
+    else if (width * height >= 176 * 144)
+        rv = SIZE_176X144;
     return rv;
 }
 
@@ -4276,10 +4295,10 @@ static resolution_param_t* get_resolution_param(struct ar0833_device *dev, int i
     int i = 0;
     int arry_size = 0;
     resolution_param_t* tmp_resolution_param = NULL;
-    resulution_size_type_t res_type = SIZE_NULL_TYPE;
+    resolution_size_t res_type = SIZE_NULL;
     printk("target resolution is %dX%d\n", width, height);
     res_type = get_size_type(width, height);
-    if (res_type == SIZE_NULL_TYPE)
+    if (res_type == SIZE_NULL)
         return NULL;
     if (ar0833_work_mode == CAMERA_CAPTURE) {
         tmp_resolution_param = capture_resolution_array;
@@ -4541,7 +4560,7 @@ static void ar0833_fillbuff(struct ar0833_fh *fh, struct ar0833_buffer *buf)
 	para.vaddr = (unsigned)vbuf;
 	para.ext_canvas = buf->canvas_id;
 	para.width = buf->vb.width;
-	para.height = buf->vb.height;
+	para.height = (buf->vb.height==1080)?1088:buf->vb.height;
 	vm_fill_buffer(&buf->vb,&para);
 	buf->vb.state = VIDEOBUF_DONE;
 }

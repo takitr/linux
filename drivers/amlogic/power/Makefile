@@ -33,7 +33,7 @@ endif
 #obj-$(CONFIG_PMU_ACT8xxx)                  += act8xxx_pmu/
 obj-$(CONFIG_AW_AXP)                        += axp_power/
 #obj-$(CONFIG_CW2015)                       += cw2015/cw2015_gasgauge.o
-#obj-$(CONFIG_AML_PMU)                      += aml_pmu/
+obj-$(CONFIG_AML_PMU)                       += aml_pmu/
 obj-$(CONFIG_RICOH_PMU)                     += ricoh/
 obj-$(CONFIG_UBOOT_BATTERY_PARAMETERS)      += battery_parameter.o
 obj-$(CONFIG_AMLOGIC_PMU_OF)                += aml_pmu_of_common.o 

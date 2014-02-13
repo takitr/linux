@@ -7,8 +7,15 @@
 		compatible = "amlogic,amhdmitx";
 		dev_name = "amhdmitx";
 		status = "ok";
-        vend-data = <&vend_data>;
-        pwr-ctrl = <&pwr_ctrl>;
+		vend-data = <&vend_data>;
+		pwr-ctrl = <&pwr_ctrl>;
+#ifdef CONFIG_ARCH_MESON6
+		phy-size = <3>;
+		phy-data = <27  0x16  0x30    /* 480i/p 576i/p */
+				 74  0x16  0x40    /* 720p 1080i */
+				 148  0x16  0x40   /* 1080p */
+				>;
+#endif        
         
 //$$ MATCH "HDMI_vend-data_match" = <&vend_data>
 //$$ L2 PROP_STR = "vendor_name"

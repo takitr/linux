@@ -114,8 +114,6 @@ EXPORT_SYMBOL_GPL(axp_gpio_get_io);
 
 int axp_gpio_set_value(int gpio, int value)
 {
-	int io_state,ret;
-
     if (!axp) {
         printk("[AXP] driver has not ready now, wait...\n");
 		return -ENODEV;

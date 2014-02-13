@@ -5,9 +5,15 @@
 #include <linux/module.h>
 
 #include <mach/am_regs.h>
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #include <linux/amlogic/amports/canvas.h>
 #include <linux/amlogic/amports/vframe.h>
 #include <linux/amlogic/amports/vframe_provider.h>
+#else
+#include <linux/amports/canvas.h>
+#include <linux/amports/vframe.h>
+#include <linux/amports/vframe_provider.h>
+#endif
 //#include <linux/iw7023.h>
 #include "deinterlace.h"
 #ifdef DET3D

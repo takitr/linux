@@ -1275,8 +1275,20 @@ int mmc_regulator_get_supply(struct mmc_host *mmc)
 	struct regulator *supply;
 	int ret;
 
+	supply = devm_regulator_get(dev, "vmmc");
+	mmc->supply.vmmc = supply;
+	mmc->supply.vqmmc = devm_regulator_get(dev, "vqmmc");
+
+	if (IS_ERR(supply))
+		return PTR_ERR(supply);
+
+	ret = mmc_regulator_get_ocrmask(supply);
+	if (ret > 0)
+		mmc->ocr_avail = ret;
+	else
 		dev_warn(mmc_dev(mmc), "Failed getting OCR mask: %d\n", ret);
-	return -EINVAL;
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mmc_regulator_get_supply);
 

@@ -1013,6 +1013,7 @@ struct dwc_otg_core_if {
 
 	/** suspend mode */
 	int suspend_mode;
+	int not_clear_hcd_flag;
 
 	/** hibernation/suspend flag */
 	int hibernation_suspend;

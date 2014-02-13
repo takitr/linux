@@ -380,6 +380,7 @@ static ssize_t mma865x_enable_store(struct device *dev,
 	mutex_unlock(&pdata->data_lock);
 	return count;
 }
+#if 0
 static ssize_t mma865x_position_show(struct device *dev,
 				   struct device_attribute *attr, char *buf)
 {
@@ -405,15 +406,15 @@ static ssize_t mma865x_position_store(struct device *dev,
 	mutex_unlock(&pdata->data_lock);
 	return count;
 }
-
+#endif
 static DEVICE_ATTR(delay, S_IWGRP| S_IWUSR | S_IRUGO,
 		   mma865x_delay_show, mma865x_delay_store);
 static DEVICE_ATTR(debug, S_IWGRP | S_IWUSR | S_IRUGO,
 		   mma865x_debug_show, mma865x_debug_store);
 static DEVICE_ATTR(enable, S_IWGRP | S_IWUSR | S_IRUGO,
 		   mma865x_enable_show, mma865x_enable_store);
-static DEVICE_ATTR(position, S_IWGRP | S_IWUSR | S_IRUGO,
-		   mma865x_position_show, mma865x_position_store);
+
+//static DEVICE_ATTR(position, S_IWGRP | S_IWUSR | S_IRUGO, mma865x_position_show, mma865x_position_store);
 
 static struct attribute *mma865x_attributes[] = {
 	&dev_attr_enable.attr,

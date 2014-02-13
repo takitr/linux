@@ -39,7 +39,10 @@
 #include <linux/ctype.h>
 #include <linux/amlogic/vout/vinfo.h>
 #include <mach/am_regs.h>
+#include <mach/cpu.h>
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 #include <mach/vpu.h>
+#endif
 #include <asm/uaccess.h>
 #include <linux/major.h>
 #include "tvconf.h"
@@ -363,6 +366,11 @@ static const vinfo_t *tv_get_current_info(void)
 	return info->vinfo;
 }
 
+tvmode_t vmode_to_tvmode(vmode_t mod) 
+{
+    return vmode_tvmode_tab[mod];
+}
+
 static int tv_set_current_vmode(vmode_t mod)
 {
 	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_SXGA)
@@ -370,10 +378,11 @@ static int tv_set_current_vmode(vmode_t mod)
 
 	info->vinfo = &tv_info[mod & VMODE_MODE_BIT_MASK];
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;
-	
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	switch_vpu_mem_pd_vmod(info->vinfo->mode, VPU_MEM_POWER_ON);
 	request_vpu_clk_vmod(info->vinfo->video_clk, info->vinfo->mode);
-	tvoutc_setmode(vmode_tvmode_tab[mod]);
+#endif
+	tvoutc_setmode(vmode_to_tvmode(mod));
 //	change_vdac_setting(get_current_vdac_setting(),mod);
 	return 0;
 }
@@ -401,10 +410,12 @@ static int tv_vmode_is_supported(vmode_t mode)
 }
 static int tv_module_disable(vmode_t cur_vmod)
 {
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	if (info->vinfo) {
 		release_vpu_clk_vmod(info->vinfo->mode);
 		switch_vpu_mem_pd_vmod(info->vinfo->mode, VPU_MEM_POWER_DOWN);
 	}
+#endif
 	//video_dac_disable();
 	return 0;
 }

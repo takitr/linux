@@ -1,17 +1,24 @@
 #include <linux/types.h>
 #include <mach/cpu.h>
 #include <plat/cpu.h>
-#include <linux/amlogic/vout/lcdoutc.h>
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8)
+#include <linux/amlogic/vout/lcdoutc.h>
 #include <linux/kernel.h>
 #include "mipi_dsi_util.h"
-#include "mipi_dsi_phy_reg.h"
+#include <mach/mipi_dsi_reg.h>
 #include <linux/amlogic/vout/lcd_reg.h>
 
 //#include <asm/arch/io.h>
 #include <mach/io.h>
 #include <plat/io.h>
 #include <linux/delay.h>
+
+//#define PRINT_DEBUG_INFO
+#ifdef PRINT_DEBUG_INFO
+#define DPRINT(...)		printk(__VA_ARGS__)
+#else
+#define DPRINT(...)
+#endif
 
 #ifndef VPP_OUT_SATURATE
 #define VPP_OUT_SATURATE            (1 << 0)
@@ -29,8 +36,6 @@ void init_mipi_dsi_phy(Lcd_Config_t *p)
         DSI_Config_t *cfg= p->lcd_control.mipi_config;
 
         div = cfg->dsi_clk_div;
-     //   clk_min = cfg->dsi_clk_min;
-      //  clk_max = cfg->dsi_clk_max;
 
         switch (div){
                 case 1:
@@ -656,13 +661,15 @@ extern void wait_bta_ack()
 // Function: wait_cmd_fifo_empty
 // Poll to check if the generic command fifo is empty
 // ----------------------------------------------------------------------------
-extern void wait_cmd_fifo_empty()
+extern void wait_cmd_fifo_empty(void)
 {
         unsigned int cmd_status;
-
+				unsigned int i= 10000;
         do {
+        				i--;
+        				udelay(10);
                 cmd_status = READ_LCD_REG( MIPI_DSI_DWC_CMD_PKT_STATUS_OS);
-        } while(((cmd_status >> BIT_GEN_CMD_EMPTY) & 0x1) != 0x1);
+        } while((((cmd_status >> BIT_GEN_CMD_EMPTY) & 0x1) != 0x1)&&i!=0);
 }
 
 // ----------------------------------------------------------------------------
@@ -1057,7 +1064,7 @@ void powerup_mipi_analog()
 
 void init_phy_mipi(Lcd_Config_t *pConf)
 {
-    powerup_mipi_analog();
+    //powerup_mipi_analog();
     DPRINT("%s, %d\n", __func__, __LINE__);
     mdelay( 10 );
     // Power up MIPI_DSI/DPHY, startup must be ahead of init
@@ -1154,7 +1161,7 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
         unsigned int        is_rgb;
         unsigned int        dith10_en, dith8_en, dith5_en;
         unsigned char       trans_mode;
- //       unsigned char       refresh_rate; //available only for 2560x1600
+				int i=0, ending_flag=0;
 
         if(OFF == status){
 
@@ -1195,17 +1202,32 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
         mipi_dsi_dpi_color_type = pConf->mipi_config->dpi_color_type;
         lane_num                = pConf->mipi_config->lane_num;
         chroma_subsamp          = pConf->mipi_config->dpi_chroma_subsamp;
-    //    refresh_rate            = pConf->mipi_config->refresh_rate;
-
+        
+				powerup_mipi_analog();
         startup_transfer_video();
-
+        
+				if (pConf->mipi_config->mipi_init_flag ==1) {        	
+        	while(ending_flag == 0) {
+						if(pConf->mipi_config->mipi_init[i]==0xff) {
+							if(pConf->mipi_config->mipi_init[i+1]==0xff)
+								ending_flag = 1;
+							else
+								mdelay(pConf->mipi_config->mipi_init[i+1]);
+						}
+						else {
+							DCS_write_short_packet_1_para(DT_DCS_SHORT_WR_1,vcid,pConf->mipi_config->mipi_init[i], pConf->mipi_config->mipi_init[i+1],req_ack);
+						}
+						i += 2;
+        	}
+        }
+        
         DPRINT("send exit sleep mode\n");
         DCS_write_short_packet_0_para(DT_DCS_SHORT_WR_0,                       // DSI Data Type
                         vcid,                                    // Virtual ID
                         DCS_EXIT_SLEEP_MODE,                     // DCS Command Type
                         req_ack);                                // If need wait ack
 
-        mdelay(10);
+        mdelay(pConf->mipi_config->sleep_out_delay);
 
         DPRINT("send display on\n");
         DCS_write_short_packet_0_para(DT_DCS_SHORT_WR_0,                       // DSI Data Type
@@ -1213,7 +1235,7 @@ void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status)
                         DCS_SET_DISPLAY_ON,                      // DCS Command Type
                         req_ack);                                // If need wait ack
         DPRINT("DCS_SET_DISPLAY_ON Test Passed\n");
-        mdelay(10);
+        mdelay(pConf->mipi_config->display_on_delay);
 
         trans_mode = TRANS_VIDEO_MODE;
         set_mipi_dsi_host_to_video_mode(lane_num,                        // Lane number
@@ -1264,15 +1286,14 @@ void dsi_probe( Lcd_Config_t *pConf)
                         cfg->denominator, cfg->numerator, cfg->denominator/cfg->numerator);
         }
 
-        cfg->hline = (basic->h_period*cfg->denominator + cfg->numerator - 1) / cfg->numerator;  // Rounded. Applicable for Period(pixclk)/Period(bytelaneclk)=9/16
-        cfg->hsa   = (t->hsync_width*cfg->denominator + cfg->numerator - 1) / cfg->numerator;
-        cfg->hbp   = (t->hsync_bp * cfg->denominator + cfg->numerator - 1) / cfg->numerator;
+				cfg->hline =(basic->h_period*cfg->denominator + cfg->numerator - 1) / cfg->numerator;  // Rounded. Applicable for Period(pixclk)/Period(bytelaneclk)=9/16
+        cfg->hsa   =(t->hsync_width*cfg->denominator + cfg->numerator - 1) / cfg->numerator;
+        cfg->hbp   =((t->hsync_bp-t->hsync_width) * cfg->denominator + cfg->numerator - 1) / cfg->numerator;
 
         cfg->vsa   = t->vsync_width;
-        cfg->vbp   = t->vsync_bp;
-        cfg->vfp   = t->video_on_line - t->vsync_width - t->vsync_bp;
+        cfg->vbp   = t->vsync_bp -t->vsync_width;
+        cfg->vfp   = basic->v_period  - t->vsync_bp-basic->v_active;
         cfg->vact  = basic->v_active;
-
 }
 #if 0
 int do_dsi(cmd_tbl_t * cmdtp, int flag, int argc, char *argv[])
@@ -1413,18 +1434,5 @@ U_BOOT_CMD(
 	  );
 //****************************************
 #endif
-#else
-void lcd_ports_ctrl_mipi(Lcd_Config_t *p, Bool_t status){}
 
-void set_pll_mipi(Lcd_Config_t *p){}
-
-void set_control_mipi(Lcd_Config_t *p){}
-
-void set_venc_mipi(Lcd_Config_t *pConf){}
-
-void set_tcon_mipi(Lcd_Config_t *p){}
-
-void init_phy_mipi(Lcd_Config_t *pConf){}
-
-void dsi_probe( Lcd_Config_t *pConf){}
 #endif

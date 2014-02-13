@@ -69,5 +69,13 @@
 #define CLEAR_VREG_MASK(r, mask) CLEAR_CBUS_REG_MASK(r, mask)
 #endif
 
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
+#define READ_VCBUS_REG(r) READ_CBUS_REG(r)
+#define WRITE_VCBUS_REG(r, val) WRITE_CBUS_REG(r, val)
+#define WRITE_VCBUS_REG_BITS(r, val, from, size) WRITE_CBUS_REG_BITS(r, val, from, size)
+#define SET_VCBUS_REG_MASK(r, mask) SET_CBUS_REG_MASK(r, mask)
+#define CLEAR_VCBUS_REG_MASK(r, mask) CLEAR_CBUS_REG_MASK(r, mask)
+#endif
+
 #endif /* VDEC_REG_H */
 

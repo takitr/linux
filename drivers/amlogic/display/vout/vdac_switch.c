@@ -181,7 +181,7 @@ static ssize_t vdacswitch_mode_store(struct class *class, struct class_attribute
         vdac_switch_set_mode(switch_mode);
     }
 
-    return 16;
+    return count;
 }
 
 static struct class_attribute vdacswitch_class_attrs[] =

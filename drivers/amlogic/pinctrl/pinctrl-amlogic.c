@@ -203,7 +203,7 @@ static void amlogic_pmx_disable(struct pinctrl_dev *pctldev, unsigned selector,
 	int i;
 	struct amlogic_pin_group *pin_group=&apmx->soc->groups[group];
 	struct amlogic_reg_mask *setmask=pin_group->setmask;
-	struct amlogic_reg_mask *clrmask=pin_group->clearmask;
+	//struct amlogic_reg_mask *clrmask=pin_group->clearmask;
 #if 0
 	for(i=0;i<pin_group->num_clearmask;i++){
 		aml_set_reg32_mask(p_pin_mux_reg_addr[clrmask[i].reg],clrmask[i].mask);

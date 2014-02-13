@@ -36,7 +36,7 @@
 #define aml_gpio_direction_output(gpio, val) amlogic_gpio_direction_output(gpio, val, ts_com->owner)
 #define aml_get_value(gpio) amlogic_get_value(gpio, ts_com->owner)
 #define aml_set_value(gpio,val) amlogic_set_value(gpio, val, ts_com->owner)
-#define aml_gpio_to_irq(gpio, irq, irq_edge) 	amlogic_gpio_to_irq(gpio, ts_com->owner, AML_GPIO_IRQ(irq,FILTER_NUM7,irq_edge))
+#define aml_gpio_to_irq(gpio, irq, irq_edge) 	amlogic_gpio_to_irq(gpio, ts_com->owner, AML_GPIO_IRQ((irq),FILTER_NUM7,irq_edge))
 
 #define touch_dbg(fmt, args...)  { if(ts_com->printk_enable_flag) \
 					printk("[%s]: " fmt, ts_com->owner, ## args); }
@@ -63,8 +63,8 @@ struct touch_pdata {
   unsigned reg;
   unsigned auto_update_fw;
 	char *owner;
-	char *fw_file;
-	char *config_file;
+	char fw_file[255];
+	char config_file[255];
 	
 	int printk_enable_flag;
 	void(*hardware_reset)(struct touch_pdata *);
@@ -79,6 +79,9 @@ struct touch_pdata {
 
 	struct tp_key *tp_key;
 	int tp_key_num;
+	int select_gpio_num;
+	int select_fw_gpio[10];
+	char *fw_select[10];
 };
 
 typedef enum
@@ -99,5 +102,6 @@ int create_init(struct device dev, struct touch_pdata *pdata);
 GET_DT_ERR_TYPE request_touch_gpio(struct touch_pdata *pdata);
 void free_touch_gpio(struct touch_pdata *pdata);
 void destroy_remove(struct device dev, struct touch_pdata *pdata);
+int get_gpio_fw(struct touch_pdata *pdata);
 
 #endif

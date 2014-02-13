@@ -192,6 +192,9 @@ static s32 fill_ptr, get_ptr, putting_ptr, put_ptr;
 struct semaphore  vb_start_sema;
 struct semaphore  vb_done_sema;
 
+static wait_queue_head_t frame_ready;
+atomic_t waiting_flag = ATOMIC_INIT(0);
+
 static inline vframe_t *vm_vf_get_from_provider(void);
 static inline vframe_t *vm_vf_peek_from_provider(void);
 static inline void vm_vf_put_from_provider(vframe_t *vf);
@@ -343,6 +346,10 @@ static int vm_receiver_event_fun(int type, void *data, void *private_data)
 {
 	switch(type){
 	case VFRAME_EVENT_PROVIDER_VFRAME_READY:
+		//if (atomic_read(&waiting_flag)) {
+			wake_up_interruptible(&frame_ready);
+		//	atomic_set(&waiting_flag, 0);
+	       //}
 		//up(&vb_start_sema);
 		//printk("vdin frame ready !!!!!\n");
 		break;
@@ -1348,6 +1355,11 @@ int vm_sw_post_process(int canvas , int addr)
 static struct task_struct *task=NULL;
 static struct task_struct *simulate_task_fd=NULL;
 
+static bool is_vf_available(void)
+{
+    return ((local_vf_peek()!=NULL)||(!task_running));
+}
+
 /* static int reset_frame = 1; */
 static int vm_task(void *data) {
 	int ret = 0;
@@ -1371,23 +1383,19 @@ static int vm_task(void *data) {
 	allow_signal(SIGTERM);
 	while(1) {
 		ret = down_interruptible(&vb_start_sema);
-		timer_count = 0;
 		if (kthread_should_stop()){
 			up(&vb_done_sema);
 			break;
 		}
 
 		/* wait for frame from 656 provider until 500ms runs out */
-		vf = local_vf_peek();
-		while((vf == NULL) && (timer_count < 200)) {
-			if(!task_running){
-				up(&vb_done_sema);
-				goto vm_exit;
-				break;
-			}
-			vf = local_vf_peek();
-			timer_count++;
-			msleep(5);
+		//vf = local_vf_peek();
+		wait_event_interruptible_timeout(frame_ready, is_vf_available(),msecs_to_jiffies(5000));
+                  
+		if(!task_running){
+			up(&vb_done_sema);
+			goto vm_exit;
+			break;
 		}
 
 		/* start to convert frame. */
@@ -1543,6 +1551,7 @@ int start_vm_task(void) {
 			amlog_level(LOG_LEVEL_HIGH, "thread creating error.\n");
 			return -1;
 		}
+		init_waitqueue_head(&frame_ready);
 		wake_up_process(task);
 	}
     task_running = 1;
@@ -1570,6 +1579,7 @@ void stop_vm_task(void) {
         vm_device.task_running = task_running;
         send_sig(SIGTERM, task, 1);
         up(&vb_start_sema);
+        wake_up_interruptible(&frame_ready);
         kthread_stop(task);
         task = NULL;
     }

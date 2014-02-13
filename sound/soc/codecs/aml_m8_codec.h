@@ -39,10 +39,14 @@
 #define AMLM8_MUTE_2			0x1F
 #define AMLM8_MUTE_4			0x21
 
-#define AMLM8_REC_VOL			0x24
-#define AMLM8_PGA_VOL			0x26
-#define AMLM8_LM_VOL			0x34
-#define AMLM8_HS_VOL			0x38
+#define AMLM8_REC_LEFT_VOL		0x24
+#define AMLM8_REC_RIGHT_VOL		0x25
+#define AMLM8_PGA_LEFT_VOL		0x26
+#define AMLM8_PGA_RIGHT_VOL		0x27
+#define AMLM8_LM_LEFT_VOL		0x34
+#define AMLM8_LM_RIGHT_VOL		0x35
+#define AMLM8_HS_LEFT_VOL		0x38
+#define AMLM8_HS_RIGHT_VOL		0x39
 
 #define AMLM8_PGA_SEL			0x47
 
@@ -54,8 +58,9 @@
 #define AMLM8_INT_LEVLE_0		0x54
 #define AMLM8_INT_LEVLE_1		0x55
 
-#define AMLM8_LDR1_SEL			0x59
-#define AMLM8_LDR2_SEL			0x5d
+#define AMLM8_LDR1_LEFT_SEL		0x59
+#define AMLM8_LDR1_RIGHT_SEL	0x5A
+#define AMLM8_LDR2_SEL			0x5D
 
 #define AMLM8_REC_DMIX			0x7B
 #define AMLM8_PB_DMIX			0x7C

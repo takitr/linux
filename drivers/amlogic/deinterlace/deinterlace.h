@@ -428,7 +428,8 @@ typedef struct reg_cfg_{
     struct reg_cfg_* next;
     unsigned int source_types_enable; /* each bit corresponds to one source type */
     unsigned int pre_post_type; /* pre, 0; post, 1 */
-    unsigned short sig_fmt_range[FMT_MAX_NUM]; /* {bit[31:16]~bit[15:0]}, include bit[31:16] and bit[15:0]  */
+	unsigned int dtv_defintion_type;/*high defintion,0; stand defintion ,1;common,2*/
+    unsigned int sig_fmt_range[FMT_MAX_NUM]; /* {bit[31:16]~bit[15:0]}, include bit[31:16] and bit[15:0]  */
     reg_set_t reg_set[REG_SET_MAX_NUM];    
 }reg_cfg_t;
 

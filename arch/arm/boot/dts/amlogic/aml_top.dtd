@@ -9,6 +9,7 @@ void root_func(){
 //$$ ADD /{
 	compatible = "AMLOGIC,8726_MX";
 	model = "AMLOGIC";
+	interrupt-parent = <&gic>;
 	#address-cells = <1>;
 	#size-cells = <1>;
 #else
@@ -57,11 +58,11 @@ void root_func(){
 #endif
     };
 
-#ifdef CONFIG_ARCH_MESON8
 /// ***************************************************************************************
 ///	-	Cache
 //$$ MODULE="Cache"
 //$$ DEVICE="cache"
+#ifdef CONFIG_ARCH_MESON8
     cache-controller {
           compatible = "arm,meson-pl310-cache";
           reg = <0xc4200000 0x1000>;
@@ -82,6 +83,20 @@ void root_func(){
           prefetch-prefetch_drop;
           prefetch-prefetch_offset = <7>;
     };
+#else
+		cache-controller {
+          compatible = "arm,meson-pl310-cache";
+          reg = <0xc4200000 0x1000>;
+          cache-unified;
+          cache-level = <2>;
+          aux-instruction_prefetch;
+          aux-data_prefetch;
+          aux-ns_lockdown;
+          aux-ns_int_ctrl;
+          aux-share_override;
+          aux-cache_replace_policy_round_robin;
+          prefetch-prefetch_offset = <6>;
+    };
 #endif
 
 /// ***************************************************************************************
@@ -90,14 +105,23 @@ void root_func(){
 //$$ DEVICE="memory"
 //$$ L2 PROP_U32 = "aml_reserved_start"
 //$$ L2 PROP_U32 = "aml_reserved_end"
-//$$ L2 PROP_U32 6 = "linux,usable-memory"
+//$$ L2 PROP_U32 = "linux,usable-memory"
+#ifndef CONFIG_ARCH_MESON6
 	memory{
 		device_type = "memory";
-		aml_reserved_start = <0x05000000>; /**reserved memory start */
-		aml_reserved_end = <0x1c2fffff>;/**reserved memory end */
-		linux,usable-memory = <0x00000000 0x04000000 0x1c300000 0x63d00000>;
+		aml_reserved_start = <0x06000000>; /**reserved memory start-for kernel */
+		aml_reserved_end = <0x05000000>;/**reserved uImage and dtb memory-for uboot*/
+		linux,total-memory = <0x40000000>; /**0x40000000--1G memory 0x80000000--2G memory*/
 	};
-#ifdef CONFIG_ARCH_MESON8	
+#else
+	memory{
+		device_type = "memory";
+		aml_reserved_start = <0x85000000>; /**reserved memory start-for kernel */
+		aml_reserved_end = <0x84000000>;/**reserved uImage and dtb memory-for uboot*/
+		linux,total-memory = <0x40000000>;/**0x40000000--1G memory 0x80000000--2G memory*/
+	};
+#endif
+
 /// ***************************************************************************************
 ///	-	GIC
 //$$ MODULE="GIC"
@@ -111,6 +135,7 @@ void root_func(){
         #address-cells = <0>;
     };
     
+#ifdef CONFIG_ARCH_MESON8    
 /// ***************************************************************************************
 ///	-	VPU
 //$$ MODULE="VPU"
@@ -126,7 +151,7 @@ void root_func(){
 				3: 182.15M		4: 212.5M		5: 255M
 		    	6: 318.75M		7: 364.3M					 */
 	};
-	
+#endif	
 /// ***************************************************************************************
 ///	-	ION
 //$$ MODULE="ION"
@@ -136,8 +161,9 @@ void root_func(){
         compatible = "amlogic,ion_dev";
         dev_name = "ion_dev";
         status = "ok";
+        reserve-memory = <0x01400000>;
     };
-#endif    
+
 /// **************************************************************************************	
 /// -   DISP&MM-FB
 //$$ MODULE = "DISP&MM-FB"	
@@ -170,7 +196,7 @@ sub_file /drivers/amlogic/amports/aml_encoder.dtd
 ///	-	DISP&MM-VDIN
 //$$ MODULE = "DISP&MM-VDIN"
 #device vdin0 vdin1
-sub_file /drivers/amlogic/tvin/aml.dtd
+#sub_file /drivers/amlogic/tvin/aml.dtd
 
 /// ***************************************************************************************
 ///	-	DISP&MM-AMLVIDEO2
@@ -182,7 +208,7 @@ sub_file /drivers/amlogic/video_dev/aml.dtd
 ///	-	DISP&MM-Video Input Manager	
 //$$ MODULE = "DISP&MM-Video Input Manager"
 #device vm
-sub_file /drivers/amlogic/camera/common/aml.dtd
+#sub_file /drivers/amlogic/camera/common/aml.dtd
 
 /// ***************************************************************************************
 ///	-	DISP&MM-Vout	
@@ -191,6 +217,12 @@ sub_file /drivers/amlogic/camera/common/aml.dtd
 sub_file /drivers/amlogic/display/vout/aml_vout.dtd
 #device mesonvout2
 sub_file /drivers/amlogic/display/vout2/aml.dtd
+
+/// ***************************************************************************************
+///	-	EARLY_INIT
+//$$ MODULE="early_init"
+#device early_init
+sub_file /drivers/amlogic/early_init/aml.dtd
 
 /// ***************************************************************************************
 ///	-	RTC
@@ -214,6 +246,11 @@ sub_file /drivers/amlogic/bluetooth/aml.dtd
 sub_file /drivers/amlogic/wifi/aml.dtd
 
 /// ***************************************************************************************
+///	-	Ethernet
+//$$ MODULE="Ethernet"
+sub_file /drivers/amlogic/ethernet/aml.dtd
+
+/// ***************************************************************************************
 ///	-	MMC
 //$$ MODULE="MMC"
 sub_file /drivers/amlogic/mmc/aml.dtd
@@ -228,6 +265,8 @@ sub_file /drivers/amlogic/i2c/aml.dtd
 //$$ MODULE="Power"
 #device dvfs
 sub_file /drivers/amlogic/power/aml_dvfs/aml.dtd
+#device dcdc
+sub_file /drivers/amlogic/power/meson_cs_dcdc_regulator/aml.dtd
 #ifdef CONFIG_ARCH_MESON8
 //$$ DEVICE="arm_pmu"
 //$$ L2 PROP_STR = "status"
@@ -258,6 +297,8 @@ sub_file /drivers/amlogic/usb/aml.dtd
 sub_file /drivers/amlogic/display/backlight/aml.dtd
 #device lcd
 sub_file /drivers/amlogic/display/vout/aml_lcd.dtd
+#device lcd_extern
+sub_file /drivers/amlogic/display/vout/lcd_extern/aml.dtd
 
 /// ***************************************************************************************
 ///     -       Sensors
@@ -268,7 +309,11 @@ sub_file /drivers/amlogic/input/sensor/aml.dtd
 /// ***************************************************************************************
 ///	-	Audio
 //$$ MODULE="Audio"
-sub_file /sound/soc/aml/aml.dtd
+#ifdef CONFIG_ARCH_MESON8
+sub_file /sound/soc/aml/m8/aml.dtd
+#else
+sub_file /sound/soc/aml/m6/aml.dtd
+#endif
 
 /// ***************************************************************************************
 ///	-	Camera
@@ -287,6 +332,8 @@ sub_file /drivers/amlogic/input/saradc/aml.dtd
 sub_file /drivers/amlogic/input/keyboard/aml.dtd
 #device new_remote
 sub_file /drivers/amlogic/input/new_remote/aml.dtd
+#device remote
+sub_file /drivers/amlogic/input/remote/aml.dtd
 
 /// ***************************************************************************************
 ///	-	Spi
@@ -296,7 +343,11 @@ sub_file /drivers/amlogic/spi_nor/aml.dtd
 /// ***************************************************************************************
 ///	-	Nand
 //$$ MODULE="Nand"
+#ifdef CONFIG_ARCH_MESON8
 sub_file /drivers/amlogic/amlnf/dev/aml.dtd
+#else
+sub_file /drivers/amlogic/nand/aml.dtd
+#endif
 
 /// ***************************************************************************************
 ///	-	Efuse
@@ -323,6 +374,8 @@ sub_file /drivers/amlogic/keymanage/aml.dtd
 //$$ MODULE="PowerManager"
 #ifdef CONFIG_ARCH_MESON8
 sub_file /arch/arm/mach-meson8/aml_pm.dtd
+#else
+sub_file /arch/arm/mach-meson6/aml_pm.dtd
 #endif
 
 /// ***************************************************************************************
@@ -340,6 +393,8 @@ sub_file /drivers/amlogic/cpufreq/aml.dtd
 //$$ MODULE="GPIO"
 #ifdef CONFIG_ARCH_MESON8
 sub_file /arch/arm/mach-meson8/aml_gpio.dtd
+#else
+sub_file /arch/arm/mach-meson6/aml_gpio.dtd
 #endif
 
 /// **************************************************************************************	
@@ -347,12 +402,9 @@ sub_file /arch/arm/mach-meson8/aml_gpio.dtd
 //$$ MODULE="Pinmux"
 #ifdef CONFIG_ARCH_MESON8
 sub_file /arch/arm/mach-meson8/aml_pin.dtd
+#else
+sub_file /arch/arm/mach-meson6/aml_pin.dtd
 #endif
-
-/// ***************************************************************************************
-///	-	Ethernet
-//$$ MODULE="Ethernet"
-sub_file /drivers/amlogic/ethernet/aml.dtd
 
 #the end of dtd file
 }; /* end of / */
