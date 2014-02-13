@@ -1067,7 +1067,8 @@ static void vsync_toggle_frame(vframe_t *vf)
         (cur_dispbuf->height != vf->height) ||
         (cur_dispbuf->ratio_control != vf->ratio_control) ||
         ((cur_dispbuf->type_backup & VIDTYPE_INTERLACE) !=
-         (vf->type_backup & VIDTYPE_INTERLACE))) {
+         (vf->type_backup & VIDTYPE_INTERLACE)) ||
+         (cur_dispbuf->type != vf->type)) {
         amlog_mask(LOG_MASK_FRAMEINFO,
                    "%s %dx%d ar=0x%x\n",
                    ((vf->type & VIDTYPE_TYPEMASK) == VIDTYPE_INTERLACE_TOP) ?
@@ -2190,7 +2191,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             field_matching_count = 0;
             // adjust system time to get one more field toggle
             // at next vsync to match field
-            timestamp_pcrscr_inc(vsync_pts_inc); 
+            timestamp_pcrscr_inc(vsync_pts_inc);
         }
     } else {
         field_matching_count = 0;
