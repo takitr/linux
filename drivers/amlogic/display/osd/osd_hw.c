@@ -222,6 +222,7 @@ static inline void wait_vsync_wakeup(void)
 	wake_up_interruptible(&osd_vsync_wq);
 }
 
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 {
 #define  	VOUT_ENCI	1
@@ -323,6 +324,7 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 	aml_write_reg32(P_RDMA_CTRL, 1<<24);
 	return IRQ_HANDLED;
 }
+#endif
 
 static inline void  walk_through_update_list(void)
 {
@@ -360,7 +362,7 @@ static void osd_fiq_isr(void)
 static irqreturn_t vsync_isr(int irq, void *dev_id)
 #endif
 {
-#ifndef CONFIG_VSYNC_RDMA
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 #define  	VOUT_ENCI	1
 #define   	VOUT_ENCP	2
 #define	VOUT_ENCT	3
@@ -437,18 +439,19 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
 		aml_write_reg32(P_VIU_OSD1_BLK3_CFG_W0+ REG_OFFSET, fb1_cfg_w0);
 	}
 	//go through update list
+#ifndef CONFIG_VSYNC_RDMA
 	walk_through_update_list();
-
+#endif
 	osd_update_3d_mode(osd_hw.mode_3d[OSD1].enable,osd_hw.mode_3d[OSD2].enable);
 #endif
 
-#if 0
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 #ifdef CONFIG_VSYNC_RDMA
 	reset_rdma();
 #endif
 #endif
 
-#ifndef CONFIG_VSYNC_RDMA
+#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
 	if (!vsync_hit)
 	{
 #ifdef FIQ_VSYNC
@@ -2431,17 +2434,13 @@ void osd_init_hw(u32  logo_loaded)
 #endif
 
 #ifdef CONFIG_VSYNC_RDMA
-#if MESON_CPU_TYPE < MESON_CPU_TYPE_MESON8
-	if (request_irq(INT_RDMA, &osd_rdma_isr,
-                    IRQF_SHARED, "osd_rdma", (void *)"osd_rdma"))
-
-#else
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 	if (request_irq(INT_RDMA, &osd_rdma_isr,
                     IRQF_DISABLED, "osd_rdma", (void *)"osd_rdma"))
-#endif
 	{
 		amlog_level(LOG_LEVEL_HIGH,"can't request irq for rdma\r\n");
 	}
+#endif
 #endif
 	return ;
 }
