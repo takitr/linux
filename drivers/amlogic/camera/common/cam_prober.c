@@ -479,6 +479,19 @@ int __init sp1628_v4l2_probe(struct i2c_adapter *adapter)
 }
 #endif
 
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3720
+int __init bf3720_v4l2_probe(struct i2c_adapter *adapter)
+{
+    int ret = 0;
+	unsigned char reg[2];   
+	reg[0] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfc);
+	reg[1] = aml_i2c_get_byte_add8(adapter, 0x6e, 0xfd);
+	if (reg[0] == 0x37 && reg[1] == 0x20)
+		ret = 1;
+    return ret;
+}
+#endif
+
 typedef struct {
 	unsigned char addr;
 	char* name;
@@ -708,6 +721,15 @@ static aml_cam_dev_info_t cam_devs[] = {
 		.pwdn = 1,
 		.max_cap_size = SIZE_1280X960,
 		.probe_func = sp1628_v4l2_probe,
+	},
+#endif
+#ifdef CONFIG_VIDEO_AMLOGIC_CAPTURE_BF3720
+	{
+		.addr = 0x6e,
+		.name = "bf3720",
+		.pwdn = 1,
+		.max_cap_size = SIZE_1600X1200,
+		.probe_func = bf3720_v4l2_probe,
 	},
 #endif
 
