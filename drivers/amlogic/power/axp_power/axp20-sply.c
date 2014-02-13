@@ -1148,10 +1148,14 @@ static ssize_t dbg_info_show(struct device *dev, struct device_attribute *attr, 
     struct axp20_supply *supply  = container_of(battery, struct axp20_supply, batt);
     int    size;
     struct aml_charger  *charger = &supply->aml_charger;
+    struct aml_pmu_api  *api;
     
-    size = aml_pmu_format_dbg_buffer(charger, buf);
-
-    return size;
+    api = aml_pmu_get_api();
+    if (api && api->pmu_format_dbg_buffer) {
+        return api->pmu_format_dbg_buffer(charger, buf);
+    } else {
+        return sprintf("api not found, please insert pmu.ko\n"); 
+    }
 }
 
 static ssize_t dbg_info_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -1194,19 +1198,29 @@ static ssize_t battery_para_store(struct device *dev, struct device_attribute *a
 
 static ssize_t report_delay_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "report_delay = %d\n", aml_pmu_get_report_delay()); 
+    struct aml_pmu_api *api = aml_pmu_get_api();
+    if (api && api->pmu_get_report_delay) {
+        return sprintf(buf, "report_delay = %d\n", api->pmu_get_report_delay()); 
+    } else {
+        return sprintf(buf, "error, api not found\n");
+    }
 }
 
 static ssize_t report_delay_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
+    struct aml_pmu_api *api = aml_pmu_get_api();
     uint32_t tmp = simple_strtoul(buf, NULL, 10);
 
     if (tmp > 200) {
         AXP_PMU_DBG("input too large, failed to set report_delay\n");    
-        return 0;
+        return count;
     }
-    aml_pmu_set_report_delay(tmp);
-    return 0;
+    if (api && api->pmu_set_report_delay) {
+        api->pmu_set_report_delay(tmp);
+    } else {
+        AXP_PMU_DBG("API not found\n");
+    }
+    return count;
 }
 
 static ssize_t driver_version_show (struct device *dev, struct device_attribute *attr, char *buf)
@@ -1579,14 +1593,26 @@ static void axp_charging_monitor(struct work_struct *work)
     struct aml_charger  *charger;
     int32_t pre_rest_cap;
     uint8_t pre_chg_status;
-
+    struct aml_pmu_api *api;
+    static bool api_flag = false;
 
     supply  = container_of(work, struct axp20_supply, work.work);
     charger = &supply->aml_charger;
+    api     = aml_pmu_get_api();
+    if (!api) {
+        schedule_delayed_work(&supply->work, supply->interval);
+        return ;                                                // KO is not ready
+    }
+    if (api && !api_flag) {
+        api_flag = true;
+        if (api->probe_process) {
+            api->probe_process(charger, axp_pmu_battery);    
+        }
+    } 
     pre_chg_status = charger->ext_valid;
     pre_rest_cap   = charger->rest_vol;
 
-    aml_pmu_update_battery_capacity(charger, axp_pmu_battery);
+    api->pmu_update_battery_capacity(charger, axp_pmu_battery);
 
     if(!charger->ext_valid){                                    // clear charge LED when extern power is removed
         axp_clr_bits(supply->master, POWER20_OFF_CTL, 0x38);
@@ -1825,7 +1851,6 @@ static int axp_battery_probe(struct platform_device *pdev)
     aml_pmu_register_callback(axp_call_back2, "callback2...",  "demo 2");
 #endif /* AML_PMU_CALL_BACK_DEMO*/
 
-    aml_pmu_probe_process(charger, axp_pmu_battery);
 
     return ret;
 
@@ -1867,6 +1892,7 @@ static int axp20_suspend(struct platform_device *dev, pm_message_t state)
 {
     struct axp20_supply *supply  = platform_get_drvdata(dev);
     struct aml_charger  *charger = &supply->aml_charger;
+    struct aml_pmu_api  *api;
     uint8_t irq_w[9];
     uint8_t tmp;
 	cancel_delayed_work_sync(&supply->work);
@@ -1890,17 +1916,25 @@ static int axp20_suspend(struct platform_device *dev, pm_message_t state)
     if (extern_led_ctrl) {
     	axp_clr_bits(supply->master, POWER20_OFF_CTL, 0x08);
     }
-    aml_pmu_suspend_process(charger);
+
+    api = aml_pmu_get_api();
+    if (api && api->pmu_suspend_process) {
+        api->pmu_suspend_process(charger);
+    }
 	
     return 0;
 }
 
 static int axp20_resume(struct platform_device *dev)
 {
-    struct  axp20_supply *supply = platform_get_drvdata(dev);
-    struct  aml_charger *charger = &supply->aml_charger;
+    struct axp20_supply *supply = platform_get_drvdata(dev);
+    struct aml_charger  *charger = &supply->aml_charger;
+    struct aml_pmu_api  *api;
 
-    aml_pmu_resume_process(charger, axp_pmu_battery);
+    api = aml_pmu_get_api();
+    if (api && api->pmu_resume_process) {
+        api->pmu_resume_process(charger, axp_pmu_battery);
+    }
 
 	axp_set_charge_current(axp_pmu_battery->pmu_resume_chgcur);	//set charging current
 
