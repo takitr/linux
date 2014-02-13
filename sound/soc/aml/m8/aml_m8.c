@@ -242,8 +242,13 @@ static int aml_asoc_hw_params(struct snd_pcm_substream *substream,
     }
 
     /* set cpu DAI configuration */
-    ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
-        SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+    if(!strncmp(codec_info.name_bus,"rt5616",6)){
+        ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+            SND_SOC_DAIFMT_IB_NF | SND_SOC_DAIFMT_CBM_CFM);
+    }else{
+        ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_I2S |
+            SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM);
+    }
     if (ret < 0) {
         printk(KERN_ERR "%s: set cpu dai fmt failed!\n", __func__);
         return ret;
