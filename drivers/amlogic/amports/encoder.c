@@ -604,12 +604,12 @@ static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsign
             input = input&0xffff;
         }else if(fmt == FMT_YUV420){
             iformat = 4;
-            input = input&0xfffff;
+            input = input&0xffffff;
         }else if((fmt == FMT_YUV444_PLANE)||(fmt == FMT_RGB888_PLANE)){
             if(fmt == FMT_RGB888_PLANE)
                 r2y_en = 1;
             iformat = 5;
-            input = input&0xfffff;
+            input = input&0xffffff;
         }else{
             ret = -1;
         }

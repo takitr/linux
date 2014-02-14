@@ -122,7 +122,7 @@ MODULE_PARM_DESC(vid_limit, "capture memory limit in megabytes");
 
 static struct v4l2_fract amlvideo2_frmintervals_active = {
 	.numerator = 1,
-	.denominator = 30,
+	.denominator = DEF_FRAMERATE,
 };
 
 static struct vdin_v4l2_ops_s vops;
@@ -373,6 +373,8 @@ int get_amlvideo2_canvas_index(struct amlvideo2_output* output, int start_canvas
 	unsigned buf = (unsigned)output->vbuf;
 	int width = output->width;
 	int height = output->height;
+	if(height==1080)
+		height = 1088;
 
 	switch(v4l2_format){
 	case V4L2_PIX_FMT_RGB565X:
@@ -1186,7 +1188,11 @@ buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 	struct videobuf_res_privdata* res = (struct videobuf_res_privdata*)vq->priv_data;
 	struct amlvideo2_fh  *fh = (struct amlvideo2_fh  *)res->priv;
 	struct amlvideo2_node  *node  = fh->node;
-	*size = (fh->width * fh->height * fh->fmt->depth)>>3;	
+	//int bytes = fh->fmt->depth >> 3 ;
+	int height = fh->height;
+	if(height==1080)
+		height = 1088;
+	*size = (fh->width*height*fh->fmt->depth)>>3;  
 	if (0 == *count)
 		*count = 32;
 
@@ -1831,7 +1837,7 @@ static int amlvideo2_close(struct file *file)
 #endif	
 	node->users--;
 	amlvideo2_frmintervals_active.numerator = 1;
-	amlvideo2_frmintervals_active.denominator = 30;
+	amlvideo2_frmintervals_active.denominator = DEF_FRAMERATE;
 	//node->provider = NULL;
 	mutex_unlock(&node->mutex);
 	return 0;
