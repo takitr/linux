@@ -786,7 +786,7 @@ extern int init_currently_empty_zone(struct zone *zone, unsigned long start_pfn,
 				     enum memmap_context context);
 
 extern void lruvec_init(struct lruvec *lruvec);
-#define START_KSWAPD_FREE_PAGE_THRESH 32768
+#define START_KSWAPD_FREE_PAGE_THRESH 16384
 static inline struct zone *lruvec_zone(struct lruvec *lruvec)
 {
 #ifdef CONFIG_MEMCG
