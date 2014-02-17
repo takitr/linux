@@ -275,6 +275,10 @@ static void avc_canvas_init(void);
 
 void amvenc_reset(void);
 
+#ifdef CONFIG_AM_JPEG_ENCODER
+extern bool jpegenc_on(void);
+#endif
+
 /*
 static DEFINE_SPINLOCK(lock);
 
@@ -498,7 +502,6 @@ static void mfdin_basic (unsigned input, unsigned char iformat, unsigned char of
 
     WRITE_HREG(HCODEC_MFDIN_REG8_DMBL,(picsize_x << 12) |(picsize_y << 0));
     WRITE_HREG(HCODEC_MFDIN_REG9_ENDN,(7<<0)| (6<<3)|( 5<<6)|(4<<9) |(3<<12) |(2<<15) |( 1<<18) |(0<<21));
-    //WRITE_HREG(HCODEC_MFDIN_REG6_DCFG, 0x1ff);
 }
 
 static int  set_input_format (amvenc_mem_type type, amvenc_frame_fmt fmt, unsigned input, unsigned offset, unsigned size, unsigned char need_flush)
@@ -1094,6 +1097,21 @@ void amvenc_dos_top_reg_fix(void)
 
     spin_unlock_irqrestore(&lock, flags);
 }
+
+bool amvenc_avc_on(void)
+{
+    bool hcodec_on;
+    unsigned long flags;
+
+    spin_lock_irqsave(&lock, flags);
+
+    hcodec_on = vdec_on(VDEC_HCODEC);
+    hcodec_on |=(encode_opened>0);
+
+    spin_unlock_irqrestore(&lock, flags);
+    return hcodec_on;
+}
+
 #endif
 
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV
@@ -1293,6 +1311,12 @@ static int amvenc_avc_open(struct inode *inode, struct file *file)
 {
     int r = 0;
     debug_level(1,"avc open\n");
+#ifdef CONFIG_AM_JPEG_ENCODER
+    if(jpegenc_on() == true){
+        debug_level(1,"hcodec in use for JPEG Encode now.\n");
+        return -EBUSY;
+    }
+#endif
     if(encode_opened>0){
         amlog_level(LOG_LEVEL_ERROR, "amvenc_avc open busy.\n");
         return -EBUSY;
@@ -1561,7 +1585,7 @@ static int amvenc_avc_probe(struct platform_device *pdev)
     mem = &memobj;
     idx = find_reserve_block(pdev->dev.of_node->name,0);
     if(idx < 0){
-	 amlog_level(LOG_LEVEL_ERROR, "amvenc_avc memory resource undefined.\n");
+		amlog_level(LOG_LEVEL_ERROR, "amvenc_avc memory resource undefined.\n");
         return -EFAULT;
     }
     mem->start = (phys_addr_t)get_reserve_block_addr(idx);

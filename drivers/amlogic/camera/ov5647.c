@@ -2186,7 +2186,7 @@ static resolution_param_t  prev_resolution_array[] = {
 
 static resolution_param_t  capture_resolution_array[] = {
 	{
-		.frmsize			= {2592, 1944},
+		.frmsize			= {2592, 1936},
 		.active_frmsize		= {2592, 1944},
 		.active_fps			= 15,
 		.size_type			= SIZE_2592X1944,

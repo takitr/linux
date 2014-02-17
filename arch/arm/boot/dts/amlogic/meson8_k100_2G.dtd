@@ -197,6 +197,20 @@ void root_func(){
 	};
 
 /// ***************************************************************************************
+///	-	DISP&MM-JPEG Encoder
+//$$ MODULE = "DISP&MM-JPEG Encoder"
+//$$ DEVICE="jpegenc"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+    jpegenc{
+		compatible = "amlogic,jpegenc";
+		dev_name = "jpegenc.0";
+		status = "okay";
+		reserve-memory = <0x01800000>;
+		reserve-iomap = "true";
+	};
+
+/// ***************************************************************************************
 ///	-	DISP&MM-VDIN
 //$$ MODULE = "DISP&MM-VDIN"
 //$$ DEVICE="vdin0"
