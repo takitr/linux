@@ -97,6 +97,9 @@ extern u32 trickmode_i;
 static DEFINE_SPINLOCK(lock);
 static int fatal_error;
 
+static void (*probe_callback)(void) = NULL;
+static void (*remove_callback)(void) = NULL;
+
 #define CBCR_MERGE
 
 #ifdef DUAL_PROT
@@ -1348,6 +1351,10 @@ static int amvdec_h264_4k2k_probe(struct platform_device *pdev)
 
     request_vpu_clk_vmod(360000000, VPU_VIU_VD1);
 
+    if (probe_callback) {
+        probe_callback();
+    }
+
     return 0;
 }
 
@@ -1364,8 +1371,19 @@ static int amvdec_h264_4k2k_remove(struct platform_device *pdev)
            pts_missed, pts_hit, frame_dur);
 #endif
 
+    if (remove_callback) {
+        remove_callback();
+    }
+
     return 0;
 }
+
+void vh264_4k2k_register_module_callback(void(*enter_func)(void), void(*remove_func)(void))
+{
+    probe_callback = enter_func;
+    remove_callback = remove_func;
+}
+EXPORT_SYMBOL(vh264_4k2k_register_module_callback);
 
 /****************************************/
 
