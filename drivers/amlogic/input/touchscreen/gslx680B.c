@@ -731,15 +731,15 @@ static void report_data(struct gsl_ts *ts, u16 x, u16 y, u8 pressure, u8 id)
 	
 #ifdef REPORT_DATA_ANDROID_4_0
 	input_mt_slot(ts->input, id);		
-	// int x1 = (SCREEN_MAX_X-x);
-	// if (x1 < 0) x1 =0;
-	int y1 = (SCREEN_MAX_Y-y);
-	if (y1 < 0) y1 =0;
+	 int x1 = (SCREEN_MAX_X-x);
+	 if (x1 < 0) x1 =0;
+	// int y1 = (SCREEN_MAX_Y-y);
+	// if (y1 < 0) y1 =0;
 	// d
 	input_report_abs(ts->input, ABS_MT_TRACKING_ID, id);
 	input_report_abs(ts->input, ABS_MT_TOUCH_MAJOR, pressure);
-	input_report_abs(ts->input, ABS_MT_POSITION_X, y1);
-	input_report_abs(ts->input, ABS_MT_POSITION_Y, x);	
+	input_report_abs(ts->input, ABS_MT_POSITION_X, y);
+	input_report_abs(ts->input, ABS_MT_POSITION_Y, x1);	
 	input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR, 1);
 #else
 	//input_report_key(ts->input, BTN_TOUCH, 1);
