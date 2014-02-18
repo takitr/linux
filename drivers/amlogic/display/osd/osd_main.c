@@ -1556,6 +1556,12 @@ osd_probe(struct platform_device *pdev)
 			prop_idx = of_read_ulong(prop, 1);
 		}
 		osddev_free_scale_mode(OSD0, prop_idx);
+
+		prop = of_get_property(pdev->dev.of_node, "4k2k_fb", NULL);
+		if(prop){
+			prop_idx = of_read_ulong(prop, 1);
+		}
+		osddev_4k2k_fb_mode(prop_idx);
 	}
    	if (NULL==init_logo_obj )
     	{

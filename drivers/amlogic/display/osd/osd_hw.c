@@ -488,12 +488,28 @@ void osd_set_scan_mode(int index)
 		case VMODE_1080I_50HZ:
 			if(osd_hw.free_scale_mode[index]){
 				osd_hw.field_out_en = 1;
+				osd_hw.scale_workaround = 0;
 			}
-			osd_hw.scan_mode= SCAN_MODE_INTERLACE;
+			osd_hw.scan_mode = SCAN_MODE_INTERLACE;
+		break;
+		case VMODE_4K2K_24HZ:
+		case VMODE_4K2K_25HZ:
+		case VMODE_4K2K_30HZ:
+		case VMODE_4K2K_SMPTE:
+			if(osd_hw.fb_for_4k2k){
+				if(osd_hw.free_scale_enable[index]){
+					osd_hw.scale_workaround = 1;
+				}else{
+					osd_hw.scale_workaround = 0;
+				}
+			}else{
+				osd_hw.scale_workaround = 0;
+			}
 		break;
 		default:
 			if(osd_hw.free_scale_mode[index]){
 				osd_hw.field_out_en = 0;
+				osd_hw.scale_workaround = 0;
 			}
 		break;
 		}
@@ -898,6 +914,11 @@ void osd_free_scale_mode_hw(u32 index,u32 freescale_mode)
 void osd_get_free_scale_mode_hw(u32 index, u32 *freescale_mode)
 {
 	*freescale_mode = osd_hw.free_scale_mode[index];
+}
+
+void osd_4k2k_fb_mode_hw(u32 fb_for_4k2k)
+{
+	osd_hw.fb_for_4k2k = fb_for_4k2k;
 }
 
 void osd_free_scale_width_hw(u32 index,u32 width)
@@ -1378,7 +1399,13 @@ static  void  osd1_update_disp_freescale_enable(void)
 	int hsc_ini_rcv_num, hsc_ini_rpt_p0_num;
 
 	int hf_bank_len = 4;
-	int vf_bank_len = 4;
+	int vf_bank_len = 0;
+
+	if(osd_hw.scale_workaround){
+		vf_bank_len = 2;
+	}else{
+		vf_bank_len = 4;
+	}
 
 	vsc_bot_rcv_num = 6;
 	vsc_bot_rpt_p0_num = 2;
@@ -1436,6 +1463,10 @@ static  void  osd1_update_disp_freescale_enable(void)
 			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 0, 16, 2);
 			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 0, 23, 1);
 		}
+
+		if(osd_hw.scale_workaround){
+			VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 0x1, 21, 1);
+		}
 		VSYNCOSD_WR_MPEG_REG_BITS(VPP_OSD_VSC_CTRL0, 1, 24, 1);
 	}else{
 		VSYNCOSD_CLR_MPEG_REG_MASK(VPP_OSD_VSC_CTRL0, 1<<24);
@@ -1471,6 +1502,10 @@ static void osd1_update_coef(void)
 	int vf_coef_idx = 0;
 	int vf_coef_wren = 1;
 	int *hf_coef, *vf_coef;
+
+	if(osd_hw.scale_workaround){
+		vf_coef_idx = 2;
+	}
 
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
