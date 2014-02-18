@@ -270,7 +270,7 @@ int aml1216_set_dcdc_voltage(int dcdc, uint32_t voltage)
     int start    = 700 * 1000;
     int bit_mask = 0x3f;
     int idx_cur;
-    int val;
+    uint8_t val = 0;
     static uint8_t dcdc_val[3] = {};
 
     if (dcdc > 3 || dcdc < 0) {
@@ -312,7 +312,6 @@ int aml1216_get_dcdc_voltage(int dcdc, uint32_t *uV)
     int addr;
     uint8_t val;
     int ret;
-    int step  = 25000;
 
     if (dcdc > 3 || dcdc < 0) {
         return -EINVAL;    

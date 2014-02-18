@@ -13,13 +13,11 @@ choice
 
 config AML1212
     bool "AML1212 driver"
-    select AML_PMU_ALGORITHM_SUPPORT
     ---help---
         drivers for AML1212
 
 config AML1216
     bool "AML1216 driver"
-    select AML_PMU_ALGORITHM_SUPPORT
     ---help---
         drivers for amlogic pmu AML1216 
 

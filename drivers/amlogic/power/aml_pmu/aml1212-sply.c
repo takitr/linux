@@ -1383,11 +1383,14 @@ static ssize_t dbg_info_show(struct device *dev, struct device_attribute *attr, 
 {
     struct power_supply   *battery = dev_get_drvdata(dev);
     struct aml1212_supply *supply= container_of(battery, struct aml1212_supply, batt); 
-    int size;
+    struct aml_pmu_api  *api;
 
-    size = aml_pmu_format_dbg_buffer(&supply->aml_charger, buf);
-
-    return size;
+    api = aml_pmu_get_api();
+    if (api && api->pmu_format_dbg_buffer) {
+        return api->pmu_format_dbg_buffer(charger, buf);
+    } else {
+        return sprintf("api not found, please insert pmu.ko\n");
+    }
 }
 
 static ssize_t dbg_info_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
@@ -1430,18 +1433,27 @@ static ssize_t battery_para_store(struct device *dev, struct device_attribute *a
 
 static ssize_t report_delay_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-    return sprintf(buf, "report_delay = %d\n", aml_pmu_get_report_delay()); 
+    struct aml_pmu_api *api = aml_pmu_get_api();
+    if (api && api->pmu_get_report_delay) {
+        return sprintf(buf, "report_delay = %d\n", api->pmu_get_report_delay()); 
+    } else {
+        return sprintf(buf, "error, api not found\n");
+    }
 }
 
 static ssize_t report_delay_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
-    uint32_t tmp = simple_strtoul(buf, NULL, 10);
+    struct aml_pmu_api *api = aml_pmu_get_api();
+    uint32_t tmp = simple_strtoul(buf, NULL, 10); 
 
     if (tmp > 200) {
         AML_PMU_DBG("input too large, failed to set report_delay\n");    
-        return count;
+    }    
+    if (api && api->pmu_set_report_delay) {
+        api->pmu_set_report_delay(tmp);
+    } else {
+        AML_PMU_DBG("API not found\n");
     }
-    aml_pmu_set_report_delay(tmp);
     return count;
 }
 
@@ -1453,6 +1465,8 @@ static void aml_pmu_charging_monitor(struct work_struct *work)
     uint8_t  v[2] = {};
     int32_t pre_rest_cap;
     uint8_t pre_chg_status;
+    struct aml_pmu_api *api;
+    static bool api_flag = false;
 
     supply  = container_of(work, struct aml1212_supply, work.work);
     charger = &supply->aml_charger;
@@ -1465,7 +1479,18 @@ static void aml_pmu_charging_monitor(struct work_struct *work)
      * 3. read coulomb value and calculate movement of energy
      * 4. if battery capacity is larger than 429496 mAh, will cause over flow
      */
-    aml_pmu_update_battery_capacity(charger, aml_pmu_battery);
+    api     = aml_pmu_get_api();
+    if (!api) {
+        schedule_delayed_work(&supply->work, supply->interval);
+        return ;                                                // KO is not ready
+    }
+    if (api && !api_flag) {
+        api_flag = true;
+        if (api->probe_process) {
+            api->probe_process(charger, aml_pmu_battery);
+        }
+    }
+    api->pmu_update_battery_capacity(charger, aml_pmu_battery); 
 
     if (charger->ocv > 5000) {
         // SAR ADC error, only occur when battery voltage is very low
@@ -1770,7 +1795,6 @@ static int aml_pmu_battery_probe(struct platform_device *pdev)
     register_early_suspend(&aml_pmu_early_suspend);
 #endif
 
-    aml_pmu_probe_process(charger, aml_pmu_battery);
     power_supply_changed(&supply->batt);                   // update battery status
     
     aml_pmu_set_gpio(1, 0);                                 // open LCD backlight, test
@@ -1826,6 +1850,7 @@ static int aml_pmu_suspend(struct platform_device *dev, pm_message_t state)
 {
     struct aml1212_supply *supply  = platform_get_drvdata(dev);
     struct aml_charger    *charger = &supply->aml_charger;
+    struct aml_pmu_api    *api;
 
     cancel_delayed_work_sync(&supply->work);
     aml_pmu_set_charge_current(aml_pmu_battery->pmu_suspend_chgcur);
@@ -1834,7 +1859,11 @@ static int aml_pmu_suspend(struct platform_device *dev, pm_message_t state)
     } else {
         aml_pmu_set_usb_current_limit(500, supply->usb_connect_type);  // pc, limit to 500mA
     }
-    aml_pmu_suspend_process(charger);
+
+    api = aml_pmu_get_api();
+    if (api && api->pmu_suspend_process) {
+        api->pmu_suspend_process(charger);
+    }
 
     return 0;
 }
@@ -1843,8 +1872,12 @@ static int aml_pmu_resume(struct platform_device *dev)
 {
     struct   aml1212_supply *supply  = platform_get_drvdata(dev);
     struct   aml_charger    *charger = &supply->aml_charger;
+    struct aml_pmu_api  *api;
 
-    aml_pmu_resume_process(charger, aml_pmu_battery);
+    api = aml_pmu_get_api();
+    if (api && api->pmu_resume_process) {
+        api->pmu_resume_process(charger, aml_pmu_battery);
+    }
     schedule_work(&supply->work.work);
     aml_pmu_set_charge_current(aml_pmu_battery->pmu_resume_chgcur);
 #ifdef CONFIG_RESET_TO_SYSTEM

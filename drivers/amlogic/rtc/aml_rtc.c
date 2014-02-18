@@ -759,6 +759,7 @@ unsigned int aml_read_rtc_mem_reg(unsigned char reg_id)
 		return 0;
 	return  ser_access_read(reg_array[reg_id]);
 }
+EXPORT_SYMBOL(aml_read_rtc_mem_reg);
 
 int aml_write_rtc_mem_reg(unsigned char reg_id, unsigned int data)
 {
@@ -772,6 +773,7 @@ int aml_write_rtc_mem_reg(unsigned char reg_id, unsigned int data)
 		return 0;
 	return  ser_access_write(reg_array[reg_id], data);
 }
+EXPORT_SYMBOL(aml_write_rtc_mem_reg);
 
 unsigned int aml_get_rtc_counter(void)
 {
@@ -779,6 +781,7 @@ unsigned int aml_get_rtc_counter(void)
     val = ser_access_read(RTC_COUNTER_ADDR);
     return val;
 }
+EXPORT_SYMBOL(aml_get_rtc_counter);
 
 static void reset_gpo_work(struct work_struct *work)
 {

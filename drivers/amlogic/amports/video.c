@@ -1904,7 +1904,7 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
             video_prot_set_angle(&video_prot, angle_orientation);
         }
         u32 angle_orientation = (video_angle + video_prot.src_vframe_orientation) % 4;
-        u32 last_angle_orientation = (video_prot.angle + video_prot.src_vframe_orientation) % 4;
+        u32 last_angle_orientation = video_prot.angle;
         if (video_prot.enable_layer || get_vpu_mem_pd_vmod(VPU_PIC_ROT2) == VPU_MEM_POWER_DOWN) {
             if (angle_orientation % 2) {
                 if (video_prot.angle_changed & 0x1) {
