@@ -629,6 +629,29 @@ static int wm8960_hw_params(struct snd_pcm_substream *substream,
     return 0;
 }
 
+static int wm8960_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
+{
+    printk(KERN_DEBUG "enter : %s, mute=%d,stream=%d \n",__func__,mute,stream);
+    struct snd_soc_codec *codec = dai->codec;
+    u16 mute_reg = snd_soc_read(codec, WM8960_DACCTL1) & 0xfff7;
+    u16 mute_reg1 = snd_soc_read(codec, WM8960_LINVOL) & 0xff7f;
+    if(stream == SNDRV_PCM_STREAM_PLAYBACK){
+        if (mute){
+            snd_soc_write(codec, WM8960_DACCTL1, mute_reg | 0x8);
+        }else{
+            snd_soc_write(codec, WM8960_DACCTL1, mute_reg);
+        }
+    }
+    if(stream == SNDRV_PCM_STREAM_CAPTURE){
+        if (mute){
+            //snd_soc_write(codec, WM8960_LINVOL, mute_reg1 | 0x80);
+        }else{
+            msleep(400);
+            snd_soc_write(codec, WM8960_LINVOL, mute_reg1);
+        }
+    }
+    return 0;
+}
 static int wm8960_mute(struct snd_soc_dai *dai, int mute)
 {
     struct snd_soc_codec *codec = dai->codec;
@@ -973,6 +996,7 @@ static int wm8960_set_bias_level(struct snd_soc_codec *codec,
 static struct snd_soc_dai_ops wm8960_dai_ops = {
     .hw_params = wm8960_hw_params,
     .digital_mute = wm8960_mute,
+    .mute_stream = wm8960_mute_stream,
     .set_fmt = wm8960_set_dai_fmt,
     .set_clkdiv = wm8960_set_dai_clkdiv,
     .set_pll = wm8960_set_dai_pll,
