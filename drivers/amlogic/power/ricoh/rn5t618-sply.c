@@ -1679,7 +1679,7 @@ static int rn5t618_suspend(struct platform_device *dev, pm_message_t state)
                   __func__, early_power_status, supply->aml_charger.ext_valid);
         input_report_key(rn5t618_power_key, KEY_POWER, 1);              // assume power key pressed 
         input_sync(rn5t618_power_key);
-        return 0;
+        return -1;
     }
     in_early_suspend = 0;
 #endif
