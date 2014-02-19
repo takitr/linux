@@ -111,11 +111,11 @@ void root_func(){
 		compatible = "amlogic,mesonfb";
 		dev_name = "mesonfb";
 		status = "okay";
-		reserve-memory = <0x01000000 0x00100000>;
+		reserve-memory = <0x00800000 0x00100000>;
 		reserve-iomap = "true";
 	  vmode = <2>; /*0:VMODE_720P 1:VMODE_LCD  2:VMODE_LVDS_1080P*/
 	  scale_mode = <0>; /*0:default 1:new*/
-	  display_size_default = <1920 1080 1920 2160 32>;
+	  display_size_default = <1280 720 1280 1440 32>;
 	};
 //$$ DEVICE="deinterlace"
 //$$ L2 PROP_STR = "status"
@@ -828,10 +828,6 @@ void root_func(){
 			cache{
 				offset=<0x0 0x4a800000>;
 				size=<0x0 0x20000000>;
-			};
-			backup{
-				offset=<0x0 0x6a800000>;
-				size=<0x0 0x10000000>;
 			};
 			userdata{
 				offset=<0xffffffff 0xffffffff>;
