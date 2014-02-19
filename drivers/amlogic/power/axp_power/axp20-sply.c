@@ -1154,7 +1154,7 @@ static ssize_t dbg_info_show(struct device *dev, struct device_attribute *attr, 
     if (api && api->pmu_format_dbg_buffer) {
         return api->pmu_format_dbg_buffer(charger, buf);
     } else {
-        return sprintf("api not found, please insert pmu.ko\n"); 
+        return sprintf(buf, "api not found, please insert pmu.ko\n"); 
     }
 }
 
@@ -1605,8 +1605,8 @@ static void axp_charging_monitor(struct work_struct *work)
     }
     if (api && !api_flag) {
         api_flag = true;
-        if (api->probe_process) {
-            api->probe_process(charger, axp_pmu_battery);    
+        if (api->pmu_probe_process) {
+            api->pmu_probe_process(charger, axp_pmu_battery);    
         }
     } 
     pre_chg_status = charger->ext_valid;

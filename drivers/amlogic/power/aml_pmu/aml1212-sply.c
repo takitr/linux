@@ -1387,9 +1387,9 @@ static ssize_t dbg_info_show(struct device *dev, struct device_attribute *attr, 
 
     api = aml_pmu_get_api();
     if (api && api->pmu_format_dbg_buffer) {
-        return api->pmu_format_dbg_buffer(charger, buf);
+        return api->pmu_format_dbg_buffer(&supply->aml_charger, buf);
     } else {
-        return sprintf("api not found, please insert pmu.ko\n");
+        return sprintf(buf, "api not found, please insert pmu.ko\n");
     }
 }
 
@@ -1486,8 +1486,8 @@ static void aml_pmu_charging_monitor(struct work_struct *work)
     }
     if (api && !api_flag) {
         api_flag = true;
-        if (api->probe_process) {
-            api->probe_process(charger, aml_pmu_battery);
+        if (api->pmu_probe_process) {
+            api->pmu_probe_process(charger, aml_pmu_battery);
         }
     }
     api->pmu_update_battery_capacity(charger, aml_pmu_battery); 
