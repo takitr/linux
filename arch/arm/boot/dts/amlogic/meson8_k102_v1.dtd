@@ -1861,20 +1861,19 @@ lcd_LD070WX4:lcd_LD070WX4{
 //$$ L3 PROP_U32 ="yres"
 //$$ L3 PROP_U32 ="pol"
 //$$ L3 PROP_STR = "fw_file"
-        touch_gslx680b:gslx680b{
-			compatible = "vtl,ct36x";
-			touch_name = "gslx680b";
+        touch_gslx680:gslx680{
+			touch_name = "gslx680";
 			i2c_bus = "i2c_bus_a";
 			reg = <0x40>;
 			irq = <0>;
 			gpio_interrupt = "GPIOZ_7";
 			gpio_reset = "GPIOZ_6";
-			xres = <1024>;
-			yres = <768>;
-			pol = <0x4>;
-			max_num = <10>;
+			xres = <768>;
+			yres = <1024>;
+			pol = <0x2>;
 			status = "okay";
 			fw_file = "/etc/touch/gsl3680b.fw";
+			ic_type = <0x801>;
 		};
    };
  
