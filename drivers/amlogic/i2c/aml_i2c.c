@@ -108,11 +108,13 @@ static void aml_i2c_set_platform_data(struct aml_i2c *i2c,
 static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 {
 #ifdef CONFIG_OF
+#if 0
 	i2c->p=devm_pinctrl_get_select(i2c->dev,i2c->master_state_name);
 	if(IS_ERR(i2c->p)){
 		printk("set i2c pinmux error\n");
 		i2c->p=NULL;
 	}
+#endif
 #else
 	pinmux_set(&i2c->master_pinmux);
 #endif
@@ -122,8 +124,10 @@ static void aml_i2c_pinmux_master(struct aml_i2c *i2c)
 static void aml_i2c_clr_pinmux(struct aml_i2c *i2c)
 {
 #ifdef CONFIG_OF
+#if 0
 	if(i2c->p)
 		devm_pinctrl_put(i2c->p);
+#endif
 #else
     pinmux_clr(&i2c->master_pinmux);
 #endif
@@ -885,6 +889,7 @@ static int aml_i2c_probe(struct platform_device *pdev)
   i2c->ops = &aml_i2c_m1_ops;
   i2c->dev=&pdev->dev;
 
+
   res_start = of_iomap(pdev->dev.of_node,0);
 	i2c->master_regs = (struct aml_i2c_reg_master __iomem*)(res_start);
 
@@ -892,6 +897,12 @@ static int aml_i2c_probe(struct platform_device *pdev)
   BUG_ON(!plat);
 	aml_i2c_set_platform_data(i2c, plat);
 	printk("master_no = %d, maseter_regs=%p\n", i2c->master_no, i2c->master_regs);
+	
+	i2c->p=devm_pinctrl_get_select(i2c->dev,i2c->master_state_name);
+	if(IS_ERR(i2c->p)){
+		printk("set i2c pinmux error\n");
+		i2c->p=NULL;
+	}
 
     /*lock init*/
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON3
