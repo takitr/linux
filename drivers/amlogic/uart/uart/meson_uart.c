@@ -105,6 +105,8 @@ struct meson_uart_port {
 
 	wait_queue_head_t	open_wait;
 	wait_queue_head_t	close_wait;
+    /* bt wake control ops */
+    struct bt_wake_ops *bt_ops;
 
 	spinlock_t rd_lock;
 	spinlock_t wr_lock;
@@ -119,6 +121,19 @@ static struct meson_uart_port am_ports[MESON_UART_PORT_NUM];
 static void meson_uart_start_port(struct meson_uart_port *mup);
 
 /*********************************************/
+static struct bt_wake_ops *am_bt_ops = NULL;
+
+void register_bt_wake_ops(struct bt_wake_ops *ops)
+{
+    am_bt_ops = ops;
+}
+EXPORT_SYMBOL(register_bt_wake_ops);
+
+void unregister_bt_wake_ops(void)
+{
+    am_bt_ops = NULL;
+}
+EXPORT_SYMBOL(unregister_bt_wake_ops);
 
 static void am_uart_stop_tx(struct uart_port *port)
 {
@@ -175,7 +190,7 @@ static void am_uart_enable_ms(struct uart_port *port)
 	return;
 }
 
-static unsigned int am_uart_tx_empty(struct uart_port *port)
+unsigned int am_uart_tx_empty(struct uart_port *port)
 {
 	unsigned long mode;
 	struct meson_uart_port * mup = &am_ports[port->line];
@@ -410,6 +425,29 @@ am_uart_type(struct uart_port *port)
 	return NULL;
 }
 
+static int am_uart_ioctl(struct uart_port *port, unsigned int cmd, unsigned long arg)
+{
+    struct meson_uart_port * mup = &am_ports[port->line];
+    void __user *uarg = (void __user *)arg;
+    int ret = 0;
+
+    switch(cmd) {
+    case TIOCSETBTPORT:
+        ret = am_bt_ops->setup_bt_port(port);
+        if(!ret)
+            mup->bt_ops = am_bt_ops;
+        break;
+    case TIOCCLRBTPORT:
+        mup->bt_ops = NULL;
+        break;
+    default:
+        ret = -ENOIOCTLCMD;
+        //printk(KERN_ERR "%s not support cmd\n", __FUNCTION__);
+    }
+
+    return ret;
+}
+
 static struct uart_ops am_uart_pops = {
 	.tx_empty	= am_uart_tx_empty,
 	.set_mctrl	= am_uart_set_mctrl,
@@ -429,6 +467,7 @@ static struct uart_ops am_uart_pops = {
 	.request_port	= am_uart_request_port,
 	.config_port	= am_uart_config_port,
 	.verify_port	= am_uart_verify_port,
+	.ioctl      = am_uart_ioctl,
 #ifdef CONFIG_CONSOLE_POLL
 	.poll_get_char = am_uart_get_poll_char,
 	.poll_put_char = am_uart_put_poll_char,
@@ -682,6 +721,7 @@ static void meson_uart_start_port(struct meson_uart_port *mup)
 
 	printk(KERN_NOTICE"start %s(irq = %d)\n", mup->name,up->irq);
 }
+
 static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart_platform * aup,int port_index)
 {
 	int ret;
@@ -713,8 +753,10 @@ static int meson_uart_register_port(struct platform_device *pdev,struct aml_uart
 	}
 	
 	ret = uart_add_one_port(&meson_uart_driver, up);
-
     meson_uart_start_port(mup);
+
+    platform_set_drvdata(pdev, mup);
+
 	printk(KERN_NOTICE"register %s %s\n", aup->port_name[port_index],
 		ret ? "failed" : "ok" );
 
@@ -769,6 +811,7 @@ static int meson_uart_probe(struct platform_device *pdev)
 	struct aml_uart_platform *uart_data;
 
 	uart_data = aml_get_driver_data(pdev, &index);
+
 
 	if(!uart_data)
 		return -ENODEV;
@@ -862,6 +905,41 @@ static void meson_serial_console_write(struct console *co, const char *s, u_int 
        //spin_unlock(wr_lock);
 }
 
+static int meson_uart_resume(struct platform_device *pdev)
+{
+    unsigned tmp;
+    struct meson_uart_port *mup = (struct meson_uart_port *)platform_get_drvdata(pdev);
+
+    printk(KERN_DEBUG"meson_uart_resume\n");
+
+    if(mup->bt_ops) {
+	    tmp = readl(&mup->uart->mode);
+	    writel(tmp & (~(0x1 <<31)), &(mup->uart->mode));
+	    printk(KERN_DEBUG "disable Invert the RTS signal %lx \n",mup->uart->mode);
+    }
+
+    return 0;
+}
+
+static int meson_uart_suspend(struct platform_device *pdev, pm_message_t state)
+{
+    unsigned tmp;
+    struct meson_uart_port *mup = (struct meson_uart_port *)platform_get_drvdata(pdev);
+
+    if(mup->bt_ops) {
+        if(mup->bt_ops->bt_can_sleep()) {
+            tmp = readl(&(mup->uart->mode));
+            writel(tmp | (0x1 << 31), &(mup->uart->mode));
+            printk(KERN_DEBUG "Invert the RTS signal %lx \n",mup->uart->mode);
+        }
+        else {
+            printk("bt is busy\n");
+            return -EBUSY;
+        }
+    }
+    return 0;
+}
+
 struct console meson_serial_console = {
 	.name		= MESON_SERIAL_NAME,
 	.write		= meson_serial_console_write,
@@ -912,7 +990,7 @@ static struct platform_device_id meson_uart_driver_ids[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(platform, meson_uart_driver_ids);
-#if 0
+/*
 static struct ktermios meson_std_termios = {	
 	.c_iflag = ICRNL | IXON,
 	.c_oflag = OPOST | ONLCR,
@@ -923,7 +1001,7 @@ static struct ktermios meson_std_termios = {
 	.c_ispeed = 115200,
 	.c_ospeed = 115200
 };
-#endif
+*/
 static struct uart_driver meson_uart_driver = {
 	.owner		= THIS_MODULE,
 	.driver_name	= "serial",
@@ -937,8 +1015,8 @@ static struct uart_driver meson_uart_driver = {
 static  struct platform_driver meson_uart_platform_driver = {
 	.probe		= meson_uart_probe,
 	.remove		= meson_uart_remove,
-	.suspend	=  NULL,
-	.resume		= NULL,
+	.suspend	= meson_uart_suspend,
+	.resume		= meson_uart_resume,
 	.id_table	= meson_uart_driver_ids,
 	.driver		= {
 		.name	= "mesonuart",

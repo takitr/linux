@@ -5,6 +5,7 @@
 #include <plat/platform_data.h>
 #include <mach/io.h>
 #include <mach/uart.h>
+#include <linux/amlogic/bluesleep.h>
 
 struct aml_uart_platform{
 		plat_data_public_t  public;
