@@ -813,7 +813,8 @@ void osd_free_scale_enable_hw(u32 index,u32 enable)
 				osd_set_scan_mode(index);
 				add_to_update_list(index,OSD_COLOR_MODE);
 				add_to_update_list(index,DISP_GEOMETRY);
-				add_to_update_list(index,DISP_FREESCALE_ENABLE);
+				add_to_update_list(index,DISP_FREESCALE_ENABLE);	
+				add_to_update_list(OSD2,DISP_FREESCALE_ENABLE);
 			}
 		}else{
 			add_to_update_list(OSD2,DISP_GEOMETRY);
