@@ -9,7 +9,7 @@
 
 #define IONVIDEO_MODULE_NAME "ionvideo"
 
-#define IONVIDEO_VERSION "3.0"
+#define IONVIDEO_VERSION "1.0"
 #define RECEIVER_NAME "ionvideo"
 
 static int is_actived = 0;
@@ -228,23 +228,43 @@ static int ionvideo_fillbuff(struct ionvideo_dev *dev, struct ionvideo_buffer *b
     return 0;
 }
 
+static int ionvideo_size_changed(struct ionvideo_dev *dev, struct vframe_s* vf) {
+    int aw = vf->width;
+    int ah = vf->height;
+
+    v4l_bound_align_image(&aw, 48, MAX_WIDTH, 5, &ah, 32, MAX_HEIGHT, 0, 0);
+    dev->c_width = aw;
+    dev->c_height = ah;
+    if (aw != dev->width || ah != dev->height) {
+        dprintk(dev, 2, "Video frame size changed w:%d h:%d\n", aw, ah);
+        return -EAGAIN;
+    }
+    return 0;
+}
+
 static void ionvideo_thread_tick(struct ionvideo_dev *dev) {
     struct ionvideo_dmaqueue *dma_q = &dev->vidq;
     struct ionvideo_buffer *buf;
     unsigned long flags = 0;
+    struct vframe_s* vf;
 
     dprintk(dev, 4, "Thread tick\n");
     /* video seekTo clear list */
 
-    if (!vf_peek(RECEIVER_NAME)) {
-        msleep(5);
+    vf = vf_peek(RECEIVER_NAME);
+    if (!vf) {
+        msleep(2);
+        return;
+    }
+    if (ionvideo_size_changed(dev, vf)) {
+        msleep(10);
         return;
     }
     spin_lock_irqsave(&dev->slock, flags);
     if (list_empty(&dma_q->active)) {
         dprintk(dev, 3, "No active queue to serve\n");
         spin_unlock_irqrestore(&dev->slock, flags);
-        msleep(5);
+        msleep(2);
         return;
     }
     buf = list_entry(dma_q->active.next, struct ionvideo_buffer, list);
@@ -476,6 +496,8 @@ static int vidioc_open(struct file *file) {
         return -EBUSY;
     }
     dev->pts = 0;
+    dev->c_width = 0;
+    dev->c_height = 0;
     dprintk(dev, 2, "vidioc_open\n");
     printk("ionvideo open\n");
     return v4l2_fh_open(file);
@@ -515,9 +537,15 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fm
 
 static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f) {
     struct ionvideo_dev *dev = video_drvdata(file);
+    struct vb2_queue *q = &dev->vb_vidq;
+    int ret = 0;
+    unsigned long flags;
 
-    f->fmt.pix.width = dev->width;
-    f->fmt.pix.height = dev->height;
+    if (dev->c_width == 0 || dev->c_height == 0) {
+        return -EINVAL;
+    }
+    f->fmt.pix.width = dev->c_width;
+    f->fmt.pix.height = dev->c_height;
     f->fmt.pix.field = V4L2_FIELD_INTERLACED;
     f->fmt.pix.pixelformat = dev->fmt->fourcc;
     f->fmt.pix.bytesperline = (f->fmt.pix.width * dev->fmt->depth) >> 3;
@@ -526,6 +554,13 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
         f->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
     else
         f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+
+    spin_lock_irqsave(&q->done_lock, flags);
+    ret = list_empty(&q->done_list);
+    spin_unlock_irqrestore(&q->done_lock, flags);
+    if (!ret) {
+        return -EAGAIN;
+    }
     return 0;
 }
 
@@ -540,7 +575,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
     }
 
     f->fmt.pix.field = V4L2_FIELD_INTERLACED;
-    v4l_bound_align_image(&f->fmt.pix.width, 48, MAX_WIDTH, 4, &f->fmt.pix.height, 32, MAX_HEIGHT, 0, 0);
+    v4l_bound_align_image(&f->fmt.pix.width, 48, MAX_WIDTH, 5, &f->fmt.pix.height, 32, MAX_HEIGHT, 0, 0);
     f->fmt.pix.bytesperline = (f->fmt.pix.width * fmt->depth) >> 3;
     f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
     if (fmt->is_yuv)
