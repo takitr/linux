@@ -77,7 +77,7 @@ extern unsigned int clk_util_clk_msr(unsigned int clk_mux);
 #endif
 
 #define PANEL_NAME		"panel"
-#define DRIVER_DATE		"20131230"
+#define DRIVER_DATE		"20140106"
 #define DRIVER_VER		"310"
 
 //#define LCD_DEBUG_INFO
@@ -1015,9 +1015,9 @@ static void set_tcon_mlvds(Lcd_Config_t *pConf)
 static void set_lcd_spread_spectrum(int ss_level)
 {
 	unsigned pll_ctrl2, pll_ctrl3, pll_ctrl4;
-	return;
 	DBG_PRINT("%s.\n", __FUNCTION__);
 	
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
 	switch (ss_level) {
 		case 1:  //about 0.5%
 			pll_ctrl2 = 0x16110696;
@@ -1057,16 +1057,31 @@ static void set_lcd_spread_spectrum(int ss_level)
 			break;
 	}
 
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)	
 	WRITE_LCD_CBUS_REG(HHI_VIID_PLL_CNTL2, pll_ctrl2);
 	WRITE_LCD_CBUS_REG(HHI_VIID_PLL_CNTL3, pll_ctrl3);
 	WRITE_LCD_CBUS_REG(HHI_VIID_PLL_CNTL4, pll_ctrl4);
-#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)	
-	WRITE_LCD_CBUS_REG(HHI_VID2_PLL_CNTL2, pll_ctrl2);
-	WRITE_LCD_CBUS_REG(HHI_VID2_PLL_CNTL3, pll_ctrl3);
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+	pll_ctrl4 = (READ_LCD_CBUS_REG(HHI_VID2_PLL_CNTL4) & ~((0xf<<4) | (0xf<<0)));
+	switch (ss_level) {
+		case 1:	//0.5%
+			pll_ctrl4 |= ((1<<9) | (2<<4) | (1<<0));
+			break;
+		case 2:	//1%
+			pll_ctrl4 |= ((1<<9) | (1<<4) | (1<<0));
+			break;
+		case 3:	//1.5%
+			pll_ctrl4 |= ((1<<9) | (8<<4) | (1<<0));
+			break;
+		case 4: //2%
+			pll_ctrl4 |= ((1<<9) | (0<<4) | (1<<0));
+			break;
+		case 0:
+		default:
+			pll_ctrl4 |= ((6<<4) | (7<<0));
+			break;
+	}
 	WRITE_LCD_CBUS_REG(HHI_VID2_PLL_CNTL4, pll_ctrl4);
 #endif	
-	
 }
 
 static void vclk_set_lcd(int lcd_type, int vclk_sel, unsigned long pll_reg, unsigned long vid_div_reg, unsigned int clk_ctrl_reg)
@@ -1319,14 +1334,11 @@ static void set_pll_lcd(Lcd_Config_t *pConf)
 	xd = (clk_reg >> CLK_CTRL_XD) & 0xf;
 
 	lcd_type = pConf->lcd_basic.lcd_type;
-	
 	switch(lcd_type){
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 		case LCD_DIGITAL_MIPI:
-			ss_level = (((clk_reg >> CLK_CTRL_SS) & 0xf) > 0 ? 1 : 0);
 			break;
 		case LCD_DIGITAL_EDP:
-			ss_level = ((ss_level > 0) ? 1 : 0);
 			xd = 1;
 			break;
 #endif
@@ -1349,14 +1361,14 @@ static void set_pll_lcd(Lcd_Config_t *pConf)
 	switch(lcd_type){
 #if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
 		case LCD_DIGITAL_MIPI:
-        WRITE_LCD_REG(MIPI_DSI_TOP_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CNTL) & ~(0x7<<4))   |
-                          (1  << 4)               |
-                          (1  << 5)               |
-                          (0  << 6));
-        WRITE_CBUS_REG( HHI_DSI_LVDS_EDP_CNTL0, 0x0);                                          // Select DSI as the output for u_dsi_lvds_edp_top
-        WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) | 0xf) );     // Release mipi_dsi_host's reset
-        WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) & 0xfffffff0) );     // Release mipi_dsi_host's reset
-        WRITE_LCD_REG( MIPI_DSI_TOP_CLK_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CLK_CNTL) | 0x3) );            // Enable dwc mipi_dsi_host's clock                   
+			WRITE_LCD_REG(MIPI_DSI_TOP_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CNTL) & ~(0x7<<4))   |
+							  (1  << 4)               |
+							  (1  << 5)               |
+							  (0  << 6));
+			WRITE_CBUS_REG( HHI_DSI_LVDS_EDP_CNTL0, 0x0);                                          // Select DSI as the output for u_dsi_lvds_edp_top
+			WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) | 0xf) );     // Release mipi_dsi_host's reset
+			WRITE_LCD_REG( MIPI_DSI_TOP_SW_RESET, (READ_LCD_REG(MIPI_DSI_TOP_SW_RESET) & 0xfffffff0) );     // Release mipi_dsi_host's reset
+			WRITE_LCD_REG( MIPI_DSI_TOP_CLK_CNTL, (READ_LCD_REG(MIPI_DSI_TOP_CLK_CNTL) | 0x3) );            // Enable dwc mipi_dsi_host's clock                   
 			break;
 		case LCD_DIGITAL_EDP:
 			break;
@@ -1400,7 +1412,7 @@ void set_pll_mipi(Lcd_Config_t *pConf)
 	pll_reg = pConf->lcd_timing.pll_ctrl;
 	div_reg = pConf->lcd_timing.div_ctrl;
 	clk_reg = pConf->lcd_timing.clk_ctrl;
-	ss_level = (((clk_reg >> CLK_CTRL_SS) & 0xf) > 0 ? 1 : 0);
+	ss_level = ((clk_reg >> CLK_CTRL_SS) & 0xf);
 	vclk_sel = (clk_reg >> CLK_CTRL_VCLK_SEL) & 0x1;
 	xd = (clk_reg >> CLK_CTRL_XD) & 0xf;
 
@@ -2784,7 +2796,10 @@ static void lcd_control_config(Lcd_Config_t *pConf)
 
 static void lcd_config_init(Lcd_Config_t *pConf)
 {
+	unsigned char ss_level = (pConf->lcd_timing.clk_ctrl >> CLK_CTRL_SS) & 0xf;
+	
 	lcd_control_config(pConf);//must before generate_clk_parameter, otherwise the clk parameter will not update base on the edp_link_rate
+	
 	if (pConf->lcd_timing.clk_ctrl & (1 << CLK_CTRL_AUTO)) {
 		printk("\nAuto generate clock parameters.\n");
 		generate_clk_parameter(pConf);
@@ -2794,6 +2809,19 @@ static void lcd_config_init(Lcd_Config_t *pConf)
 		printk("\nCustome clock parameters.\n");
 		printk("pll_ctrl=0x%x, div_ctrl=0x%x, clk_ctrl=0x%x.\n", pConf->lcd_timing.pll_ctrl, pConf->lcd_timing.div_ctrl, pConf->lcd_timing.clk_ctrl);
 	}
+	ss_level = ((ss_level >= SS_LEVEL_MAX) ? (SS_LEVEL_MAX-1) : ss_level);
+	switch(pConf->lcd_basic.lcd_type) {
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+		case LCD_DIGITAL_MIPI:
+		case LCD_DIGITAL_EDP:
+			ss_level = ((ss_level > 0) ? 1 : 0);
+			break;
+#endif
+		default:
+			break;
+	}
+	pConf->lcd_timing.clk_ctrl = ((pConf->lcd_timing.clk_ctrl & ~(0xf << CLK_CTRL_SS)) | (ss_level << CLK_CTRL_SS));
+	
 	lcd_sync_duration(pConf);
 	lcd_tcon_config(pConf);
 }
@@ -2868,7 +2896,7 @@ static void _init_lcd_driver(Lcd_Config_t *pConf)	//before power on lcd
 			init_dphy(pConf); //analog
 			set_venc_lcd(pConf);
 			set_tcon_lcd(pConf);
-      set_control_mipi(pConf); //2step
+			set_control_mipi(pConf); //2step
 			break;
 		case LCD_DIGITAL_EDP:
 			set_pll_lcd(pConf);

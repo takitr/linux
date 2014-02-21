@@ -275,6 +275,8 @@ static const char* lcd_type_table[]={
 	"invalid",
 };
 
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)
+#define SS_LEVEL_MAX	7
 static const char *lcd_ss_level_table[]={
 	"0",
 	"0.5%",
@@ -284,6 +286,16 @@ static const char *lcd_ss_level_table[]={
 	"4%",
 	"5%",
 };
+#elif (MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8)
+#define SS_LEVEL_MAX	5
+static const char *lcd_ss_level_table[]={
+	"0",
+	"0.5%",
+	"1%",
+	"1.5%",
+	"2%",
+};
+#endif
 
 typedef struct {
 	char *model_name;
