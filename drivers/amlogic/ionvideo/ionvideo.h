@@ -41,8 +41,8 @@
 #define WAKE_NUMERATOR 30
 #define WAKE_DENOMINATOR 1001
 
-#define MAX_WIDTH 3840
-#define MAX_HEIGHT 2160
+#define MAX_WIDTH 1920
+#define MAX_HEIGHT 1088
 
 #define PPMGR2_MAX_CANVAS 8
 #define PPMGR2_CANVAS_INDEX 0x70
@@ -124,6 +124,7 @@ struct ionvideo_dev {
     /* video capture */
     const struct ionvideo_fmt *fmt;
     unsigned int width, height;
+    unsigned int c_width, c_height;
     struct vb2_queue vb_vidq;
     unsigned int field_count;
 
