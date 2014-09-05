@@ -350,6 +350,7 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
 
             if (pts_valid) {
                 vf->pts = pts;
@@ -397,6 +398,7 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
 
             vf->pts = next_pts;
             if ((repeat_count > 1) && avi_flag) {
@@ -433,6 +435,7 @@ static irqreturn_t vvc1_isr(int irq, void *dev_id)
             vf->width = vvc1_amstream_dec_info.width;
             vf->height = vvc1_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
 
             if (pts_valid) {
                 vf->pts = pts;

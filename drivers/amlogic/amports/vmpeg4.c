@@ -393,6 +393,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
             vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration >> 1;
@@ -420,6 +421,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
             vf->orientation = vmpeg4_rotation;
 
             vf->pts = 0;
@@ -454,6 +456,7 @@ static irqreturn_t vmpeg4_isr(int irq, void *dev_id)
             vf->width = vmpeg4_amstream_dec_info.width;
             vf->height = vmpeg4_amstream_dec_info.height;
             vf->bufWidth = 1920;
+            vf->flag = 0;
             vf->orientation = vmpeg4_rotation;
             vf->pts = pts;
             vf->duration = duration;
