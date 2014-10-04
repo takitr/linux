@@ -1532,8 +1532,8 @@ amlog_mask(LOG_MASK_FRAMEINFO,
 #endif
     }
 
-    cur_dispbuf = vf;
-    if ((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0&&!property_changed_true) {
+    if (((vf->type & VIDTYPE_NO_VIDEO_ENABLE) == 0) && 
+        ((!property_changed_true) || (vf != cur_dispbuf))) {
         if (disable_video == VIDEO_DISABLE_FORNEXT) {
             EnableVideoLayer();
             disable_video = VIDEO_DISABLE_NONE;
@@ -1541,10 +1541,12 @@ amlog_mask(LOG_MASK_FRAMEINFO,
         if (first_picture && (disable_video != VIDEO_DISABLE_NORMAL)) {
             EnableVideoLayer();
 
-            if (cur_dispbuf->type & VIDTYPE_MVC)
+            if (vf->type & VIDTYPE_MVC)
                 VSYNC_EnableVideoLayer2();
         }
     }
+
+    cur_dispbuf = vf;
 
     if (first_picture) {
         frame_par_ready_to_set = 1;
