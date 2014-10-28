@@ -521,6 +521,9 @@ void osd_set_scan_mode(int index)
 		break;
 		case VMODE_1080I:
 		case VMODE_1080I_50HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080I_59HZ:
+#endif
 			if(osd_hw.free_scale_mode[index]){
 				osd_hw.field_out_en = 1;
 
@@ -1039,6 +1042,10 @@ void osd_get_window_axis_hw(u32 index, s32 *x0, s32 *y0, s32 *x1, s32 *y1)
  		        case VMODE_576CVBS:
  		        case VMODE_1080I:
  		        case VMODE_1080I_50HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+				case VMODE_1080I_59HZ:
+#endif
+
  		        	  *y0 = osd_hw.free_dst_data[index].y_start*2;
  			          *y1 = osd_hw.free_dst_data[index].y_end*2;
  		        break;
@@ -1065,6 +1072,9 @@ void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 		case VMODE_576CVBS:
 		case VMODE_1080I:
 		case VMODE_1080I_50HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080I_59HZ:                                                                              
+#endif
 #if 0
 		if(y0%2!=0){
 			y0 = y0-1;
@@ -1075,6 +1085,7 @@ void osd_set_window_axis_hw(u32 index, s32 x0, s32 y0, s32 x1, s32 y1)
 		osd_hw.free_dst_data[index].y_start = y0/2;
 		osd_hw.free_dst_data[index].y_end = (vinfo->height-1-y0) -(vinfo->height-1-y1)/2;
 #endif
+
 		osd_hw.free_dst_data[index].y_start = y0/2;
 		osd_hw.free_dst_data[index].y_end = y1/2;
 		break;
@@ -1300,6 +1311,9 @@ void osd_set_osd_antiflicker_hw(u32 index, u32 vmode, u32 yres)
 		case VMODE_576CVBS:
 		case VMODE_1080I:
 		case VMODE_1080I_50HZ:
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
+		case VMODE_1080I_59HZ:
+#endif
 			osd_need_antiflicker = false;
 		break;
 		default:
