@@ -412,13 +412,13 @@ void root_func(){
 //$$ DEVICE="wifi_power"
 //$$ L2 PROP_STR = "status"
 //$$ L2 PROP_STR = "power_gpio"
-	wifi_power{
-            compatible = "amlogic,wifi_power";
-            dev_name = "wifi_power";
-            status = "okay";
-            power_gpio = "GPIOAO_6";
-            power_gpio2 = "GPIOX_11";
-	};
+//	wifi_power{
+//            compatible = "amlogic,wifi_power";
+//            dev_name = "wifi_power";
+//            status = "okay";
+//            power_gpio = "GPIOAO_6";
+//            power_gpio2 = "GPIOX_11";
+//	}; 
 
 /// ***************************************************************************************
 ///	-	MMC
@@ -456,6 +456,7 @@ sdio{
 //$$ L2 PROP_STR 3 = "caps"
 //$$ L3 PROP_U32 = "f_min"
 //$$ L3 PROP_U32 = "f_max"
+//$$ L3 PROP_U32 = "f_max_w"
 //$$ L3 PROP_U32 = "max_req_size"
 //$$ L2 PROP_STR = "gpio_dat3"
 //$$ L2 PROP_STR = "jtag_pin"
@@ -472,6 +473,7 @@ sdio{
             caps = "MMC_CAP_4_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED";
             f_min = <300000>;
             f_max = <50000000>;
+            f_max_w = <50000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "CARD_4";
             jtag_pin = "CARD_0";
@@ -532,6 +534,20 @@ sdio{
         };
     };
 
+/// ***************************************************************************************
+///	-	MMC
+//$$ MODULE="MMC"
+//$$ DEVICE="aml_sdhc"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+//$$ L2 PROP_STR 6 = "pinctrl-names"
+//$$ L2 PROP_CHOICE "sdhc_pin_0_match" = "pinctrl-0"
+//$$ L2 PROP_CHOICE "sdhc_pin_1_match" = "pinctrl-1"
+//$$ L2 PROP_CHOICE "sdhc_pin_2_match" = "pinctrl-2"
+//$$ L2 PROP_CHOICE "sdhc_pin_3_match" = "pinctrl-3"
+//$$ L2 PROP_CHOICE "sdhc_pin_4_match" = "pinctrl-4"
+//$$ L2 PROP_CHOICE "sdjc_pin_5_match" = "pinctrl-5"
+// L2 PROP_CHOICE "sdhc_pin_6_match" = "pinctrl-6"
     sdhc{
         compatible = "amlogic,aml_sdhc";
         dev_name = "aml_sdhc.0";
@@ -601,8 +617,8 @@ sdio{
             ocr_avail = <0x00200080>; // 3.3:0x200000, 1.8+3.3:0x00200080
             caps = "MMC_CAP_8_BIT_DATA","MMC_CAP_MMC_HIGHSPEED","MMC_CAP_SD_HIGHSPEED", "MMC_CAP_NONREMOVABLE","MMC_CAP_ERASE", "MMC_CAP_HW_RESET"; // MMC_CAP_NEEDS_POLL -- for detect, MMC_CAP_NONREMOVABLE -- for eMMC/TSD
             caps2 = "MMC_CAP2_HS200_1_8V_SDR";
-	        f_min = <300000>;
-            f_max = <150000000>;
+	    f_min = <300000>;
+            f_max = <100000000>;
             max_req_size = <0x20000>;          /**128KB*/
             gpio_dat3 = "BOOT_3";
             card_type = <1>; /* 0:unknown, 1:mmc card(include eMMC), 2:sd card(include tSD), 3:sdio device(ie:sdio-wifi), 4:SD combo (IO+mem) card, 5:NON sdio device(means sd/mmc card), other:reserved */
@@ -746,20 +762,20 @@ sdio{
             dvfs_table  = <
             /* NOTE: frequent in this table must be ascending order */
             /* frequent(Khz)    min_uV      max_uV                  */
-                  96000         825000      825000
-                 192000         825000      825000
-                 312000         825000      825000
-                 408000         825000      825000
-                 504000         825000      825000
-                 600000         850000      850000
-                 720000         850000      850000
-                 816000         875000      875000
-                1008000         925000      925000
-                1200000         975000      975000
-                1416000        1025000     1025000
+                  96000         860000      860000
+                 192000         860000      860000
+                 312000         860000      860000
+                 408000         860000      860000
+                 504000         860000      860000
+                 600000         860000      860000
+                 720000         860000      860000
+                 816000         880000      880000
+                1008000         930000      930000
+                1200000         980000      980000
+                1416000        1030000     1030000
                 1608000        1100000     1100000
-                1800000        1125000     1125000
-                1992000        1150000     1150000
+                1800000        1130000     1130000
+                1992000        1140000     1140000
             >;
         };
     };
@@ -792,35 +808,35 @@ sdio{
          *    
          *  PWM value       VCCK voltage 
          */   
-		0x1c0000        870000
-		0x1b0001        880000
-		0x1a0002        890000
-		0x190003        900000		
-		0x180004        910000			
-		0x170005        920000
-		0x160006        930000
-		0x150007        940000
-		0x140008        950000			
-		0x130009        960000		
-		0x12000a        970000			
-		0x11000b        980000		
-		0x10000c        990000			
-		0x0f000d        100000			
-		0x0e000e        1010000			
-		0x0d000f        1020000		
-		0x0c0010        1030000			
-		0x0b0011        1040000			
-		0x0a0012        1050000			
-		0x090013        1060000
-		0x080014        1070000
-		0x070015        1080000			
-		0x060016        1090000
-		0x050017        1100000
-		0x040018        1110000
-		0x030019        1120000			
-		0x02001a        1130000			
-		0x01001b        1140000
-		0x00001c        1150000
+		0x1c0000        860000
+		0x1b0001        870000
+		0x1a0002        880000
+		0x190003        890000		
+		0x180004        900000			
+		0x170005        910000
+		0x160006        920000
+		0x150007        930000
+		0x140008        940000			
+		0x130009        950000		
+		0x12000a        960000			
+		0x11000b        970000		
+		0x10000c        980000			
+		0x0f000d        990000			
+		0x0e000e        1000000			
+		0x0d000f        1010000		
+		0x0c0010        1020000			
+		0x0b0011        1030000			
+		0x0a0012        1040000			
+		0x090013        1050000
+		0x080014        1060000
+		0x070015        1070000			
+		0x060016        1080000
+		0x050017        1090000
+		0x040018        1100000
+		0x030019        1110000			
+		0x02001a        1120000			
+		0x01001b        1130000
+		0x00001c        1140000
         >;   
     };   	
 
@@ -1616,6 +1632,13 @@ sdio{
             amlogic,pullupen=<1>;
         };
 
+//$$ MATCH "sdhc_pin_0_match" = "&sdhc_sd_clk_cmd_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 4*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 2 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_sd_clk_cmd_pins:sdhc_sd_clk_cmd_pins{
             amlogic,setmask=<2 0x00000030>;         /*sdhc b*/
             amlogic,clrmask=<5 0x00007c00           /*sdhc a*/
@@ -1627,6 +1650,13 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
+//$$ MATCH "sdhc_pin_1_match" = "&sdhc_sd_all_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 4*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 6 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_sd_all_pins:sdhc_sd_all_pins{
             amlogic,setmask=<2 0x000000f0>;         /*sdhc b*/
             amlogic,clrmask=<5 0x00007c00           /*sdhc a*/
@@ -1638,7 +1668,13 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+//$$ MATCH "sdhc_pin_2_match" = "&sdhc_emmc_clk_cmd_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 2 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_emmc_clk_cmd_pins:sdhc_emmc_clk_cmd_pins{
             amlogic,setmask=<4 0x0c000000>;         /*bit[26-27] */
             amlogic,clrmask=<2 0x04c000f0           /*sdhc b & nand*/
@@ -1649,6 +1685,13 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
+//$$ MATCH "sdhc_pin_3_match" = "&sdhc_emmc_all_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 10 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_emmc_all_pins:sdhc_emmc_all_pins{
             amlogic,setmask=<4 0x7c000000>;         /*sdhc c*/
             amlogic,clrmask=<2 0x04c000f0           /*sdhc b & nand*/
@@ -1659,7 +1702,13 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
-
+//$$ MATCH "sdhc_pin_4_match" = "&sdhc_sdio_clk_cmd_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 2 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_sdio_clk_cmd_pins:sdhc_sdio_clk_cmd_pins{
             amlogic,setmask=<5 0x00000c00>;         /*sdhc a bit[10-11] */
             amlogic,clrmask=<2 0x058000f0           /*sdhc b*/
@@ -1670,6 +1719,13 @@ sdio{
             amlogic,pullup=<1>;
             amlogic,pullupen=<1>;
         };
+//$$ MATCH "sdhc_pin_5_match" = "&sdhc_sdio_all_pins"
+//$$ L2 PROP_U32 2 = "amlogic,setmask"
+//$$ L2 PROP_U32 3*2 = "amlogic,clrmask"
+//$$ L2 PROP_STR 6 = "amlogic,pins"
+//$$ L2 PROP_U32 = "amlogic,enable-output"
+//$$ L2 PROP_U32 = "amlogic,pullup"
+//$$ L2 PROP_U32 = "amlogic,pullupen"
         sdhc_sdio_all_pins:sdhc_sdio_all_pins{
             amlogic,setmask=<5 0x00006c00>;         /*sdhc a*/
             amlogic,clrmask=<2 0x058000f0           /*sdhc b*/
