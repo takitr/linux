@@ -1397,13 +1397,15 @@ static  void  osd1_update_disp_freescale_enable(void)
 
 static void osd1_update_coef(void)
 {
-	int i;
 	int hf_coef_idx = 0;
-	int hf_coef_wren = 1;
-
 	int vf_coef_idx = 0;
-	int vf_coef_wren = 1;
 	int *hf_coef, *vf_coef;
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	int i = 0;
+	int hf_coef_wren = 1;
+	int vf_coef_wren = 1;
+#endif
 
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
@@ -1415,15 +1417,6 @@ static void osd1_update_coef(void)
 		vf_coef = filt_coef0;
 	}
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if (vf_coef_wren) {
-		aml_set_reg32_bits(P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
-		for (i = 0; i < 33; i++)
-		{
-			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
-		}
-	}
-
 	if (hf_coef_idx == 0){
 		hf_coef = filt_coef0;
 	}else if (hf_coef_idx == 1){
@@ -1432,6 +1425,15 @@ static void osd1_update_coef(void)
 		hf_coef = filt_coef2;
 	}else{
 		hf_coef = filt_coef0;
+	}
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	if (vf_coef_wren) {
+		aml_set_reg32_bits(P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
+		for (i = 0; i < 33; i++)
+		{
+			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
+		}
 	}
 
 	if (hf_coef_wren) {
@@ -1521,13 +1523,15 @@ static  void  osd2_update_disp_freescale_enable(void)
 
 static void osd2_update_coef(void)
 {
-	int i;
 	int hf_coef_idx = 0;
-	int hf_coef_wren = 1;
-
 	int vf_coef_idx = 0;
-	int vf_coef_wren = 1;
 	int *hf_coef, *vf_coef;
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	int i = 0;
+	int hf_coef_wren = 1;
+	int vf_coef_wren = 1;
+#endif
 
 	if (vf_coef_idx == 0){
 		vf_coef = filt_coef0;
@@ -1539,15 +1543,6 @@ static void osd2_update_coef(void)
 		vf_coef = filt_coef0;
 	}
 
-#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
-	if (vf_coef_wren) {
-		aml_set_reg32_bits (P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
-		for (i = 0; i < 33; i++)
-		{
-			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
-		}
-	}
-
 	if (hf_coef_idx == 0){
 		hf_coef = filt_coef0;
 	}else if (hf_coef_idx == 1){
@@ -1556,6 +1551,15 @@ static void osd2_update_coef(void)
 		hf_coef = filt_coef2;
 	}else{
 		hf_coef = filt_coef0;
+	}
+
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
+	if (vf_coef_wren) {
+		aml_set_reg32_bits (P_VPP2_OSD_SCALE_COEF_IDX, 0x0000, 0, 9);
+		for (i = 0; i < 33; i++)
+		{
+			aml_write_reg32(P_VPP2_OSD_SCALE_COEF, vf_coef[i]);
+		}
 	}
 
 	if (hf_coef_wren) {
@@ -2377,7 +2381,6 @@ void osd_ext_cursor_hw(s16 x, s16 y, s16 xstart, s16 ystart, u32 osd_ext_w, u32 
 void osd_ext_suspend_hw(void)
 {
 	osd_ext_hw.reg_status_save = aml_read_reg32(P_VPP2_MISC) & OSD_RELATIVE_BITS;
-
 	aml_clr_reg32_mask(P_VPP2_MISC, OSD_RELATIVE_BITS);
 
 	printk("osd_ext_suspended\n");
@@ -2388,7 +2391,6 @@ void osd_ext_suspend_hw(void)
 void osd_ext_resume_hw(void)
 {
 	aml_set_reg32_mask(P_VPP2_MISC, osd_ext_hw.reg_status_save);
-
 	printk("osd_ext_resumed\n");
 
 	return;
