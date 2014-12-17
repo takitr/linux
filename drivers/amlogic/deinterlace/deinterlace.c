@@ -250,7 +250,7 @@ bit[1:0]: enable bypass post when skip
 static int di_vscale_skip_enable = 3;
 #endif
 #else
-static int di_vscale_skip_enable = 1;
+static int di_vscale_skip_enable = 4;
 #endif
 
 #ifdef RUN_DI_PROCESS_IN_IRQ
@@ -2353,14 +2353,16 @@ static unsigned char is_bypass(vframe_t *vf_in)
 /*prot is conflict with di post*/
     if(di_pre_stru.orientation)
 	return 1;
-
+#endif
     if((di_vscale_skip_enable & 0x4)&& vf_in){
 	di_vscale_skip_count = get_current_vscale_skip_count(vf_in);
-	if(di_vscale_skip_count > 0 && di_pre_stru.cur_prog_flag)
+	if((di_vscale_skip_count > 0 && di_pre_stru.cur_prog_flag) ||
+           (di_vscale_skip_count > 1 && !di_pre_stru.cur_prog_flag)
+          )
             return 1;
-	return 0;
+        else
+	        return 0;
     }
-    #endif
     return 0;
 
 }
@@ -4541,8 +4543,8 @@ static void process_vscale_skip(di_buf_t* di_buf, vframe_t* disp_vf)
 {
     //vframe_t* di_post_vf = di_buf->vframe;
     di_buf_t* di_buf_i = NULL;
-    if(di_buf->di_buf[0]!=NULL &&
-        di_buf->process_fun_index!=PROCESS_FUN_NULL){ //di post is enabled
+    if((di_buf->di_buf[0]!=NULL) && (di_vscale_skip_enable&0x1) &&
+        (di_buf->process_fun_index!=PROCESS_FUN_NULL)){ //di post is enabled
         di_vscale_skip_count = get_current_vscale_skip_count(disp_vf);
         if(((di_vscale_skip_count>0)&&(di_vscale_skip_enable&0x1))||(di_vscale_skip_enable>>16)||(bypass_dynamic_flag&0x2)){
             int width = (di_buf->di_buf[0]->canvas_config_size>>16)&0xffff;
