@@ -438,11 +438,11 @@ static void m6ref_set_vccx2(int power_on)
     if(power_on == OFF) {
         printk("m6ref_set_vccx2: OFF");
         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
-        SET_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+       // SET_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
     } else {
         printk("m6ref_set_vccx2: ON");
         CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<15);
-        CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
+        //CLEAR_AOBUS_REG_MASK(AO_GPIO_O_EN_N, 1<<31);
     }
     return;
 }
