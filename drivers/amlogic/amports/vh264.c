@@ -48,6 +48,7 @@
 #include "vdec_reg.h"
 #include "amvdec.h"
 #include "vh264_mc.h"
+#include "streambuf.h"
 
 #ifdef CONFIG_GE2D_KEEP_FRAME
 #include <linux/amlogic/logo/logo.h>
@@ -114,6 +115,10 @@ static DEFINE_MUTEX(vh264_mutex);
 #define DEC_CONTROL_FLAG_FORCE_2500_576P_INTERLACE  0x0002
 
 #define INCPTR(p) ptr_atomic_wrap_inc(&p)
+
+#define SLICE_TYPE_I 2
+#define SLICE_TYPE_P 5
+#define SLICE_TYPE_B 6
 
 typedef struct {
     unsigned int y_addr;
@@ -246,6 +251,9 @@ static u32 first_offset;
 static u32 first_pts;
 static u64 first_pts64;
 static bool first_pts_cached;
+static u32 sei_data_buffer;
+static u32 sei_data_buffer_phys;
+static ulong *sei_data_buffer_remap;
 
 #define MC_OFFSET_HEADER    0x0000
 #define MC_OFFSET_DATA      0x1000
@@ -940,6 +948,7 @@ static void vh264_isr(void)
     unsigned int pts,pts_lookup_save,pts_valid_save, pts_valid = 0, pts_duration = 0;
     u64 pts_us64;
     bool force_interlaced_frame = false;
+    unsigned int sei_itu35_flags;
 
     WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
 
@@ -984,7 +993,7 @@ static void vh264_isr(void)
     } else if ((cpu_cmd & 0xff) == 2) {
         int frame_mb_only, pic_struct_present, pic_struct, prog_frame, poc_sel, idr_flag, eos, error;
         int i, status, num_frame, b_offset;
-        int current_error_count;
+        int current_error_count, slice_type;
 
         vh264_running = 1;
         vh264_no_disp_count = 0;
@@ -1002,6 +1011,7 @@ static void vh264_isr(void)
             status = READ_VREG(AV_SCRATCH_1 + i);
             buffer_index = status & 0x1f;
             error = status & 0x200;
+            slice_type = (READ_VREG(AV_SCRATCH_H) >> (i*4)) & 0xf;
 
             if ((error_recovery_mode_use & 2) && error) {
                 check_pts_discontinue = true;
@@ -1205,7 +1215,7 @@ static void vh264_isr(void)
                 pts_valid &&
                 h264_first_valid_pts_ready && 
                 (!pts_discontinue)) {
-                pts_valid = (idr_flag) ? 1 : 0;
+                pts_valid = (slice_type == SLICE_TYPE_I) ? 1 : 0;
             }
 
             if (!h264_first_valid_pts_ready && pts_valid) {
@@ -1414,6 +1424,41 @@ static void vh264_isr(void)
         WRITE_VREG(AV_SCRATCH_0, 0);        
     }
 
+    sei_itu35_flags = READ_VREG(AV_SCRATCH_J);
+    if (sei_itu35_flags & (1<<15)) { // data ready
+        //int ltemp;
+        //unsigned char *daddr;
+        unsigned int sei_itu35_wp = (sei_itu35_flags >> 16) & 0xffff;
+        unsigned int sei_itu35_data_length = sei_itu35_flags & 0x7fff;
+        struct userdata_poc_info_t user_data_poc;
+
+        //printk("last %d, next %d, bottom_field %d, field_pic_flag %d, fixed_frame_rate_flag %d, picture_struct %d, sei %d\n",
+        //    last_slicetype, next_slicetype, bottom_field, field_pic_flag, fixed_frame_rate_flag, picture_struct, sei_picture_struct);
+        #if 0
+        // dump lmem for debug
+        WRITE_VREG(0x301, 0x8000);
+        WRITE_VREG(0x31d, 0x2);
+        for (ltemp=0; ltemp<64; ltemp++) {
+            laddr = 0x20 + ltemp;
+            WRITE_VREG(0x31b, laddr);
+            printk("mem 0x%x data 0x%x\n", laddr, READ_VREG(0x31c) & 0xffff);
+        }
+        #endif
+        #if 0
+        for (ltemp=0; ltemp<sei_itu35_wp; ltemp++) {
+            daddr = (unsigned char *)phys_to_virt(sei_data_buffer_phys+ ltemp);
+            //daddr = (unsigned char *)(sei_data_buffer_remap + ltemp);
+            printk("0x%x\n", *daddr);
+        }
+        #endif
+        printk("pocinfo 0x%x, top poc %d, wp 0x%x, length %d\n",
+            READ_VREG(AV_SCRATCH_L), READ_VREG(AV_SCRATCH_M), sei_itu35_wp, sei_itu35_data_length);
+        user_data_poc.poc_info = READ_VREG(AV_SCRATCH_L);
+        user_data_poc.poc_number = READ_VREG(AV_SCRATCH_M);
+        set_userdata_poc(user_data_poc);
+        WRITE_VREG(AV_SCRATCH_J, 0);
+        wakeup_userdata_poll(sei_itu35_wp, (int)sei_data_buffer_remap, USER_DATA_SIZE, sei_itu35_data_length);
+    }
 #ifdef HANDLE_H264_IRQ
     return IRQ_HANDLED;
 #else
@@ -1648,6 +1693,8 @@ static void vh264_prot_init(void)
         CLEAR_VREG_MASK(AV_SCRATCH_F, 1<<6);
     }
 
+    WRITE_VREG(AV_SCRATCH_I, (u32)(sei_data_buffer_phys - buf_offset));
+    WRITE_VREG(AV_SCRATCH_J, 0);
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
     //printk("vh264 meson8 prot init\n");
     WRITE_VREG(MDEC_PIC_DC_THRESH, 0x404038aa);
@@ -1891,6 +1938,7 @@ static s32 vh264_init(void)
 
     set_vdec_func(&vh264_dec_status);
     set_trickmode_func(&vh264_set_trickmode);
+    init_userdata_fifo();
 
     return 0;
 }
@@ -2157,7 +2205,27 @@ static int amvdec_h264_probe(struct platform_device *pdev)
     if (pdata->sys_info) {
         vh264_amstream_dec_info = *pdata->sys_info;
     }
+    if (0 == sei_data_buffer) {
+        sei_data_buffer =  __get_free_pages(GFP_KERNEL, get_order(USER_DATA_SIZE));
 
+        if (!sei_data_buffer) {
+            printk("%s: Can not allocate sei_data_buffer\n", __FUNCTION__);
+            return -ENOMEM;
+        }
+        sei_data_buffer_phys = virt_to_phys((u8 *)sei_data_buffer);
+
+        sei_data_buffer_remap = ioremap_nocache(sei_data_buffer_phys, USER_DATA_SIZE);
+        if (!sei_data_buffer_remap) {
+            printk("%s: Can not remap sei_data_buffer\n", __FUNCTION__);
+            free_pages(sei_data_buffer, get_order(USER_DATA_SIZE));
+
+            sei_data_buffer = 0;
+
+            return -ENOMEM;
+        }
+
+        //printk("buffer 0x%x, phys 0x%x, remap 0x%x\n", sei_data_buffer, sei_data_buffer_phys, (u32)sei_data_buffer_remap);
+    }
     printk("amvdec_h264 mem-addr=%lx,buff_offset=%x,buf_start=%x\n",pdata->mem_start,buf_offset,buf_start);
 
     if (vh264_init() < 0) {
