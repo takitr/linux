@@ -42,9 +42,6 @@
 #define MAX_WIDTH 1920
 #define MAX_HEIGHT 1088
 
-#define PPMGR2_MAX_CANVAS 8
-#define PPMGR2_CANVAS_INDEX 0x70
-
 #define DUR2PTS(x) ((x) - ((x) >> 4))
 
 #define dprintk(dev, level, fmt, arg...)                    \
@@ -140,6 +137,7 @@ struct ionvideo_dev {
     u8 is_video_started;
     u32 skip;
     int once_record;
+    u8 is_omx_video_started;
 };
 
 int is_ionvideo_active(void);
