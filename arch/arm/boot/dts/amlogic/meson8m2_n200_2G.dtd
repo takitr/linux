@@ -1903,7 +1903,7 @@ sdio{
                 phy_interface = <1>;
                 new_maclogic = <1>;
                 reset_pin_enable = <0>;
-                reset_pin = "GPI0H_4";
+                reset_pin = "GPIOH_4";
                 reset_delay = <100>;
 	};
 
