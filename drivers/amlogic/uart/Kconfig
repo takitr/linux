@@ -25,4 +25,3 @@ config PRINTK_NOBLOCK_MODE
 	default n
 	help
 		Support for printk running with no block
-source "drivers/amlogic/uart/gps_um220/Kconfig"
