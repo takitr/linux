@@ -1230,8 +1230,8 @@ static void vh264_isr(void)
                     h264_pts_count += 2;
                 }
             } else {
-                if (!(idr_flag && pts_valid)) {
-                    pts = 0;
+                if (!idr_flag) {
+                    pts_valid = 0;
                 }
             }
 
