@@ -885,12 +885,14 @@ void meson_set_cpu_power_ctrl(uint32_t cpu,int is_power_on)
 
 void meson_set_cpu_ctrl_reg(int cpu,int is_on)
 {
+#ifdef CONFIG_MESON_TRUSTZONE
+	uint32_t value = 0;
+#endif
 	spin_lock(&clockfw_lock);
 
 #ifdef CONFIG_MESON_TRUSTZONE
-	uint32_t value = 0;
 	value = meson_read_corectrl();
-	value = value & ~(1U << cpu) | (is_on << cpu);
+	value = (value & ~(1U << cpu)) | (is_on << cpu);
 	value |= 1;
 	meson_modify_corectrl(value);
 #else
@@ -918,6 +920,7 @@ int meson_get_cpu_ctrl_addr(int cpu)
 {
 
 #ifdef CONFIG_MESON_TRUSTZONE
+	return 0;
 //	meson_auxcoreboot_addr(cpu, addr);
 #else
 //printk("sram=0x%x addr=0x%x\n",(MESON_CPU1_CONTROL_ADDR_REG + ((cpu-1) << 2)),addr);
