@@ -185,6 +185,9 @@ static int want_hdmi_mode(vmode_t mode)
 		case VMODE_4K2K_23HZ: // for framerate automation 4k2k 23.97hz
 #endif
 		case VMODE_4K2K_SMPTE:
+		case VMODE_4K2K_FAKE_5G:  // timing same as 4k2k30hz, Vsync from 30hz to 50hz
+		case VMODE_4K2K_60HZ:	  // timing same as 4k2k30hz, Vsync from 30hz to 60hz
+		case VMODE_4K2K_5G:
 			ret=1;
 			break;
 		default:
@@ -228,7 +231,9 @@ static  void  set_vout_mode(char * name)
 		return ; 
 	}
 
+#ifdef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
 	mode_by_user = mode;
+#endif
 
 	if(mode==get_current_vmode())
 	{

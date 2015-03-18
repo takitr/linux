@@ -499,8 +499,14 @@ static void aml_sdhc_reg_init(struct amlsd_host* host)
     pdma->dma_urgent = 1;
 
     pdma->wr_burst = 7;//3; // means 4
+#ifdef CONFIG_ARCH_MESONG9TV
+    pdma->rd_burst = 7;//15;  //7
+    pdma->txfifo_th = 57; // means 49
+    
+#else    
     pdma->txfifo_th = 49; // means 49
     pdma->rd_burst = 15; // means 8
+#endif    
     pdma->rxfifo_th = 7; // means 8
     //pdma->rxfifo_manual_flush = 1; // bit[29]=1, bit[30]=0
     // pdma->rd_burst = 3;
@@ -509,11 +515,15 @@ static void aml_sdhc_reg_init(struct amlsd_host* host)
     // pdma->txfifo_th = 0x18;
     writel(vpdma, host->base+SDHC_PDMA);
 
+#ifdef CONFIG_ARCH_MESONG9TV
+    misc.txstart_thres = 57;//49;  //57
+#else
     /*Send Stop Cmd automatically*/
     if(IS_MESON_M8M2_CPU)
          misc.txstart_thres = 6;//4; // [29:31] = 7
     else
          misc.txstart_thres = 7; // [29:31] = 7
+#endif
     misc.manual_stop = 0;
     misc.wcrc_err_patt = 5;
     misc.wcrc_ok_patt = 2;
@@ -521,7 +531,7 @@ static void aml_sdhc_reg_init(struct amlsd_host* host)
 
     venhc = readl(host->base+SDHC_ENHC);
     
-    if(IS_MESON_M8M2_CPU){
+    if((IS_MESON_M8M2_CPU) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)){
 	    enhc->reg.meson8m2.rxfifo_th = 64;
 	    enhc->reg.meson8m2.sdio_irq_period = 12;
 	    enhc->reg.meson8m2.debug = 1;
@@ -639,7 +649,8 @@ void aml_sdhc_set_pdma(struct amlsd_platform* pdata, struct mmc_request* mrq)
     BUG_ON(!mrq->data);
 #if 1
     pdma->dma_mode = 1;
-    if(IS_MESON_M8M2_CPU){
+
+    if((IS_MESON_M8M2_CPU) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)){
 	    writel(*(u32*)pdma, host->base+SDHC_PDMA);
 	    return;
     }
@@ -844,7 +855,8 @@ void aml_sdhc_start_cmd(struct amlsd_platform* pdata, struct mmc_request* mrq)
          * wait dma done interrupt(int[11]), don't need care about
          * dat0 busy or not.
          */
-        if(IS_MESON_M8M2_CPU)
+
+    if((IS_MESON_M8M2_CPU) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV))
         	ictl.dma_done = 1; // for hardware automatical flush
 	 else{         
 	        if((mrq->data->flags & MMC_DATA_WRITE) 
@@ -895,7 +907,7 @@ void aml_sdhc_start_cmd(struct amlsd_platform* pdata, struct mmc_request* mrq)
     }
 #endif
 
-    if(!IS_MESON_M8M2_CPU){
+    if(!((IS_MESON_M8M2_CPU) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV))){
 	    loop_limit = 100;
 	    for (i = 0; i < loop_limit; i++) {
 	        vesta = readl(host->base + SDHC_ESTA);
@@ -1612,13 +1624,14 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
     struct sdhc_stat* stat = (struct sdhc_stat*)&vstat;
     struct amlsd_platform* pdata = mmc_priv(host->mmc);
     int cnt=0;
+#ifndef CONFIG_ARCH_MESONG9TV               
        
     u32 esta = readl(host->base + SDHC_ESTA);
     int i;        
     u32 dmc_sts = 0;
     u32 vpdma = readl(host->base+SDHC_PDMA);   
     struct sdhc_pdma* pdma = (struct sdhc_pdma*)&vpdma;
-
+#endif
 
     spin_lock_irqsave(&host->mrq_lock, flags);
     mrq = host->mrq;
@@ -1671,7 +1684,8 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
             xfer_bytes = mrq->data->blksz*mrq->data->blocks;
             /* copy buffer from dma to data->sg in read cmd*/
             if(host->mrq->data->flags & MMC_DATA_READ){
-	     	    if(!IS_MESON_M8M2_CPU){
+#ifndef CONFIG_ARCH_MESONG9TV                
+	     	    if(!(IS_MESON_M8M2_CPU)){
 	                if(!aml_card_type_sdio(pdata)){
 	                    for(i=0; i< STAT_POLL_TIMEOUT; i++){
 	                          
@@ -1711,7 +1725,7 @@ irqreturn_t aml_sdhc_data_thread(int irq, void *data)
 	                  
 	                }                              
 		   }
-
+#endif
                 aml_sg_copy_buffer(mrq->data->sg, mrq->data->sg_len, host->bn_buf,
                             xfer_bytes, 0);
                 sdhc_dbg(AMLSD_DBG_RD_DATA, "R Cmd%d, arg %x, size=%d\n",
@@ -2444,16 +2458,28 @@ static int aml_sdhc_probe(struct platform_device *pdev)
         /*Register card detect irq : plug in & unplug*/
         if(pdata->irq_in && pdata->irq_out){
             pdata->irq_init(pdata);
+#ifdef CONFIG_ARCH_MESONG9TV            
+            ret = request_threaded_irq(pdata->irq_in+INT_GPIO_1,
+                    (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
+                    IRQF_DISABLED, "sdhc_mmc_in", (void*)pdata);
+#else
             ret = request_threaded_irq(pdata->irq_in+INT_GPIO_0,
                     (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "sdhc_mmc_in", (void*)pdata);
+#endif                   
             if (ret) {
                 sdhc_err("Failed to request mmc IN detect\n");
                 goto probe_free_host;
             }
+#ifdef CONFIG_ARCH_MESONG9TV
+            ret |= request_threaded_irq(pdata->irq_out+INT_GPIO_1,
+                    (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
+                    IRQF_DISABLED, "sdhc_mmc_out", (void*)pdata);
+#else            
             ret |= request_threaded_irq(pdata->irq_out+INT_GPIO_0,
                     (irq_handler_t)aml_sd_irq_cd, aml_irq_cd_thread,
                     IRQF_DISABLED, "sdhc_mmc_out", (void*)pdata);
+#endif                      
             // ret = request_irq(pdata->irq_in+INT_GPIO_0, aml_sdhc_irq_cd,
                         // IRQF_DISABLED, "sdhc_mmc_in", pdata);
             // ret |= request_irq(pdata->irq_out+INT_GPIO_0, aml_sdhc_irq_cd,

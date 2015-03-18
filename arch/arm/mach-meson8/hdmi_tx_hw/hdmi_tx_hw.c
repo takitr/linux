@@ -72,6 +72,7 @@ static void hdmitx_dump_tvenc_reg(int cur_VIC, int printk_flag);
 
 static void hdmi_phy_suspend(void);
 static void hdmi_phy_wakeup(hdmitx_dev_t* hdmitx_device);
+extern const vinfo_t *get_current_vinfo(void);
 
 unsigned char hdmi_pll_mode = 0; /* 1, use external clk as hdmi pll source */
 static unsigned char aud_para = 0x49;
@@ -1976,7 +1977,6 @@ static void hdmitx_config_tvenc_reg(int vic, unsigned reg, unsigned val)
 //		special vmode has same hdmi vic with normal mode, such as 1080p59hz - 1080p60hz
 //	so pll should not only be set according hdmi vic.
 //
-extern const vinfo_t *get_current_vinfo(void);
 static int hdmitx_set_pll_fr_auto(void)
 {
 	int ret = 0;

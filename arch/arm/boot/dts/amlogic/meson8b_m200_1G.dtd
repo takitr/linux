@@ -1927,21 +1927,77 @@ void root_func(){
 	};
 /// ***************************************************************************************
 ///	-	Ethernet
-//$$ MODULE="Ethernet"
-//$$ DEVICE="meson-eth"
-//$$ L2 PROP_STR = "status"
-    meson-eth{
-		compatible = "amlogic,meson-eth";
-		dev_name = "meson-eth";
-		status = "okay";
-		ethbaseaddr = <0xfe0c0000>;
-		interruptnum = <40>;
-                savepowermode = <0>;
-                phy_interface = <0>;
-                new_maclogic = <1>;
-                reset_pin_enable = <0>;
-                reset_pin = "GPIOH_4";
-                reset_delay = <100>;
+        ethmac: ethernet@0xc9410000{
+                compatible = "amlogic,meson8b-rgmii-dwmac", "snps,dwmac";
+                reg = <0xc9410000 0x10000
+                       0xc1108108 0x4>;
+                interrupts = <0 8 1>;
+                interrupt-names = "macirq";
+                clocks = "clk81";
+                clock-names = "stmmaceth";
+        };
+///	-	DVB
+//$$ MODULE="DVB"
+
+//$$ DEVICE="dvb"
+//$$ L2 PROP_STR = "ts0"
+//$$ L2 PROP_U32 = "ts0_invert"
+//$$ L2 PROP_U32 = "ts0_control"
+//$$ L2 PROP_STR 6 = "pinctrl-names"
+//$$ L2 PROP_CHOICE "dvb_p_ts0_pins_match" = "pinctrl-0"
+//$$ L2 PROP_CHOICE "dvb_s_ts0_pins_match" = "pinctrl-1"
+	dvb{
+		compatible = "amlogic,dvb";
+		/*"parallel","serial","disable"*/
+		ts0 = "parallel";
+		ts0_control = <0>;
+		ts0_invert = <0>;
+		pinctrl-names = "p_ts0", "s_ts0";
+		pinctrl-0 = <&dvb_p_ts0_pins>;
+		pinctrl-1 = <&dvb_s_ts0_pins>;
+	};
+
+//$$ DEVICE="dvbfe"
+//$$ L2 PROP_STR = "dtv_demod0"
+//$$ L2 PROP_U32 = "dtv_demod0_i2c_adap_id"
+//$$ L2 PROP_U32 = "dtv_demod0_i2c_addr"
+//$$ L2 PROP_U32 = "dtv_demod0_reset_value"
+//$$ L2 PROP_STR = "dtv_demod0_reset_gpio"
+//$$ L2 PROP_U32 = "fe0_dtv_demod"
+//$$ L2 PROP_U32 = "fe0_ts"
+//$$ L2 PROP_U32 = "fe0_dev"
+//$$ L2 PROP_STR 6 = "pinctrl-names"
+//$$ L2 PROP_CHOICE "dvb_fe_pins_match" = "pinctrl-0"
+
+
+	dvbfe{
+		compatible = "amlogic,dvbfe";
+		dtv_demod0 = "Mxl241";
+		dtv_demod0_i2c_adap_id = <2>;
+		dtv_demod0_i2c_addr = <0x60>;
+		dtv_demod0_reset_value = <0>;
+		dtv_demod0_reset_gpio = "GPIOY_3";
+		fe0_dtv_demod = <0>;
+		fe0_ts = <0>;
+		fe0_dev = <0>;
+	};
+	
+	smartcard {
+		compatible = "amlogic,smartcard";
+		smc0_irq = <69>;
+		//smc0_enable_pin = "GPIOX_16";
+		//smc0_enable_level = <1>;
+		smc0_reset_pin = "GPIOX_17";
+		smc0_reset_level = <0>;
+		smc0_clk_pinmux_reg = <0x2030>;
+		smc0_clk_pinmux_bit = <0x80000>;
+		smc0_clk_oen_reg = <0x200C>;
+		smc0_clk_out_reg = <0x200D>;
+		//smc0_clk_pin = "GPIOX_18";
+		smc0_clk_bit = <0x40000>;
+		smc0_det_pin = "GPIOX_16";
+		pinctrl-names = "default";
+		pinctrl-0 = <&smc_pins>;
 	};
 ///	-	DVB
 //$$ MODULE="DVB"
