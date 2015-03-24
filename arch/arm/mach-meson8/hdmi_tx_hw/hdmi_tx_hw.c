@@ -2407,6 +2407,7 @@ static Cts_conf_tab cts_table_192k[] = {
     {24576,  54000,  54000},
     {24576, 108000, 108000},
     {24576,  74250,  74250},
+    {46592,  74250 * 1000 / 1001, 140625},
     {24576, 148500, 148500},
     {23296, 148500 * 1000 / 1001, 140625},
     {20480, 297000, 247500},
@@ -2508,12 +2509,19 @@ static int hdmitx_is_framerate_automation(void)
 static unsigned int vic_map_clk(HDMI_Video_Codes_t vic)
 {
     int i;
-
-    for(i = 0; i < ARRAY_SIZE(vic_attr_map_table); i++) {
-        if(vic == vic_attr_map_table[i].VIC)
+    for (i = 0; i < ARRAY_SIZE(vic_attr_map_table); i++) {
+        if (vic == vic_attr_map_table[i].VIC)
+#ifndef CONFIG_AML_VOUT_FRAMERATE_AUTOMATION
             return vic_attr_map_table[i].tmds_clk;
+#else
+        {
+            if (hdmitx_is_framerate_automation())
+                return ((vic_attr_map_table[i].tmds_clk) * 1000 / 1001);
+            else
+                return vic_attr_map_table[i].tmds_clk;
+        }
+#endif
     }
-
     return 0;
 }
 
