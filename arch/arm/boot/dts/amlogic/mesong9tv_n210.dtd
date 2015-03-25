@@ -427,7 +427,7 @@ ethmac: ethernet@0xc9410000{
 	amlogic-watchdog {
 		compatible = "amlogic,aml-wdt";
 		status = "okay";
-		default_timeout=<10>;
+		default_timeout=<8>;
 		reset_watchdog_method=<1>;//0:sysfs,1:kernel
 		reset_watchdog_time=<2>;
 		shutdown_timeout=<10>;
@@ -902,6 +902,19 @@ NON sdio device(means sd/mmc card), other:reserved */
 		>;
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-AMLVIDEO2
+//$$ MODULE = "DISP&MM-AMLVIDEO2"
+//$$ DEVICE="amlvideo2"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+    amlvideo2{
+        compatible = "amlogic,amlvideo2";
+        dev_name = "amlvideo2.0";
+        status = "okay";
+        reserve-memory = <0x01800000>;
+        reserve-iomap = "true";
+    };
 
 /// ****************************************************************************
 ///	-	ION

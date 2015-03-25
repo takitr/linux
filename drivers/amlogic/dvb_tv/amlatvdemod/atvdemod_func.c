@@ -64,6 +64,10 @@ static unsigned int atvdemod_afc_offset = 500;
 module_param( atvdemod_afc_offset, uint, 0644) ; 
 MODULE_PARM_DESC( atvdemod_afc_offset, "\n atvdemod_afc_offset\n");
 
+static unsigned int atvdemod_timer_en = 1;
+module_param( atvdemod_timer_en, uint, 0644);
+MODULE_PARM_DESC( atvdemod_afc_offset, "\n atvdemod_afc_offset\n");
+
 static unsigned int mix1_freq = 0;
 static unsigned int timer_init_flag = 0;
 extern struct amlatvdemod_device_s *amlatvdemod_devp;
@@ -1136,9 +1140,11 @@ void atvdemod_timer_hander(unsigned long arg)
 int atvdemod_init(void)
 {
 	//unsigned long data32;
-	if(timer_init_flag == 1){
-		del_timer_sync(&atvdemod_timer);
-		timer_init_flag = 0;
+	if (atvdemod_timer_en == 1) {
+		if (timer_init_flag == 1) {
+			del_timer_sync(&atvdemod_timer);
+			timer_init_flag = 0;
+		}
 	}
 	//clocks_set_hdtv ();
 	//1.set system clock
@@ -1178,14 +1184,16 @@ int atvdemod_init(void)
 		delay_us(400);
 	}*/
 	#if 1//temp mark
-	/*atvdemod timer hander*/
-	init_timer(&atvdemod_timer);
-	//atvdemod_timer.data = (ulong) devp;
-	atvdemod_timer.function = atvdemod_timer_hander;
-	atvdemod_timer.expires = jiffies + ATVDEMOD_INTERVAL*300;//after 3s enable demod auto detect
-	add_timer(&atvdemod_timer);
-	mix1_freq = atv_dmd_rd_byte(APB_BLOCK_ADDR_MIXER_1,0x0);
-	timer_init_flag = 1;
+	if (atvdemod_timer_en == 1) {
+		/*atvdemod timer hander*/
+		init_timer(&atvdemod_timer);
+		//atvdemod_timer.data = (ulong) devp;
+		atvdemod_timer.function = atvdemod_timer_hander;
+		atvdemod_timer.expires = jiffies + ATVDEMOD_INTERVAL*300;//after 3s enable demod auto detect
+		add_timer(&atvdemod_timer);
+		mix1_freq = atv_dmd_rd_byte(APB_BLOCK_ADDR_MIXER_1,0x0);
+		timer_init_flag = 1;
+	}
 	#endif
 	pr_info("delay done\n");
 	return(0);
@@ -1193,44 +1201,44 @@ int atvdemod_init(void)
 
 void atv_dmd_set_std(void)
 {
-        v4l2_std_id ptstd = amlatvdemod_devp->parm.std;
-        /* set broad standard of tuner*/
-        if (ptstd & V4L2_STD_PAL_BG){
-                amlatvdemod_devp->fre_offset = 2250000;
+	v4l2_std_id ptstd = amlatvdemod_devp->parm.std;
+	/* set broad standard of tuner*/
+	if (ptstd & V4L2_STD_PAL_BG) {
+		amlatvdemod_devp->fre_offset = 2250000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_BG;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_BG;
 		if_freq = 3250000;
-        }else if (ptstd & V4L2_STD_PAL_DK){
-                amlatvdemod_devp->fre_offset = 2250000;
+	} else if (ptstd & V4L2_STD_PAL_DK) {
+		amlatvdemod_devp->fre_offset = 2250000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		if_freq = 3250000;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK;
-        }else if (ptstd & V4L2_STD_PAL_M){
-                amlatvdemod_devp->fre_offset = 2250000;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK;
+	} else if (ptstd & V4L2_STD_PAL_M) {
+		amlatvdemod_devp->fre_offset = 2250000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_60HZ_VERT;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_M;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_M;
 		if_freq = 4250000;
-        }else if (ptstd & V4L2_STD_NTSC_M){
-                amlatvdemod_devp->fre_offset = 1750000;
+	} else if (ptstd & V4L2_STD_NTSC_M) {
+		amlatvdemod_devp->fre_offset = 1750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_60HZ_VERT;
 		if_freq = 4250000;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC;
-        }else if (ptstd & V4L2_STD_NTSC_M_JP){
-                amlatvdemod_devp->fre_offset = 1750000;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC;
+	} else if (ptstd & V4L2_STD_NTSC_M_JP) {
+		amlatvdemod_devp->fre_offset = 1750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_J;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_J;
 		if_freq = 4250000;
-        }else if (ptstd & V4L2_STD_PAL_I){
-                amlatvdemod_devp->fre_offset = 2750000;
+	} else if (ptstd & V4L2_STD_PAL_I) {
+		amlatvdemod_devp->fre_offset = 2750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
-                broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I;
+		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I;
 		if_freq = 3250000;
-        }else if (ptstd & (V4L2_STD_SECAM_L | V4L2_STD_SECAM_LC)){
-                amlatvdemod_devp->fre_offset = 2750000;
+	} else if (ptstd & (V4L2_STD_SECAM_L | V4L2_STD_SECAM_LC)) {
+		amlatvdemod_devp->fre_offset = 2750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_SECAM_L;
-        }
-	if(amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840){
+	}
+	if (amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840) {
 		if_freq = amlatvdemod_devp->parm.if_freq;
 		if_inv = amlatvdemod_devp->parm.if_inv;
 		if(atvdemod_agc_pinmux == 1){
