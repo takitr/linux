@@ -34,6 +34,8 @@
 #include <linux/amlogic/amports/vformat.h>
 #include <mach/am_regs.h>
 #include <linux/module.h>
+#include <linux/slab.h>
+#include "amports_priv.h"
 
 #include "vdec_reg.h"
 #include "streambuf_reg.h"
@@ -247,7 +249,7 @@ static void vavs_isr(void)
         u32 picture_type;
         u32 buffer_index;
         unsigned int pts, pts_valid=0, offset;
-       if(debug_flag&2){
+       if (debug_flag&0x6) {
            if(READ_VREG(AV_SCRATCH_E)!=0){
                 printk("dbg%x: %x\n",  READ_VREG(AV_SCRATCH_E), READ_VREG(AV_SCRATCH_D));
                 WRITE_VREG(AV_SCRATCH_E, 0);
@@ -771,6 +773,29 @@ static s32 vavs_init(void)
                     printk("failed\n");
                     return -EBUSY;
             }
+        }
+        else if (debug_flag&4) {
+            int size;
+            char *mbuf;
+            printk("load ucode from file of vavs_mc\n");
+            mbuf=kmalloc(4096 * 8, GFP_KERNEL);
+            if (!mbuf) {
+                printk("vavs_init: Cannot malloc mbuf  memory1\n");
+                return -EBUSY;
+            }
+            memset(mbuf,0,4096 * 8);
+            size=request_video_firmware("vavs_mc",mbuf,4096 * 8);
+            if (size <= 0) {
+                printk("vavs_init: not valied ucode for vh265");
+                kfree(mbuf);
+                return -EBUSY;
+            }
+            if (amvdec_loadmc((const u32 *)mbuf) < 0) {
+                amvdec_disable();
+                kfree(mbuf);
+                return -EBUSY;
+            }
+            kfree(mbuf);
         }
         else{
             if (amvdec_loadmc(vavs_mc) < 0)

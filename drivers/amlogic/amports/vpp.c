@@ -1060,7 +1060,7 @@ static void vpp_set_scaler(u32 src_width,
 
     //just calcuate the enable sclaer module
     if((hor_sc_multiple_num>=4) || (ver_sc_multiple_num>=4)){
-        next_frame_par->supsc0_enable =1;
+        next_frame_par->supsc0_enable = (src_width > SUPER_CORE0_WIDTH_MAX?0:1);
         next_frame_par->supsc1_enable =1;
     }else if((hor_sc_multiple_num>=2)||(ver_sc_multiple_num>=2)){
         if(src_width > SUPER_CORE0_WIDTH_MAX && src_width <= SUPER_CORE1_WIDTH_MAX){
@@ -1074,10 +1074,7 @@ static void vpp_set_scaler(u32 src_width,
         next_frame_par->supsc0_enable =0;
         next_frame_par->supsc1_enable =0;
     }
-    if (hor_sc_multiple_num>=4){
-        next_frame_par->supsc0_hori_ratio = 1;
-        next_frame_par->supsc1_hori_ratio = 1;
-    }else if (hor_sc_multiple_num>=2){
+    if (hor_sc_multiple_num >= 2) {
         next_frame_par->supsc0_hori_ratio = next_frame_par->supsc0_enable?1:0;
         next_frame_par->supsc1_hori_ratio = next_frame_par->supsc1_enable?1:0;
     }else {
@@ -1085,10 +1082,7 @@ static void vpp_set_scaler(u32 src_width,
         next_frame_par->supsc1_hori_ratio = 0;
     }
 
-    if (ver_sc_multiple_num>=4) {
-    	next_frame_par->supsc0_vert_ratio = 1;
-    	next_frame_par->supsc1_vert_ratio = 1;
-    }else if (ver_sc_multiple_num>=2){
+    if (ver_sc_multiple_num >= 2) {
     	next_frame_par->supsc0_vert_ratio = next_frame_par->supsc0_enable?1:0;
     	next_frame_par->supsc1_vert_ratio = next_frame_par->supsc1_enable?1:0;
     }else{
