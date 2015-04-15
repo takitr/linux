@@ -50,7 +50,7 @@
 #define ppmgr2_printk(level, fmt, arg...)                   \
     do {                                                    \
         if (get_ionvideo_debug() >= level)                  \
-            printk(KERN_DEBUG "ppmgr2-dev: " fmt, ## arg);  \
+            printk("ppmgr2-dev: " fmt, ## arg);  \
     } while (0)
 
 /* ------------------------------------------------------------------
@@ -81,8 +81,8 @@ struct ionvideo_dmaqueue {
     struct task_struct *kthread;
     wait_queue_head_t wq;
     /* Counters to control fps rate */
-    int frame;
-    int ini_jiffies;
+    int vb_ready;
+    struct ionvideo_dev* pdev;
 };
 
 struct ppmgr2_device {
