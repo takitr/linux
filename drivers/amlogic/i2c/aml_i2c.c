@@ -188,14 +188,22 @@ static int aml_i2c_wait_ack(struct aml_i2c *i2c)
 	struct aml_i2c_reg_ctrl* ctrl;
 
 	for(i=0; i<i2c->wait_count; i++) {
-		ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
-		if(ctrl->status == IDLE){
-      i2c->cur_token = ctrl->cur_token;
-      return (ctrl->error ? (-EIO) : 0);		  
+		ctrl = (struct aml_i2c_reg_ctrl*) &(i2c->master_regs->i2c_ctrl);
+
+		if (ctrl->status == IDLE) {
+            i2c->cur_token = ctrl->cur_token;
+            if (ctrl->error) {
+                ctrl->start = 0;
+                ctrl->start = 1;
+            }
+            return (ctrl->error ? (-EIO) : 0);
 		}
-    if (!in_atomic() && (i2c->mode == I2C_DELAY_MODE))
-			cond_resched();
-    udelay(i2c->wait_ack_interval);
+
+        if (!in_atomic() && (i2c->mode == I2C_DELAY_MODE))
+            cond_resched();
+
+        udelay(i2c->wait_ack_interval);
+
 	}
 
 	return -ETIMEDOUT;
@@ -265,6 +273,7 @@ static void aml_i2c_stop(struct aml_i2c *i2c)
 	struct aml_i2c_reg_ctrl* ctrl;
 	ctrl = (struct aml_i2c_reg_ctrl*)&(i2c->master_regs->i2c_ctrl);
 
+
   /* Controller has send the stop condition automatically when NACK error.
    * We must not send again at here, otherwize, the CLK line will be pulled down.
    */
@@ -278,7 +287,11 @@ static void aml_i2c_stop(struct aml_i2c *i2c)
 #else
   	udelay(i2c->wait_xfer_interval);
 #endif
+    ctrl->start = 0;
+    ctrl->start = 1;
   }
+
+
 	aml_i2c_clear_token_list(i2c);	
 }
 
@@ -367,8 +380,10 @@ static int aml_i2c_write(struct aml_i2c *i2c, unsigned char *buf,
 		tagnum = 0;
 
 		ret = aml_i2c_wait_ack(i2c);
-		if(ret<0)
+		if (ret<0) {
+            printk(KERN_ALERT "[%s]: wait_ack() failed ret = %d\n", __func__, ret);
 			return ret;
+        }
 
 		aml_i2c_clear_token_list(i2c);
     	}
@@ -596,12 +611,15 @@ static int aml_i2c_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs,
 		p = &msgs[i];
 		i2c->msg_flags = p->flags;
 		ret = i2c->ops->do_address(i2c, p->addr);
-		if (ret || !p->len)
+		if (ret || !p->len) {
+            printk("[%s]: do_address failed ret = %d\n", __func__, ret);
 			continue;
-		if (p->flags & I2C_M_RD)
+        }
+		if (p->flags & I2C_M_RD) {
 			ret = i2c->ops->read(i2c, p->buf, p->len);
-		else
+        } else {
 			ret = i2c->ops->write(i2c, p->buf, p->len);
+        }
 	}
 
 	i2c->ops->stop(i2c);
