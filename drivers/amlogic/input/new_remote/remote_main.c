@@ -309,6 +309,10 @@ static void remote_release_timer_sr(unsigned long data)
 	//key report release use timer interrupt
 	remote_data->key_release_report = remote_report_release_key[remote_data->work_mode];
 	remote_data->key_release_report(remote_data);
+	if (remote_data->hardware_check_enable)
+	{
+		am_remote_write_reg(OPERATION_CTRL_REG1,0x9f50);
+	}
 }
 
 static irqreturn_t remote_interrupt(int irq, void *dev_id)
@@ -539,6 +543,17 @@ static long remote_config_ioctl(struct file *filp, unsigned int cmd, unsigned lo
 		case REMOTE_IOC_SET_OK_KEY_SCANCODE:
 			OK_KEY_SCANCODE = val;
 			break;
+
+		case REMOTE_IOC_HARDWARE_CHECK_ENABLE:
+			ret = copy_from_user(&remote->hardware_check_enable, argp, sizeof(long));
+			if (remote->hardware_check_enable)
+			{
+				am_remote_write_reg(OPERATION_CTRL_REG1,0x9f50);
+					/*{OPERATION_CTRL_REG1,0x9f40},// boby long decode (8-13)*/
+			}
+
+
+
 	}
 	//output result
 	switch (cmd) {

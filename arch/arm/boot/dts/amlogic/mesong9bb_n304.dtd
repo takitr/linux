@@ -131,24 +131,23 @@
 //$$ L2 PROP_U32 16*3 = "dvfs_table"
 	vcck_dvfs {
 		dvfs_id     = <1>;  /** must be value of (1 << n)            */
-		table_count = <14>; /** must be correct count for dvfs_table */
+		table_count = <13>; /** must be correct count for dvfs_table */
 		dvfs_table  = <
 			/* NOTE: frequent in this table must be ascending order */
 			/* frequent(Khz)    min_uV      max_uV                  */
-			96000		990000		990000
-			192000		990000		990000
-			312000		990000		990000
-			408000		990000		990000
-			504000		990000		990000
-			600000		990000		990000
-			720000		990000		990000
-			816000		990000		990000
-			1008000		990000		990000
-			1200000		990000		990000
-			1416000		1090000		1090000
-			1608000		1130000		1130000
-			1800000		1140000		1140000
-			1992000		1160000		1160000
+			  96000		 860000		 860000
+			 192000		 860000		 860000
+			 312000		 860000		 860000
+			 408000		 860000		 860000
+			 504000		 860000		 860000
+			 600000		 860000		 860000
+			 720000		 860000		 860000
+			 816000		 900000		 900000
+			1008000		 920000		 920000
+			1200000		 970000		 970000
+			1320000		1020000		1020000
+			1488000		1100000		1100000
+			1536000		1140000		1140000
 			>;
 		};
 	};
@@ -872,13 +871,13 @@
 //$$ DEVICE="amlvideo2"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2 ="reg"
-//    amlvideo2{
-//		compatible = "amlogic,amlvideo2";
-//		dev_name = "amlvideo2.0";
-//		status = "okay";
-//		reserve-memory = <0x01800000>;
-//		reserve-iomap = "true";
-//	};
+    amlvideo2{
+		compatible = "amlogic,amlvideo2";
+		dev_name = "amlvideo2.0";
+		status = "okay";
+		reserve-memory = <0x01800000>;
+		reserve-iomap = "true";
+	};
 
 
 /// ****************************************************************************

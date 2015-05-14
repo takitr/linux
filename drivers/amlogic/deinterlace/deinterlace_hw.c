@@ -307,7 +307,7 @@ static void mc_di_param_init(void)
 #endif
 void di_hw_init(void)
 {
-#ifdef NEW_DI_V1
+#if (defined NEW_DI_V1)|(defined NEW_DI_V4)
 	unsigned short fifo_size = 0x120;
 #endif
 #ifdef NEW_DI_V3
@@ -484,7 +484,8 @@ void enable_di_pre_aml (
 					(0 << 10) |										// pre drop first.
 					((di_pre_ctrl__di_pre_repeat!=0xff)?(di_pre_ctrl__di_pre_repeat&0x1):(0 << 11)) |	   //pre repeat.
 					(0 << 12) |					   // pre viu link
-					(pre_vdin_link<< 13) |				   //pre vdin link
+					(pre_vdin_link << 13) |				   //pre vdin link
+					(pre_vdin_link << 14) |				   //pre go line link
 					(hold_line << 16) |				   // pre hold line number
 					(1 << 22 ) |					   // MTN after NR.
 					(pre_field_num << 29) |			   // pre field number.
