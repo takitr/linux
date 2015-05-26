@@ -783,16 +783,28 @@
 		};
 	};
 
-	backlight{
+	backlight {
 		compatible = "amlogic,backlight";
 		dev_name = "backlight";
 		status = "okay";
-//		power_pin = "GPIOX_2";
-		pwm_hz = <160>;   /* Hz */
-//		pinctrl-names = "pwm_a","pwm_vs";
-//		pinctrl-0 = <&lcd_bl_pwm_a_pins>;	/* pwma pinmux */
-//		pinctrl-1 = <&lcd_bl_pwm_vs_pins>;	/* pwm_vs pinmux */
+		bl_en_gpio = "GPIOY_6";
+		bl_en_on = <0>; /** 1=output high, 0=output low **/
+		bl_pwm_port = "PWM_B";
+		pwm_positive = <0>; /* 1: positive 0: negative */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aml_bl_pwm_pins>;
+
+		bl_level_default_uboot = <100>;
+		bl_level_default_kernel = <100>;
+		bl_level_max_min = <255 10>;
+		bl_power_on_delay = <200>;  /* unit: ms */
+		bl_power_off_delay = <200>; /* unit: ms */
+		bl_pwm_freq = <1000>;
+		bl_pwm_duty_max_min = <100 25>; /* 100% - 25%*/
 	};
+
+
 
 /// ****************************************************************************
 /// -   DISP&MM-FB
@@ -1266,6 +1278,19 @@
 					   9 0x1
 					   10 0x140000>;
 			amlogic,pins = "GPIOY_8";
+		};
+
+		//$$ MATCH "aml_bl_pwm_pin_match" = "&aml_bl_pwm_pins"
+		//$$ L2 PROP_U32 2 = "amlogic,setmask"
+		//$$ L2 PROP_U32 2 = "amlogic,clrmask"
+		//$$ L2 PROP_STR 2 = "amlogic,pins"
+		aml_bl_pwm_pins:bl_pwm_pins {
+			amlogic,setmask = <9  0x02000000>;
+			amlogic,clrmask = <3  0x00000020
+					   5  0x04000000
+					   9  0x04000001
+					   10 0x00280000>;
+			amlogic,pins = "GPIOY_7";
 		};
 
 		//$$ MATCH "uart_ao_pin_match" = "&ao_uart_pins"

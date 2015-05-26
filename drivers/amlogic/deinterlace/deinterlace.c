@@ -1612,11 +1612,11 @@ typedef struct{
 	DI_SIM_MIF_t di_nrwr_mif;
 	DI_SIM_MIF_t di_mtnwr_mif;
 	di_buf_t* di_wr_buf;
+	int field_count_for_cont;
 #ifdef NEW_DI_V1
 	DI_SIM_MIF_t di_contp2rd_mif;
 	DI_SIM_MIF_t di_contprd_mif;
 	DI_SIM_MIF_t di_contwr_mif;
-	int field_count_for_cont;
 					/*
 					 0 (f0,null,f0)->nr0,
 					 1 (f1,nr0,f1)->nr1_cnt,

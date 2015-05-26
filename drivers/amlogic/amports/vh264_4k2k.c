@@ -572,13 +572,23 @@ static int get_max_dec_frame_buf_size(int level_idc, int max_reference_frame_num
 
 static void do_alloc_work(struct work_struct *work)
 {
-    int level_idc, max_reference_frame_num, mb_width, mb_height;
+    int level_idc, max_reference_frame_num, mb_width, mb_height, frame_mbs_only_flag;
     int dpb_size, ref_size;
     int dpb_start_addr, ref_start_addr, max_dec_frame_buffering, total_dec_frame_buffering;
+    unsigned int  chroma444;
+    unsigned int crop_infor, crop_bottom,crop_right;
     int ret = READ_VREG(MAILBOX_COMMAND);
-
     ref_start_addr = decoder_buffer_start;
     ret = READ_VREG(MAILBOX_DATA_0);
+   /*  MAILBOX_DATA_1 :
+         bit15    : frame_mbs_only_flag
+         bit 0-7 : chroma_format_idc
+         MAILBOX_DATA_2:
+          bit31-16: =  (left  << 8 | right ) << 1
+          bit15-0 :  =  (top << 8  | bottom ) <<  (2 - frame_mbs_only_flag)
+   */
+    frame_mbs_only_flag = READ_VREG(MAILBOX_DATA_1);
+    crop_infor = READ_VREG(MAILBOX_DATA_2);
     level_idc = (ret >> 24) & 0xff;
     max_reference_frame_num = (ret >> 16) & 0xff;
     mb_width = (ret >> 8) & 0xff;
@@ -586,16 +596,26 @@ static void do_alloc_work(struct work_struct *work)
         mb_width = 256;
     }
     mb_height = (ret >> 0) & 0xff;
-
     max_dec_frame_buffering = get_max_dec_frame_buf_size(level_idc, max_reference_frame_num, mb_width, mb_height);
-
     total_dec_frame_buffering = max_dec_frame_buffering + DISPLAY_BUFFER_NUM;
-
-    if ((frame_width == 0) || (frame_height == 0)) {
-        frame_width = mb_width << 4;
-        frame_height = mb_height << 4;
-        frame_ar = frame_height * 0x100 / frame_width;
-    }
+    chroma444 = ((frame_mbs_only_flag&0xffff) == 3) ? 1 : 0;
+    frame_mbs_only_flag  = (frame_mbs_only_flag >>16)&0x01;
+    crop_bottom = (crop_infor & 0xff) >> (2 - frame_mbs_only_flag);
+    crop_right = ((crop_infor >>16) & 0xff) >> 1;
+   printk("crop_right = 0x%x crop_bottom=0x%x  chroma_format_idc 0x%x \n",crop_right,crop_bottom,chroma444);
+   if ((frame_width == 0) || (frame_height == 0) || crop_infor) {
+                   frame_width = mb_width << 4;
+                   frame_height = mb_height << 4;
+                   if (frame_mbs_only_flag) {
+                           frame_height = frame_height - (2>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+                           frame_width = frame_width - (2>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
+                   } else {
+                           frame_height = frame_height - (4>>chroma444)*min(crop_bottom, (unsigned int)((8<<chroma444)-1));
+                           frame_width = frame_width - (4>>chroma444)*min(crop_right, (unsigned int)((8<<chroma444)-1));
+                   }
+                     printk("frame_mbs_only_flag %d, crop_bottom %d,	frame_height %d, mb_height %d,crop_right %d, frame_width %d, mb_width %d\n",
+                     frame_mbs_only_flag, crop_bottom,frame_height, mb_height,crop_right,frame_width, mb_height);
+          }
 
     mb_width = (mb_width+3) & 0xfffffffc;
     mb_height = (mb_height+3) & 0xfffffffc;
@@ -605,7 +625,7 @@ static void do_alloc_work(struct work_struct *work)
     dpb_start_addr = ref_start_addr + (ref_size * (max_reference_frame_num+1)) * 2;
     //dpb_start_addr = reserved_buffer + dpb_size;
 
-    printk("dpb_start_addr=0x%x, dpb_size=%d, total_dec_frame_buffering=%d, mb_width=%d, mb_height=%d\n",
+    printk("dpb_start_addr=0x%x, dpb_size=%d, total_dec_frame_buffering=%d, mb_width=%d, mb_height=%d \n",
         dpb_start_addr, dpb_size, total_dec_frame_buffering, mb_width, mb_height);
 
     ret = init_canvas(dpb_start_addr, dpb_size,
