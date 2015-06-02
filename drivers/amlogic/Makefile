@@ -34,10 +34,8 @@ obj-y += cpufreq/
 obj-$(CONFIG_GPIO_AMLOGIC) += gpio/
 obj-y += pinctrl/
 
-ifneq ($(wildcard $(srctree)/../hardware/amlogic/nand),)
-	obj-$(CONFIG_AML_NEXT_GEN_NAND) += ../../../hardware/amlogic/nand/amlnf/
-	obj-$(CONFIG_AM_NAND) += ../../../hardware/amlogic/nand/nand/
-endif
+obj-$(CONFIG_AML_NEXT_GEN_NAND) += nand/amlnf/
+obj-$(CONFIG_AM_NAND) += nand/nand/
 
 obj-y += ethernet/
 
@@ -55,9 +53,8 @@ obj-$(CONFIG_I2C) += i2c/
 obj-$(CONFIG_EFUSE)+=efuse/
 obj-$(CONFIG_AM_INPUT)		+= input/
 
-ifneq ($(wildcard $(srctree)/../hardware/amlogic/touch),)
-obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += ../../../hardware/amlogic/touch/
-endif
+obj-$(CONFIG_AML_TOUCH_ALGORITHM_SUPPORT) += touch/
+
 obj-$(CONFIG_AMLOGIC_SPI_NOR) += spi_nor/
 
 #obj-$(CONFIG_CARDREADER) += cardreader/
@@ -71,18 +68,14 @@ obj-$(CONFIG_AML_RTC)+= rtc/
 
 obj-y += power/
 
-ifneq ($(wildcard $(srctree)/../hardware/amlogic/pmu),)
-    obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += ../../../hardware/amlogic/pmu/
-endif
+obj-$(CONFIG_AML_PMU_ALGORITHM_SUPPORT) += pmu/
 
 obj-y += tvin_v4l2/
-ifneq ($(wildcard $(srctree)/../hardware/tvin),)
-	obj-$(CONFIG_TVIN) += ../../../hardware/tvin/
-endif
+obj-$(CONFIG_TVIN) += tvin/
 
 obj-$(CONFIG_AML_EXT_HDMIIN) += ext_hdmiin/
 
-#obj-y += thermal/
+obj-y += thermal/
 
 
 #####Sound system is later init in kernel default..######################
@@ -125,10 +118,9 @@ obj-$(CONFIG_AML_REG_DEBUG) += regd/
 
 obj-$(CONFIG_AML_WATCHDOG) += watchdog/
 
-ifneq ($(wildcard $(srctree)/../hardware/arm/gpu),)
-	obj-$(CONFIG_UMP) += ../../../hardware/arm/gpu/ump/
-	obj-$(CONFIG_MALI400) += ../../../hardware/arm/gpu/mali/
-endif
+obj-$(CONFIG_UMP) += gpu/ump/
+obj-$(CONFIG_UNPLOCK) += gpu/umplock/
+obj-$(CONFIG_MALI400) += gpu/mali/
 
 obj-$(CONFIG_AMLOGIC_ION) += ion_dev/
 
