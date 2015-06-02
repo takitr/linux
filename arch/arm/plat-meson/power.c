@@ -59,6 +59,8 @@ void meson_common_restart(char mode,const char *cmd)
             reboot_reason = MESON_LOCK_REBOOT;
         else if (strcmp(cmd, "usb_burner_reboot") == 0)
             reboot_reason = MESON_USB_BURNER_REBOOT;
+        else if (strcmp(cmd, "uboot_suspend") == 0 || strcmp(cmd, "poweroff") == 0)
+            reboot_reason = MESON_UBOOT_SUSPEND;
 	}
     aml_write_reg32(P_AO_RTI_STATUS_REG1, reboot_reason);
     printk("reboot_reason(0x%x) = 0x%x\n", P_AO_RTI_STATUS_REG1, aml_read_reg32(P_AO_RTI_STATUS_REG1));
@@ -72,7 +74,7 @@ void meson_power_off_prepare(void)
 void meson_power_off(void)
 {
 	printk("meson power off \n");
-	meson_common_restart('h',"charging_reboot");
+	meson_common_restart('h',"uboot_suspend");
 }
 
 void meson_power_idle(void)
