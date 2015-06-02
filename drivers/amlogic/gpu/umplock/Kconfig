@@ -1,0 +1,5 @@
+config UMPLOCK
+        tristate "UMPLOCK support"
+        default n
+        ---help---
+		Mali UMPLOCK Support
