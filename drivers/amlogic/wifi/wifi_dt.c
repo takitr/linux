@@ -304,7 +304,7 @@ void wifi_request_32k_clk(int is_on, const char *requestor)
 			SHOW_PIN_OWN("clock_32k_pin", wifi_info.clock_32k_pin);
 #if ((defined CONFIG_ARCH_MESON8) || (defined CONFIG_ARCH_MESON8B))
 			aml_set_reg32_mask(P_PERIPHS_PIN_MUX_3,0x1<<22);//set mode GPIOX_10-->CLK_OUT3
-#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
+#elif (defined CONFIG_ARCH_MESONG9BB)
             if(wifi_info.clock_32k_pin == 42) { //GPIOH_7, as PWM_C output
                 aml_write_reg32(P_PERIPHS_PIN_MUX_3, aml_read_reg32(P_PERIPHS_PIN_MUX_3) | (1<<24)); //PWM_C pinmux GPIOH_7
                 aml_write_reg32(P_PWM_MISC_REG_CD, (aml_read_reg32(P_PWM_MISC_REG_CD) & ~(0x7f<<8)) | ((1 << 15) | (0<<8) | (3<<4) | (1<<0)));//
