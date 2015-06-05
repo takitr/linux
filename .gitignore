@@ -93,6 +93,8 @@ signing_key.x509
 x509.genkey
 
 # customer folder
+arch/arm/boot/ccImage
+drivers/amlogic/gpu/mali/__malidrv_build_info.c
 customer
 __mali_osk_atomics.c
 __mali_osk_locks.c
