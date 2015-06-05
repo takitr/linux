@@ -793,15 +793,26 @@ static const vinfo_t *get_tv_info(vmode_t mode)
     return NULL;
 }
 
+extern void cvbs_cntl_output(unsigned int open);
 static int tv_set_current_vmode(vmode_t mod)
 {
-	if ((mod&VMODE_MODE_BIT_MASK)> VMODE_MAX)
-		return -EINVAL;
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+    vmode_t mode_old = info->vinfo->mode;
+#endif
+    if ((mod&VMODE_MODE_BIT_MASK)> VMODE_MAX)
+        return -EINVAL;
     info->vinfo = get_tv_info(mod & VMODE_MODE_BIT_MASK);
     if(!info->vinfo) {
         printk("don't get tv_info, mode is %d\n", mod);
         return 1;
     }
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+    if ((mode_old == VMODE_480CVBS) || (mode_old == VMODE_576CVBS))
+    {
+        cvbs_cntl_output(0);
+    }
+#endif
+
 //	info->vinfo = &tv_info[mod & VMODE_MODE_BIT_MASK];
 	printk("mode is %d,sync_duration_den=%d,sync_duration_num=%d\n", mod,info->vinfo->sync_duration_den,info->vinfo->sync_duration_num);
 	if(mod&VMODE_LOGO_BIT_MASK)  return 0;

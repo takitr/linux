@@ -1741,6 +1741,7 @@ static int amhdmitx_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM
 static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 {
+    hdmitx_device.HWOp.CntlMisc(&hdmitx_device,MISC_HPLL_OP,HPLL_DISABLE);
 #if 0
     pr_info("amhdmitx: hdmirx_suspend\n");
     hdmitx_pre_display_init();

@@ -482,7 +482,16 @@ int tvoutc_setmode(tvmode_t mode)
 #endif
 	}
 
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV) || (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+// for g9tv tv project, don't close vdac for they may have atv source passthrough
+// to vdac to output cvbs directly.
+// for g9tv other projects, it need not to close vdac every times for hdmi resolutions.
+    if ((mode == TVMODE_480CVBS) || (mode == TVMODE_576CVBS))
+#endif
+{
     cvbs_cntl_output(0);
+}
+
 #endif
     while (MREG_END_MARKER != s->reg)
         setreg(s++);

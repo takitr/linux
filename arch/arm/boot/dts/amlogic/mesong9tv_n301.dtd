@@ -1188,8 +1188,8 @@
 
 		tas5707:tas5707 {
 			codec_name = "tas5707";
-			i2c_addr = <0x1D>;   //for tas5707a
-			//i2c_addr = <0x1B>; //for tas5707
+			//i2c_addr = <0x1D>;   //for tas5707a
+			i2c_addr = <0x1B>; //for tas5707
 			reset_pin = "GPIOY_9";
 			i2c_bus = "i2c_bus_b";
 			master_vol = <150>;
@@ -1564,6 +1564,28 @@
 			                   3 0x80000>;
 			amlogic,pins = "GPIOZ_1", "GPIOZ_2", "GPIOZ_3", "GPIOZ_4", "GPIOZ_5";
 		};
+
+                //$$ MATCH "Audio_pin_0_match" = "&audio_spdif_pins"
+                //$$ L2 PROP_U32 2 = "amlogic,setmask"
+                //$$ L2 PROP_U32 2 = "amlogic,clrmask"
+                //$$ L2 PROP_STR 1 = "amlogic,pins"
+                /*
+                audio_spdif_pins:audio_pin1{
+                        amlogic,setmask=<9 0x00000800>;
+                        amlogic,clrmask=<9 0x00000400>;
+                        amlogic,pins = "GPIOH_10";
+                };
+                */
+                /*
+                audio_spdif_pins:audio_pin1{
+                        amlogic,setmask=<1 0x00000080>;
+                        amlogic,clrmask=<0 0x00080200
+                                         1 0x00000200
+                                         4 0x00200000
+                                         8 0x01000000>;
+                        amlogic,pins = "GPIOX_24";
+                };
+                */
 
 		//$$ MATCH "dvb_p_ts0_pins_match" = "&dvb_p_ts0_pins"
 		//$$ L2 PROP_U32 2 = "amlogic,setmask"
