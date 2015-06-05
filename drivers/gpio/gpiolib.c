@@ -755,7 +755,7 @@ static struct class gpio_class = {
  */
 static int gpiod_export(struct gpio_desc *desc, bool direction_may_change)
 {
-	struct gpio_chip	*chip;
+//	struct gpio_chip	*chip;
 	unsigned long		flags;
 	int			status;
 	const char		*ioname = NULL;
@@ -773,15 +773,15 @@ static int gpiod_export(struct gpio_desc *desc, bool direction_may_change)
 		return -EINVAL;
 	}
 
-	chip = desc->chip;
+//	chip = desc->chip;
 
 	mutex_lock(&sysfs_lock);
 
-	/* check if chip is being removed */
-	if (!chip || !chip->exported) {
-		status = -ENODEV;
-		goto fail_unlock;
-	}
+//	/* check if chip is being removed */
+//	if (!chip || !chip->exported) {
+//		status = -ENODEV;
+//		goto fail_unlock;
+//	}
 
 	spin_lock_irqsave(&gpio_lock, flags);
 	if (!test_bit(FLAG_REQUESTED, &desc->flags) ||
@@ -988,7 +988,7 @@ static void gpiod_unexport(struct gpio_desc *desc)
 	mutex_unlock(&sysfs_lock);
 
 	if (dev) {
-		device_remove_file(dev, &dev_attr_edge);
+		//device_remove_file(dev, &dev_attr_edge);
 		device_remove_file(dev, &dev_attr_direction);
 		sysfs_remove_group(&dev->kobj, &gpio_attr_group);
 		device_unregister(dev);
@@ -1052,8 +1052,8 @@ static void gpiochip_unexport(struct gpio_chip *chip)
 {
 	int			status;
 	struct device		*dev;
-	struct gpio_desc *desc;
-	unsigned int i;
+//	struct gpio_desc *desc;
+//	unsigned int i;
 
 	mutex_lock(&sysfs_lock);
 	dev = class_find_device(&gpio_class, NULL, chip, match_export);
@@ -1072,12 +1072,12 @@ static void gpiochip_unexport(struct gpio_chip *chip)
 		pr_debug("%s: chip %s status %d\n", __func__,
 				chip->label, status);
 
-	/* unregister gpiod class devices owned by sysfs */
-	for (i = 0; i < chip->ngpio; i++) {
-		desc = &chip->desc[i];
-		if (test_and_clear_bit(FLAG_SYSFS, &desc->flags))
-			gpiod_free(desc);
-	}
+//	/* unregister gpiod class devices owned by sysfs */
+//	for (i = 0; i < chip->ngpio; i++) {
+//		desc = &chip->desc[i];
+//		if (test_and_clear_bit(FLAG_SYSFS, &desc->flags))
+//			gpiod_free(desc);
+//	}
 }
 
 static int __init gpiolib_sysfs_init(void)
@@ -1287,7 +1287,7 @@ int gpiochip_remove(struct gpio_chip *chip)
 	int		status = 0;
 	unsigned	id;
 
-	gpiochip_unexport(chip);
+//	gpiochip_unexport(chip);
 
 	spin_lock_irqsave(&gpio_lock, flags);
 
@@ -1308,6 +1308,9 @@ int gpiochip_remove(struct gpio_chip *chip)
 	}
 
 	spin_unlock_irqrestore(&gpio_lock, flags);
+
+	if (status == 0)
+		gpiochip_unexport(chip);
 
 	return status;
 }

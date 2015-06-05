@@ -973,7 +973,7 @@ void devm_pinctrl_put(struct pinctrl *p)
 EXPORT_SYMBOL_GPL(devm_pinctrl_put);
 
 int pinctrl_register_map(struct pinctrl_map const *maps, unsigned num_maps,
-			 bool dup)
+			 bool dup, bool locked)
 {
 	int i, ret;
 	struct pinctrl_maps *maps_node;
@@ -1041,9 +1041,11 @@ int pinctrl_register_map(struct pinctrl_map const *maps, unsigned num_maps,
 		maps_node->maps = maps;
 	}
 
-	mutex_lock(&pinctrl_maps_mutex);
+	if (!locked)
+		mutex_lock(&pinctrl_maps_mutex);
 	list_add_tail(&maps_node->node, &pinctrl_maps);
-	mutex_unlock(&pinctrl_maps_mutex);
+	if (!locked)
+		mutex_unlock(&pinctrl_maps_mutex);
 
 	return 0;
 }
@@ -1058,7 +1060,7 @@ int pinctrl_register_map(struct pinctrl_map const *maps, unsigned num_maps,
 int pinctrl_register_mappings(struct pinctrl_map const *maps,
 			      unsigned num_maps)
 {
-	return pinctrl_register_map(maps, num_maps, true);
+	return pinctrl_register_map(maps, num_maps, true, false);
 }
 
 void pinctrl_unregister_map(struct pinctrl_map const *map)
