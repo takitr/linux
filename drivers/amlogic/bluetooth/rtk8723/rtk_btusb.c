@@ -3111,12 +3111,13 @@ static struct usb_driver btusb_driver = {
 	.disable_hub_initiated_lpm = 1,
 #endif
 };
-
+extern void set_bt_power(int is_power);
 static int __init btusb_init(void)
 {
 	int err;
 
 	RTKBT_INFO("Realtek Bluetooth USB driver module init, version %s", VERSION);
+	set_bt_power(0);
 #if CONFIG_BLUEDROID
 	err = btchr_init();
 	if (err < 0) {
@@ -3139,6 +3140,7 @@ static void __exit btusb_exit(void)
 		btchr_exit();
 #endif
 	usb_deregister(&btusb_driver);
+	set_bt_power(1);
 }
 
 module_init(btusb_init);
