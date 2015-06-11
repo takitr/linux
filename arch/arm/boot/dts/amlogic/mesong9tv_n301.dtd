@@ -787,21 +787,26 @@
 		compatible = "amlogic,backlight";
 		dev_name = "backlight";
 		status = "okay";
-		bl_en_gpio = "GPIOY_6";
-		bl_en_on = <0>; /** 1=output high, 0=output low **/
-		bl_pwm_port = "PWM_B";
-		pwm_positive = <0>; /* 1: positive 0: negative */
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&aml_bl_pwm_pins>;
 
-		bl_level_default_uboot = <100>;
-		bl_level_default_kernel = <100>;
-		bl_level_max_min = <255 10>;
-		bl_power_on_delay = <200>;  /* unit: ms */
-		bl_power_off_delay = <200>; /* unit: ms */
-		bl_pwm_freq = <1000>;
-		bl_pwm_duty_max_min = <100 25>; /* 100% - 25%*/
+		backlight_0 {
+			index = <0>;
+			name = "backlight_0";
+			bl_en_gpio = "GPIOY_6";
+			bl_en_on = <0>; /** 1=output high, 0=output low **/
+			bl_pwm_port = "PWM_B";
+			bl_pwm_positive = <0>; /* 1: positive 0: negative */
+
+			bl_level_default_uboot = <100>;
+			bl_level_default_kernel = <100>;
+			bl_level_max_min = <255 10>;
+			bl_power_on_delay = <200>;  /* unit: ms */
+			bl_power_off_delay = <200>; /* unit: ms */
+			bl_pwm_freq = <1000>;
+			bl_pwm_duty_max_min = <100 25>; /* 100% - 25%*/
+		};
 	};
 
 

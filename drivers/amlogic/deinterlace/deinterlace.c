@@ -198,7 +198,7 @@ static dev_t di_id;
 static struct class *di_class;
 
 #define INIT_FLAG_NOT_LOAD 0x80
-static char version_s[] = "2015-5-6a";//disable dnr
+static char version_s[] = "2015-5-29a";//update i/p interlave
 static unsigned char boot_init_flag=0;
 static int receiver_is_amvideo = 1;
 
@@ -2926,7 +2926,8 @@ static void dump_di_buf(di_buf_t* di_buf)
 	printk("index %d, post_proc_flag %d, new_format_flag %d, type %d, seq %d, pre_ref_count %d, post_ref_count %d, queue_index %d pulldown_mode %d process_fun_index %d\n",
 		di_buf->index, di_buf->post_proc_flag, di_buf->new_format_flag, di_buf->type, di_buf->seq, di_buf->pre_ref_count,
 		di_buf->post_ref_count, di_buf->queue_index, di_buf->pulldown_mode, di_buf->process_fun_index);
-	printk("di_buf: %p, %p, di_buf_dup_p: %p, %p, %p, %p, %p\n",
+	printk("canvas_config_flag %u,di_wr_linked_buf: %p.\n",di_buf->canvas_config_flag,di_buf->di_wr_linked_buf);
+	printk("di_buf: %p, %p, di_buf_dup_p: %p, %p, %p, %p, %p \n",
 		di_buf->di_buf[0],di_buf->di_buf[1],di_buf->di_buf_dup_p[0],di_buf->di_buf_dup_p[1],di_buf->di_buf_dup_p[2],di_buf->di_buf_dup_p[3],di_buf->di_buf_dup_p[4]);
 	printk("nr_adr 0x%x, nr_canvas_idx 0x%x, mtn_adr 0x%x, mtn_canvas_idx 0x%x",
 		di_buf->nr_adr, di_buf->nr_canvas_idx, di_buf->mtn_adr, di_buf->mtn_canvas_idx);
@@ -4313,6 +4314,7 @@ static unsigned char pre_de_buf_config(void)
 			 return 0;
 		 }
 	 queue_out(di_buf);
+	 di_buf->canvas_config_flag = 2;
 	 di_buf->di_wr_linked_buf = NULL;
 	 }
 

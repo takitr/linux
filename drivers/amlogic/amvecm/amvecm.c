@@ -621,7 +621,6 @@ void amvecm_video_latch(vframe_t *vf)
 	amvecm_bricon_process();
 	lvds_freq_process();
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	amvecm_vlock_process(vf);
 	amvecm_3d_sync_process();
 	amvecm_3d_black_process();
 #endif
@@ -629,7 +628,12 @@ void amvecm_video_latch(vframe_t *vf)
 void amvecm_on_vs(vframe_t *vf)
 {
 	amvecm_video_latch(vf);
-	ve_on_vs(vf);
+	if (vf != NULL) {
+#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+		amvecm_vlock_process(vf);
+#endif
+		ve_on_vs(vf);
+	}
 }
 EXPORT_SYMBOL(amvecm_on_vs);
 

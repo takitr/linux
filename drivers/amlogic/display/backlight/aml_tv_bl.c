@@ -340,9 +340,25 @@ static struct aml_bl_dt aml_bl_dt_def = {
 	//...
 };
 
+static char aml_bl_sel[15];
+static int __init aml_bl_select_setup(char *s)
+{
+	char *sel;
+	if (NULL != s) {
+		sel= strchr(s, '_');
+		sprintf(aml_bl_sel, "%s%s", "backlight", sel);
+	}
+
+	INFO("select backlight: %s\n", aml_bl_sel);
+	return 0;
+}
+__setup("panel_type=", aml_bl_select_setup);
+
+
 static int aml_bl_dt_parse(struct platform_device *pdev)
 {
 	struct device_node *node;
+	struct device_node *child;
 	struct aml_bl *bdev;
 	unsigned int val;
 	const char *str;
@@ -353,11 +369,18 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	node = pdev->dev.of_node;
 	if (!node) {
 		ERR("failed to find backlight node\n");
-		return -EINVAL;
+		return -ENODEV;
 	}
 
+	child = of_get_child_by_name(node, aml_bl_sel);
+	if (!child) {
+		ERR("failed to find child node\n");
+		return -ENODEV;
+	}
+	INFO("child %s\n", aml_bl_sel);
+
 	/* BL_EN */
-	ret = of_property_read_string(pdev->dev.of_node, "bl_en_gpio", &str);
+	ret = of_property_read_string(child, "bl_en_gpio", &str);
 	if (ret) {
 		ERR("faild to get bl_en_gpio\n");
 		bdev->d->bl_en_gpio = GPIOY_6;
@@ -366,13 +389,14 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 		bdev->d->bl_en_gpio = amlogic_gpio_name_map_num(str);
 		ret = amlogic_gpio_request(bdev->d->bl_en_gpio, AML_BL_NAME);
 		if (ret)
-			ERR("failed to request gpio %s(%u)\n", str, bdev->d->bl_en_gpio);
+			ERR("failed to request gpio %s(%u)\n",
+			str, bdev->d->bl_en_gpio);
 	}
 	INFO("bl_en_gpio = %s(%u)\n", str, bdev->d->bl_en_gpio);
 
 
 	/* BL_EN */
-	ret = of_property_read_u32(pdev->dev.of_node, "bl_en_on", &val);
+	ret = of_property_read_u32(child, "bl_en_on", &val);
 	if (ret) {
 		ERR("faild to get bl_en_gpio\n");
 	}
@@ -382,7 +406,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	INFO("bl_en_on = %u\n", bdev->d->bl_en_on);
 
 	/* BL_PWM PORT */
-	ret = of_property_read_string(pdev->dev.of_node, "bl_pwm_port", &str);
+	ret = of_property_read_string(child, "bl_pwm_port", &str);
 	if (ret) {
 		ERR("faild to get bl_pwm_port\n");
 		bdev->d->pwm_port = AML_BL_PWM_B;
@@ -402,17 +426,17 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	INFO("bl_pwm_port = %u\n", bdev->d->pwm_port);
 
 	/* PWM POSITIVE */
-	ret = of_property_read_u32(pdev->dev.of_node, "pwm_positive", &val);
+	ret = of_property_read_u32(child, "bl_pwm_positive", &val);
 	if (ret) {
-		ERR("faild to get pwm_positive\n");
+		ERR("faild to get bl_pwm_positive\n");
 	}
 	else {
 		bdev->d->pwm_positive = val;
 	}
-	INFO("pwm_positive = %u\n", bdev->d->pwm_positive);
+	INFO("bl_pwm_positive = %u\n", bdev->d->pwm_positive);
 
 	/* BL PWM FREQ */
-	ret = of_property_read_u32(node, "bl_pwm_freq", &val);
+	ret = of_property_read_u32(child, "bl_pwm_freq", &val);
 	if (ret) {
 		ERR("failed to get bl_pwm_freq\n");
 		val = AML_BL_FREQ_DEF;
@@ -424,7 +448,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 		bdev->d->pwm_freq = val;
 	INFO("bl_pwm_freq = %u\n",  bdev->d->pwm_freq);
 
-	ret = of_property_read_u32(node, "bl_power_on_delay", &val);
+	ret = of_property_read_u32(child, "bl_power_on_delay", &val);
 	if (ret) {
 		ERR("faild to get bl_power_on_delay\n");
 		bdev->d->power_on_delay = AML_BL_DEALY_DEF;
@@ -434,7 +458,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	}
 	INFO("bl_power_on_delay = %u\n", bdev->d->power_on_delay);
 
-	ret = of_property_read_u32(node, "bl_power_off_delay", &val);
+	ret = of_property_read_u32(child, "bl_power_off_delay", &val);
 	if (ret) {
 		ERR("faild to get bl_power_off_delay\n");
 		bdev->d->power_off_delay = AML_BL_DEALY_DEF;
@@ -444,7 +468,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	}
 	INFO("bl_power_off_delay = %u\n", bdev->d->power_off_delay);
 
-	ret = of_property_read_u32(node, "bl_level_default_kernel", &val);
+	ret = of_property_read_u32(child, "bl_level_default_kernel", &val);
 	if (ret) {
 		ERR("faild to get bl_level_default_kernel\n");
 		bdev->d->level_def = AML_BL_LEVEL_DEF;
@@ -454,7 +478,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	}
 	INFO("bl_level_default_kernel = %u\n", bdev->d->level_def);
 
-	ret = of_property_read_u32_array(node, "bl_level_max_min",
+	ret = of_property_read_u32_array(child, "bl_level_max_min",
 		array, ARRAY_SIZE(array));
 	if (ret) {
 		ERR("failed to bl_level_max_min\n");
@@ -468,7 +492,7 @@ static int aml_bl_dt_parse(struct platform_device *pdev)
 	INFO("bl_level_max_min = <%u, %u>\n", bdev->d->level_max,
 		bdev->d->level_min);
 
-	ret = of_property_read_u32_array(node, "bl_pwm_duty_max_min",
+	ret = of_property_read_u32_array(child, "bl_pwm_duty_max_min",
 		array, ARRAY_SIZE(array));
 	if (ret) {
 		ERR("failed to get bl_pwm_duty_max_min\n");
@@ -509,7 +533,9 @@ static int aml_bl_probe(struct platform_device *pdev)
 
 	/* parse dt param */
 	bdev->d = &aml_bl_dt_def;
-	aml_bl_dt_parse(pdev);
+	ret = aml_bl_dt_parse(pdev);
+	if (ret)
+		return ret;
 	aml_bl_pwm_param_init(pdev);
 
 	/* setup pinmux */
