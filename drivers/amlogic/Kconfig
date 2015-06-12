@@ -109,6 +109,7 @@ source "drivers/amlogic/ion_dev/Kconfig"
 source "drivers/amlogic/crypto/Kconfig"
 
 source "drivers/amlogic/mhl/Kconfig"
+source "drivers/amlogic/projector/Kconfig"
 isource "../hardware/amlogic/pmu/Kconfig"
 isource "../hardware/amlogic/touch/Kconfig"
 endmenu

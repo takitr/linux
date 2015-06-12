@@ -41,6 +41,8 @@ obj-$(CONFIG_AML_PLATFORM_THERMAL) += thermal.o
 
 obj-$(CONFIG_AML_HDMI_TX_20)   +=  hdmi_tx_hw_20/
 
+obj-$(CONFIG_AM_LCD_OUTPUT) +=  lcd/
+
 # ARM Trustzone
 obj-$(CONFIG_MESON_TRUSTZONE)	+= meson-smc.o meson-secure.o
 ifeq ($(CONFIG_MESON_TRUSTZONE),y)
