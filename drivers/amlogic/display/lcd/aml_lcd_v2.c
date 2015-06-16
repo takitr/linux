@@ -23,6 +23,7 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <mach/am_regs.h>
+#include <mach/mlvds_regs.h>
 #include <mach/clock.h>
 #include <asm/fiq.h>
 #include <linux/delay.h>
@@ -1090,7 +1091,6 @@ static void _lcd_module_enable(void)
 static void change_panel(lcd_dev_t *pDev)
 {
 	pDev->lcd_info.name = PANEL_NAME;
-	pDev->lcd_info.mode = cur_vmode;
 	pDev->lcd_info.width = pDev->conf.lcd_basic.h_active;
 	pDev->lcd_info.height = pDev->conf.lcd_basic.v_active;
 	pDev->lcd_info.field_height = pDev->conf.lcd_basic.v_active;
@@ -1363,8 +1363,6 @@ static void lcd_output_mode_info(void)
 			cur_vmode = VMODE_4K2K_60HZ;
 		}else if(strncmp(info->name, "4k2k50hz", 8) == 0){
 			cur_vmode = VMODE_4K2K_50HZ;
-		}else if (strncmp(info->name, "panel", 5) == 0) {
-			return;
 		}else{
 			cur_vmode = VMODE_1080P;
 			printk("the output mode is not support,use default mode!\n");
@@ -1447,7 +1445,7 @@ static struct platform_driver lcd_driver = {
 	.probe = lcd_probe,
 	.remove = lcd_remove,
 	.driver = {
-		.name = "mesontvlcd",
+		.name = "mesonlcd",
 		.of_match_table = lvds_dt_match,
 	},
 #ifdef CONFIG_PM

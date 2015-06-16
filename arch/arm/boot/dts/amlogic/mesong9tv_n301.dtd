@@ -675,6 +675,26 @@
 /// ****************************************************************************
 ///	-	I2C
 //$$ MODULE="I2C"
+//$$ DEVICE="I2C_A"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2="reg"
+//$$ L3 PROP_STR = "pinctrl-names"
+//$$ L2 PROP_CHOICE "I2C_A_pin_match" = "pinctrl-0"
+	i2c@c1108500{ /*I2C-A*/
+		compatible = "amlogic,aml_i2c";
+		dev_name = "i2c-A";
+		status = "ok";
+		reg = <0xc1108500 0x20>;
+		device_id = <1>;
+		pinctrl-names="default";
+		pinctrl-0=<&a_i2c_master>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		use_pio = <0>;
+		master_i2c_speed = <300000>;
+	};
+
+//$$ MODULE="I2C"
 //$$ DEVICE="I2C_B"
 //$$ L2 PROP_STR = "status"
 //$$ L3 PROP_U32 2="reg"
@@ -730,8 +750,6 @@
 			lvds_att = <8 1 0 1 1 0x3>;	/** lvds_bits lvds_repack pn_swap dual_port port_reverse lvds_fifo_wr_mode*/
 			panel_power_pin ="GPIOH_10";
 			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-			blacklight_power_pin ="GPIOY_6";
-			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
 		};
 
 		/*AUO: T320XVN02.9 lvds : 1366x768@60hz 8bit pixel clk@80mhz 1port*/
@@ -742,8 +760,6 @@
 			lvds_att = <8 1 0 0 0 0x101>;
 			panel_power_pin ="GPIOH_10";
 			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-			blacklight_power_pin ="GPIOY_6";
-			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
 		};
 
 		/*BOE: HV320WHB-N80 lvds : 1366x768@60hz 8bit pixel clk@74.25mhz 1port*/
@@ -754,8 +770,6 @@
 			lvds_att = <8 1 0 0 0 0x101>;
 			panel_power_pin ="GPIOH_10";
 			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-			blacklight_power_pin ="GPIOY_6";
-			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
 		};
 
 		/*PANDA: TPT315B5-0TU3A.Q lvds : 1366x768@60hz 8bit pixel clk@82mhz 1port*/
@@ -766,8 +780,6 @@
 			lvds_att = <8 1 0 0 0 0x101>;
 			panel_power_pin ="GPIOH_10";
 			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-			blacklight_power_pin ="GPIOY_6";
-			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
 		};
 
 		/*BOE: HV550QU2-305 vx1 : 3840x2160@60hz 8lane pixel clk@74.5mhz */
@@ -778,8 +790,6 @@
 			vbyone_att = <8 4 2 4>;
 			panel_power_pin ="GPIOH_10";
 			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
-			blacklight_power_pin ="GPIOY_6";
-			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
 		};
 	};
 
@@ -1541,6 +1551,16 @@
 			amlogic,pullupen = <1>;
 		};
 
+
+		//$$ MATCH "I2C_A_pin_match" = "&a_i2c_master"
+		//$$ L2 PROP_U32 2 = "amlogic,setmask"
+		//$$ L2 PROP_STR 2 = "amlogic,pins"
+		a_i2c_master:a_i2c {
+			amlogic,setmask = <6 0xc0000000>;
+			amlogic,clrmask = <7 0x06000000>;
+			amlogic,pins = "GPIOW_0","GPIOW_1";
+		};
+
 		//$$ MATCH "I2C_B_pin_match" = "&b_i2c_master"
 		//$$ L2 PROP_U32 2 = "amlogic,setmask"
 		//$$ L2 PROP_STR 2 = "amlogic,pins"
@@ -1548,7 +1568,6 @@
 			amlogic,setmask = <10 0xc000>;
 			amlogic,clrmask = <9 0xf00000c0>;
 			amlogic,pins = "GPIOY_12","GPIOY_13";
-
 		};
 
 		//$$ MATCH "remote_pin_0_match" = "&remote_pins"
@@ -1693,7 +1712,7 @@
 	//	fe0_mem = <0>;
 	//	reserve-memory = <0x2000000>;  //32m
 		tuner0 = "si2151_tuner";
-		tuner0_i2c_adap_id = <2>;
+		tuner0_i2c_adap_id = <1>;
 		tuner0_i2c_addr = <0x60>;
 		tuner0_reset_value = <0>;
 		tuner0_reset_gpio =  "GPIOW_1" ;  /*GPIOX_8   76*/

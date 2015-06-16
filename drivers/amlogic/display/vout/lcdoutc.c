@@ -325,12 +325,12 @@ static const vinfo_t *lcd_get_current_info(void)
         return &pDev->lcd_info;
 }
 
-DEFINE_MUTEX(lcd_vout_mutex);
+DEFINE_MUTEX(lcd_vout_tablet_mutex);
 static int lcd_set_current_vmode(vmode_t mode)
 {
-    mutex_lock(&lcd_vout_mutex);
+    mutex_lock(&lcd_vout_tablet_mutex);
     if (VMODE_LCD != (mode & VMODE_MODE_BIT_MASK)) {
-        mutex_unlock(&lcd_vout_mutex);
+        mutex_unlock(&lcd_vout_tablet_mutex);
         return -EINVAL;
     }
 
@@ -345,16 +345,16 @@ static int lcd_set_current_vmode(vmode_t mode)
     if (VMODE_INIT_NULL == pDev->lcd_info.mode)
         pDev->lcd_info.mode = VMODE_LCD;
     
-    mutex_unlock(&lcd_vout_mutex);
+    mutex_unlock(&lcd_vout_tablet_mutex);
     return 0;
 }
 
 #ifdef CONFIG_AM_TV_OUTPUT2
 static int lcd_set_current_vmode2(vmode_t mode)
 {
-    mutex_lock(&lcd_vout_mutex);
+    mutex_lock(&lcd_vout_tablet_mutex);
     if (mode != VMODE_LCD) {
-        mutex_unlock(&lcd_vout_mutex);
+        mutex_unlock(&lcd_vout_tablet_mutex);
         return -EINVAL;
     }
     _disable_backlight();
@@ -366,7 +366,7 @@ static int lcd_set_current_vmode2(vmode_t mode)
     if (VMODE_INIT_NULL == pDev->lcd_info.mode)
         pDev->lcd_info.mode = VMODE_LCD;
     _enable_backlight();
-    mutex_unlock(&lcd_vout_mutex);
+    mutex_unlock(&lcd_vout_tablet_mutex);
     return 0;
 }
 #endif
@@ -388,31 +388,31 @@ static int lcd_vmode_is_supported(vmode_t mode)
 
 static int lcd_vout_disable(vmode_t cur_vmod)
 {
-    mutex_lock(&lcd_vout_mutex);
+    mutex_lock(&lcd_vout_tablet_mutex);
     _disable_backlight();
     _lcd_module_disable();
-    mutex_unlock(&lcd_vout_mutex);
+    mutex_unlock(&lcd_vout_tablet_mutex);
     return 0;
 }
 
 #ifdef  CONFIG_PM
 static int lcd_suspend(void)
 {
-    mutex_lock(&lcd_vout_mutex);
+    mutex_lock(&lcd_vout_tablet_mutex);
     BUG_ON(pDev==NULL);
     printk("lcd_suspend\n");
     _disable_backlight();
     _lcd_module_disable();
-    mutex_unlock(&lcd_vout_mutex);
+    mutex_unlock(&lcd_vout_tablet_mutex);
     return 0;
 }
 static int lcd_resume(void)
 {
-    mutex_lock(&lcd_vout_mutex);
+    mutex_lock(&lcd_vout_tablet_mutex);
     printk("lcd_resume\n");
     _lcd_module_enable();
     _enable_backlight();
-    mutex_unlock(&lcd_vout_mutex);
+    mutex_unlock(&lcd_vout_tablet_mutex);
     return 0;
 }
 #endif
@@ -1356,10 +1356,10 @@ static ssize_t lcd_status_write(struct class *class, struct class_attribute *att
 	ret = sscanf(buf, "%d", &temp);
 	if (temp) {
 		if (pDev->pConf->lcd_misc_ctrl.lcd_status == 0) {
-			mutex_lock(&lcd_vout_mutex);
+			mutex_lock(&lcd_vout_tablet_mutex);
 			_lcd_module_enable();
 			_enable_backlight();
-			mutex_unlock(&lcd_vout_mutex);
+			mutex_unlock(&lcd_vout_tablet_mutex);
 		}
 		else {
 			printk("lcd is already ON\n");
@@ -1367,10 +1367,10 @@ static ssize_t lcd_status_write(struct class *class, struct class_attribute *att
 	}
 	else {
 		if (pDev->pConf->lcd_misc_ctrl.lcd_status == 1) {
-			mutex_lock(&lcd_vout_mutex);
+			mutex_lock(&lcd_vout_tablet_mutex);
 			_disable_backlight();
 			_lcd_module_disable();
-			mutex_unlock(&lcd_vout_mutex);
+			mutex_unlock(&lcd_vout_tablet_mutex);
 		}
 		else {
 			printk("lcd is already OFF\n");
