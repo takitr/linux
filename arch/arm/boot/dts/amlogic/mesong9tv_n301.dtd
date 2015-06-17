@@ -937,6 +937,7 @@
 		compatible = "amlogic,deinterlace";
 		dev_name = "deinterlace";
 		status = "ok";
+		hw-version = <1>;
 		reserve-memory = <0x02200000>;
 		/** 10x(1920x1088x(3/2+1/5)+1088)=34M **/
 	};

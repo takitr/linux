@@ -3021,6 +3021,7 @@ static void dump_state(void)
 	int itmp;
 	int i;
 	dump_state_flag = 1;
+	printk("hw version %u.\n",di_device.hw_version);
 	printk("version %s, provider vframe level %d, init_flag %d, is_bypass %d, receiver_is_amvideo %d\n",
 		version_s, provider_vframe_level, init_flag, is_bypass(NULL), receiver_is_amvideo);
 	printk("recovery_flag = %d, recovery_log_reason=%d, recovery_log_queue_idx=%d, recovery_log_di_buf=0x%p\n",
@@ -3801,6 +3802,8 @@ static void di_set_para_by_tvinfo(vframe_t* vframe)
 		kdeint2 = 25;
 	mtn_ctrl= 0xe228c440;
 		blend_ctrl=0x1f00019;
+	if (di_device.hw_version == 1)
+		Wr(DI_PRE_HOLD, (0 << 31) | (31 << 16) | 31);
 	pr_info("%s: tvinfo change, reset di Reg \n", __FUNCTION__);
 	}
 	else		//input is tuner
@@ -3822,6 +3825,8 @@ static void di_set_para_by_tvinfo(vframe_t* vframe)
  #ifdef NEW_DI_V1
 		ei_ctrl3 = 0x80000013;
 #endif
+	if (di_device.hw_version == 1)
+		Wr(DI_PRE_HOLD, (1<<31)|(8<<16)|2);
 	if (kdeint1 == 0x10) {
 			  kdeint2 = 25;
 		mtn_ctrl= 0xe228c440 ;
@@ -7371,6 +7376,11 @@ static int di_probe(struct platform_device *pdev)
 		mem->start = (phys_addr_t)get_reserve_block_addr(r);
 		mem->end = mem->start+ (phys_addr_t)get_reserve_block_size(r)-1;
 	}
+	r = of_property_read_u32(pdev->dev.of_node,"hw-version",&(di_device.hw_version));
+	if (r)
+		di_device.hw_version = 0;
+	else
+		pr_info("di hw version %u.\n",di_device.hw_version);
 
 	for (i=0; i<USED_LOCAL_BUF_MAX; i++) {
 		used_local_buf_index[i] = -1;
