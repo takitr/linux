@@ -72,8 +72,6 @@ static unsigned int hpll_vco_clk = 0xffff;      // not initial value
     do {                                                \
         unsigned int st = 0, cnt = 10;                  \
         while (cnt --) {                                 \
-            aml_set_reg32_bits(reg, 0x5, 28, 3);        \
-            aml_set_reg32_bits(reg, 0x4, 28, 3);        \
             msleep_interruptible(10);                   \
             st = !!(aml_read_reg32(reg) & (1 << 31));   \
             if (st) {                                    \
@@ -82,6 +80,8 @@ static unsigned int hpll_vco_clk = 0xffff;      // not initial value
             }                                           \
             else {  /* reset pll */                     \
                 printk("hpll reseting\n");              \
+                aml_set_reg32_bits(reg, 0x5, 28, 3);    \
+                aml_set_reg32_bits(reg, 0x4, 28, 3);    \
             }                                           \
         }                                               \
         if (cnt < 9)                                     \
@@ -115,31 +115,33 @@ static void set_hdmitx_sys_clk(void)
     aml_set_reg32_bits(P_HHI_HDMI_CLK_CNTL, 1, 8, 1);
 }
 
+static unsigned int acq_val = 0;
 static void set_hpll_clk_out(unsigned clk)
 {
-    aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL5, 1, 30, 1);
+    int i = 0;
 
+    for (i=0;i<10;i++) {
     check_clk_config(clk);
-    printk("config HPLL\n");
+    printk("config HPLL = %d\n", clk);
     switch (clk) {
     case 2970:
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL, 0x5000023d);
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 1, 14, 1); // div mode
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0xe00, 0, 12); // div_frac
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL3, 0x0d5c5091);
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL4, 0x801da72c);
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x71486980);
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL6, 0x00000e55);
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL, 0x5, 28, 3);  //reset hpll
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL, 0x4, 28, 3);
-        WAIT_FOR_PLL_LOCKED(P_HHI_HDMI_PLL_CNTL);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL, 0x5000023d);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL2, 0);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL3, 0x135c5091);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL4, 0x801da72c);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x714869c0);    //5940 0x71c86900      // 0x71486900 2970
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL6, 0x00000e55);
+            aml_write_reg32(P_HHI_HDMI_PLL_CNTL, 0x4000023d);
+            printk("waiting HPLL lock\n");
+            WAIT_FOR_PLL_LOCKED(P_HHI_HDMI_PLL_CNTL);
+            aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 1, 14, 1); // div mode
+            aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0xe00, 0, 12); // div_frac
         break;
     case 4320:
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0, 14, 1); // div mode
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0x000, 0, 12); // div_frac
+        aml_write_reg32(P_HHI_HDMI_PLL_CNTL2, 0);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL3, 0x0d5c5091);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL4, 0x801da72c);
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x71486980);
+        aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x714869c0);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL6, 0x00000e55);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL, 0x0000022d);
         aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL, 0x5, 28, 3);  //reset hpll
@@ -147,11 +149,10 @@ static void set_hpll_clk_out(unsigned clk)
         WAIT_FOR_PLL_LOCKED(P_HHI_HDMI_PLL_CNTL);
         break;
     case 2448:
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 1, 14, 1); // div mode
-        aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 0xe00, 0, 12); // div_frac
+        aml_write_reg32(P_HHI_HDMI_PLL_CNTL2, 0);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL3, 0x0d5c5091);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL4, 0x801da72c);
-        aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x71486980);
+        aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x714869c0);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL6, 0x00000e55);
         aml_write_reg32(P_HHI_HDMI_PLL_CNTL, 0x00000266);
         aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL, 0x5, 28, 3);  //reset hpll
@@ -162,6 +163,45 @@ static void set_hpll_clk_out(unsigned clk)
         printk("error hpll clk: %d\n", clk);
         break;
     }
+
+    // Step 1: close PVT_FIX_EN, enable ACQ
+    mdelay(20);
+    aml_write_reg32(P_HHI_HDMI_PLL_CNTL5, 0x754868c0);
+    // Step 2: read ACQ
+    mdelay(20);
+    acq_val = (aml_read_reg32(P_HHI_HDMI_PLL_CNTL_I) >> 4) & 0xff;
+    printk("acq_val1 = 0x%02x\n", acq_val);
+
+    aml_set_reg32_bits(P_HHI_HDMI_PLL_CNTL2, 1, 14, 1); // div mode
+    mdelay(20);
+
+    acq_val = (aml_read_reg32(P_HHI_HDMI_PLL_CNTL_I) >> 4) & 0xff;
+    printk("acq_val2 = 0x%02x\n", acq_val);
+
+    if (acq_val <= 0x8a) {
+        //aml_write_reg32(P_HHI_HDMI_PLL_CNTL6, 0xe51);
+        mdelay(20);
+    } else {
+        break;
+    }
+}
+    printk("acq_val = 0x%02x, loop = %d.\n", acq_val, i);
+
+/*
+    acq_val = (aml_read_reg32(P_HHI_HDMI_PLL_CNTL_I) >> 4) & 0xff;
+    printk("acq_val3 = 0x%02x\n", acq_val);
+    if ((acq_val <= 0x8a) || (acq_val >= 0xf0)) {
+        loop ++;
+        if (loop > 5) {
+            printk("pll set loop = %d, return\n", loop);
+            return;
+        } else
+            set_hpll_clk_out(clk);
+    } else {
+        printk("config HPLL done\n");
+        return ;
+    }
+*/
     printk("config HPLL done\n");
 }
 
