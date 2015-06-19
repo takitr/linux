@@ -1517,21 +1517,23 @@ void enable_di_post_2 (
 //printk("%s: ei_only %d,buf1_en %d,ei_en %d,di_vpp_en %d,di_ddr_en %d,blend_mtn_en %d,blend_mode %d.\n",
 			 //__func__,ei_only,buf1_en,ei_en,di_vpp_en,di_ddr_en,blend_mtn_en,blend_mode);
 	// motion for current display field.
-	if (blend_mtn_en)
-	{
-		VSYNC_WR_MPEG_REG(DI_MTNPRD_X, (di_mtnprd_mif->start_x <<16) | (di_mtnprd_mif->end_x));				// start_x 0 end_x 719.
-		VSYNC_WR_MPEG_REG(DI_MTNPRD_Y, (di_mtnprd_mif->start_y <<16) | (di_mtnprd_mif->end_y));				// start_y 0 end_y 239.
-   #ifndef NEW_DI_V2
-		VSYNC_WR_MPEG_REG(DI_MTNCRD_X, (di_mtncrd_mif->start_x <<16) | (di_mtncrd_mif->end_x));					// start_x 0 end_x 719.
-		VSYNC_WR_MPEG_REG(DI_MTNCRD_Y, (di_mtncrd_mif->start_y <<16) | (di_mtncrd_mif->end_y));					// start_y 0 end_y 239.
-	 #endif
-	VSYNC_WR_MPEG_REG(DI_MTNRD_CTRL, (di_mtnprd_mif->canvas_num <<8 ) |									//mtnp canvas index.
+	VSYNC_WR_MPEG_REG(DI_MTNPRD_X, (di_mtnprd_mif->start_x <<16) | (di_mtnprd_mif->end_x));
+	// start_x 0 end_x 719.
+	VSYNC_WR_MPEG_REG(DI_MTNPRD_Y, (di_mtnprd_mif->start_y <<16) | (di_mtnprd_mif->end_y));
+	// start_y 0 end_y 239.
+	#ifndef NEW_DI_V2
+	VSYNC_WR_MPEG_REG(DI_MTNCRD_X, (di_mtncrd_mif->start_x <<16) | (di_mtncrd_mif->end_x));
+	// start_x 0 end_x 719.
+	VSYNC_WR_MPEG_REG(DI_MTNCRD_Y, (di_mtncrd_mif->start_y <<16) | (di_mtncrd_mif->end_y));
+	// start_y 0 end_y 239.
+	#endif
+	if (blend_mtn_en) {
+		VSYNC_WR_MPEG_REG(DI_MTNRD_CTRL, (di_mtnprd_mif->canvas_num <<8 ) | //mtnp canvas index.
 					 (urgent << 16) // urgent
-					 #ifndef NEW_DI_V2
+					#ifndef NEW_DI_V2
 					 |di_mtncrd_mif->canvas_num
-					 #endif
-					 );
-										 // current field mtn canvas index
+					#endif
+					 ); // current field mtn canvas index
 	}
 
 	if (di_ddr_en)

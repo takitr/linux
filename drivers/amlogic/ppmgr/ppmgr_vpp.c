@@ -496,7 +496,7 @@ void vf_ppmgr_unreg_provider(void)
     dec_vfp = NULL;
 
     ppmgr_device.started = 0;
-    //ppmgr_device.use_prot = 0;
+    ppmgr_device.use_prot = 0;
 
     mutex_unlock(&ppmgr_mutex);
 }

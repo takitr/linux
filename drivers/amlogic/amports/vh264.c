@@ -1433,9 +1433,10 @@ static void vh264_isr(void)
         // reserved for slice group
         WRITE_VREG(AV_SCRATCH_0, 0);
     } else if ((cpu_cmd & 0xff) == 6) {
+        amvdec_stop();
+        WRITE_VREG(ASSIST_MBOX1_CLR_REG, 1);
         vh264_running = 0;
         fatal_error_flag = DECODER_FATAL_ERROR_UNKNOW;
-        // this is fatal error, need restart
         printk("fatal error happend\n");
         if (!fatal_error_reset) {
             schedule_work(&error_wd_work);

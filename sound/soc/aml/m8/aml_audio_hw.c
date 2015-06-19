@@ -152,7 +152,7 @@ void audio_set_aiubuf(u32 addr, u32 size, unsigned int channel)
     }
 
     WRITE_MPEG_REG(AIU_I2S_MISC,        0x0004);    // Hold I2S
-    WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,   0x0000);    // No mute, no swap
+    //WRITE_MPEG_REG(AIU_I2S_MUTE_SWAP,   0x0000);    // No mute, no swap
     // As the default amclk is 24.576MHz, set i2s and iec958 divisor appropriately so as not to exceed the maximum sample rate.
     WRITE_MPEG_REG(AIU_I2S_MISC,        0x0010 );   // Release hold and force audio data to left or right
 

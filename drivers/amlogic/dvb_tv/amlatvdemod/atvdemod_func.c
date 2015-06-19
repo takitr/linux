@@ -35,6 +35,17 @@ static int if_inv = 0;
 module_param(if_inv, int, 0644);
 MODULE_PARM_DESC(if_inv, "\n if_inv\n");
 
+//GDE_Curve
+//			0: CURVE-M
+//			1: CURVE-A
+//			2: CURVE-B
+//			3: CURVE-CHINA
+//			4: BYPASS
+//BG --> CURVE-B(BYPASS)
+//DK --> CURVE-CHINA
+//NM --> CURVE-M
+//I --> BYPASS
+//SECAM --> BYPASS
 static int gde_curve = 0;
 module_param(gde_curve, int, 0644);
 MODULE_PARM_DESC(gde_curve, "\n gde_curve\n");
@@ -295,7 +306,7 @@ void configure_receiver(int Broadcast_Standard, unsigned int Tuner_IF_Frequency,
 
 	pr_info("ATV-DMD configure receiver register\n");
 
- 	if ((Broadcast_Standard==0) | (Broadcast_Standard==1) | (Broadcast_Standard==2)){
+	if ((Broadcast_Standard == 0) | (Broadcast_Standard == 1) | (Broadcast_Standard == 2)) {
 		gp_coeff_1[          0] = 0x57777;
 		gp_coeff_1[          1] = 0xdd777;
 		gp_coeff_1[          2] = 0x7d777;
@@ -372,8 +383,8 @@ void configure_receiver(int Broadcast_Standard, unsigned int Tuner_IF_Frequency,
 		gp_coeff_2[         36] = 0x77777;
 		gp_cv_g1 = 0x2b062d;
 		gp_cv_g2 = 0x40fa2d;
-}
-else if ((Broadcast_Standard==3) | (Broadcast_Standard==5) | (Broadcast_Standard==6) | (Broadcast_Standard==7)) {
+	}
+	else if ((Broadcast_Standard == 3) | (Broadcast_Standard == 5) | (Broadcast_Standard == 6) | (Broadcast_Standard == 7)) {
 		gp_coeff_1[          0] = 0x75777;
 		gp_coeff_1[          1] = 0x57777;
 		gp_coeff_1[          2] = 0x7d777;
@@ -450,9 +461,9 @@ else if ((Broadcast_Standard==3) | (Broadcast_Standard==5) | (Broadcast_Standard
 		gp_coeff_2[         36] = 0x77777;
 		gp_cv_g1 = 0x2b2834;
 		gp_cv_g2 = 0x3f6c2e;
-}
- 	 else if ((Broadcast_Standard==8) | (Broadcast_Standard==6))
-{
+	}
+	else if ((Broadcast_Standard == 8) |(Broadcast_Standard == 6))
+	{
 		gp_coeff_1[          0] = 0x47777;
 		gp_coeff_1[          1] = 0x77777;
 		gp_coeff_1[          2] = 0x5d777;
@@ -529,9 +540,9 @@ else if ((Broadcast_Standard==3) | (Broadcast_Standard==5) | (Broadcast_Standard
 		gp_coeff_2[         36] = 0x77777;
 		gp_cv_g1 = 0x20682b;
 		gp_cv_g2 = 0x29322f;
-}
-else if (Broadcast_Standard==10)
-{
+	}
+	else if (Broadcast_Standard == 10)
+	{
 		gp_coeff_1[          0] = 0x77777;
 		gp_coeff_1[          1] = 0x75777;
 		gp_coeff_1[          2] = 0x7d777;
@@ -608,404 +619,404 @@ else if (Broadcast_Standard==10)
 		gp_coeff_2[         36] = 0x77777;
 		gp_cv_g1 = 0x72242f;
 		gp_cv_g2 = 0x28822a;
-		}
+	}
 
  	if ((Broadcast_Standard == 0)  | (Broadcast_Standard == 1))
-  		{
-  		   sif_co_mx=0xb8; //184
-  		   sif_fi_mx=0x0;
-  		   sif_ic_bw=0x1;
-  		   sif_bb_bw=0x1;
-  		   sif_deemp=0x1;
-  		   sif_cfg_demod=(sound_format==0)?0x0:0x2;
-  		   sif_fm_gain=0x4;
-  		}
-  	else if (Broadcast_Standard == 3)
-		{
-  		   sif_co_mx=0xa6;
-  		   sif_fi_mx=0x10;
-  		   sif_ic_bw=0x2;
-  		   sif_bb_bw=0x0;
-  		   sif_deemp=0x2;
-  		   sif_cfg_demod=(sound_format==0)?0x0:0x2;
-  		   sif_fm_gain=0x3;
-  		}
-  		else if (Broadcast_Standard == 11)
-		{
-  		   sif_co_mx=154;
-  		   sif_fi_mx=240;
-  		   sif_ic_bw=2;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 5)
-		{
-  		   sif_co_mx=150;
-  		   sif_fi_mx=16;
-  		   sif_ic_bw=2;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 6)
-		{
-  		   sif_co_mx=158;
-  		   sif_fi_mx=208;
-  		   sif_ic_bw=3;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 10)
-		{
-  		   sif_co_mx=153;
-  		   sif_fi_mx=56;
-  		   sif_ic_bw=3;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 7)
-		{
-  		   sif_co_mx=163;
-  		   sif_fi_mx=40;
-  		   sif_ic_bw=0;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 9)
-		{
-  		   sif_co_mx=159;
-  		   sif_fi_mx=200;
-  		   sif_ic_bw=3;
-  		   sif_bb_bw=0;
-  		   sif_deemp=0;
-  		   sif_cfg_demod=(sound_format==0)?1:2;
-  		   sif_fm_gain=5;
-  		}
-  		else if (Broadcast_Standard == 8)
-		{
-  		   sif_co_mx=159;
-  		   sif_fi_mx=200;
-  		   sif_ic_bw=3;
-  		   sif_bb_bw=0;
-  		   sif_deemp=2;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-  		else if (Broadcast_Standard == 2)
-		{
-  		   sif_co_mx=182;
-  		   sif_fi_mx=16;
-  		   sif_ic_bw=1;
-  		   sif_bb_bw=0;
-  		   sif_deemp=1;
-  		   sif_cfg_demod=(sound_format==0)?0:2;
-  		   sif_fm_gain=3;
-  		}
-		sif_fm_gain -= 2;//avoid sound overflow@guanzhong
- 	//FE PATH
+	{
+		sif_co_mx=0xb8; //184
+		sif_fi_mx=0x0;
+		sif_ic_bw=0x1;
+		sif_bb_bw=0x1;
+		sif_deemp=0x1;
+		sif_cfg_demod=(sound_format == 0) ? 0x0:0x2;
+		sif_fm_gain=0x4;
+	}
+	else if (Broadcast_Standard == 3)
+	{
+		sif_co_mx=0xa6;
+		sif_fi_mx=0x10;
+		sif_ic_bw=0x2;
+		sif_bb_bw=0x0;
+		sif_deemp=0x2;
+		sif_cfg_demod=(sound_format == 0) ? 0x0:0x2;
+		sif_fm_gain=0x3;
+	}
+	else if (Broadcast_Standard == 11)
+	{
+		sif_co_mx=154;
+		sif_fi_mx=240;
+		sif_ic_bw=2;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 5)
+	{
+		sif_co_mx=150;
+		sif_fi_mx=16;
+		sif_ic_bw=2;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 6)
+	{
+		sif_co_mx=158;
+		sif_fi_mx=208;
+		sif_ic_bw=3;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 10)
+	{
+		sif_co_mx=153;
+		sif_fi_mx=56;
+		sif_ic_bw=3;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 7)
+	{
+		sif_co_mx=163;
+		sif_fi_mx=40;
+		sif_ic_bw=0;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 9)
+	{
+		sif_co_mx=159;
+		sif_fi_mx=200;
+		sif_ic_bw=3;
+		sif_bb_bw=0;
+		sif_deemp=0;
+		sif_cfg_demod=(sound_format == 0) ? 1:2;
+		sif_fm_gain=5;
+	}
+	else if (Broadcast_Standard == 8)
+	{
+		sif_co_mx=159;
+		sif_fi_mx=200;
+		sif_ic_bw=3;
+		sif_bb_bw=0;
+		sif_deemp=2;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	else if (Broadcast_Standard == 2)
+	{
+		sif_co_mx=182;
+		sif_fi_mx=16;
+		sif_ic_bw=1;
+		sif_bb_bw=0;
+		sif_deemp=1;
+		sif_cfg_demod=(sound_format == 0) ? 0:2;
+		sif_fm_gain=3;
+	}
+	sif_fm_gain -= 2;//avoid sound overflow@guanzhong
+	//FE PATH
 	pr_info("ATV-DMD configure mixer\n");
- 	   	if (Broadcast_Standard==4) {
- 	     	tmp_int = (Tuner_IF_Frequency/125000);
+	if (Broadcast_Standard == 4) {
+		tmp_int = (Tuner_IF_Frequency/125000);
 
- 	     	if (Tuner_Input_IF_inverted==0x0) {
- 	     		mixer1 = -tmp_int;
-			}
- 	     	else {
- 	     		mixer1 = tmp_int;
-			}
-
- 	     	mixer3 = 0;
- 	     	mixer3_bypass = 0;
- 	    }
- 	   	else
- 	    {
- 	       	tmp_int = (Tuner_IF_Frequency/125000);
-			pr_info("ATV-DMD configure mixer 1\n");
-
- 	     	if (Tuner_Input_IF_inverted==0x0) {
- 	     		mixer1 = 0xe8 -tmp_int;
-			}
- 	     	else {
- 	     		mixer1 = tmp_int - 0x18;
-			}
-
-			pr_info("ATV-DMD configure mixer 2\n");
- 	     	mixer3 = 0x30;
- 	     	mixer3_bypass = 0x1;
- 	     }
-
-		pr_info("ATV-DMD configure mixer 3\n");
- 	   	atv_dmd_wr_byte(APB_BLOCK_ADDR_MIXER_1,0x0,mixer1);
- 	   	atv_dmd_wr_word(APB_BLOCK_ADDR_MIXER_3,0x0,(((mixer3 & 0xff) << 8) | (mixer3_bypass & 0xff)));
-
-
- 		if (Broadcast_Standard==9) {
- 	   		atv_dmd_wr_long(APB_BLOCK_ADDR_ADC_SE,0x0,0x03180e0f);
+		if (Tuner_Input_IF_inverted == 0x0) {
+			mixer1 = -tmp_int;
 		}
- 		else {
- 			atv_dmd_wr_long(APB_BLOCK_ADDR_ADC_SE,0x0,0x03150e0f);
- 	  	}
-		if(amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840){
-			/*config pwm for tuner r840*/
-			atv_dmd_wr_byte(APB_BLOCK_ADDR_ADC_SE,1,0xf);//Kd = 0xf
+		else {
+			mixer1 = tmp_int;
 		}
 
+		mixer3 = 0;
+		mixer3_bypass = 0;
+	}
+	else
+	{
+		tmp_int = (Tuner_IF_Frequency/125000);
+		pr_info("ATV-DMD configure mixer 1\n");
 
- 	//GP Filter
+		if (Tuner_Input_IF_inverted == 0x0) {
+			mixer1 = 0xe8 -tmp_int;
+		}
+		else {
+			mixer1 = tmp_int - 0x18;
+		}
+
+		pr_info("ATV-DMD configure mixer 2\n");
+		mixer3 = 0x30;
+		mixer3_bypass = 0x1;
+	}
+
+	pr_info("ATV-DMD configure mixer 3\n");
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_MIXER_1,0x0,mixer1);
+	atv_dmd_wr_word(APB_BLOCK_ADDR_MIXER_3,0x0,(((mixer3 & 0xff) << 8) | (mixer3_bypass & 0xff)));
+
+
+	if (Broadcast_Standard == 9) {
+		atv_dmd_wr_long(APB_BLOCK_ADDR_ADC_SE,0x0,0x03180e0f);
+	}
+	else {
+		atv_dmd_wr_long(APB_BLOCK_ADDR_ADC_SE,0x0,0x03150e0f);
+	}
+	if (amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840) {
+		/*config pwm for tuner r840*/
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_ADC_SE,1,0xf);//Kd = 0xf
+	}
+
+
+	//GP Filter
 	pr_info("ATV-DMD configure GP_filter\n");
- 	if (Broadcast_Standard==4)
- 	  {
- 	    cv = gp_cv_g1;
- 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x0,(0x08000000 |  (cv & 0x7fffff)));
- 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x04);
- 	  	for (i =0; i< 9; i=i+1)
- 	  	 	{
- 	  	 	   //super_coef = {gp_coeff_1[i*4],gp_coeff_1[i*4+1],gp_coeff_1[i*4+2],gp_coeff_1[i*4+3]};
-			   super_coef0 = (((gp_coeff_1[i*4+2] & 0xfff) << 20) | (gp_coeff_1[i*4+3] & 0xfffff));
-			   super_coef1 = (((gp_coeff_1[i*4] & 0xf) << 28) | ((gp_coeff_1[i*4+1] & 0xfffff) << 8) | ((gp_coeff_1[i*4+2] >> 12) & 0xff));
-			   super_coef2 = ((gp_coeff_1[i*4] >> 4) & 0xffff);
+	if (Broadcast_Standard == 4)
+	{
+		cv = gp_cv_g1;
+		atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x0,(0x08000000 |  (cv & 0x7fffff)));
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x04);
+		for (i =0; i< 9; i=i+1)
+		{
+			//super_coef = {gp_coeff_1[i*4],gp_coeff_1[i*4+1],gp_coeff_1[i*4+2],gp_coeff_1[i*4+3]};
+			super_coef0 = (((gp_coeff_1[i*4+2] & 0xfff) << 20) | (gp_coeff_1[i*4+3] & 0xfffff));
+			super_coef1 = (((gp_coeff_1[i*4] & 0xf) << 28) | ((gp_coeff_1[i*4+1] & 0xfffff) << 8) | ((gp_coeff_1[i*4+2] >> 12) & 0xff));
+			super_coef2 = ((gp_coeff_1[i*4] >> 4) & 0xffff);
 
- 	  	 	   //atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,super_coef[79:48]);
- 	  	 	   //atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC,super_coef[47:16]);
- 	  	 	   //atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,super_coef[15:0]);
- 	  	 	   atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
- 	  	 	   atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
- 	  	 	   atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
- 	  	 	   atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
- 	  	 	}
- 	  	//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,{gp_coeff_1[36],12'd0});
- 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_1[36] & 0xfffff) << 12));
- 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,0x09);
+			//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,super_coef[79:48]);
+			//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC,super_coef[47:16]);
+			//atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,super_coef[15:0]);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
+			atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
+			atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
+		}
+		//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,{gp_coeff_1[36],12'd0});
+		atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_1[36] & 0xfffff) << 12));
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,0x09);
 
- 	 }
- 	 else
- 	 {
- 	    cv = gp_cv_g1-gp_cv_g2;
- 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x0,cv & 0x7fffff);
- 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x00);
- 	  	for (i =0; i< 9; i=i+1)
- 	  	 	{
- 	  	       //super_coef = {gp_coeff_1[i*4],gp_coeff_1[i*4+1],gp_coeff_1[i*4+2],gp_coeff_1[i*4+3]};
-               super_coef0 = (((gp_coeff_1[i*4+2] & 0xfff) << 20) | (gp_coeff_1[i*4+3] & 0xfffff));
-               super_coef1 = (((gp_coeff_1[i*4] & 0xf) << 28) | ((gp_coeff_1[i*4+1] & 0xfffff) << 8) | ((gp_coeff_1[i*4+2] >> 12) & 0xff));
-               super_coef2 = ((gp_coeff_1[i*4] >> 4) & 0xffff);
+	}
+	else
+	{
+		cv = gp_cv_g1-gp_cv_g2;
+		atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x0,cv & 0x7fffff);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x00);
+		for (i =0; i< 9; i=i+1)
+		{
+			//super_coef = {gp_coeff_1[i*4],gp_coeff_1[i*4+1],gp_coeff_1[i*4+2],gp_coeff_1[i*4+3]};
+			super_coef0 = (((gp_coeff_1[i*4+2] & 0xfff) << 20) | (gp_coeff_1[i*4+3] & 0xfffff));
+			super_coef1 = (((gp_coeff_1[i*4] & 0xf) << 28) | ((gp_coeff_1[i*4+1] & 0xfffff) << 8) | ((gp_coeff_1[i*4+2] >> 12) & 0xff));
+			super_coef2 = ((gp_coeff_1[i*4] >> 4) & 0xffff);
 
-               //atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,super_coef[79:48]);
-               //atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC,super_coef[47:16]);
-               //atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,super_coef[15:0]);
-               atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
-               atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
- 	  	 	   atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
- 	  	 	   atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
+			//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,super_coef[79:48]);
+			//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC,super_coef[47:16]);
+			//atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,super_coef[15:0]);
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
+			atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
+			atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
 
-			   //atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,{gp_coeff_1[36],12'd0});
- 	   	    }
-               atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_1[36] & 0xfffff) << 12));
-               atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,9);
- 	  		   atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x01);
+			//atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,{gp_coeff_1[36],12'd0});
+		}
+		atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_1[36] & 0xfffff) << 12));
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,9);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x4,0x01);
 
- 	  	for (i =0; i< 9; i=i+1)
- 	  	 	{
- 	  	 	   //super_coef = {gp_coeff_2[i*4],gp_coeff_2[i*4+1],gp_coeff_2[i*4+2],gp_coeff_2[i*4+3]};
-               super_coef0 = (((gp_coeff_2[i*4+2] & 0xfff) << 20) | (gp_coeff_2[i*4+3] & 0xfffff));
-               super_coef1 = (((gp_coeff_2[i*4] & 0xf) << 28) | ((gp_coeff_2[i*4+1] & 0xfffff) << 8) | ((gp_coeff_2[i*4+2] >> 12) & 0xff));
-               super_coef2 = ((gp_coeff_2[i*4] >> 4) & 0xffff);
+		for (i =0; i< 9; i=i+1)
+		{
+			//super_coef = {gp_coeff_2[i*4],gp_coeff_2[i*4+1],gp_coeff_2[i*4+2],gp_coeff_2[i*4+3]};
+			super_coef0 = (((gp_coeff_2[i*4+2] & 0xfff) << 20) | (gp_coeff_2[i*4+3] & 0xfffff));
+			super_coef1 = (((gp_coeff_2[i*4] & 0xf) << 28) | ((gp_coeff_2[i*4+1] & 0xfffff) << 8) | ((gp_coeff_2[i*4+2] >> 12) & 0xff));
+			super_coef2 = ((gp_coeff_2[i*4] >> 4) & 0xffff);
 
-			   atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
-               atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
-               atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
-               atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
- 	  	 	}
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8, (((super_coef2 & 0xffff) << 16) | ((super_coef1 & 0xffff0000) >> 16)));
+			atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0xC, (((super_coef1 & 0xffff) << 16) | ((super_coef0 & 0xffff0000) >> 16)));
+			atv_dmd_wr_word(APB_BLOCK_ADDR_GP_VD_FLT,0x10,(super_coef0 & 0xffff));
+			atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,i);
+		}
 
- 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_2[36] & 0xfffff) << 12));
- 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,0x09);
- 	 }
+		atv_dmd_wr_long(APB_BLOCK_ADDR_GP_VD_FLT,0x8,((gp_coeff_2[36] & 0xfffff) << 12));
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GP_VD_FLT,0x05,0x09);
+	}
 
- 	//CRVY
+	//CRVY
 	pr_info("ATV-DMD configure CRVY\n");
- 	   if (Broadcast_Standard==4)
- 	     {
- 	       crvy_reg_1=0xFF;
- 	       crvy_reg_2=0x00;
- 	     }
- 	   else
- 	     {
- 	       crvy_reg_1=0x04;
- 	       crvy_reg_2=0x01;
- 	     }
+	if (Broadcast_Standard == 4)
+	{
+		crvy_reg_1=0xFF;
+		crvy_reg_2=0x00;
+	}
+	else
+	{
+		crvy_reg_1=0x04;
+		crvy_reg_2=0x01;
+	}
 
- 	   atv_dmd_wr_byte(APB_BLOCK_ADDR_CARR_RCVY,0x29,crvy_reg_1);
-	   pr_info("ATV-DMD configure rcvy 2\n");
-	   pr_info("ATV-DMD configure rcvy, crvy_reg_2 = %x \n", crvy_reg_2);
- 	   atv_dmd_wr_byte(APB_BLOCK_ADDR_CARR_RCVY,0x20,crvy_reg_2);
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_CARR_RCVY,0x29,crvy_reg_1);
+	pr_info("ATV-DMD configure rcvy 2\n");
+	pr_info("ATV-DMD configure rcvy, crvy_reg_2 = %x \n", crvy_reg_2);
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_CARR_RCVY,0x20,crvy_reg_2);
 
- 	//SOUND SUPPRESS
+	//SOUND SUPPRESS
 	pr_info("ATV-DMD configure sound suppress\n");
 
- 	   if ((Broadcast_Standard==4) | (sound_format== 0))
- 			atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_VD_IF,0x02,0x01);
- 		else
- 	  		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_VD_IF,0x02,0x00);
+	if ((Broadcast_Standard == 4) |(sound_format == 0))
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_VD_IF,0x02,0x01);
+	else
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_VD_IF,0x02,0x00);
 
- 	//SIF
+	//SIF
 	pr_info("ATV-DMD configure sif\n");
- 	 	if (!(Broadcast_Standard==4))
- 	 	  {
- 	 		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x03,sif_ic_bw);
-			atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x01,sif_fi_mx);
- 	 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x02,sif_co_mx);
+	if (!(Broadcast_Standard == 4))
+	{
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x03,sif_ic_bw);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x01,sif_fi_mx);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_IC_STD,0x02,sif_co_mx);
 
-  	 		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,0x00,(((sif_bb_bw & 0xff) << 24) | ((sif_deemp & 0xff) << 16) | 0x0500 | sif_fm_gain));
- 	 		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_STG_2,0x06,sif_cfg_demod);
- 	 	  }
+		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_2,0x00,(((sif_bb_bw & 0xff) << 24) | ((sif_deemp & 0xff) << 16) | 0x0500 | sif_fm_gain));
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_SIF_STG_2,0x06,sif_cfg_demod);
+	}
 
- 	 	if (Broadcast_Standard==4)
- 	 	  {}
- 	 	else if (sound_format==0)
- 	 	  {
- 	 		tmp_int = 0;
- 	 		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_3,0x00, (0x01000000 | (tmp_int & 0xffffff)));
- 	 	  }
- 	 	else
- 	 	  {
- 	 		tmp_int = (256 - sif_co_mx)<<13;
- 	 		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_3,0x00, (tmp_int & 0xffffff));
- 	 	   }
+	if (Broadcast_Standard == 4)
+	{}
+	else if (sound_format == 0)
+	{
+		tmp_int = 0;
+		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_3,0x00, (0x01000000 | (tmp_int & 0xffffff)));
+	}
+	else
+	{
+		tmp_int = (256 - sif_co_mx)<<13;
+		atv_dmd_wr_long(APB_BLOCK_ADDR_SIF_STG_3,0x00, (tmp_int & 0xffffff));
+	}
 
- 	 	if (Broadcast_Standard==4)
- 	 	  {
- 	 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x02040E0A);
-			atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x0F0D);
- 	 	  }
- 	 	else if (sound_format==0)
- 	 	  {
- 	 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_IC_AGC,0x00,0x04);
- 	 	  }
- 	 	else if (Broadcast_Standard==9)
- 	 	  {
- 	 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x0003140A);
- 	 	  	atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x1244); //we lower target agc to avoid saturation
- 	 	  }
- 	 	else
- 	 	  {
- 	 	  	atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x00040E0A);
- 	 	  	atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x0D68);
- 	 	  }
+	if (Broadcast_Standard == 4)
+	{
+		atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x02040E0A);
+		atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x0F0D);
+	}
+	else if (sound_format == 0)
+	{
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_IC_AGC,0x00,0x04);
+	}
+	else if (Broadcast_Standard == 9)
+	{
+		atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x0003140A);
+		atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x1244); //we lower target agc to avoid saturation
+	}
+	else
+	{
+		atv_dmd_wr_long(APB_BLOCK_ADDR_IC_AGC,0x00,0x00040E0A);
+		atv_dmd_wr_word(APB_BLOCK_ADDR_IC_AGC,0x04,0x0D68);
+	}
 
- 	 //VAGC
+	//VAGC
 	pr_info("ATV-DMD configure vagc\n");
- 	 	atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x48,0x9B6F2C00); //bw select mode
- 	 	atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x37,0x1C); //disable prefilter
+	atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x48,0x9B6F2C00); //bw select mode
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x37,0x1C); //disable prefilter
 
- 	 	if (Broadcast_Standard==9)
- 	 	  {
- 	 		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x44,0x4450);
- 	 		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x46,0x44);
- 	 		atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x4,0x3E04FC);
- 	 		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x3C,0x4848);
- 	 	   	atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x3E,0x48);
- 	 	  }
- 	 	else
- 	      {
- 	 		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x44,0xB800);
- 	 		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x46,0x08);
- 	 		atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x4,0x3C04FC);
- 	 		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x3C,0x1818);
- 	 	   	atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x3E,0x10);
- 	 	  }
+	if (Broadcast_Standard == 9)
+	{
+		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x44,0x4450);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x46,0x44);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x4,0x3E04FC);
+		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x3C,0x4848);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x3E,0x48);
+	}
+	else
+	{
+		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x44,0xB800);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x46,0x08);
+		atv_dmd_wr_long(APB_BLOCK_ADDR_VDAGC,0x4,0x3C04FC);
+		atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x3C,0x1818);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x3E,0x10);
+	}
 
- 	 	 //tmp_real = $itor(Hz_Freq)/0.23841858; //TODO
- 	 	 //tmp_int = $rtoi(tmp_real); //TODO
- 	 	 //tmp_int = Hz_Freq/0.23841858; //TODO
- 	 	 //tmp_int_2 = ((unsigned long)15625)*10000/23841858;
- 	 	 //tmp_int_2 = ((unsigned long)Hz_Freq)*10000/23841858;
- 	 	 atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x10,(freq_hz_cvrt >> 8) & 0xffff);
- 	 	 atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x12,(freq_hz_cvrt & 0xff));
+	//tmp_real = $itor(Hz_Freq)/0.23841858; //TODO
+	//tmp_int = $rtoi(tmp_real); //TODO
+	//tmp_int = Hz_Freq/0.23841858; //TODO
+	//tmp_int_2 = ((unsigned long)15625)*10000/23841858;
+	//tmp_int_2 = ((unsigned long)Hz_Freq)*10000/23841858;
+	atv_dmd_wr_word(APB_BLOCK_ADDR_VDAGC,0x10,(freq_hz_cvrt >> 8) & 0xffff);
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_VDAGC,0x12,(freq_hz_cvrt & 0xff));
 
- 	 //OUTPUT STAGE
+	//OUTPUT STAGE
 	pr_info("ATV-DMD configure output stage\n");
- 	   	 if (Broadcast_Standard==4)
- 	   	   {
- 	 	   }
- 	 	 else
- 	 	   {
- 	 	    atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x0,0x00);
- 	 	    atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x1,0x40);
- 	 	    atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x2,0x40);
- 	 	    atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x4,0xFA);
- 	 	    atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x5,0xFA); //TODO
- 	 	   }
+	if (Broadcast_Standard == 4)
+	{
+	}
+	else
+	{
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x0,0x00);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x1,0x40);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x2,0x40);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x4,0xFA);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_DAC_UPS,0x5,0xFA); //TODO
+	}
 
- 	 //GDE FILTER
+	//GDE FILTER
 	pr_info("ATV-DMD configure gde filter\n");
-  		 if (GDE_Curve == 0)
-  					{
-  					  gd_coeff[0]= 0x020; //12'sd32;
-  					  gd_coeff[1]= 0xf5f; //-12'sd161;
-  					  gd_coeff[2]= 0x1fe; //12'sd510;
-  					  gd_coeff[3]= 0xc0b; //-12'sd1013;
-  					  gd_coeff[4]= 0x536; //12'sd1334;
-  					  gd_coeff[5]= 0xb34; //-12'sd1228;
-  					  gd_bypass = 0x1;
-  					 }
-  		 else if (GDE_Curve == 1)
-  					{
-  					  gd_coeff[0]= 0x8;   //12'sd8;
-  					  gd_coeff[1]= 0xfd5; //-12'sd43;
-  					  gd_coeff[2]= 0x8d;  //12'sd141;
-  					  gd_coeff[3]= 0xe69; //-12'sd407;
-  					  gd_coeff[4]= 0x1f1; //12'sd497;
-  					  gd_coeff[5]= 0xe7e; //-12'sd386;
-  					  gd_bypass = 0x1;
-  					 }
-  	   	 else if (GDE_Curve == 2)
-  					{
-  					  gd_coeff[0]= 0x35;  //12'sd53;
-  					  gd_coeff[1]= 0xf41; //-12'sd191;
-  					  gd_coeff[2]= 0x68;  //12'sd104;
-  					  gd_coeff[3]= 0xea5; //-12'sd347;
-  					  gd_coeff[4]= 0x322; //12'sd802;
-  					  gd_coeff[5]= 0x1bb; //12'sd443;
-  					  gd_bypass = 0x1;
-  					}
-  		 else if (GDE_Curve == 3)
-  					{
-  					  gd_coeff[0]= 0xf;   //12'sd15;
-  					  gd_coeff[1]= 0xfb5; //-12'sd75;
-  					  gd_coeff[2]= 0xcc;  //12'sd204;
-  					  gd_coeff[3]= 0x1af; //-12'sd431;
-  					  gd_coeff[4]= 0x226; //12'sd550;
-  					  gd_coeff[5]= 0xd00; //-12'sd766;
-  					  gd_bypass = 0x1;
-  					}
-  		 else
-  					  gd_bypass = 0x0;
+	if (GDE_Curve == 0)
+	{
+		gd_coeff[0]= 0x020; //12'sd32;
+		gd_coeff[1]= 0xf5f; //-12'sd161;
+		gd_coeff[2]= 0x1fe; //12'sd510;
+		gd_coeff[3]= 0xc0b; //-12'sd1013;
+		gd_coeff[4]= 0x536; //12'sd1334;
+		gd_coeff[5]= 0xb34; //-12'sd1228;
+		gd_bypass = 0x1;
+	}
+	else if (GDE_Curve == 1)
+	{
+		gd_coeff[0]= 0x8;   //12'sd8;
+		gd_coeff[1]= 0xfd5; //-12'sd43;
+		gd_coeff[2]= 0x8d;  //12'sd141;
+		gd_coeff[3]= 0xe69; //-12'sd407;
+		gd_coeff[4]= 0x1f1; //12'sd497;
+		gd_coeff[5]= 0xe7e; //-12'sd386;
+		gd_bypass = 0x1;
+	}
+	else if (GDE_Curve == 2)
+	{
+		gd_coeff[0]= 0x35;  //12'sd53;
+		gd_coeff[1]= 0xf41; //-12'sd191;
+		gd_coeff[2]= 0x68;  //12'sd104;
+		gd_coeff[3]= 0xea5; //-12'sd347;
+		gd_coeff[4]= 0x322; //12'sd802;
+		gd_coeff[5]= 0x1bb; //12'sd443;
+		gd_bypass = 0x1;
+	}
+	else if (GDE_Curve == 3)
+	{
+		gd_coeff[0]= 0xf;   //12'sd15;
+		gd_coeff[1]= 0xfb5; //-12'sd75;
+		gd_coeff[2]= 0xcc;  //12'sd204;
+		gd_coeff[3]= 0xe51; //-12'sd431;
+		gd_coeff[4]= 0x226; //12'sd550;
+		gd_coeff[5]= 0xd02; //-12'sd766;
+		gd_bypass = 0x1;
+	}
+	else
+		gd_bypass = 0x0;
 
- 	 	if (gd_bypass==0x0)
- 	 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0D,gd_bypass);
- 	 	else
- 	 	  {
- 	 	  	for (i =0; i< 6; i=i+1)
- 	 	  	  atv_dmd_wr_word(APB_BLOCK_ADDR_GDE_EQUAL,i<<1,gd_coeff[i]);
- 	 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0C,0x01);
- 	 	  	atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0D,gd_bypass);
- 	 	  }
+	if (gd_bypass == 0x0)
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0D,gd_bypass);
+	else
+	{
+		for (i =0; i< 6; i=i+1)
+		atv_dmd_wr_word(APB_BLOCK_ADDR_GDE_EQUAL,i<<1,gd_coeff[i]);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0C,0x01);
+		atv_dmd_wr_byte(APB_BLOCK_ADDR_GDE_EQUAL,0x0D,gd_bypass);
+	}
 
- 	  //PWM
-		pr_info("ATV-DMD configure pwm\n");
- 	  atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,0x00,0x1f40);  //4KHz
-  	  atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,0x04,0xc8);  //26 dB dynamic range
-  	  atv_dmd_wr_byte(APB_BLOCK_ADDR_AGC_PWM,0x09,0xa);
-	  if(amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840){
+	//PWM
+	pr_info("ATV-DMD configure pwm\n");
+	atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,0x00,0x1f40);  //4KHz
+	atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,0x04,0xc8);  //26 dB dynamic range
+	atv_dmd_wr_byte(APB_BLOCK_ADDR_AGC_PWM,0x09,0xa);
+	if (amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840) {
 		/*config pwm for tuner r840*/
 		atv_dmd_wr_long(APB_BLOCK_ADDR_AGC_PWM,0,0xc80);//pwm freq = 10khz
 		//atv_dmd_wr_byte(APB_BLOCK_ADDR_ADC_SE,1,0xf);//Kd = 0xf
@@ -1208,35 +1219,42 @@ void atv_dmd_set_std(void)
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_BG;
 		if_freq = 3250000;
+		gde_curve = 2;
 	} else if (ptstd & V4L2_STD_PAL_DK) {
 		amlatvdemod_devp->fre_offset = 2250000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		if_freq = 3250000;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_DK;
+		gde_curve = 3;
 	} else if (ptstd & V4L2_STD_PAL_M) {
 		amlatvdemod_devp->fre_offset = 2250000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_60HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_M;
 		if_freq = 4250000;
+		gde_curve = 0;
 	} else if (ptstd & V4L2_STD_NTSC_M) {
 		amlatvdemod_devp->fre_offset = 1750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_60HZ_VERT;
 		if_freq = 4250000;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC;
+		gde_curve = 0;
 	} else if (ptstd & V4L2_STD_NTSC_M_JP) {
 		amlatvdemod_devp->fre_offset = 1750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_NTSC_J;
 		if_freq = 4250000;
+		gde_curve = 0;
 	} else if (ptstd & V4L2_STD_PAL_I) {
 		amlatvdemod_devp->fre_offset = 2750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_PAL_I;
 		if_freq = 3250000;
+		gde_curve = 4;
 	} else if (ptstd & (V4L2_STD_SECAM_L | V4L2_STD_SECAM_LC)) {
 		amlatvdemod_devp->fre_offset = 2750000;
 		freq_hz_cvrt = AML_ATV_DEMOD_FREQ_50HZ_VERT;
 		broad_std = AML_ATV_DEMOD_VIDEO_MODE_PROP_SECAM_L;
+		gde_curve = 4;
 	}
 	if (amlatvdemod_devp->parm.tuner_id == AM_TUNER_R840) {
 		if_freq = amlatvdemod_devp->parm.if_freq;

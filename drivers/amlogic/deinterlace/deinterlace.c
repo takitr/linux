@@ -3834,6 +3834,12 @@ static void di_set_para_by_tvinfo(vframe_t* vframe)
 		pr_info("%s: tvinfo change, reset di Reg in tuner source \n", __FUNCTION__);
 	   }
 	}
+	/* modify for fulldown 3:2 cave subtitle pattern */
+	if(vframe_source_type == VFRAME_SOURCE_TYPE_TUNER ||
+			vframe_source_type == VFRAME_SOURCE_TYPE_CVBS)
+		field_32lvl = 62;
+	else
+		field_32lvl = 16;
 
 	//Wr(DI_EI_CTRL0, ei_ctrl0);
 	//Wr(DI_EI_CTRL1, ei_ctrl1);

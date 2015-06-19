@@ -31,6 +31,7 @@
 #include <linux/printk.h>
 
 #include <linux/amlogic/aml_gpio_consumer.h>
+#include <linux/amlogic/display/lcd.h>
 #include <mach/register.h>
 #include <mach/io.h>
 #include <plat/io.h>
@@ -44,6 +45,48 @@
 	__FUNCTION__ , ## arg)
 
 
+static int aml_bl_notifier_callback(struct notifier_block *self,
+				unsigned long event, void *data)
+{
+	struct aml_bl *bdev;
+
+	/* If we aren't interested in this event, skip it immediately */
+	if (event != LCD_EVENT_POWERON && event != LCD_EVENT_POWEROFF)
+		return 0;
+
+	bdev = container_of(self, struct aml_bl, lcd_notif);
+	mutex_lock(&bdev->bd->ops_lock);
+	switch (event) {
+	case LCD_EVENT_POWERON:
+		bdev->bd->props.state |= AML_BL_STATE_POWERON;
+		break;
+	case LCD_EVENT_POWEROFF:
+		bdev->bd->props.state &= ~AML_BL_STATE_POWERON;
+		break;
+	default:
+		break;
+	}
+	backlight_update_status(bdev->bd);
+	mutex_unlock(&bdev->bd->ops_lock);
+	return 0;
+}
+
+static int aml_bl_register_lcd(struct backlight_device *bd)
+{
+	struct aml_bl *bdev;
+	bdev = bl_get_data(bd);
+	memset(&bdev->lcd_notif, 0, sizeof(bdev->lcd_notif));
+	bdev->lcd_notif.notifier_call = aml_bl_notifier_callback;
+
+	return lcd_register_client(&bdev->lcd_notif);
+}
+
+static void aml_bl_unregister_lcd(struct backlight_device *bd)
+{
+	struct aml_bl *bdev;
+	bdev = bl_get_data(bd);
+	lcd_unregister_client(&bdev->lcd_notif);
+}
 
 static void aml_bl_pwm_init(struct backlight_device *bd)
 {
@@ -193,6 +236,9 @@ static void aml_bl_set_level(struct backlight_device *bd, unsigned level)
 
 	INFO("input level %u\n", level);
 
+	if (bdev->curr_brightness == level)
+		return;
+
 	/* validate value */
 	if (level > bdev->d->level_max)
 		level = bdev->d->level_max;
@@ -200,7 +246,7 @@ static void aml_bl_set_level(struct backlight_device *bd, unsigned level)
 		level = bdev->d->level_min;
 
 	/* save the validated level */
-	bdev->curr_level = level;
+	bdev->curr_brightness = level;
 
 	pw = bdev->pwm_max - bdev->pwm_min;
 	lw = bdev->d->level_max - bdev->d->level_min;
@@ -224,7 +270,7 @@ static void aml_bl_set_level(struct backlight_device *bd, unsigned level)
 static int aml_bl_get_brightness(struct backlight_device *bd)
 {
 	struct aml_bl *bdev = bl_get_data(bd);
-	return bdev->curr_level;
+	return bdev->curr_brightness;
 }
 
 static int aml_bl_update_status(struct backlight_device *bd)
@@ -241,9 +287,15 @@ static int aml_bl_update_status(struct backlight_device *bd)
 		brightness = 0;
 	}
 
-	INFO("brightness = %d\n", brightness);
+	if (!(bd->props.state & AML_BL_STATE_POWERON)) {
+		INFO("!AML_BL_STATE_POWERON props.state = 0x%x\n", bd->props.state);
+		brightness = 0;
+	}
 
-	if (brightness == 0) {
+	INFO("new brightness = %d\n", brightness);
+
+	/* backlight is disable */
+	if (!brightness) {
 		aml_bl_power_off(bd);
 		return 0;
 	}
@@ -284,6 +336,7 @@ static int aml_bl_register_backlight(struct platform_device *pdev)
 	props.type = BACKLIGHT_RAW;
 	props.power = FB_BLANK_UNBLANK;
 	props.state &= ~AML_BL_FLAG_POWERON;
+	props.state |= AML_BL_STATE_POWERON;
 
 	bdev->bd = backlight_device_register(AML_BL_NAME, &pdev->dev, bdev,
 					&aml_bl_ops, &props);
@@ -340,7 +393,7 @@ static struct aml_bl_dt aml_bl_dt_def = {
 	//...
 };
 
-static char aml_bl_sel[15];
+static char aml_bl_sel[15] = "backlight_0";
 static int __init aml_bl_select_setup(char *s)
 {
 	char *sel;
@@ -548,6 +601,7 @@ static int aml_bl_probe(struct platform_device *pdev)
 		kfree(bdev);
 		return ret;
 	}
+	aml_bl_register_lcd(bdev->bd);
 
 	/* pwm init */
 	aml_bl_pwm_init(bdev->bd);
@@ -562,6 +616,7 @@ static int __exit aml_bl_remove(struct platform_device *pdev)
 	struct aml_bl *bdev = platform_get_drvdata(pdev);
 
 	amlogic_gpio_free(bdev->d->bl_en_gpio, AML_BL_NAME);
+	aml_bl_unregister_lcd(bdev->bd);
 	backlight_device_unregister(bdev->bd);
 	platform_set_drvdata(pdev, NULL);
 	kfree(bdev);

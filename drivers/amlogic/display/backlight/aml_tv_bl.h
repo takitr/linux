@@ -18,6 +18,9 @@
 #ifndef __AML_TV_BL_H
 #define __AML_TV_BL_H
 
+#include <linux/backlight.h>
+#include <linux/notifier.h>
+
 #define AML_BL_FREQ_DEF			1000	/* unit: HZ */
 
 #define AML_BL_LEVEL_DEF		128
@@ -44,6 +47,8 @@ enum {
 
 /* backlight properties state flag */
 #define AML_BL_FLAG_POWERON		BL_CORE_DRIVER1 // (1 << 31)
+/* 1: power n 0: power off */
+#define AML_BL_STATE_POWERON		BL_CORE_DRIVER2 // (1 << 30)
 
 
 struct aml_bl_dt {
@@ -78,6 +83,7 @@ struct aml_bl {
 	struct pinctrl *p;
 	struct backlight_device *bd;
 	struct platform_device *pdev;
+	struct notifier_block lcd_notif;
 
 	unsigned int pwm_cnt;
 	unsigned int pwm_clk_div;
@@ -85,7 +91,7 @@ struct aml_bl {
 	unsigned int pwm_min;
 
 
-	int curr_level;
+	int curr_brightness;
 };
 
 #endif
