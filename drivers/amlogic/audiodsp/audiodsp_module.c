@@ -79,7 +79,7 @@ unsigned dsp_debug_flag;
 
 extern struct audio_info *get_audio_info(void);
 extern void aml_alsa_hw_reprepare(void);
-extern void dsp_get_debug_interface(int flag);
+extern void dsp_get_debug_interface(void);
 void audiodsp_moniter(unsigned long);
 static struct audiodsp_priv *audiodsp_p;
 #define  DSP_DRIVER_NAME	"audiodsp"
@@ -1240,7 +1240,7 @@ int audiodsp_probe(void)
 #if ((MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6)||(MESON_CPU_TYPE == MESON_CPU_TYPE_MESON6TV))
     dsp_get_debug_interface(0);
 #elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8
-    // to do
+    // to do // dsp_get_debug_interface();
 #endif
 #endif
     return res;
