@@ -1722,7 +1722,7 @@
 		atv_demod0 = "aml_atv_demod";
 		fe0_atv_demod = <0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&dvb_fe_pins>;
+		//pinctrl-0 = <&dvb_fe_pins>;
 	};
 
 	/*smartcard {

@@ -65,13 +65,6 @@
 #define  FIQ_VSYNC
 #endif
 
-
-#ifdef CONFIG_VSYNC_RDMA
-int reset_rdma(void);
-int osd_rdma_enable(u32  enable);
-int read_rdma_table(void);
-#endif
-
 static DEFINE_MUTEX(osd_mutex);
 static DEFINE_SPINLOCK(osd_onoff_lock);
 static DECLARE_WAIT_QUEUE_HEAD(osd_vsync_wq);
@@ -451,7 +444,8 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 	unsigned  int  odd_or_even_line;
 	unsigned  int  scan_line_number = 0;
 	unsigned  char output_type = 0;
-
+	char is_init = 0;
+	osd_rdma_update_config(is_init);
 	reset_rdma();
 	read_rdma_table();
 	output_type = aml_read_reg32(P_VPU_VIU_VENC_MUX_CTRL) & 0x3;
@@ -526,7 +520,6 @@ static irqreturn_t osd_rdma_isr(int irq, void *dev_id)
 		wait_vsync_wakeup();
 #endif
 	}
-	aml_write_reg32(P_RDMA_CTRL, 1 << 24);
 
 	return IRQ_HANDLED;
 }
