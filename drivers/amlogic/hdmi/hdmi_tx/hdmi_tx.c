@@ -1754,7 +1754,7 @@ static int amhdmitx_suspend(struct platform_device *pdev,pm_message_t state)
 #endif
     return 0;
 }
-
+EXPORT_SYMBOL(amhdmitx_suspend);
 static int amhdmitx_resume(struct platform_device *pdev)
 {
 #if 0
@@ -1771,6 +1771,7 @@ static int amhdmitx_resume(struct platform_device *pdev)
 #endif
     return 0;
 }
+EXPORT_SYMBOL(amhdmitx_resume);
 #endif
 
 #ifdef CONFIG_OF
