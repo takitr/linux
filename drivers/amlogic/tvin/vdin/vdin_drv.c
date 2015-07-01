@@ -143,6 +143,7 @@ MODULE_PARM_DESC(vdin_rdma_flag,"vdin_rdma_flag");
 
 static int irq_max_count = 0;
 static void vdin_backup_histgram(struct vframe_s *vf, struct vdin_dev_s *devp);
+extern struct vframe_provider_s * vf_get_provider_by_name(const char *provider_name);
 
 static u32 vdin_get_curr_field_type(struct vdin_dev_s *devp)
 {
@@ -1127,8 +1128,38 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 	bool is_vga = false;
 	signed short step = 0;
 #endif
-	if (!devp) return IRQ_HANDLED;
+	unsigned int vdin0_sw_reset_flag = 0;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
+	struct vframe_provider_s *p = NULL;
+	struct vframe_receiver_s *sub_recv = NULL;
+	char provider_name[] = "deinterlace";
+	char provider_vdin0[] = "vdin0";
+#endif
 
+	if (!devp) return IRQ_HANDLED;
+#if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV
+	p = vf_get_provider_by_name(provider_name);
+	sub_recv = vf_get_receiver(provider_vdin0);
+	if((devp->index == 0) && (p != NULL) && (((0 != strncasecmp(sub_recv->name,"deinterlace",11)))||((READ_VCBUS_REG_BITS(VDIN_WR_CTRL, 25,1) == 1)))) {
+		#ifdef CONFIG_VSYNC_RDMA
+		if(vdin0_sw_reset_flag != 1)
+			vdin0_sw_reset_flag = 1;
+		RDMA2_WR_MPEG_REG_BITS(VIU_SW_RESET, 1, 23, 1);
+		RDMA2_WR_MPEG_REG_BITS(VIU_SW_RESET, 0, 23, 1);
+		#else
+		WRITE_VCBUS_REG_BITS(VIU_SW_RESET, 1, 23, 1);
+		WRITE_VCBUS_REG_BITS(VIU_SW_RESET, 0, 23, 1);
+		#endif
+		if(READ_VCBUS_REG_BITS(VDIN_WR_CTRL, 23,1) != 0)
+			WRITE_VCBUS_REG_BITS(VDIN_WR_CTRL, 0, 23, 1);
+	}
+	else {
+		if(vdin0_sw_reset_flag != 0)
+			vdin0_sw_reset_flag = 0;
+		if(READ_VCBUS_REG_BITS(VDIN_WR_CTRL, 23,1) != 1)
+			WRITE_VCBUS_REG_BITS(VDIN_WR_CTRL, 1, 23, 1);
+	}
+#endif
 	isr_log(devp->vfp);
 	irq_cnt++;
 	/* debug interrupt interval time
@@ -1349,7 +1380,7 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
                 vdin_set_chma_canvas_id(devp->addr_offset,(next_wr_vfe->vf.canvas0Addr>>8)&0xff);
 #endif
         devp->curr_wr_vfe = next_wr_vfe;
-	if(!(devp->flags&VDIN_FLAG_RDMA_ENABLE) && (vdin2nr || !devp->send2di))
+	if(!(devp->flags&VDIN_FLAG_RDMA_ENABLE))
 		vf_notify_receiver(devp->name,VFRAME_EVENT_PROVIDER_VFRAME_READY,NULL);
 
 #ifdef TVAFE_VGA_SUPPORT
@@ -1382,7 +1413,7 @@ irqreturn_t vdin_isr(int irq, void *dev_id)
 irq_handled:
 	spin_unlock_irqrestore(&devp->isr_lock, flags);
 #ifdef CONFIG_VSYNC_RDMA
-if(devp->flags&VDIN_FLAG_RDMA_ENABLE)
+if((devp->flags&VDIN_FLAG_RDMA_ENABLE) || (vdin0_sw_reset_flag == 1))
         rdma2_config(1);//trigger by vdin0 vsync
 #endif
         isr_log(devp->vfp);

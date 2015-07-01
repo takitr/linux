@@ -538,6 +538,16 @@ static long hdmirx_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			cec_post_msg_to_buf(&msg);
 			break;
 		}
+		case HDMI_IOC_HDCP_GET_KSV:{
+			struct _hdcp_ksv ksv;
+			ksv.bksv0 = rx.hdcp.bksv[0];
+			ksv.bksv1 = rx.hdcp.bksv[1];
+			if (copy_to_user(argp, &ksv, sizeof(struct _hdcp_ksv))) {
+				ret = -EFAULT;
+				break;
+			}
+			break;
+		}
 		default:
 			ret = -ENOIOCTLCMD;
 			//pr_info("%s %d is not supported command\n", __func__, cmd);

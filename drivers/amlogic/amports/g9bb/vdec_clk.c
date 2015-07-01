@@ -71,33 +71,17 @@ HHI_VDEC_CLK_CNTL
 //364.29M <-- (2550/7)/1 -- over limit, do not use
 #define VDEC1_364M() WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  (3 << 9) | (0), 0, 16)
 #define VDEC2_364M() WRITE_MPEG_REG(HHI_VDEC2_CLK_CNTL, (3 << 9) | (0))
+#define HEVC_364M()  WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, (3 << 9) | (0), 16, 16)
 
-//425.00M <-- (2550/3)/2
-#define VDEC1_425M() WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  (1 << 9) | (2), 0, 16)
-
-//510.00M <-- (2550/5)/1
-#define VDEC1_510M() WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  (2 << 9) | (0), 0, 16)
-#define HEVC_510M()  WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, (2 << 9) | (0), 16, 16)
-
-//637.50M <-- (2550/4)/1
-#define VDEC1_638M() WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  (0 << 9) | (0), 0, 16)
-#define HEVC_638M()  WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, (0 << 9) | (0), 16, 16)
-
-#define VDEC1_CLOCK_ON()  do { if (IS_MESON_M8_CPU) { \
-                                    WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL, 1, 8, 1); \
-                                    WRITE_VREG_BITS(DOS_GCLK_EN0, 0x3ff,0,10); \
-                                } else { \
-                                    WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL, 1, 8, 1); \
-                                    WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 15, 1); \
-                                    WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 8, 1); \
-                                    WRITE_VREG_BITS(DOS_GCLK_EN0, 0x3ff,0,10); \
-                                } \
-                            } while (0)
-
+#define VDEC1_CLOCK_ON()   WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL, 1, 8, 1); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 15, 1); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 8, 1); \
+                           WRITE_VREG_BITS(DOS_GCLK_EN0, 0x3ff,0,10)
 #define VDEC2_CLOCK_ON()   WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, 1, 8, 1); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 31, 1); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 0, 24, 1); \
                            WRITE_VREG(DOS_GCLK_EN1, 0x3ff)
-
-#define HCODEC_CLOCK_ON()  WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL, 1, 24, 1); \
+#define HCODEC_CLOCK_ON()  WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  1, 24, 1); \
                            WRITE_VREG_BITS(DOS_GCLK_EN0, 0x7fff, 12, 15)
 #define HEVC_CLOCK_ON()    WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, 0, 24, 1); \
                            WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, 0, 31, 1); \
@@ -106,6 +90,9 @@ HHI_VDEC_CLK_CNTL
 #define VDEC1_SAFE_CLOCK() WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, READ_MPEG_REG(HHI_VDEC_CLK_CNTL) & 0x7f, 0, 7); \
                            WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 1, 8, 1); \
                            WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 1, 15, 1);
+#define VDEC2_SAFE_CLOCK() WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, (READ_MPEG_REG(HHI_VDEC_CLK_CNTL) >> 16) & 0x7f, 16, 7); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 1, 24, 1); \
+                           WRITE_MPEG_REG_BITS(HHI_VDEC3_CLK_CNTL, 1, 31, 1);
 #define VDEC1_CLOCK_OFF()  WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL,  0, 8, 1)
 #define VDEC2_CLOCK_OFF()  WRITE_MPEG_REG_BITS(HHI_VDEC2_CLK_CNTL, 0, 8, 1)
 #define HCODEC_CLOCK_OFF() WRITE_MPEG_REG_BITS(HHI_VDEC_CLK_CNTL, 0, 24, 1)
@@ -119,7 +106,7 @@ static int clock_level[VDEC_MAX+1];
 void vdec_clock_enable(void)
 {
     VDEC1_CLOCK_OFF();
-    VDEC1_255M();
+    VDEC1_182M();
     VDEC1_CLOCK_ON();
     clock_level[VDEC_1] = 0;
 }
@@ -127,11 +114,7 @@ void vdec_clock_enable(void)
 void vdec_clock_hi_enable(void)
 {
     VDEC1_CLOCK_OFF();
-    if (IS_MESON_M8_CPU) {
-        VDEC1_364M();
-    } else {
-        VDEC1_638M();
-    }
+    VDEC1_364M();
     VDEC1_CLOCK_ON();
     clock_level[VDEC_1] = 1;
 }
@@ -149,7 +132,7 @@ void vdec_clock_off(void)
 void vdec2_clock_enable(void)
 {
     VDEC2_CLOCK_OFF();
-    VDEC2_255M();
+    VDEC2_182M();
     VDEC2_CLOCK_ON();
     clock_level[VDEC_2] = 0;
 }
@@ -192,15 +175,14 @@ void hcodec_clock_off(void)
 void hevc_clock_enable(void)
 {
     HEVC_CLOCK_OFF();
-//    HEVC_255M();
-    HEVC_638M();
+    HEVC_255M();
     HEVC_CLOCK_ON();
 }
 
 void hevc_clock_hi_enable(void)
 {
     HEVC_CLOCK_OFF();
-    HEVC_638M();
+    HEVC_364M();
     HEVC_CLOCK_ON();
     clock_level[VDEC_HEVC] = 1;
 }
@@ -218,6 +200,11 @@ void hevc_clock_off(void)
 void vdec_clock_prepare_switch(void)
 {
     VDEC1_SAFE_CLOCK();
+}
+
+void vdec2_clock_prepare_switch(void)
+{
+    VDEC2_SAFE_CLOCK();
 }
 
 void hevc_clock_prepare_switch(void)

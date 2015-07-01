@@ -14,7 +14,7 @@
 #define __AMVECM_VLOCK_REGMAP_H
 
 #include <linux/amlogic/cm.h>
-#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
+#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
 //TV_ENC_LCD720x480
 static am_regs_t vlock_enc_lcd720x480={
 	20,

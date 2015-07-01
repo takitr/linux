@@ -320,15 +320,6 @@ static int aml_i2s_hw_free(struct snd_pcm_substream *substream)
     return 0;
 }
 
-static char *get_hw_buf_ptr(struct snd_pcm_runtime *runtime, snd_pcm_uframes_t cur_pos, int align)
-{
-	unsigned int tot_bytes_per_channel = frames_to_bytes(runtime, cur_pos) / runtime->channels;
-	unsigned int bytes_aligned_per_channel = frames_to_bytes(runtime, align / runtime->channels);
-	unsigned int hw_base_off = tot_bytes_per_channel / bytes_aligned_per_channel;
-	unsigned int block_off = tot_bytes_per_channel % bytes_aligned_per_channel;
-
-	return runtime->dma_area + (frames_to_bytes(runtime, align) * hw_base_off) + block_off;
-}
 
 static int aml_i2s_prepare(struct snd_pcm_substream *substream)
 {
@@ -673,7 +664,6 @@ extern unsigned int IEC958_mode_codec;
 extern void audio_out_i2s_enable(unsigned flag);
 extern void aml_hw_iec958_init(struct snd_pcm_substream *substream);
 extern void audio_hw_958_enable(unsigned flag);
-extern int kernel_android_50;
 
 static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
                                  snd_pcm_uframes_t pos,
@@ -689,21 +679,6 @@ static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
     struct aml_audio_buffer *tmp_buf = buffer->private_data;
     void *ubuf = tmp_buf->buffer_start;
     audio_stream_t *s = &prtd->s;
-    int force_reinit_958 = 0;
-    force_reinit_958 = (IEC958_mode_codec == 0 && (READ_MPEG_REG(AIU_MEM_IEC958_START_PTR) != READ_MPEG_REG(AIU_MEM_I2S_START_PTR)));
-    if (s && s->device_type == AML_AUDIO_I2SOUT && (trigger_underrun) && kernel_android_50 == 1) {
-        printk("i2s out trigger underrun force_reinit_958/%d trigger_underrun/%d IEC958_mode_codec/%d IEC958_START_PTR/0x%x I2S_START_PTR/0x%x\n",
-               force_reinit_958, trigger_underrun, IEC958_mode_codec, READ_MPEG_REG(AIU_MEM_IEC958_START_PTR), READ_MPEG_REG(AIU_MEM_I2S_START_PTR));
-        //trigger_underrun = 0;
-        return -EFAULT;
-    }
-    if (s && s->device_type == AML_AUDIO_I2SOUT && force_reinit_958 && kernel_android_50 == 1) {
-        printk("i2s out trigger underrun force_reinit_958/%d", force_reinit_958);
-        audio_hw_958_enable(0);
-        aml_hw_iec958_init(substream);
-        audio_hw_958_enable(1);
-    }
-
     if (s->device_type == AML_AUDIO_I2SOUT) {
         aml_i2s_alsa_write_addr = frames_to_bytes(runtime, pos);
     }
@@ -716,18 +691,35 @@ static int aml_i2s_copy_playback(struct snd_pcm_runtime *runtime, int channel,
         return -EFAULT;
     }
     if (access_ok(VERIFY_READ, buf, frames_to_bytes(runtime, count))) {
-      if(runtime->format == SNDRV_PCM_FORMAT_S16_LE)
-      {
-	int16_t * tfrom, *to, *left, *right;
-	tfrom = (int16_t *) ubuf;
+        if (runtime->format == SNDRV_PCM_FORMAT_S16_LE) {
 
-	for (j = 0; j < count; j++) {
-		to = (int16_t *) get_hw_buf_ptr(runtime, pos + j, align);
-		left = to;
-		right = to + align;
+            int16_t * tfrom, *to, *left, *right;
+            tfrom = (int16_t*)ubuf;
+            to = (int16_t*)hwbuf;
 
-		*left = (*tfrom++);
-		*right = (*tfrom++);
+            left = to;
+            right = to + 16;
+            if (pos % align) {
+                printk("audio data unligned: pos=%d, n=%d, align=%d\n", (int)pos, n, align);
+            }
+            if (set_android_gain_enable == 0) {
+                for (j = 0; j < n; j += 64) {
+                    for (i = 0; i < 16; i++) {
+                        *left++ = (*tfrom++) ;
+                        *right++ = (*tfrom++);
+                    }
+                    left += 16;
+                    right += 16;
+                }
+            } else {
+                for (j = 0; j < n; j += 64) {
+                    for (i = 0; i < 16; i++) {
+                        *left++ = (int16_t)(((*tfrom++) * android_left_gain) >> 8);
+                        *right++ = (int16_t)(((*tfrom++) * android_right_gain) >> 8);
+                    }
+                    left += 16;
+                    right += 16;
+                }
             }
         } else if (runtime->format == SNDRV_PCM_FORMAT_S24_LE && I2S_MODE == AIU_I2S_MODE_PCM24) {
             int32_t *tfrom, *to, *left, *right;

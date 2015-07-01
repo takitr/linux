@@ -144,6 +144,7 @@ void changeduokandecodeorder(struct remote *remote_data)
 void get_cur_scancode(struct remote *remote_data)
 {
 	int temp_cur_lsbkeycode =0;
+	input_dbg("get_cur_scancode---OPERATION_CTRL_REG1 >>%08x\n",am_remote_read_reg(OPERATION_CTRL_REG1));
 	if(remote_data->work_mode== DECODEMODE_SANYO) {
 		remote_data->cur_lsbkeycode = am_remote_read_reg(FRAME_BODY);
 		remote_data->cur_msbkeycode = am_remote_read_reg(FRAME_BODY1)&0x2ff;

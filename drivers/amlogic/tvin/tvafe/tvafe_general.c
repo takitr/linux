@@ -550,8 +550,12 @@ const static unsigned int cvbs_top_reg_default[][2] = {
 	{TVFE_VAFE_STATUS                       ,0x00000000,}, // TVFE_VAFE_STATUS
 #ifdef CRYSTAL_25M
 	{TVFE_TOP_CTRL                          ,0x30c4e6c/*0xc4f64 0x00004B60*/,}, // TVFE_TOP_CTRL
+#else//24M
+#if (defined(CONFIG_ADC_DOUBLE_SAMPLING_FOR_CVBS) && defined(CRYSTAL_24M) && (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV))
+	{TVFE_TOP_CTRL				    ,0x010c4d6c/*0xc4f64 0x00004B60*/,}, // TVFE_TOP_CTRL
 #else
 	{TVFE_TOP_CTRL                          ,0x30c4f64/*0xc4f64 0x00004B60*/,}, // TVFE_TOP_CTRL
+#endif
 #endif
 	{TVFE_CLAMP_INTF                        ,0x00008666,}, // TVFE_CLAMP_INTF
 	{TVFE_RST_CTRL                          ,0x00000000,}, // TVFE_RST_CTRL
@@ -581,8 +585,13 @@ const static unsigned int cvbs_top_reg_default[][2] = {
 	{TVFE_FREERUN_GEN_COAST   , 0x00000000,},//TVFE_FREERUN_GEN_COAST
 	{TVFE_FREERUN_GEN_CTRL      , 0x00000000,},//TVFE_FREERUN_GEN_CTRL
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+#if (defined(CONFIG_ADC_DOUBLE_SAMPLING_FOR_CVBS) && defined(CRYSTAL_24M) && (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV))
+	{TVFE_AAFILTER_CTRL1		,	0x00012721,},//0x00082222 TVFE_AAFILTER_CTRL1 bypass all
+	{TVFE_AAFILTER_CTRL2		,	0x1304fcfa,},//TVFE_AAFILTER_CTRL2
+#else
 	{TVFE_AAFILTER_CTRL1		,   0x00182222,},//0x00082222 TVFE_AAFILTER_CTRL1 bypass all
 	{TVFE_AAFILTER_CTRL2		,   0x252b39c6,},//TVFE_AAFILTER_CTRL2
+#endif
 #else
 	{TVFE_AAFILTER_CTRL1            ,   0x00100000,},//TVFE_AAFILTER_CTRL1 bypass all
 	{TVFE_AAFILTER_CTRL2            ,   0x00000000,},//TVFE_AAFILTER_CTRL2
@@ -599,6 +608,13 @@ const static unsigned int cvbs_top_reg_default[][2] = {
 	{TVFE_AFC_CTRL3 		     ,	 0x2a02396,},//TVFE_AFC_CTRL3
 	{TVFE_AFC_CTRL4 		     ,	 0xfefbff14,},//TVFE_AFC_CTRL4
 	{TVFE_AFC_CTRL5 		     ,		0x0,},//TVFE_AFC_CTRL5
+#else//for 24M
+#if (defined(CONFIG_ADC_DOUBLE_SAMPLING_FOR_CVBS) && defined(CRYSTAL_24M) && (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV))
+	{TVFE_AFC_CTRL1 			 ,	 0x893904d2,},//TVFE_AFC_CTRL1
+	{TVFE_AFC_CTRL2 			 ,	 0x0f4b9ac9,},//TVFE_AFC_CTRL2
+	{TVFE_AFC_CTRL3 			 ,	 0x01fd8c36,},//TVFE_AFC_CTRL3
+	{TVFE_AFC_CTRL4 			 ,	 0x2de6d04f,},//TVFE_AFC_CTRL4
+	{TVFE_AFC_CTRL5 			 ,	 0x00000004,},//TVFE_AFC_CTRL5
 #else
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
 	{TVFE_AFC_CTRL1                      ,   0x05730459,},//TVFE_AFC_CTRL1
@@ -609,6 +625,7 @@ const static unsigned int cvbs_top_reg_default[][2] = {
 	{TVFE_AFC_CTRL3                      ,   0x1fd8c36,},//TVFE_AFC_CTRL3
 	{TVFE_AFC_CTRL4                      ,   0x2de6d04f,},//TVFE_AFC_CTRL4
 	{TVFE_AFC_CTRL5                      ,          0x4,},//TVFE_AFC_CTRL5
+#endif
 #endif
 	{0xFFFFFFFF                             ,0x00000000,}
 };
@@ -3324,12 +3341,20 @@ void tvafe_init_reg(struct tvafe_cvd2_s *cvd2, struct tvafe_cvd2_mem_s *mem, enu
 #ifdef CRYSTAL_25M
                 WRITE_CBUS_REG(HHI_VAFE_CLKIN_CNTL, 0x703);//can't write !!!
 #endif
-		if((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7)){
+		if((port >= TVIN_PORT_CVBS0) && (port <= TVIN_PORT_CVBS7)){			
+#if (defined(CONFIG_ADC_DOUBLE_SAMPLING_FOR_CVBS) && defined(CRYSTAL_24M) && (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV))
+			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL3,0xa92a2110);
+			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL4,0x02973800);
+			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL,0x08664220);
+			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL2,0x34e0bf80);
+			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL3,0x292a2110);//reset clcok
+#else
 			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL3,0xce7a2110);
 			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL4,0x2933800);
 			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL,0x0484680);
 			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL2,0x34e0bf84);
 			WRITE_CBUS_REG(HHI_ADC_PLL_CNTL3,0x4e7a2110);//reset clcok
+#endif
 		}
 		tvafe_set_cvbs_default(cvd2, mem, port, pinmux);
 		/*turn on/off av out*/

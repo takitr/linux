@@ -17,7 +17,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                \
 	-DMMC_SDIO_ABORT -DBCMSDIO -DBCMLXSDMMC -DSDIO_CRC_ERROR_FIX          \
 	-DCUSTOM_SDIO_F2_BLKSIZE=512 -DUSE_SDIOFIFO_IOVAR                     \
 	-DWL_SUPPORT_BACKPORTED_KPATCHES -DDHDTCPACK_SUPPRESS                 \
-	-Idrivers/amlogic/wifi/broadcom/bcmdhd_1_141_xx/ -Idrivers/amlogic/wifi/broadcom/bcmdhd_1_141_xx/include
+	-I$(src) -I$(src)/include
 
 DHDOFILES = aiutils.o siutils.o sbutils.o bcmutils.o bcmwifi_channels.o \
 	dhd_linux.o dhd_linux_platdev.o dhd_linux_sched.o dhd_pno.o \

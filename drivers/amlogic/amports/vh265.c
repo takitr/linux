@@ -51,6 +51,8 @@
 #define USE_BUF_BLOCK
 #if MESON_CPU_TYPE == MESON_CPU_TYPE_MESON8B
 #undef SUPPORT_4K2K
+#elif MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB
+#undef SUPPORT_4K2K
 #else
 #define SUPPORT_4K2K
 #endif
@@ -4408,8 +4410,8 @@ static struct platform_driver amvdec_h265_driver = {
     .probe   = amvdec_h265_probe,
     .remove  = amvdec_h265_remove,
 #ifdef CONFIG_PM
-    .suspend = amvdec_suspend,
-    .resume  = amvdec_resume,
+    .suspend = amhevc_suspend,
+    .resume  = amhevc_resume,
 #endif
     .driver  = {
         .name = DRIVER_NAME,

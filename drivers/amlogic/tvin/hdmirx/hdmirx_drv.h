@@ -19,7 +19,7 @@
 #include "../tvin_global.h"
 #include "../tvin_format_table.h"
 
-#define HDMIRX_VER "Ref.2015/03/19"
+#define HDMIRX_VER "Ref.2015/05/06b"
 
 #define HDMI_STATE_CHECK_FREQ     (20*5)
 #define ABS(x) ((x)<0 ? -(x) : (x))
@@ -165,6 +165,7 @@ struct hdmi_rx_ctrl_video
 {
 	/** DVI detection status: DVI (true) or HDMI (false) */
 	bool dvi;
+	bool hdcp_enc_state;
 	/** Deep color mode: 24, 30, 36 or 48 [bits per pixel] */
 	unsigned deep_color_mode;
 
@@ -373,7 +374,13 @@ struct rx {
 
 };
 
+typedef struct _hdcp_ksv
+{
+	uint32_t bksv0;
+	uint32_t bksv1;
+} _hdcp_ksv;
 
+extern bool multi_port_edid_enable;
 extern struct rx rx;
 extern int hdmirx_log_flag;
 extern int hdcp_enable;
@@ -409,7 +416,7 @@ void hdmirx_phy_reset(bool enable);
 void hdmirx_phy_pddq(int enable);
 void cec_dbg_post_cmd(int command,int value);
 void hdmirx_phy_fast_switching(int enable);
-void hdmirx_audiopll_update(void);
+void hdmirx_audiopll_control(bool enable);
 
 int hdmirx_get_video_info(struct hdmi_rx_ctrl *ctx, struct hdmi_rx_ctrl_video *params);
 int hdmirx_packet_get_avi(struct hdmi_rx_ctrl_video *params);

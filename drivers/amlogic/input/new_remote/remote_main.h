@@ -413,6 +413,8 @@ void setremotereg(const remotereg_t *r);
 #define   REMOTE_IOC_SET_PAGEUP_KEY_SCANCODE _IOW_BAD('I', 137, sizeof(short))
 #define   REMOTE_IOC_SET_PAGEDOWN_KEY_SCANCODE _IOW_BAD('I', 138, sizeof(short))
 #define   REMOTE_IOC_SET_RELT_DELAY     _IOW_BAD('I',140,sizeof(short))
+#define   REMOTE_IOC_HARDWARE_CHECK_ENABLE     _IOW_BAD('I',141,sizeof(short))
+
 
 #define REMOTE_HW_DECODER_STATUS_MASK       (0xf<<4)
 #define REMOTE_HW_DECODER_STATUS_OK         (0<<4)
@@ -498,6 +500,8 @@ struct remote {
 	int (*key_report)(struct remote *);
 	void (*key_release_report)(struct remote *);
 	void (*remote_send_key)(struct input_dev *, unsigned int,unsigned int,int);
+
+	int hardware_check_enable;
 };
 
 extern type_printk input_dbg;

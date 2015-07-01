@@ -2172,7 +2172,7 @@ static void viu_set_dcu(vpp_frame_par_t *frame_par, vframe_t *vf)
         vini_phase = 0xc << VFORMATTER_INIPHASE_BIT;
         vphase = ((vf->type & VIDTYPE_VIU_422) ? 0x10 : 0x08) << VFORMATTER_PHASE_BIT;
 #if (MESON_CPU_TYPE==MESON_CPU_TYPE_MESONG9TV)
-        if ((vf->width >= 3840) && (vinfo->width == 3840) && (vf->height == 2160) && (vinfo->height == 2160) && (vf->type & VIDTYPE_VIU_422)) {
+        if ((vf->width >= 3840) && (vf->height >= 2160) && (vf->type & VIDTYPE_VIU_422)) {
            VSYNC_WR_MPEG_REG(VIU_VD1_FMT_CTRL + cur_dev->viu_off,
                              HFORMATTER_YC_RATIO_2_1 | HFORMATTER_EN |
                              VFORMATTER_RPTLINE0_EN | vini_phase | vphase);
@@ -2899,6 +2899,9 @@ static irqreturn_t vsync_isr(int irq, void *dev_id)
     }
 #endif
 
+#if defined(CONFIG_AM_VECM)
+    amvecm_on_vs(vf);
+#endif
 
 #if MESON_CPU_TYPE >= MESON_CPU_TYPE_MESON8
 
@@ -4295,6 +4298,10 @@ static long amvideo_ioctl(struct file *file,
             get_user(pts,(unsigned long __user *)arg);
             omx_pts = pts;
         }
+        break;
+
+    case AMSTREAM_IOC_GET_OMX_VPTS:
+        put_user(omx_pts, (unsigned long __user *)arg);
         break;
 
     case AMSTREAM_IOC_TRICKMODE:
@@ -6446,6 +6453,9 @@ module_param(cur_dev_idx, uint, 0664);
 
 MODULE_PARM_DESC(new_frame_count, "\n new_frame_count\n");
 module_param(new_frame_count, uint, 0664);
+
+MODULE_PARM_DESC(omx_pts, "\n omx_pts\n");
+module_param(omx_pts, uint, 0664);
 
 #ifdef TV_REVERSE
 module_param(reverse,bool,0644);

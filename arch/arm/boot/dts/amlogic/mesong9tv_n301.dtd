@@ -95,12 +95,12 @@
 		mem_4k2k_decoder: region@1 {
 			region_name = "cma_4k2k";
 			linux,contiguous-region;
-			reg = <0x00000000 0x0c000000>;
+			reg = <0x00000000 0x0ca00000>;
 		};
 
 		cma_0:region@0 {
 			region_name = "cma_0";
-			reg = <0 0x01200000>;
+           reg = <0 0x02400000>;
 			linux,contiguous-region;
 		};
 	};
@@ -715,27 +715,101 @@
 
 // ****************************************************************************
 /// -   DISP&MM-LVDS
-//$$ MODULE = "DISP&MM-LVDS"
-//$$ DEVICE = "mesonfb"
+//$$ MODULE = "DISP&MM-LCD"
+//$$ DEVICE = "LCD"
 //$$ L2 PROP_STR = "status"
-	lvds {
-		compatible = "amlogic,lvds";
+	lcd{
+		compatible = "amlogic,lcd";
+		dev_name = "lcd";
 		status = "okay";
-		basic_setting = <1920 1080 2200 1125 16 9 127 203 2 8>; /**  hactive,vactive,hperiod,vperiod,hstart,vstart, */
-		/**  hratio,vratio,screen_width,screen_height,lvd_type,lcd bit */
-		delay_setting = <500 50 20 20 50 0 0 200>;  /** CLK ON/OFF,PWM ON/OFF,PANEL_PWR ON/OFF,BL ON/OFF delay */
+		/* AOC: public Platform lvds : 1920x1080@60hz 8bit pixel clk@74.25mhz 2prot*/
+		lvds_0{
+			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
+			basic_setting = <1920 1080 2200 1125 148 41>; /**h_active v_active h_period v_period h_blank v_blank*/
+			lcd_timing = <0x500404ad 0x00414400 0x71486900 44 2156 0 1079 2100 2164 3 5>;
+			lvds_att = <8 1 0 1 1 0x3>;	/** lvds_bits lvds_repack pn_swap dual_port port_reverse lvds_fifo_wr_mode*/
+			panel_power_pin ="GPIOH_10";
+			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
+			blacklight_power_pin ="GPIOY_6";
+			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
+		};
+
+		/*AUO: T320XVN02.9 lvds : 1366x768@60hz 8bit pixel clk@80mhz 1port*/
+		lvds_2{
+			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
+			basic_setting = <1366 768 1648 810 280 42>;
+			lcd_timing = <0x5000068c 0x00454400 0x71c86900 20 30 0 809 20 1200 3 5>;
+			lvds_att = <8 1 0 0 0 0x101>;
+			panel_power_pin ="GPIOH_10";
+			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
+			blacklight_power_pin ="GPIOY_6";
+			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
+		};
+
+		/*BOE: HV320WHB-N80 lvds : 1366x768@60hz 8bit pixel clk@74.25mhz 1port*/
+		lvds_3{
+			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
+			basic_setting = <1366 768 1560 806 190 30>;
+			lcd_timing = <0x500404ad 0x00454400 0x71486900 20 30 0 809 20 1200 3 5>;
+			lvds_att = <8 1 0 0 0 0x101>;
+			panel_power_pin ="GPIOH_10";
+			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
+			blacklight_power_pin ="GPIOY_6";
+			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
+		};
+
+		/*PANDA: TPT315B5-0TU3A.Q lvds : 1366x768@60hz 8bit pixel clk@82mhz 1port*/
+		lvds_4{
+			interface="lvds";		/** lcd_interface(lvds, vbyone, ttl) */
+			basic_setting = <1366 768 1696 806 300 38>;
+			lcd_timing = <0x5000068c 0x00454400 0x71c86900 20 30 0 809 20 1200 3 5>;
+			lvds_att = <8 1 0 0 0 0x101>;
+			panel_power_pin ="GPIOH_10";
+			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
+			blacklight_power_pin ="GPIOY_6";
+			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
+		};
+
+		/*BOE: HV550QU2-305 vx1 : 3840x2160@60hz 8lane pixel clk@74.5mhz */
+		vbyone_0{
+			interface="vbyone";		/** lcd_interface(lvds, vbyone, ttl) */
+			basic_setting = <3840 2160 4400 2250 557 90>;
+			lcd_timing = <0xffffffff 0xffffffff 0xffffffff 47 80 47 80 47 47 3 9>;
+			vbyone_att = <8 4 2 4>;
+			panel_power_pin ="GPIOH_10";
+			panel_power_att = <1 0 50 50>;		/** on off on_delay off_delay*/
+			blacklight_power_pin ="GPIOY_6";
+			blacklight_power_att =<1 0 600 200>;/** on off on_delay off_delay*/
+		};
 	};
 
-	backlight{
+	backlight {
 		compatible = "amlogic,backlight";
 		dev_name = "backlight";
 		status = "okay";
-//		power_pin = "GPIOX_2";
-		pwm_hz = <160>;   /* Hz */
-//		pinctrl-names = "pwm_a","pwm_vs";
-//		pinctrl-0 = <&lcd_bl_pwm_a_pins>;	/* pwma pinmux */
-//		pinctrl-1 = <&lcd_bl_pwm_vs_pins>;	/* pwm_vs pinmux */
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&aml_bl_pwm_pins>;
+
+		backlight_0 {
+			index = <0>;
+			name = "backlight_0";
+			bl_en_gpio = "GPIOY_6";
+			bl_en_on = <0>; /** 1=output high, 0=output low **/
+			bl_pwm_port = "PWM_B";
+			bl_pwm_positive = <0>; /* 1: positive 0: negative */
+
+			bl_level_default_uboot = <100>;
+			bl_level_default_kernel = <100>;
+			bl_level_max_min = <255 10>;
+			bl_power_on_delay = <200>;  /* unit: ms */
+			bl_power_off_delay = <200>; /* unit: ms */
+			bl_pwm_freq = <1000>;
+			bl_pwm_duty_max_min = <100 25>; /* 100% - 25%*/
+		};
 	};
+
+
 
 /// ****************************************************************************
 /// -   DISP&MM-FB
@@ -775,7 +849,7 @@
 		dev_name = "mesonstream.0";
 		status = "okay";
 		reserve-memory = <0x02000000>; // 32M
-		reserve-iomap = "true";
+		//reserve-iomap = "true";
 	};
 
 
@@ -791,8 +865,8 @@
 		compatible = "amlogic,vdec";
 		dev_name = "vdec.0";
 		status = "okay";
-		reserve-memory = <0x10000000>; // 256M
-		reserve-iomap = "true";
+		reserve-memory = <0x04000000>; // 64M
+		//reserve-iomap = "true";
 		linux,contiguous-region = <&mem_4k2k_decoder>;
 	};
 
@@ -825,7 +899,7 @@
 		compatible = "amlogic,ppmgr";
 		dev_name = "ppmgr";
 		status = "okay";
-		reserve-memory = <0x01000000>; // 16M
+		reserve-memory = <0x02000000>; // 32M
 	};
 
 
@@ -841,7 +915,6 @@
 		dev_name = "amvenc_avc.0";
 		status = "okay";
 		linux,contiguous-region = <&cma_0>;
-		reserve-iomap = "true";
 	};
 
 
@@ -915,6 +988,19 @@
 		>;
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-AMLVIDEO2
+//$$ MODULE = "DISP&MM-AMLVIDEO2"
+//$$ DEVICE="amlvideo2"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 2 ="reg"
+    amlvideo2{
+        compatible = "amlogic,amlvideo2";
+        dev_name = "amlvideo2.0";
+        status = "okay";
+        reserve-memory = <0x01800000>;
+        reserve-iomap = "true";
+    };
 
 /// ****************************************************************************
 ///	-	ION
@@ -925,10 +1011,10 @@
 		compatible = "amlogic,ion_dev";
 		dev_name = "ion_dev";
 		status = "ok";
-		reserve-memory = <0x01000000>; //16M
-	};
-
-
+        share-memory-name = "ppmgr0";
+        share-memory-offset = <0>;
+        share-memory-size = <0x02000000>; //32M
+    };
 
 
 /// ****************************************************************************
@@ -942,6 +1028,19 @@
 		status = "okay";
 	};
 
+/// ***************************************************************************************
+///	-	DISP&MM-A/V Amvideocap
+//$$ MODULE = "DISP&MM-Amvideocap"
+//$$ DEVICE="amvideocap"
+//$$ L2 PROP_STR = "status"
+//$$ L3 PROP_U32 4 ="reg"
+	amvideocap{
+		compatible = "amlogic,amvideocap";
+		dev_name = "amvideocap.0";
+		status = "okay";
+		reserve-memory = <0x00800000>;//1920*1088*4
+		reserve-iomap = "true";
+	};
 
 
 ///*****************************************************************************
@@ -1094,8 +1193,8 @@
 
 		tas5707:tas5707 {
 			codec_name = "tas5707";
-			i2c_addr = <0x1D>;   //for tas5707a
-			//i2c_addr = <0x1B>; //for tas5707
+			//i2c_addr = <0x1D>;   //for tas5707a
+			i2c_addr = <0x1B>; //for tas5707
 			reset_pin = "GPIOY_9";
 			i2c_bus = "i2c_bus_b";
 			master_vol = <150>;
@@ -1184,6 +1283,19 @@
 					   9 0x1
 					   10 0x140000>;
 			amlogic,pins = "GPIOY_8";
+		};
+
+		//$$ MATCH "aml_bl_pwm_pin_match" = "&aml_bl_pwm_pins"
+		//$$ L2 PROP_U32 2 = "amlogic,setmask"
+		//$$ L2 PROP_U32 2 = "amlogic,clrmask"
+		//$$ L2 PROP_STR 2 = "amlogic,pins"
+		aml_bl_pwm_pins:bl_pwm_pins {
+			amlogic,setmask = <9  0x02000000>;
+			amlogic,clrmask = <3  0x00000020
+					   5  0x04000000
+					   9  0x04000001
+					   10 0x00280000>;
+			amlogic,pins = "GPIOY_7";
 		};
 
 		//$$ MATCH "uart_ao_pin_match" = "&ao_uart_pins"
@@ -1458,6 +1570,28 @@
 			amlogic,pins = "GPIOZ_1", "GPIOZ_2", "GPIOZ_3", "GPIOZ_4", "GPIOZ_5";
 		};
 
+                //$$ MATCH "Audio_pin_0_match" = "&audio_spdif_pins"
+                //$$ L2 PROP_U32 2 = "amlogic,setmask"
+                //$$ L2 PROP_U32 2 = "amlogic,clrmask"
+                //$$ L2 PROP_STR 1 = "amlogic,pins"
+                /*
+                audio_spdif_pins:audio_pin1{
+                        amlogic,setmask=<9 0x00000800>;
+                        amlogic,clrmask=<9 0x00000400>;
+                        amlogic,pins = "GPIOH_10";
+                };
+                */
+                /*
+                audio_spdif_pins:audio_pin1{
+                        amlogic,setmask=<1 0x00000080>;
+                        amlogic,clrmask=<0 0x00080200
+                                         1 0x00000200
+                                         4 0x00200000
+                                         8 0x01000000>;
+                        amlogic,pins = "GPIOX_24";
+                };
+                */
+
 		//$$ MATCH "dvb_p_ts0_pins_match" = "&dvb_p_ts0_pins"
 		//$$ L2 PROP_U32 2 = "amlogic,setmask"
 		//$$ L2 PROP_U32 8 = "amlogic,clrmask"
@@ -1552,7 +1686,7 @@
 		fe0_ts = <2>;
 		fe0_dev = <0>;
 		dtv_demod0_mem = <1>;
-		reserve-memory = <0x6400000>;
+		reserve-memory = <0x1400000>;
 		reserve-iomap = "true";
 		//pinctrl-names = "default";
 		//pinctrl-0 = <&dvb_fe_pins>;

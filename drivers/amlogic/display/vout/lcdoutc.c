@@ -95,7 +95,7 @@ typedef struct {
 static lcd_dev_t *pDev = NULL;
 static struct class *gamma_debug_class = NULL;
 static Bool_t data_status = ON;
-static int bl_status = ON;
+static int uboot_display = 1;
 
 static inline void lcd_mdelay(int n)
 {
@@ -145,17 +145,18 @@ static void lcd_setup_gamma_table(Lcd_Config_t *pConf, unsigned int rgb_flag)
 static void backlight_power_ctrl(Bool_t status)
 {
 	if( status == ON ){
-		if ((data_status == OFF) || (bl_status == ON))
+		if (data_status == OFF)
 			return;
+#ifdef CONFIG_AMLOGIC_BACKLIGHT
 		bl_power_on(LCD_BL_FLAG);
+#endif
 	}
 	else{
-		if (bl_status == OFF)
-			return;
+#ifdef CONFIG_AMLOGIC_BACKLIGHT
 		bl_power_off(LCD_BL_FLAG);
+#endif
 	}
 	lcd_print("%s(%s): data_status=%s\n", __FUNCTION__, (status ? "ON" : "OFF"), (data_status ? "ON" : "OFF"));
-	bl_status = status;
 }
 
 static int lcd_power_ctrl(Bool_t status)
@@ -794,7 +795,7 @@ static Lcd_Timing_t temp_lcd_timing;
 static unsigned short temp_dith_user, temp_dith_ctrl;
 static unsigned int temp_vadj_brightness, temp_vadj_contrast, temp_vadj_saturation;
 static int temp_ttl_rb_swap, temp_ttl_bit_swap;
-static int temp_lvds_repack, temp_pn_swap, temp_lvds_vswing;
+static int temp_lvds_repack, temp_pn_swap, temp_lvds_vswing, temp_dual_port, temp_port_swap;
 static unsigned char temp_dsi_lane_num;
 static unsigned temp_dsi_bit_rate_min, temp_dsi_bit_rate_max, temp_factor_denominator, temp_factor_numerator;
 static unsigned char temp_edp_link_rate, temp_edp_lane_count, temp_edp_vswing, temp_edp_preemphasis;
@@ -945,8 +946,14 @@ static void read_current_lcd_config(Lcd_Config_t *pConf)
         case LCD_DIGITAL_LVDS:
             printk("vswing_level      %u\n"
                    "lvds_repack       %u\n"
-                   "pn_swap           %u\n\n",
-                   pConf->lcd_control.lvds_config->lvds_vswing, pConf->lcd_control.lvds_config->lvds_repack, pConf->lcd_control.lvds_config->pn_swap);
+		   "dual_port         %u\n"
+		   "pn_swap           %u\n"
+		   "port_swap         %u\n\n",
+		   pConf->lcd_control.lvds_config->lvds_vswing,
+		   pConf->lcd_control.lvds_config->lvds_repack,
+		   pConf->lcd_control.lvds_config->dual_port,
+		   pConf->lcd_control.lvds_config->port_swap,
+		   pConf->lcd_control.lvds_config->pn_swap);
             break;
         case LCD_DIGITAL_MIPI:
             printk("dsi_lane_num      %u\n"
@@ -1027,6 +1034,8 @@ static void save_lcd_config(Lcd_Config_t *pConf)
 		case LCD_DIGITAL_LVDS:
 			temp_lvds_repack = pConf->lcd_control.lvds_config->lvds_repack;
 			temp_pn_swap = pConf->lcd_control.lvds_config->pn_swap;
+			temp_dual_port = pConf->lcd_control.lvds_config->dual_port;
+			temp_port_swap = pConf->lcd_control.lvds_config->port_swap;
 			temp_lvds_vswing = pConf->lcd_control.lvds_config->lvds_vswing;
 			break;
 		case LCD_DIGITAL_TTL:
@@ -1099,6 +1108,8 @@ static void reset_lcd_config(Lcd_Config_t *pConf)
 			pConf->lcd_control.lvds_config->lvds_repack = temp_lvds_repack;
 			pConf->lcd_control.lvds_config->pn_swap = temp_pn_swap;
 			pConf->lcd_control.lvds_config->lvds_vswing = temp_lvds_vswing;
+			pConf->lcd_control.lvds_config->dual_port = temp_dual_port;
+			pConf->lcd_control.lvds_config->port_swap = temp_port_swap;
 			break;
 		case LCD_DIGITAL_TTL:
 			pConf->lcd_control.ttl_config->rb_swap = temp_ttl_rb_swap;
@@ -1486,15 +1497,41 @@ static int _get_lcd_model_timing(Lcd_Config_t *pConf, struct platform_device *pd
 	unsigned int *lcd_para = (unsigned int *)kmalloc(sizeof(unsigned int)*100, GFP_KERNEL);
 	int i, j;
 	struct device_node *lcd_model_node;
+#if 0
 	phandle fhandle;
-	
+#endif
+
+	if (pdev->dev.of_node == NULL) {
+		pr_info("no lcd node in dts\n");
+		return -1;
+	}
 	if (lcd_para == NULL) {
 		printk("[_get_lcd_model_timing]: Not enough memory\n");
 		return -1;
 	}
-	if (pdev->dev.of_node) {
-		ret = of_property_read_u32(pdev->dev.of_node,"lcd_model_config",&fhandle);
-		lcd_model_node = of_find_node_by_phandle(fhandle);
+
+	/* detect lcd model config */
+#if 0
+	ret = of_property_read_u32(pdev->dev.of_node,"lcd_model_config",&fhandle);
+	lcd_model_node = of_find_node_by_phandle(fhandle);
+#else
+	/* compatible old version */
+	ret = of_property_read_string(pdev->dev.of_node,"lcd_model_name", &str);
+	if (ret) {
+		ret = of_property_read_string(pdev->dev.of_node,"lcd_model_config", &str);
+		if (ret) {
+			pr_info("lcd: faild to get lcd_model_config\n");
+			return -1;
+		}
+	}
+	pr_info("select lcd model config: %s\n", str);
+	lcd_model_node = of_find_node_by_name(NULL,str);
+#endif
+	if (lcd_model_node == NULL) {
+		pr_info("can't find specified lcd model config\n");
+		return -1;
+	}
+
 		ret = of_property_read_string(lcd_model_node,"model_name", &str);
 		if(ret) {
 			str = "none";
@@ -1740,8 +1777,18 @@ static int _get_lcd_model_timing(Lcd_Config_t *pConf, struct platform_device *pd
                 pConf->lcd_control.edp_config->max_lane_count =(unsigned char)(val);
             }
             lcd_print("max_lane_count = %d\n", pConf->lcd_control.edp_config->max_lane_count);
-        }
-    }
+	} else if (pConf->lcd_basic.lcd_type == LCD_DIGITAL_LVDS) {
+		ret = of_property_read_u32(lcd_model_node, "dual_port", &val);
+		if (ret) {
+			pr_info("failed to get dual_port\n");
+			pConf->lcd_control.lvds_config->dual_port = 0;
+		} else {
+			pConf->lcd_control.lvds_config->dual_port = val;
+		}
+		lcd_print("dual_port = %d\n",
+			pConf->lcd_control.lvds_config->dual_port);
+	}
+
     kfree(lcd_para);
     return ret;
 }
@@ -1785,13 +1832,21 @@ static int _get_lcd_default_config(Lcd_Config_t *pConf, struct platform_device *
 			}
 		}
 		if (pConf->lcd_basic.lcd_type == LCD_DIGITAL_LVDS) {
-			ret = of_property_read_u32(pdev->dev.of_node,"lvds_channel_pn_swap",&val);
-			if(ret){
-				printk("don't find to match lvds_channel_pn_swap, use default setting.\n");
-			}
-			else {
-				pConf->lcd_control.lvds_config->pn_swap = val;
-				printk("lvds_pn_swap = %u\n", pConf->lcd_control.lvds_config->pn_swap);
+			ret = of_property_read_u32_array(pdev->dev.of_node,
+				"lvds_pn_port_swap", &lcd_para[0], 2);
+			if (ret) {
+				pConf->lcd_control.lvds_config->pn_swap = 0;
+				pConf->lcd_control.lvds_config->port_swap = 0;
+				pr_info("failed to get lvds_pn_port_swap, ");
+				pr_info("use default setting.\n");
+			} else {
+				pConf->lcd_control.lvds_config->pn_swap =
+					lcd_para[0];
+				pConf->lcd_control.lvds_config->port_swap =
+					lcd_para[1];
+				pr_info("lvds pn_swap = %u, port_swap = %u\n",
+				pConf->lcd_control.lvds_config->pn_swap,
+				pConf->lcd_control.lvds_config->port_swap);
 			}
 		}
 
@@ -2259,7 +2314,13 @@ static int lcd_probe(struct platform_device *pdev)
 	save_original_gamma(pDev->pConf);
 	ret = creat_lcd_gamma_attr();
 #endif
-	
+
+	if (uboot_display == 0) {
+		_lcd_module_enable();
+		_enable_backlight();
+		uboot_display = 1;
+	}
+
 	printk("LCD probe ok\n");
 	return 0;
 }
@@ -2314,6 +2375,21 @@ static void __exit lcd_exit(void)
 
 subsys_initcall(lcd_init);
 module_exit(lcd_exit);
+
+int __init lcd_uboot_display_para_setup(char *s)
+{
+	lcd_print("lcd uboot display args: %s\n", s);
+
+	if ((!strcmp(s, "disable")) || (!strcmp(s, "0")))
+		uboot_display = 0;
+	else
+		uboot_display = 1;
+
+	printk("lcd uboot display: %d\n", uboot_display);
+
+	return 0;
+}
+__setup("uboot_display=", lcd_uboot_display_para_setup);
 
 MODULE_DESCRIPTION("Meson LCD Panel Driver");
 MODULE_LICENSE("GPL");

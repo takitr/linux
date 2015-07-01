@@ -220,10 +220,13 @@ typedef struct {
 } EDP_Config_t;
 
 typedef struct {
-	unsigned lvds_vswing;
-	unsigned lvds_repack_user;
-	unsigned lvds_repack;
-	unsigned pn_swap;
+	unsigned int lvds_vswing;
+	unsigned int lvds_repack_user;
+	unsigned int lvds_repack;
+	unsigned int dual_port;
+	unsigned int port_sel; /* select port A/B for single port */
+	unsigned int pn_swap;
+	unsigned int port_swap; /* even, odd */
 } LVDS_Config_t;
 
 typedef struct {

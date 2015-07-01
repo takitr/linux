@@ -310,6 +310,8 @@ typedef enum _cec_map_status
 #define HDMI_IOC_CEC_GET_MSG_CNT		_IOR(HDMI_IOC_MAGIC, 0x06, int)
 #define HDMI_IOC_CEC_GET_MSG			_IOR(HDMI_IOC_MAGIC, 0x07, struct _cec_msg)
 #define HDMI_IOC_CEC_SENT_MSG        	_IOW(HDMI_IOC_MAGIC, 0x08, struct _cec_msg)
+#define HDMI_IOC_HDCP_GET_KSV          	_IOR(HDMI_IOC_MAGIC, 0x09, struct _hdcp_ksv)
+
 
 //#include <linux/tvin/tvin.h>
 //#include "../tvin_global.h"
