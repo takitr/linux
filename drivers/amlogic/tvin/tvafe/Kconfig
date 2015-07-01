@@ -14,6 +14,11 @@ if TVIN_AFE
         default n
         help
                 Adc double sampling for SD.        
+   config ADC_DOUBLE_SAMPLING_FOR_CVBS
+        bool "Enable double sampling function for AV port"
+        default n
+        help
+                Adc double sampling for AV port.                
    config TVIN_VBI
     	tristate "Amlogic TVIN VBI device"
     	default n

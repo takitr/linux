@@ -7,7 +7,6 @@ menuconfig TVIN
 	default n
 
 if TVIN
-
 source "drivers/amlogic/tvin/vdin/Kconfig"
 source "drivers/amlogic/tvin/tvafe/Kconfig"
 source "drivers/amlogic/tvin/hdmirx/Kconfig"

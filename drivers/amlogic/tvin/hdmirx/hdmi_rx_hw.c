@@ -120,6 +120,19 @@ static int scramble_sel = 1;
 MODULE_PARM_DESC(scramble_sel, "\n scramble_sel \n");
 module_param(scramble_sel, int, 0664);
 
+bool multi_port_edid_enable = 0;
+MODULE_PARM_DESC(multi_port_edid_enable, "\n multi_port_edid_enable \n");
+module_param(multi_port_edid_enable, bool, 0664);
+
+int mpll_ctl_setting = 0x200;//0x302;
+MODULE_PARM_DESC(mpll_ctl_setting, "\n mpll_ctl_setting \n");
+module_param(mpll_ctl_setting, int, 0664);
+
+bool new_phy_config = false;
+MODULE_PARM_DESC(new_phy_config, "\n new_phy_config \n");
+module_param(new_phy_config, bool, 0664);
+
+
 /**
  * Read data from HDMI RX CTRL
  * @param[in] addr register address
@@ -414,13 +427,11 @@ void hdmirx_phy_init(int rx_port_sel, int dcm)
     hdmirx_wr_phy(MPLL_PARAMETERS21,    0x0011);
 
 	// Configuring I2C to work in fastmode
-	hdmirx_wr_dwc(HDMIRX_DWC_I2CM_PHYG3_MODE,    0x1);
+	//hdmirx_wr_dwc(HDMIRX_DWC_I2CM_PHYG3_MODE,    0x1);
 
 	/* write timebase override and override enable */
 	hdmirx_wr_phy(OVL_PROT_CTRL, 0xa); //disable overload protect for Philips DVD ???
-	hdmirx_wr_phy(REG_HDMI_PHY_CMU_CONFIG,
-	(rx.phy.phy_cmu_config_force_val != 0) ? rx.phy.phy_cmu_config_force_val :
-	((rx.phy.lock_thres << 10) | (1 << 9) | (((1 << 9) - 1) & ((rx.phy.cfg_clk * 4) / 1000))));
+
 
 	data32  = 0;
 	data32 |= 0                     << 15;  // [15]     mpll_short_power_up
@@ -439,6 +450,19 @@ void hdmirx_phy_init(int rx_port_sel, int dcm)
 	hdmirx_wr_phy(REG_HDMI_PHY_SYSTEM_CONFIG,
 	(rx.phy.phy_system_config_force_val != 0) ? rx.phy.phy_system_config_force_val : data32);
 
+	hdmirx_wr_phy(REG_HDMI_PHY_CMU_CONFIG,
+	(rx.phy.phy_cmu_config_force_val != 0) ? rx.phy.phy_cmu_config_force_val :
+	((rx.phy.lock_thres << 10) | (1 << 9) | (((1 << 9) - 1) & ((rx.phy.cfg_clk * 4) / 1000))));
+
+	if(new_phy_config){
+		hdmirx_wr_phy(HDMIRX_PHY_VOLTAGE_LEVEL,0x010a);
+		hdmirx_wr_phy(HDMIRX_PHY_MPLL_CTRL, mpll_ctl_setting);
+	}
+
+	hdmirx_wr_phy(HDMIRX_PHY_CH0_EQ_CTRL3, 4);
+	hdmirx_wr_phy(HDMIRX_PHY_CH1_EQ_CTRL3, 4);
+	hdmirx_wr_phy(HDMIRX_PHY_CH2_EQ_CTRL3, 4);
+	hdmirx_wr_phy(HDMIRX_PHY_MAIN_FSM_OVERRIDE2, 0x40);
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
 	// Write PHY register 0x0e, MHL&HDMI select
@@ -529,18 +553,21 @@ int hdmirx_interrupts_hpd( bool enable)
 }
 
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-void hdmirx_audiopll_update(void)
+void hdmirx_audiopll_control(bool enable)
 {
-	hdmirx_wr_top(HDMIRX_TOP_ACR_CNTL_STAT,hdmirx_rd_top(HDMIRX_TOP_ACR_CNTL_STAT)|(1<<11));
-	WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL6,(hdmirx_rd_phy(REG_HDMI_PHY_MAINFSM_STATUS1)>>9 & 3)<<28);
-	printk("---%d",hdmirx_rd_phy(REG_HDMI_PHY_MAINFSM_STATUS1));
-	WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL5,0x0000002e);
-	WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL4,0x30000000);
-	WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL3,0x00000000);
-	WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL,0x40000000);
-	WRITE_CBUS_REG(HHI_ADC_PLL_CNTL4,0x805);
-	hdmirx_wr_top(HDMIRX_TOP_ACR_CNTL_STAT,hdmirx_rd_top(HDMIRX_TOP_ACR_CNTL_STAT)|(1<<11));
-
+	if(enable){
+		hdmirx_wr_top(HDMIRX_TOP_ACR_CNTL_STAT,hdmirx_rd_top(HDMIRX_TOP_ACR_CNTL_STAT)|(1<<11));
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL6,(hdmirx_rd_phy(REG_HDMI_PHY_MAINFSM_STATUS1)>>9 & 3)<<28);
+		printk("REG_HDMI_PHY_MAINFSM_STATUS1---%x\n",hdmirx_rd_phy(REG_HDMI_PHY_MAINFSM_STATUS1));
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL5,0x0000002e);
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL4,0x30000000);
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL3,0x00000000);
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL,0x40000000);
+		WRITE_CBUS_REG(HHI_ADC_PLL_CNTL4,0x805);
+		hdmirx_wr_top(HDMIRX_TOP_ACR_CNTL_STAT,hdmirx_rd_top(HDMIRX_TOP_ACR_CNTL_STAT)|(1<<11));
+	}else{
+		WRITE_CBUS_REG(HHI_HDMIRX_AUD_PLL_CNTL,0x20000000); //disable pll, into reset mode
+	}
 }
 #endif
 
@@ -890,8 +917,9 @@ void hdmirx_set_hpd(int port, unsigned char val)
         hdmirx_wr_top( HDMIRX_TOP_HPD_PWR5V,  hdmirx_rd_top(HDMIRX_TOP_HPD_PWR5V)&(~(1<<rx.port)));
     }
 #endif
-#else
-
+#endif
+//G9TV
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
 #ifdef USE_GPIO_FOR_HPD
     int bitpos = 1;
     switch(port){
@@ -923,6 +951,43 @@ void hdmirx_set_hpd(int port, unsigned char val)
     }
 #endif
 #endif
+
+	//G9TV
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
+#ifdef USE_GPIO_FOR_HPD
+		int bitpos = 1;
+		switch(port){
+			case 0:
+				bitpos=5;
+				break;
+			case 1:
+				bitpos=9;
+				break;
+			case 2:
+				bitpos=13;
+				break;
+			case 3:
+				bitpos=17;
+				break;
+		}
+		if(val){
+			WRITE_CBUS_REG(PREG_PAD_GPIO0_EN_N, READ_CBUS_REG(PREG_PAD_GPIO0_EN_N) | (1<<bitpos));
+			//WRITE_CBUS_REG(PREG_PAD_GPIO0_EN_N, READ_CBUS_REG(PREG_PAD_GPIO0_EN_N) & (~(1<<bitpos)));
+		}
+		else{
+			WRITE_CBUS_REG(PREG_PAD_GPIO0_EN_N, READ_CBUS_REG(PREG_PAD_GPIO0_EN_N) & (~(1<<bitpos)));
+			//WRITE_CBUS_REG(PREG_PAD_GPIO0_EN_N, READ_CBUS_REG(PREG_PAD_GPIO0_EN_N) | (1<<bitpos));
+		}
+#else
+		if(val){
+			hdmirx_wr_top( HDMIRX_TOP_HPD_PWR5V,  hdmirx_rd_top(HDMIRX_TOP_HPD_PWR5V)&(~(1<<port)));
+		}
+		else{
+			hdmirx_wr_top( HDMIRX_TOP_HPD_PWR5V,  hdmirx_rd_top(HDMIRX_TOP_HPD_PWR5V)|(1<<port));
+		}
+#endif
+#endif
+
     hdmirx_print("%s(%d,%d)\n", __func__, port, val);
 
 }
@@ -995,7 +1060,91 @@ static void control_reset(unsigned char seq)
     mdelay(1);
     }
 }
-#if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
+
+#if (MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9TV)
+void hdmirx_set_pinmux(void)
+{
+	WRITE_CBUS_REG(PERIPHS_PIN_MUX_10 , READ_CBUS_REG(PERIPHS_PIN_MUX_10 )|
+				((1 << 0)  |   // pm_gpioW_20_hdmirx_scl_D
+				(1 << 0)   |   // pm_gpioW_19_hdmirx_sda_D
+				(1 << 1)   |   // pm_gpioW_18_hdmirx_5v_D
+				(1 << 2)   |   // pm_gpioW_17_hdmirx_hpd_D
+				(1 << 3)   |   // pm_gpioW_16_hdmirx_scl_C
+				(1 << 3)   |   // pm_gpioW_15_hdmirx_sda_C
+				(1 << 4)   |   // pm_gpioW_14_hdmirx_5v_C
+				(1 << 5)   |   // pm_gpioW_13_hdmirx_hpd_C
+				(1 << 6)   |   // pm_gpioW_12_hdmirx_scl_B
+				(1 << 6)   |   // pm_gpioW_11_hdmirx_sda_B
+				(1 << 7)   |   // pm_gpioW_10_hdmirx_5v_B
+				(1 << 8)   |   // pm_gpioW_9_hdmirx_hpd_B
+				(1 << 9)   |   // pm_gpioW_8_hdmirx_scl_A
+				(1 << 9)   |   // pm_gpioW_7_hdmirx_sda_A
+				(1 << 10)   |   // pm_gpioW_6_hdmirx_5v_A
+				(1 << 11)   |   // pm_gpioW_5_hdmirx_hpd_A
+				(1 << 12)));     // pm_gpioW_4_hdmirx_cec
+	WRITE_CBUS_REG(PERIPHS_PIN_MUX_10, READ_CBUS_REG(PERIPHS_PIN_MUX_10 ) &
+                (~(
+                  (1<<29)
+                  |(1<<28)
+                  |(1<<27)
+                  |(1<<26)
+                  |(1<<25)
+                  |(1<<24)
+                  |(1<<23)
+                  |(1<<22)
+                  |(1<<13))));
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_11, READ_CBUS_REG(PERIPHS_PIN_MUX_11 ) &
+                (~(
+                  (1<<24)
+                  |(1<<23)
+                  |(1<<22)
+                  |(1<<21)
+                  |(1<<20)
+                  |(1<<19)
+                  |(1<<12)
+                  |(1<<11)
+                  |(1<<10)
+                  |(1<<9)
+                  |(1<<8)
+                  |(1<<7)
+                  |(1<<6)
+                  |(1<<5)
+                  |(1<<4)
+                  |(1<<3)
+                  |(1<<2)
+                  |(1<<1)
+                  |(1<<0))));
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_6, READ_CBUS_REG(PERIPHS_PIN_MUX_6 ) &
+                (~((1<<21)
+                  |(1<<20)
+                  |(1<<19)
+                  |(1<<18))));
+#ifdef USE_GPIO_FOR_HPD
+    if (pwr_gpio_pull_down)
+        WRITE_CBUS_REG(PAD_PULL_UP_REG2, READ_CBUS_REG(PAD_PULL_UP_REG2) |
+	            ((1<<0)|(1<<4)|(1<<8)|(1<<12)));
+
+    WRITE_CBUS_REG(PERIPHS_PIN_MUX_10, READ_CBUS_REG(PERIPHS_PIN_MUX_10 ) &
+                (~((1<<2)|(1<<5)|(1<<8)|(1<<11))));
+
+
+
+    WRITE_CBUS_REG(PREG_PAD_GPIO0_EN_N, READ_CBUS_REG(PREG_PAD_GPIO0_EN_N) &
+                (~((1<<5)|(1<<9)|(1<<13)|(1<<17))));
+
+    //WRITE_CBUS_REG(PREG_PAD_GPIO0_O, READ_CBUS_REG(PREG_PAD_GPIO0_O) |
+                //((1<<5)|(1<<9)|(1<<13)|(1<<17)));
+#endif
+
+#if 0
+	WRITE_CBUS_REG(PERIPHS_PIN_MUX_1 , READ_CBUS_REG(PERIPHS_PIN_MUX_1 )|
+				( (1 << 2)    |   // pm_gpioW_17_hdmirx_tmds_clk
+				(1 << 1)    |   // pm_gpioW_18_hdmirx_pix_clk
+				(1 << 0)));      // pm_gpioW_19_hdmirx_audmeas
+#endif
+}
+#endif
+#if(MESON_CPU_TYPE == MESON_CPU_TYPE_MESONG9BB)
 void hdmirx_set_pinmux(void)
 {
 	WRITE_CBUS_REG(PERIPHS_PIN_MUX_10 , READ_CBUS_REG(PERIPHS_PIN_MUX_10 )|
@@ -1078,7 +1227,8 @@ void hdmirx_set_pinmux(void)
 #endif
 
 }
-#else
+#endif
+#if(MESON_CPU_TYPE < MESON_CPU_TYPE_MESONG9TV)
 void hdmirx_set_pinmux(void)
 {
 	WRITE_CBUS_REG(PERIPHS_PIN_MUX_0 , READ_CBUS_REG(PERIPHS_PIN_MUX_0 )|
@@ -1220,8 +1370,10 @@ void hdmirx_hw_config(void)
 	hdmirx_wr_top(HDMIRX_TOP_INTR_MASKN, 0); //disable top interrupt gate
 	control_reset(0);
 #if (MESON_CPU_TYPE >= MESON_CPU_TYPE_MESONG9TV)
-	hdmirx_wr_top(HDMIRX_TOP_PORT_SEL, 0x10 | ((1<<rx.port))); //enable all 4 port available
-	//hdmirx_wr_top(HDMIRX_TOP_PORT_SEL, ((1<<rx.port)));
+	if(multi_port_edid_enable)
+		hdmirx_wr_top(HDMIRX_TOP_PORT_SEL, 0x10 | ((1<<rx.port))); //enable all 4 port available
+	else
+		hdmirx_wr_top(HDMIRX_TOP_PORT_SEL, ((1<<rx.port)));
 #else
 	hdmirx_wr_top(HDMIRX_TOP_PORT_SEL,   (1<<rx.port));  //G9 EDID multiplex mode
 #endif
@@ -1379,6 +1531,8 @@ int hdmirx_get_video_info(struct hdmi_rx_ctrl *ctx, struct hdmi_rx_ctrl_video *p
 
 	/* DVI mode */
 	params->dvi = hdmirx_rd_bits_dwc(HDMIRX_DWC_PDEC_STS, DVIDET) != 0;
+	/* hdcp encrypted state */
+	params->hdcp_enc_state = hdmirx_rd_bits_dwc(HDMIRX_DWC_HDCP_STS, ENCRYPTED_STATUS) != 0;
 	/* AVI parameters */
 	error |= hdmirx_packet_get_avi( params);
 	if (error != 0) {
