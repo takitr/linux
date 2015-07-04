@@ -1739,6 +1739,7 @@ dhd_conf_detach(dhd_pub_t *dhd)
 }
 
 #ifdef POWER_OFF_IN_SUSPEND
+bool wifi_ready = true;
 struct net_device *g_netdev;
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
@@ -1782,7 +1783,7 @@ dhd_conf_wifi_stop(struct net_device *dev)
 
 }
 
-bool wifi_ready = true;
+//bool wifi_ready = true;
 
 void
 dhd_conf_wifi_power(bool on)
