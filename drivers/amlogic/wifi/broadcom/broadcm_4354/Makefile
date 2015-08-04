@@ -14,8 +14,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                \
 	-DMIRACAST_AMPDU_SIZE=8                                               \
 	-DSDTEST -DBDC -DDHD_BCMEVENTS -DPROP_TXSTATUS -DPROP_TXSTATUS_VSDB   \
 	-DWL_SUPPORT_BACKPORTED_KPATCHES -DDHDTCPACK_SUPPRESS                 \
-	-I../hardware/wifi/broadcom/drivers/ap6xxx/broadcm_4354/ -I../hardware/wifi/broadcom/drivers/ap6xxx/broadcm_4354/include
-       
+	-Idrivers/amlogic/wifi/broadcom/bcmdhd_4354/ -Idrivers/amlogic/wifi/broadcom/bcmdhd_4354/include
 
 DHDCFLAGS += \
 	-DMMC_SDIO_ABORT -DBCMSDIO -DBCMLXSDMMC -DSDIO_CRC_ERROR_FIX          \

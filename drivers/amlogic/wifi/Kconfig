@@ -24,6 +24,7 @@ config AM_WIFI_USB
 
 source "drivers/amlogic/wifi/broadcom/broadcm_40181/Kconfig"
 source "drivers/amlogic/wifi/broadcom/bcmdhd_1_141_xx/Kconfig"
+source "drivers/amlogic/wifi/broadcom/bcmdhd_4354/Kconfig"
 
 source "drivers/amlogic/wifi/realtek/rtl8189ES/Kconfig"
 source "drivers/amlogic/wifi/realtek/rtl8192EU/Kconfig"
