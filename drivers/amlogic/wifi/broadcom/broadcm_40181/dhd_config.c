@@ -114,7 +114,6 @@ const static char *nv_name[] = {
 	"ap6330_nvram.txt",
 	"ap6181_nvram.txt",
 	"ap6335e_nvram.txt",
-	"ap62x2_nvram.txt",
 };
 
 #define htod32(i) i
@@ -377,9 +376,9 @@ dhd_conf_set_nv_name_by_chip(dhd_pub_t *dhd, char *dst, char *src)
 //		case BCM43341_CHIP_ID: //bcm43341b0ag BCM43341B0 
 //					strcpy(&dst[i+1], nv_name[0]);
 //						break;
-		case BCM4324_CHIP_ID: //bcm43241b4ag BCM43241B4
-					strcpy(&dst[i+1], nv_name[4]);
-						break;
+//		case BCM4324_CHIP_ID: //bcm43241b4ag BCM43241B4
+//					strcpy(&dst[i+1], nv_name[0]);
+//						break;
 		case BCM4335_CHIP_ID: //bcm4339a0ag BCM4335A0
 					strcpy(&dst[i+1], nv_name[3]);
 						break;
