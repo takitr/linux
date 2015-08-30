@@ -2,6 +2,8 @@
 #include <typedefs.h>
 #include <osl.h>
 
+#include <linux/amlogic/aml_gpio_consumer.h>
+
 #include <bcmutils.h>
 #include <hndsoc.h>
 #if defined(HW_OOB)
@@ -120,6 +122,14 @@ const static char *bcm4354a1_ag_fw_name[] = {
 	"fw_bcm4354a1_ag_mfg.bin"
 };
 
+const static char *nv_name[] = {
+	"ap6210_nvram.txt",
+	"ap6330_nvram.txt",
+	"ap6181_nvram.txt",
+	"ap6212_nvram.txt",
+	"ap6335e_nvram.txt"
+};
+
 #define htod32(i) i
 #define htod16(i) i
 #define dtoh32(i) i
@@ -141,6 +151,12 @@ dhd_conf_free_mac_list(wl_mac_list_ctrl_t *mac_list)
 		kfree(mac_list->m_mac_list_head);
 	}
 	mac_list->count = 0;
+}
+
+int
+get_wifi_type_from_gpio()
+{
+	return amlogic_get_value(amlogic_gpio_name_map_num("GPIODV_25"),"bluetooth");
 }
 
 int
@@ -421,6 +437,57 @@ dhd_conf_set_fw_name_by_chip(dhd_pub_t *dhd, char *fw_path)
 	}
 
 	printf("%s: firmware_path=%s\n", __FUNCTION__, fw_path);
+}
+
+void
+dhd_conf_set_nv_name_by_chip(dhd_pub_t *dhd, char *nv_path)
+{
+	uint chip, chiprev;
+	int i;
+
+	chip = dhd->conf->chip;
+	chiprev = dhd->conf->chiprev;
+
+	if (nv_path[0] == '\0') {
+#ifdef CONFIG_BCMDHD_NVRAM_PATH
+		bcm_strncpy_s(nv_path, MOD_PARAM_PATHLEN-1, CONFIG_BCMDHD_NVRAM_PATH, MOD_PARAM_PATHLEN-1);
+		if (nv_path[0] == '\0')
+#endif
+		{
+			printf("src nvram path is null\n");
+			return;
+		}
+	}
+
+#ifndef FW_PATH_AUTO_SELECT
+	return;
+#endif
+
+	/* find out the last '/' */
+	i = strlen(nv_path);
+	while (i>0){
+		if (nv_path[i] == '/') break;
+		i--;
+	}
+	switch (chip) {
+		case BCM4330_CHIP_ID:
+					strcpy(&nv_path[i+1], nv_name[1]);
+						break;
+		case BCM43362_CHIP_ID:
+				if(get_wifi_type_from_gpio())
+					strcpy(&nv_path[i+1], nv_name[2]);
+				else
+					strcpy(&nv_path[i+1], nv_name[0]);
+				break;
+		case BCM43430_CHIP_ID:
+					strcpy(&nv_path[i+1], nv_name[3]);
+						break;
+		case BCM4335_CHIP_ID:
+					strcpy(&nv_path[i+1], nv_name[4]);
+						break;
+	
+	}
+	printf("%s: yxg ----nv_path=%s\n", __FUNCTION__, nv_path);
 }
 
 #if defined(HW_OOB)

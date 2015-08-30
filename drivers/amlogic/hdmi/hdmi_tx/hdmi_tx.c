@@ -58,6 +58,7 @@
 static dev_t hdmitx_id;
 static struct class *hdmitx_class;
 static struct device *hdmitx_dev;
+static int bluetooth;
 
 static int set_disp_mode_auto(void);
 const vinfo_t * hdmi_get_current_vinfo(void);
@@ -555,6 +556,14 @@ static ssize_t store_cec_config(struct device * dev, struct device_attribute *at
     return count;
 }
 
+static ssize_t show_bluetooth(struct device * dev, struct device_attribute *attr, char * buf)
+{
+    int pos=0;
+    pos+=snprintf(buf+pos, PAGE_SIZE, "%d\r\n",amlogic_get_value(bluetooth,"bluetooth") );
+       printk("yxg-----read bluetooth_sate is %d\n",amlogic_get_value(bluetooth,"bluetooth"));
+    return pos;
+}
+
 static ssize_t store_cec_lang_config(struct device * dev, struct device_attribute *attr, const char * buf, size_t count)
 {
     hdmi_print(INF, CEC "store_cec_lang_config\n");
@@ -932,6 +941,7 @@ void hdmi_print(int dbg_lvl, const char *fmt, ...)
     }
 }
 
+static DEVICE_ATTR(bluetooth_state, 0666, show_bluetooth, NULL);//yxg
 static DEVICE_ATTR(disp_mode, S_IWUSR | S_IRUGO | S_IWGRP, show_disp_mode, store_disp_mode);
 static DEVICE_ATTR(aud_mode, S_IWUSR | S_IRUGO, show_aud_mode, store_aud_mode);
 static DEVICE_ATTR(edid, S_IWUSR | S_IRUGO, show_edid, store_edid);
@@ -1542,6 +1552,14 @@ static int amhdmitx_probe(struct platform_device *pdev)
     struct device_node *init_data;
 #endif
 
+    bluetooth=amlogic_gpio_name_map_num("GPIODV_25");
+    ret=amlogic_gpio_request(bluetooth, "bluetooth");
+    if (ret) {
+       dev_err(&pdev->dev, "bluetooth_dt request failed\n");
+    }
+    amlogic_set_pull_up_down(bluetooth,0,"bluetooth");
+    amlogic_gpio_direction_input(bluetooth,"bluetooth");
+
     hdmi_print(IMP, SYS "amhdmitx_probe\n");
 
     r = alloc_chrdev_region(&hdmitx_id, 0, HDMI_TX_COUNT, DEVICE_NAME);
@@ -1597,6 +1615,7 @@ static int amhdmitx_probe(struct platform_device *pdev)
     ret=device_create_file(hdmitx_dev, &dev_attr_cec);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec_config);
     ret=device_create_file(hdmitx_dev, &dev_attr_cec_lang_config);
+    ret=device_create_file(hdmitx_dev, &dev_attr_bluetooth_state);
 
     if (hdmitx_dev == NULL) {
         hdmi_print(ERR, SYS "device_create create error\n");
